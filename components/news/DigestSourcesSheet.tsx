@@ -158,7 +158,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sheetKicker: {
       fontSize: sf(12),
       lineHeight: sf(16),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.15,
       flex: 1,

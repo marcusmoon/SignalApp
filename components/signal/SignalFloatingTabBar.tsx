@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   label: {
     marginTop: 1,
-    fontWeight: '800',
+    fontWeight: '700',
     textAlign: 'center',
   },
 });

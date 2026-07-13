@@ -69,7 +69,7 @@ function makeStyles(_theme: AppTheme, sf: (n: number) => number, size: number) {
     glyph: {
       fontSize: sf(Math.round(size * 0.42)),
       lineHeight: sf(Math.round(size * 0.5)),
-      fontWeight: '900',
+      fontWeight: '700',
     },
   });
 }

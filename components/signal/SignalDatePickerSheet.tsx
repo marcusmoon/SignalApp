@@ -122,12 +122,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalTitle: {
       color: theme.text,
       fontSize: sf(17),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalClose: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
@@ -144,7 +144,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalTodayText: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     pressed: { opacity: 0.86 },
   });

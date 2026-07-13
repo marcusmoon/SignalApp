@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SIDEBAR_WIDTH } from '@/constants/responsiveLayout';
 import { SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM } from '@/constants/segmentTabBar';
+import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { isSettingsTab, SETTINGS_TABS, type SettingsTab } from '@/constants/settingsTabs';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -423,7 +424,7 @@ function makeStyles(
     },
     tabLabelActive: {
       color: theme.green,
-      fontWeight: '800',
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
     },
     subTabList: {
       marginBottom: SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM,

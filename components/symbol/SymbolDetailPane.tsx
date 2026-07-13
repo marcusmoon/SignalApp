@@ -242,7 +242,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     company: {
       fontSize: sf(17),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       marginBottom: 2,
     },
@@ -254,9 +254,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 20,
       flexWrap: 'wrap',
     },
-    price: { fontSize: sf(28), fontWeight: '900', color: theme.text },
+    price: { fontSize: sf(28), fontWeight: '700', color: theme.text },
     priceMeta: { alignItems: 'flex-end', gap: 6 },
-    changeMetric: { fontSize: sf(13), fontWeight: '800' },
+    changeMetric: { fontSize: sf(13), fontWeight: '600' },
     heroMcap: {
       fontSize: sf(12),
       fontWeight: '700',
@@ -277,7 +277,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 16,
       marginBottom: 8,
     },
-    chartLabel: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
+    chartLabel: { fontSize: sf(11), fontWeight: '600', color: theme.textDim },
     chartValue: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted },
     chartEmpty: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
     heroActions: {
@@ -310,7 +310,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errorText: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.danger,
     },
     section: {

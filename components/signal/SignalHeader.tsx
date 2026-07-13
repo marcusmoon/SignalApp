@@ -162,7 +162,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
     },
     brand: {
       fontSize: compact ? sf(17) : sf(18),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.green,
       letterSpacing: 0,
     },

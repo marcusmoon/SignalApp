@@ -182,7 +182,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       textAlignVertical: 'center',
       fontSize: sf(11),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
       textAlign: 'center',
       lineHeight: sf(14),

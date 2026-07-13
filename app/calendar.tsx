@@ -583,7 +583,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     filterChipText: {
       fontSize: sf(11),
       lineHeight: sf(16),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
     },
     filterChipTextActive: {
@@ -626,7 +626,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: 2,
       marginTop: 1,
     },
-    typeTagText: { fontSize: sf(9), fontWeight: '800' },
+    typeTagText: { fontSize: sf(9), fontWeight: '600' },
     impactTag: {
       borderWidth: 1,
       borderRadius: 5,
@@ -644,7 +644,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.accentBlue + '77',
       backgroundColor: theme.accentBlue + '18',
     },
-    impactTagText: { fontSize: sf(9), fontWeight: '800', color: theme.textMuted },
+    impactTagText: { fontSize: sf(9), fontWeight: '600', color: theme.textMuted },
     symbolTag: {
       borderWidth: 1,
       borderRadius: 5,
@@ -654,7 +654,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.green + '88',
       backgroundColor: theme.green + '18',
     },
-    symbolTagText: { fontSize: sf(9), fontWeight: '900', color: theme.green },
+    symbolTagText: { fontSize: sf(9), fontWeight: '700', color: theme.green },
     time: { fontSize: ft.ff(10), fontWeight: ft.metaWeight, color: theme.textMuted, marginTop: 1, flexShrink: 0 },
     title: {
       flexGrow: 1,
@@ -717,12 +717,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     modalTitle: {
       color: theme.text,
       fontSize: sf(17),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalClose: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
@@ -737,7 +737,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     modalTodayText: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     dateActionBtnPressed: { opacity: 0.86 },
   });

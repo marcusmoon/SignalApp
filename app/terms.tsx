@@ -106,8 +106,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 16,
       gap: 16,
     },
-    kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    title: { color: theme.text, fontSize: sf(22), lineHeight: sf(29), fontWeight: '900' },
+    kicker: { color: theme.green, fontSize: sf(11), fontWeight: '700' },
+    title: { color: theme.text, fontSize: sf(22), lineHeight: sf(29), fontWeight: '700' },
     updated: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
     paragraph: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(21), fontWeight: '600' },
   });

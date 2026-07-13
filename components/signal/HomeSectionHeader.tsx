@@ -82,13 +82,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     title: {
       fontSize: sf(16),
       lineHeight: sf(22),
-      fontWeight: '800',
+      fontWeight: '700',
       color: theme.text,
     },
     subtitle: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '700',
+      fontWeight: '600',
       color: theme.textMuted,
     },
     pressed: {

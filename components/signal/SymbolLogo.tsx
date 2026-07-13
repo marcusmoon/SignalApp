@@ -96,7 +96,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, size: number) {
     avatarText: {
       fontSize: sf(size <= 22 ? 10 : 12),
       lineHeight: sf(size <= 22 ? 12 : 14),
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.2,
     },
   });

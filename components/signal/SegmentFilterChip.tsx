@@ -57,7 +57,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     glyph: {
       fontSize: sf(10),
       lineHeight: sf(12),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     glyphActive: {
       opacity: 1,
@@ -65,7 +65,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     label: {
       fontSize: sf(12),
       lineHeight: sf(16),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
       flexShrink: 1,
     },

@@ -202,7 +202,7 @@ function RootLayoutNav() {
           contentStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerTintColor: theme.green,
-          headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
+          headerTitleStyle: { fontWeight: '600' as const, color: theme.text },
           ...screenStatusBarOptions,
         };
       },

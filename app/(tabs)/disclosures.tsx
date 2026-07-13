@@ -660,12 +660,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       minWidth: 0,
       fontSize: sf(12),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
     },
     symbolFilterClear: {
       fontSize: sf(12),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.green,
     },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -676,7 +676,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     empty: {
       padding: 18,
@@ -686,7 +686,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
       backgroundColor: theme.card,
       fontSize: sf(14),
-      fontWeight: '800',
+      fontWeight: '600',
       textAlign: 'center',
     },
     card: {
@@ -767,13 +767,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       fontSize: sf(22),
       lineHeight: sf(30),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     detailCompany: {
       color: theme.textMuted,
       fontSize: sf(13),
       lineHeight: sf(19),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     detailCard: {
       borderRadius: 8,
@@ -792,20 +792,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     detailFactLabel: {
       color: theme.textMuted,
       fontSize: sf(12),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     detailFactValue: {
       flex: 1,
       minWidth: 0,
       color: theme.text,
       fontSize: sf(13),
-      fontWeight: '900',
+      fontWeight: '700',
       textAlign: 'right',
     },
     detailSectionTitle: {
       color: theme.text,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     detailSummary: {
       color: theme.textMuted,
@@ -827,7 +827,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     detailOpenText: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     detailEmpty: {
       flex: 1,

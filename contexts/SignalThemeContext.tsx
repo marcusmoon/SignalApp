@@ -75,7 +75,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
-  const [feedContentWeight, setFeedContentWeightState] = useState<FeedContentWeightId>('bold');
+  const [feedContentWeight, setFeedContentWeightState] = useState<FeedContentWeightId>('regular');
 
   useEffect(() => {
     void (async () => {

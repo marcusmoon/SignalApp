@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   icon: { width: 40, height: 40, borderRadius: 8 },
   textCol: { flex: 1, minWidth: 0 },
-  headline: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
+  headline: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   body: { fontSize: 12, lineHeight: 17 },
   media: {
     width: '100%',
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#FFFFFF',
     overflow: 'hidden',
   },

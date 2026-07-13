@@ -120,7 +120,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     title: {
       fontSize: sf(17),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       marginBottom: 6,
     },
@@ -153,7 +153,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     addBtnPressed: { opacity: 0.9 },
     addBtnDisabled: { opacity: 0.7 },
-    addBtnText: { fontSize: sf(15), fontWeight: '800', color: theme.green },
+    addBtnText: { fontSize: sf(15), fontWeight: '600', color: theme.green },
     resetBtn: {
       alignSelf: 'center',
       paddingVertical: 12,

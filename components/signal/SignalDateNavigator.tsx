@@ -156,7 +156,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       fontSize: sf(14),
       lineHeight: sf(18),
-      fontWeight: '900',
+      fontWeight: '700',
       textAlign: 'center',
       flexShrink: 1,
     },

@@ -33,18 +33,18 @@ export function feedContentTypography(
   const bold = weight === 'bold';
   return {
     weight,
-    titleWeight: bold ? '900' : '700',
-    emphasisWeight: bold ? '800' : '600',
-    bodyWeight: bold ? '700' : '500',
+    titleWeight: bold ? '800' : '600',
+    emphasisWeight: bold ? '700' : '500',
+    bodyWeight: bold ? '600' : '500',
     metaWeight: bold ? '600' : '500',
-    signalTitleWeight: bold ? '900' : '600',
-    signalBodyWeight: bold ? '800' : '500',
-    signalMetaWeight: bold ? '800' : '500',
-    pad: (n) => (bold ? Math.round(n * 1.2) : n),
-    row: (n) => (bold ? Math.round(n * 1.14) : n),
-    signalRow: (n) => (bold ? Math.round(n * 1.18) : n),
+    signalTitleWeight: bold ? '800' : '600',
+    signalBodyWeight: bold ? '700' : '500',
+    signalMetaWeight: bold ? '700' : '500',
+    pad: (n) => (bold ? Math.round(n * 1.12) : n),
+    row: (n) => (bold ? Math.round(n * 1.08) : n),
+    signalRow: (n) => (bold ? Math.round(n * 1.1) : n),
     ff: (px) => scaleFont(bold ? px + 1 : px),
-    signalTitleFont: (px) => scaleFont(bold ? px + 2 : px),
+    signalTitleFont: (px) => scaleFont(bold ? px + 1 : px),
     signalBodyFont: (px) => scaleFont(bold ? px + 1 : px),
   };
 }
@@ -52,9 +52,9 @@ export function feedContentTypography(
 export async function loadFeedContentWeight(): Promise<FeedContentWeightId> {
   const v = await AsyncStorage.getItem(STORAGE_KEY);
   if (v && VALID.has(v)) return v as FeedContentWeightId;
-  return 'bold';
+  return 'regular';
 }
 
 export async function saveFeedContentWeight(id: FeedContentWeightId): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, VALID.has(id) ? id : 'bold');
+  await AsyncStorage.setItem(STORAGE_KEY, VALID.has(id) ? id : 'regular');
 }

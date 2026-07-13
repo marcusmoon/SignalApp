@@ -152,9 +152,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
     },
-    empty: { color: theme.textMuted, fontSize: sf(14), fontWeight: '800', textAlign: 'center', padding: 20 },
+    empty: { color: theme.textMuted, fontSize: sf(14), fontWeight: '600', textAlign: 'center', padding: 20 },
     hero: {
       borderRadius: 8,
       borderWidth: 1,
@@ -172,7 +172,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 4,
       borderRadius: 8,
       fontSize: sf(11),
-      fontWeight: '900',
+      fontWeight: '700',
       overflow: 'hidden',
     },
     badgeMuted: {
@@ -182,11 +182,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 4,
       borderRadius: 8,
       fontSize: sf(11),
-      fontWeight: '900',
+      fontWeight: '700',
       overflow: 'hidden',
     },
-    heroTitle: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
-    company: { marginTop: 8, color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
+    heroTitle: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '700' },
+    company: { marginTop: 8, color: theme.textMuted, fontSize: sf(13), fontWeight: '600' },
     card: {
       borderRadius: 8,
       borderWidth: 1,
@@ -194,10 +194,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       padding: 14,
     },
-    section: { color: theme.text, fontSize: sf(15), fontWeight: '900', marginBottom: 14 },
+    section: { color: theme.text, fontSize: sf(15), fontWeight: '700', marginBottom: 14 },
     factRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 20, paddingVertical: 7 },
-    factLabel: { color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
-    factValue: { flex: 1, textAlign: 'right', color: theme.text, fontSize: sf(13), fontWeight: '900' },
+    factLabel: { color: theme.textMuted, fontSize: sf(13), fontWeight: '600' },
+    factValue: { flex: 1, textAlign: 'right', color: theme.text, fontSize: sf(13), fontWeight: '700' },
     summary: { color: theme.text, fontSize: sf(15), lineHeight: sf(24), fontWeight: '700' },
     primaryBtn: {
       minHeight: 48,
@@ -208,6 +208,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       gap: 16,
     },
-    primaryText: { color: '#fff', fontSize: sf(14), fontWeight: '900' },
+    primaryText: { color: '#fff', fontSize: sf(14), fontWeight: '700' },
   });
 }

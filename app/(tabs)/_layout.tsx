@@ -4,7 +4,6 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from "expo-router/js-tabs";
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   TAB_BAR_FLOAT_HEIGHT,
@@ -12,7 +11,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle, webShellBackground } from '@/constants/webLayout';
+import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webShellBackground } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -20,8 +19,6 @@ import {
 } from '@/components/signal/GlassSurface';
 import { AppQuickActions } from '@/components/AppQuickActions';
 import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
-import { SignalHeader } from '@/components/signal/SignalHeader';
-import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import AccountScreen from '@/app/account';
 import { NewsIssuesContent } from '@/app/news-issues';
@@ -30,7 +27,6 @@ import SettingsScreen from '@/app/settings';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
-import { WebHeaderRefreshProvider, useWebHeaderRefreshTrigger } from '@/contexts/WebHeaderRefreshContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -246,15 +242,13 @@ export default function TabLayout() {
 
   if (isWideLayout) {
     return (
-      <WebHeaderRefreshProvider>
-        <IpadWideTabLayout
-          iPadScreenOptions={iPadScreenOptions}
-          newsTabBadge={newsTabBadge}
-          signalTabBadge={signalTabBadge}
-          disclosureTabBadge={disclosureTabBadge}
-          t={t}
-        />
-      </WebHeaderRefreshProvider>
+      <IpadWideTabLayout
+        iPadScreenOptions={iPadScreenOptions}
+        newsTabBadge={newsTabBadge}
+        signalTabBadge={signalTabBadge}
+        disclosureTabBadge={disclosureTabBadge}
+        t={t}
+      />
     );
   }
 
@@ -341,16 +335,8 @@ export default function TabLayout() {
 }
 
 const sidebarLayoutStyles = StyleSheet.create({
-  safe: {
+  root: {
     ...webFlexFill,
-  },
-  body: {
-    ...webFlexFill,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  content: {
-    ...webSidebarContentStyle,
     position: 'relative',
   },
   contentPane: {
@@ -391,81 +377,66 @@ type IpadWideTabLayoutProps = {
 
 function IpadWideTabLayout({
   iPadScreenOptions,
-  newsTabBadge,
-  signalTabBadge,
-  disclosureTabBadge,
+  newsTabBadge: _newsTabBadge,
+  signalTabBadge: _signalTabBadge,
+  disclosureTabBadge: _disclosureTabBadge,
   t,
 }: IpadWideTabLayoutProps) {
   const { contentPane, newsIssuesParams, disclosureFlowParams, showHome } = useIpadSidebarNav();
   const { theme } = useSignalTheme();
-  const triggerHeaderRefresh = useWebHeaderRefreshTrigger();
 
   return (
     <>
-      <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: webShellBackground(theme.bg) }]} edges={['top']}>
-      <SignalHeader
-        compact
-        fullWidth
-        onBrandPress={Platform.OS === 'web' ? () => void triggerHeaderRefresh() : undefined}
-      />
-      <View style={[sidebarLayoutStyles.body, { backgroundColor: webShellBackground(theme.bg) }]}>
-        <SignalSidebarTabBar
-          newsHasUnread={newsTabBadge}
-          signalHasUnread={signalTabBadge}
-          disclosureHasUnread={disclosureTabBadge}
-        />
-        <View style={[sidebarLayoutStyles.content, { backgroundColor: webShellBackground(theme.bg) }]}>
-          {contentPane !== 'tabs' ? (
-            <View style={sidebarLayoutStyles.contentPane}>
-              {contentPane === 'home' ? (
-                <IpadHomeScreen />
-              ) : contentPane === 'newsIssues' && newsIssuesParams ? (
-                <NewsIssuesContent
-                  embedded
-                  initialCategory={newsIssuesParams.category}
-                  initialDate={newsIssuesParams.date}
-                  initialDigestId={newsIssuesParams.digestId}
-                  onBack={showHome}
-                />
-              ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
-                <DisclosureFlowContent
-                  embedded
-                  initialDate={disclosureFlowParams.date}
-                  initialMarket={disclosureFlowParams.market}
-                  initialDigestId={disclosureFlowParams.digestId}
-                  onBack={showHome}
-                />
-              ) : contentPane === 'account' ? (
-                <AccountScreen embedded />
-              ) : contentPane === 'settings' ? (
-                <SettingsScreen embedded />
-              ) : null}
-            </View>
-          ) : null}
-          <View
-            style={[
-              sidebarLayoutStyles.tabsHost,
-              contentPane === 'tabs' ? sidebarLayoutStyles.tabsHostVisible : sidebarLayoutStyles.tabsHostHidden,
-            ]}>
-            <Tabs
-              initialRouteName="news"
-              tabBar={() => null}
-              screenOptions={iPadScreenOptions}
-              detachInactiveScreens={false}>
-              <Tabs.Screen name="index" options={{ href: null }} />
-              <Tabs.Screen name="home" options={{ href: null }} />
-              <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
-              <Tabs.Screen name="disclosures" options={{ href: null, title: t('tabDisclosures') }} />
-              <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
-              <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
-              <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
-              <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
-              <Tabs.Screen name="board" options={{ href: null, title: t('screenBoard') }} />
-            </Tabs>
+      <View style={[sidebarLayoutStyles.root, { backgroundColor: webShellBackground(theme.bg) }]}>
+        {contentPane !== 'tabs' ? (
+          <View style={sidebarLayoutStyles.contentPane}>
+            {contentPane === 'home' ? (
+              <IpadHomeScreen />
+            ) : contentPane === 'newsIssues' && newsIssuesParams ? (
+              <NewsIssuesContent
+                embedded
+                initialCategory={newsIssuesParams.category}
+                initialDate={newsIssuesParams.date}
+                initialDigestId={newsIssuesParams.digestId}
+                onBack={showHome}
+              />
+            ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
+              <DisclosureFlowContent
+                embedded
+                initialDate={disclosureFlowParams.date}
+                initialMarket={disclosureFlowParams.market}
+                initialDigestId={disclosureFlowParams.digestId}
+                onBack={showHome}
+              />
+            ) : contentPane === 'account' ? (
+              <AccountScreen embedded />
+            ) : contentPane === 'settings' ? (
+              <SettingsScreen embedded />
+            ) : null}
           </View>
+        ) : null}
+        <View
+          style={[
+            sidebarLayoutStyles.tabsHost,
+            contentPane === 'tabs' ? sidebarLayoutStyles.tabsHostVisible : sidebarLayoutStyles.tabsHostHidden,
+          ]}>
+          <Tabs
+            initialRouteName="news"
+            tabBar={() => null}
+            screenOptions={iPadScreenOptions}
+            detachInactiveScreens={false}>
+            <Tabs.Screen name="index" options={{ href: null }} />
+            <Tabs.Screen name="home" options={{ href: null }} />
+            <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
+            <Tabs.Screen name="disclosures" options={{ href: null, title: t('tabDisclosures') }} />
+            <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
+            <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
+            <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
+            <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
+            <Tabs.Screen name="board" options={{ href: null, title: t('screenBoard') }} />
+          </Tabs>
         </View>
       </View>
-    </SafeAreaView>
       <AppQuickActions />
     </>
   );

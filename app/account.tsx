@@ -156,8 +156,11 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [accountPane, setAccountPaneState] = useState<AccountPane>(() =>
     parseAccountPaneParam(params.pane),
   );
+  const accountPaneRef = useRef(accountPane);
+  accountPaneRef.current = accountPane;
   const setAccountPane = useCallback(
     (pane: AccountPane) => {
+      if (accountPaneRef.current === pane) return;
       setAccountPaneState(pane);
       setRouteParams({ pane });
     },

@@ -182,9 +182,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     (tab: SettingsTab = 'display') => {
       setSettingsTab(tab);
       setContentPane('settings');
+      if (pathname.startsWith('/settings')) {
+        const currentTab = firstParam(params.tab);
+        if (isSettingsTab(currentTab) && currentTab === tab) return;
+        router.setParams({ tab, from: 'account' } as never);
+        return;
+      }
       router.navigate({ pathname: '/settings', params: { tab, from: 'account' } } as never);
     },
-    [router],
+    [params.tab, pathname, router],
   );
 
   const showNewsIssues = useCallback(

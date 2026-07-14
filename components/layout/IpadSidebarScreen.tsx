@@ -1,9 +1,8 @@
 import { Stack, useRouter, type Href } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useLocale } from '@/contexts/LocaleContext';
+import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { webFlexFill } from '@/constants/webLayout';
 
@@ -18,7 +17,6 @@ type Props = {
 /** Wide web/iPad: 사이드바·헤더는 `WideWebShell`이 담당. 여기는 우측 콘텐츠 영역만. */
 export function IpadSidebarScreen({ title, children, backHref, hideTopBar = false }: Props) {
   const router = useRouter();
-  const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = makeStyles(theme, scaleFont);
 
@@ -39,14 +37,7 @@ export function IpadSidebarScreen({ title, children, backHref, hideTopBar = fals
       <Stack.Screen options={{ headerShown: false }} />
       {hideTopBar ? null : (
         <View style={styles.topBar}>
-          <Pressable
-            onPress={onBack}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('commonBack')}>
-            <FontAwesome name="chevron-left" size={14} color={theme.green} />
-            <Text style={styles.backText}>{t('commonBack')}</Text>
-          </Pressable>
+          <PhoneHeaderBackButton onPress={onBack} />
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
@@ -72,44 +63,25 @@ function makeStyles(
       minHeight: 0,
     },
     topBar: {
-      minHeight: 54,
+      minHeight: 44,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 20,
-      paddingHorizontal: 18,
+      gap: 4,
+      paddingHorizontal: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    backBtn: {
-      minHeight: 36,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 7,
-      paddingHorizontal: 12,
-      borderRadius: 999,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    backBtnPressed: {
-      opacity: 0.72,
-    },
-    backText: {
-      fontSize: sf(13),
-      fontWeight: '700',
-      color: theme.green,
-    },
     title: {
       flex: 1,
       textAlign: 'center',
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: '700',
+      fontSize: sf(17),
+      lineHeight: sf(22),
+      fontWeight: '600',
       color: theme.text,
     },
     spacer: {
-      width: 78,
+      width: 36,
       flexShrink: 0,
     },
   });

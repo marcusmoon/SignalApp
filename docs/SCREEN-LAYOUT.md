@@ -96,7 +96,7 @@ SafeAreaView edges={['top']}
 
 규칙:
 
-1. 크롬은 `WideSubpaneHeader`(chevron 뒤로 + 제목) **하나**로 통일. 화면마다 다른 back UI를 두지 않는다.
+1. 크롬은 `WideSubpaneHeader`(chevron만 + 제목) **하나**로 통일. 화면마다 다른 back UI를 두지 않는다.
 2. 진입 출처는 **공유 URL 쿼리(`from=`)에 넣지 않는다.** 세션/인메모리(또는 router state)로만 둔다. URL을 복사해 다른 브라우저에서 열면 루트 진입과 같이 헤더 없음.
 3. 본문 레이아웃(뉴스 리스트·보드 카드 등)은 화면 고유. 맞추는 것은 **back 헤더 스트립뿐**.
 4. 드릴인이 2단 이상이면 우측 pane 안에서 back 스택을 쌓아 한 단계씩 복귀한다.
@@ -112,11 +112,11 @@ wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화�
 
 | 진입 | 뒤로 크롬 |
 |---|---|
-| More → 보드·공시·유튜브·My info | **같은 root Stack** (`/more-board`·`/more-disclosures`·`/more-youtube`·`/account`) — native 헤더 + `PhoneHeaderBackButton` |
+| More → 보드·공시·유튜브·My info | **같은 root Stack** — native 헤더 + `PhoneHeaderBackButton`(chevron만) |
 | My info → 프로필·비밀번호·소셜 | 같은 Stack 헤더 + `PhoneHeaderBackButton` → 허브 |
 | 홈 등 탭 직접 진입 (보드 등) | `SignalHeader` (Stack 드릴인 아님) |
 
-뒤로 UI는 **항상** Stack 바 안의 `PhoneHeaderBackButton`(chevron + 「뒤로」). `WideSubpaneHeader`는 wide 전용.
+뒤로 UI는 **플랫폼 공통 chevron만** (`PhoneHeaderBackButton`). 「뒤로」 라벨·pill 배경 없음. a11y만 `commonBack`. `WideSubpaneHeader` / `IpadSidebarScreen`도 동일 컨트롤.
 
 ## Pull-to-refresh · chip · digest (상호작용)
 
@@ -179,8 +179,8 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 | 컴포넌트 | 용도 |
 |---|---|
 | `WideWebShell` | wide — 고정 사이드바 + 전역 `SignalHeader` |
-| `WideSubpaneHeader` | wide 우측 pane 드릴인 — 뒤로 + 제목 |
-| `PhoneHeaderBackButton` | iPhone Stack 헤더 좌측 — chevron + 「뒤로」 |
+| `WideSubpaneHeader` | wide 우측 pane 드릴인 — chevron + 제목 |
+| `PhoneHeaderBackButton` | iPhone / iPad / web 공통 뒤로 — chevron만 |
 | `IpadSidebarScreen` | wide 스택 — (레거시/미사용에 가깝고, 신규는 `WideSubpaneHeader` 규칙 우선) |
 | `MasterDetailLayout` | 시세·공시 2-pane |
 | `IpadHomeScreen` | wide 홈 |

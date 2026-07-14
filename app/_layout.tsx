@@ -199,8 +199,9 @@ function RootLayoutNav() {
         if (route.name === '(tabs)') {
           return {
             headerShown: false,
-            /** More → Account 등 탭에서 스택으로 나갈 때 back 라벨 */
-            headerBackTitle: t('commonBack'),
+            /** 네이티브 시스템 백도 chevron만 */
+            headerBackButtonDisplayMode: 'minimal' as const,
+            headerBackTitle: '',
             contentStyle: { backgroundColor: webShellBackground(theme.bg) },
             ...screenStatusBarOptions,
           };
@@ -234,7 +235,8 @@ function RootLayoutNav() {
         };
         return {
           title: titleByName[route.name] ?? route.name,
-          headerBackTitle: t('commonBack'),
+          headerBackButtonDisplayMode: 'minimal' as const,
+          headerBackTitle: '',
           contentStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerTintColor: theme.green,

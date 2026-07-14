@@ -10,7 +10,10 @@ export type WideOverlayKind =
   | 'settings'
   | 'alerts'
   | 'terms-history'
-  | 'terms';
+  | 'terms'
+  | 'board'
+  | 'community'
+  | 'symbol';
 
 export const WIDE_HOME_ROUTE = '/(tabs)/home';
 
@@ -25,6 +28,9 @@ export const WIDE_OVERLAY_CLEAR_PARAMS: Record<string, undefined> = {
   pane: undefined,
   type: undefined,
   sort: undefined,
+  source: undefined,
+  id: undefined,
+  ticker: undefined,
 };
 
 export function normalizePathname(pathname: string): string {
@@ -47,6 +53,8 @@ export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind |
   if (path.startsWith('/alerts')) return 'alerts';
   if (path.startsWith('/terms-history')) return 'terms-history';
   if (path.startsWith('/terms')) return 'terms';
+  if (path.startsWith('/community/')) return 'community';
+  if (path.startsWith('/symbol/')) return 'symbol';
   return null;
 }
 
@@ -70,6 +78,12 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
       return 'termsHistory';
     case 'terms':
       return 'terms';
+    case 'board':
+      return 'board';
+    case 'community':
+      return 'community';
+    case 'symbol':
+      return 'symbol';
     default:
       return 'home';
   }
@@ -85,7 +99,10 @@ export function isWideOverlayKind(value: string | undefined): value is WideOverl
     value === 'settings' ||
     value === 'alerts' ||
     value === 'terms-history' ||
-    value === 'terms'
+    value === 'terms' ||
+    value === 'board' ||
+    value === 'community' ||
+    value === 'symbol'
   );
 }
 
@@ -100,4 +117,18 @@ export function overlayParamsFromRecord(
     if (text) out[key] = text;
   }
   return out;
+}
+
+/** Extract community post id from `/community/:id` path. */
+export function communityIdFromPathname(pathname: string): string | undefined {
+  const path = normalizePathname(pathname);
+  const match = path.match(/\/community\/([^/]+)$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+}
+
+/** Extract ticker from `/symbol/:ticker` path. */
+export function symbolTickerFromPathname(pathname: string): string | undefined {
+  const path = normalizePathname(pathname);
+  const match = path.match(/\/symbol\/([^/]+)$/);
+  return match?.[1] ? decodeURIComponent(match[1]).toUpperCase() : undefined;
 }

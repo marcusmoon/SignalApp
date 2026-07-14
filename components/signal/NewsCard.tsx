@@ -17,6 +17,7 @@ import type { AppTheme } from '@/constants/theme';
 import { SourceBadge } from '@/components/signal/SourceBadge';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsItem } from '@/types/signal';
@@ -51,6 +52,7 @@ export function NewsCard({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const router = useRouter();
+  const ipadNav = useIpadSidebarNavActions();
   const listTitleMode = titleShowAlternate !== undefined;
   const [localShowAlternate, setLocalShowAlternate] = useState(false);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -66,6 +68,14 @@ export function NewsCard({
     symbol.length === 0 || symbol === 'GLOBAL' || symbol === '—';
   const canOpenSymbol = !showSourceInHeader;
   const headerLabel = showSourceInHeader ? sourceName : item.ticker;
+  const openSymbol = useCallback(() => {
+    if (!symbol) return;
+    if (ipadNav.isAvailable) {
+      ipadNav.showSymbol(symbol, { drillFrom: 'tabs' });
+      return;
+    }
+    router.push(`/symbol/${symbol}`);
+  }, [ipadNav, router, symbol]);
 
   const alternateTitle = item.alternateTitle?.trim() ?? '';
   const hasTitleToggle = titleToggle && alternateTitle.length > 0;
@@ -176,7 +186,7 @@ export function NewsCard({
       {flashBadge}
       {canOpenSymbol ? (
         <Pressable
-          onPress={() => router.push(`/symbol/${symbol}`)}
+          onPress={openSymbol}
           hitSlop={8}
           style={styles.compactTickerWrap}>
           <View style={styles.tickerLead}>
@@ -201,7 +211,7 @@ export function NewsCard({
       <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
         {canOpenSymbol ? (
           <Pressable
-            onPress={() => router.push(`/symbol/${symbol}`)}
+            onPress={openSymbol}
             hitSlop={8}
             style={styles.metaLead}>
             <View style={styles.tickerLead}>

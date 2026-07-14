@@ -33,6 +33,7 @@ import { CommunityPostContent } from '@/app/community/[id]';
 import { SymbolDetailContent } from '@/app/symbol/[ticker]';
 import { BoardContent } from '@/components/community/BoardContent';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
+import SignalScreen from '@/app/(tabs)/signal';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useIpadSidebarNavActions, useIpadSidebarNavState } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -392,6 +393,7 @@ function IpadWideTabLayout({
     newsIssuesParams,
     disclosureFlowParams,
     todayBriefingDate,
+    marketBriefingParams,
     communityPostId,
     symbolTicker,
     calendarFromAccount,
@@ -433,6 +435,13 @@ function IpadWideTabLayout({
               <SettingsScreen embedded onBack={subpaneBack} />
             ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
               <TodayBriefingContent embedded date={todayBriefingDate} onBack={subpaneBack} />
+            ) : contentPane === 'marketBriefing' ? (
+              <SignalScreen
+                embedded
+                onBack={subpaneBack}
+                initialSession={marketBriefingParams?.session ?? null}
+                initialDate={marketBriefingParams?.date ?? null}
+              />
             ) : contentPane === 'calendar' ? (
               <CalendarScreen
                 embedded

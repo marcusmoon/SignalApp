@@ -573,7 +573,7 @@ export function HomeFocusContent({
       const session = signalSessionKeyForBriefing(row);
       const params = { date: selectedYmd, ...(session ? { session } : null) };
       if (ipadNav.isAvailable) {
-        ipadNav.showSignalTab(session, selectedYmd);
+        ipadNav.showMarketBriefing(session, selectedYmd, { drillFrom: 'home' });
         return;
       }
       router.push({

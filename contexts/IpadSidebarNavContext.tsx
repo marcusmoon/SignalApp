@@ -30,6 +30,7 @@ export type IpadContentPane =
   | 'newsIssues'
   | 'disclosureFlow'
   | 'todayBriefing'
+  | 'marketBriefing'
   | 'calendar'
   | 'alerts'
   | 'termsHistory'
@@ -47,6 +48,10 @@ export type IpadDisclosureFlowPaneParams = {
   date: string;
   market?: DisclosureFlowMarket;
   digestId?: string | null;
+};
+export type IpadMarketBriefingPaneParams = {
+  session?: SignalSessionKey;
+  date?: string;
 };
 
 export type WidePaneDrillFrom = 'home' | 'account' | 'termsHistory' | 'tabs' | 'alerts' | 'board';
@@ -69,6 +74,7 @@ type IpadSidebarNavState = {
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
   todayBriefingDate: string | null;
+  marketBriefingParams: IpadMarketBriefingPaneParams | null;
   communityPostId: string | null;
   symbolTicker: string | null;
   calendarFromAccount: boolean;
@@ -86,6 +92,11 @@ type IpadSidebarNavActions = {
   showNewsIssues: (params: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => void;
   showDisclosureFlow: (params: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => void;
   showTodayBriefing: (date: string, options?: WidePaneDrillOptions) => void;
+  showMarketBriefing: (
+    session?: SignalSessionKey,
+    date?: string,
+    options?: WidePaneDrillOptions,
+  ) => void;
   showCalendar: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   showAlerts: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   showTermsHistory: (options?: WidePaneDrillOptions) => void;
@@ -120,6 +131,7 @@ const defaultState: IpadSidebarNavState = {
   newsIssuesParams: null,
   disclosureFlowParams: null,
   todayBriefingDate: null,
+  marketBriefingParams: null,
   communityPostId: null,
   symbolTicker: null,
   calendarFromAccount: false,
@@ -137,6 +149,7 @@ const defaultActions: IpadSidebarNavActions = {
   showNewsIssues: () => {},
   showDisclosureFlow: () => {},
   showTodayBriefing: () => {},
+  showMarketBriefing: () => {},
   showCalendar: () => {},
   showAlerts: () => {},
   showTermsHistory: () => {},
@@ -185,6 +198,18 @@ function parseDateParam(raw: string | undefined): string | undefined {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : undefined;
 }
 
+function parseSignalSessionParam(raw: string | undefined): SignalSessionKey | undefined {
+  if (
+    raw === 'us-overnight' ||
+    raw === 'kr-morning' ||
+    raw === 'kr-lunch' ||
+    raw === 'kr-close'
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const { useTwoPane } = useResponsiveLayout();
   const router = useRouter();
@@ -199,6 +224,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     date?: string | string[];
     digestId?: string | string[];
     market?: string | string[];
+    session?: string | string[];
     id?: string | string[];
     ticker?: string | string[];
   }>();
@@ -215,6 +241,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
+  const [marketBriefingParams, setMarketBriefingParams] = useState<IpadMarketBriefingPaneParams | null>(null);
   const [communityPostId, setCommunityPostId] = useState<string | null>(null);
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
@@ -264,6 +291,14 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
       if (kind === 'today-briefing') {
         setTodayBriefingDate(parseDateParam(p.date) ?? null);
+        return;
+      }
+
+      if (kind === 'market-briefing') {
+        setMarketBriefingParams({
+          session: parseSignalSessionParam(p.session),
+          date: parseDateParam(p.date),
+        });
         return;
       }
 
@@ -435,6 +470,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     params.market,
     params.overlay,
     params.pane,
+    params.session,
     params.tab,
     params.ticker,
     params.sort,
@@ -544,13 +580,43 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   );
 
   const showTodayBriefing = useCallback(
-    (date: string, options?: WidePaneDrillOptions) => {
+      (date: string, options?: WidePaneDrillOptions) => {
       setTodayBriefingDate(date);
       if (useTwoPane) {
         beginWideOverlay('today-briefing', { date }, options?.drillFrom);
         return;
       }
       router.navigate({ pathname: '/today-briefing', params: { date } } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showMarketBriefing = useCallback(
+    (session?: SignalSessionKey, date?: string, options?: WidePaneDrillOptions) => {
+      if (session) pendingSignalSessionRef.current = session;
+      if (date) pendingSignalDateRef.current = date;
+      setMarketBriefingParams({
+        ...(session ? { session } : null),
+        ...(date ? { date } : null),
+      });
+      if (useTwoPane) {
+        beginWideOverlay(
+          'market-briefing',
+          {
+            ...(session ? { session } : null),
+            ...(date ? { date } : null),
+          },
+          options?.drillFrom,
+        );
+        return;
+      }
+      router.push({
+        pathname: '/market-briefing',
+        params: {
+          ...(session ? { session } : null),
+          ...(date ? { date } : null),
+        },
+      } as never);
     },
     [beginWideOverlay, router, useTwoPane],
   );
@@ -789,6 +855,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'newsIssues' ||
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
+    contentPane === 'marketBriefing' ||
     contentPane === 'board' ||
     contentPane === 'community' ||
     contentPane === 'symbol' ||
@@ -816,6 +883,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,
+      marketBriefingParams,
       communityPostId,
       symbolTicker,
       calendarFromAccount,
@@ -834,6 +902,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,
+      marketBriefingParams,
       communityPostId,
       symbolTicker,
       calendarFromAccount,
@@ -853,6 +922,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showNewsIssues,
       showDisclosureFlow,
       showTodayBriefing,
+      showMarketBriefing,
       showCalendar,
       showAlerts,
       showTermsHistory,
@@ -878,6 +948,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showNewsIssues,
       showDisclosureFlow,
       showTodayBriefing,
+      showMarketBriefing,
       showCalendar,
       showAlerts,
       showTermsHistory,

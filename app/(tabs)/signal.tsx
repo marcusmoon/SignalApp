@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
@@ -110,7 +111,20 @@ function monthFromYmd(value: string): { year: number; month: number } {
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
-export default function SignalScreen() {
+export type SignalScreenProps = {
+  /** Wide overlay (home → market briefing) — not the sidebar signal tab. */
+  embedded?: boolean;
+  onBack?: () => void;
+  initialSession?: string | null;
+  initialDate?: string | null;
+};
+
+export default function SignalScreen({
+  embedded = false,
+  onBack,
+  initialSession = null,
+  initialDate = null,
+}: SignalScreenProps = {}) {
   const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
@@ -118,6 +132,7 @@ export default function SignalScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
+  const paneActive = embedded || isFocused;
   const { useTwoPane } = useResponsiveLayout();
   const stackChrome = usePhoneMoreStackChrome();
   const ipadNav = useIpadSidebarNavActions();
@@ -125,8 +140,8 @@ export default function SignalScreen() {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const initialTodayYmd = toYmd(new Date());
-  const routeSessionInit = firstRouteParam(routeParams.session);
-  const routeDateInit = firstRouteParam(routeParams.date);
+  const routeSessionInit = firstRouteParam(routeParams.session) || String(initialSession || '');
+  const routeDateInit = firstRouteParam(routeParams.date) || String(initialDate || '');
 
   const [todayYmd, setTodayYmd] = useState(initialTodayYmd);
   const todayYmdRef = useRef(todayYmd);
@@ -239,7 +254,7 @@ export default function SignalScreen() {
   }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t, locale]);
 
   useEffect(() => {
-    if (!isFocused) return;
+    if (!paneActive) return;
     let cancelled = false;
     const ymdChanged = loadedYmdRef.current !== selectedYmd;
     setLoading(true);
@@ -259,7 +274,7 @@ export default function SignalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isFocused, load, selectedYmd, t]);
+  }, [paneActive, load, selectedYmd, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -278,7 +293,7 @@ export default function SignalScreen() {
 
   /** 오늘 날짜 + 포커스일 때만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
   useEffect(() => {
-    if (!isFocused) return;
+    if (!paneActive) return;
     if (selectedYmd < todayYmd) return;
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
@@ -303,7 +318,7 @@ export default function SignalScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [isFocused, locale, markTabHasNewContent, selectedYmd, todayYmd]);
+  }, [paneActive, locale, markTabHasNewContent, selectedYmd, todayYmd]);
 
   useEffect(() => {
     if (selectedYmd < todayYmd) {
@@ -463,14 +478,14 @@ export default function SignalScreen() {
   const onPickSessionTab = useCallback((key: FlatTabKey) => {
     if (!briefingByTabKey.has(key)) return;
     setSelectedTabKey(key);
-    if (useTwoPane) setActiveSubTabKey(key);
+    if (useTwoPane && !embedded) setActiveSubTabKey(key);
     setRouteParams({ session: key });
-  }, [briefingByTabKey, setActiveSubTabKey, setRouteParams, useTwoPane]);
+  }, [briefingByTabKey, embedded, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
 
   const registerSignalSubTabs = useCallback(() => {
-    if (!useTwoPane) return;
+    if (!useTwoPane || embedded) return;
     if (activeTabKey) setActiveSubTabKey(activeTabKey);
     setSubTabs(
       FLAT_TABS.map((tab) => ({
@@ -481,15 +496,16 @@ export default function SignalScreen() {
         onPress: () => onPickSessionTab(tab.key),
       })),
     );
-  }, [activeTabKey, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
+  }, [activeTabKey, embedded, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
 
   useEffect(() => {
-    if (!useTwoPane || !isFocused) return;
+    if (!useTwoPane || !paneActive || embedded) return;
     registerSignalSubTabs();
-  }, [isFocused, registerSignalSubTabs, useTwoPane]);
+  }, [embedded, paneActive, registerSignalSubTabs, useTwoPane]);
 
   useFocusEffect(
     useCallback(() => {
+      if (embedded) return;
       const pendingSession =
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalSession() : null;
       const pendingDate =
@@ -507,24 +523,39 @@ export default function SignalScreen() {
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }
-    }, [ipadNav, setRouteParams, useTwoPane]),
+    }, [embedded, ipadNav, setRouteParams, useTwoPane]),
   );
+
+  useEffect(() => {
+    if (!embedded) return;
+    if (initialSession && isFlatTabKey(initialSession)) {
+      setSelectedTabKey(initialSession);
+    }
+    if (initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
+      const clamped = initialDate > todayYmdRef.current ? todayYmdRef.current : initialDate;
+      setSelectedYmd(clamped);
+      setCalendarMonth(monthFromYmd(clamped));
+    }
+  }, [embedded, initialDate, initialSession]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane) return;
+      if (!useTwoPane || embedded) return;
       registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
+    }, [clearSubTabs, embedded, registerSignalSubTabs, useTwoPane]),
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane || stackChrome ? [] : ['top']}>
-      {stackChrome ? null : <Stack.Screen options={{ title: t('screenSignal') }} />}
-      {!useTwoPane && !stackChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {isFocused ? <OtaUpdateBanner /> : null}
+    <SafeAreaView style={styles.safe} edges={useTwoPane || stackChrome || embedded ? [] : ['top']}>
+      {stackChrome || embedded ? null : <Stack.Screen options={{ title: t('screenSignal') }} />}
+      {!useTwoPane && !stackChrome && !embedded ? (
+        <SignalHeader compact onBrandPress={() => void onRefresh()} />
+      ) : null}
+      {paneActive ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
+      {onBack ? <WideSubpaneHeader title={t('ipadHomeSignalTitle')} onBack={onBack} /> : null}
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
         <SignalDateNavigator
           label={selectedDateLabel}
@@ -541,7 +572,7 @@ export default function SignalScreen() {
           style={styles.dateNavigator}
         />
 
-      {!loading && !useTwoPane ? (
+      {!loading && (!useTwoPane || embedded) ? (
         <View style={styles.segment}>
             {FLAT_TABS.map((tab) => {
               const hasBriefing = briefingByTabKey.has(tab.key);
@@ -573,7 +604,7 @@ export default function SignalScreen() {
       ) : null}
       </View>
 
-      {isFocused && selectedYmd >= todayYmd ? (
+      {paneActive && selectedYmd >= todayYmd ? (
         <FeedNewContentChip
           visible={newContentAvailable}
           refreshing={refreshing}

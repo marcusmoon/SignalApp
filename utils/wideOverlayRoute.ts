@@ -5,6 +5,7 @@ export type WideOverlayKind =
   | 'news-issues'
   | 'disclosure-flow'
   | 'today-briefing'
+  | 'market-briefing'
   | 'calendar'
   | 'account'
   | 'settings'
@@ -31,6 +32,7 @@ export const WIDE_OVERLAY_CLEAR_PARAMS: Record<string, undefined> = {
   source: undefined,
   id: undefined,
   ticker: undefined,
+  session: undefined,
 };
 
 export function normalizePathname(pathname: string): string {
@@ -47,6 +49,7 @@ export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind |
   if (path.startsWith('/news-issues')) return 'news-issues';
   if (path.startsWith('/disclosure-flow')) return 'disclosure-flow';
   if (path.startsWith('/today-briefing')) return 'today-briefing';
+  if (path.startsWith('/market-briefing')) return 'market-briefing';
   if (path.startsWith('/calendar')) return 'calendar';
   if (path.startsWith('/account')) return 'account';
   if (path.startsWith('/settings')) return 'settings';
@@ -66,6 +69,8 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
       return 'disclosureFlow';
     case 'today-briefing':
       return 'todayBriefing';
+    case 'market-briefing':
+      return 'marketBriefing';
     case 'calendar':
       return 'calendar';
     case 'account':
@@ -94,6 +99,7 @@ export function isWideOverlayKind(value: string | undefined): value is WideOverl
     value === 'news-issues' ||
     value === 'disclosure-flow' ||
     value === 'today-briefing' ||
+    value === 'market-briefing' ||
     value === 'calendar' ||
     value === 'account' ||
     value === 'settings' ||

@@ -186,6 +186,7 @@ function RootLayoutNav() {
         'alerts',
         'calendar',
         'today-briefing',
+        'market-briefing',
         'news-issues',
         'disclosure-flow',
         'terms',

@@ -60,7 +60,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useQuoteChangeColors } from '@/hooks';
@@ -296,7 +296,7 @@ export function HomeFocusContent({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
   const { t, locale } = useLocale();
-  const ipadNav = useIpadSidebarNav();
+  const ipadNav = useIpadSidebarNavActions();
   const { useTwoPane } = useResponsiveLayout();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const selectedIsToday = selectedYmd >= todayYmd;
@@ -378,6 +378,11 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
+      // Clear below-fold sections so prior-date data does not linger during wave 2.
+      setBriefings([]);
+      setDisclosures([]);
+      setCalendarEvents([]);
+      setBoardPosts([]);
       const fetchBoardPosts =
         selectedYmd === todayYmd
           ? Promise.all(
@@ -392,8 +397,9 @@ export function HomeFocusContent({
               ),
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
-      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPage] =
-        await Promise.all([
+
+      /** Wave 1 — above-the-fold: briefing, issues, watchlist quotes. */
+      const [todayBriefing, nextIssues, quoteRows] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -401,25 +407,6 @@ export function HomeFocusContent({
               () => [] as SignalApiMarketQuote[],
             )
           : Promise.resolve([] as SignalApiMarketQuote[]),
-        fetchSignalMarketBriefings(
-          { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
-          { cacheMode },
-        ).catch(
-          () => [],
-        ),
-        fetchSignalDisclosureDigests(
-          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
-          { cacheMode },
-        ).catch(() => ({ items: [] })),
-        fetchSignalCalendar(
-          {
-            from: shiftYmd(selectedYmd, -1),
-            to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
-            limit: 120,
-          },
-          { cacheMode },
-        ).catch(() => []),
-        fetchBoardPosts,
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -436,25 +423,52 @@ export function HomeFocusContent({
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
       );
-      setBriefings(
-        uniqueVisibleBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))).slice(0, HOME_SIGNAL_LIMIT),
-      );
-      setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
-      setCalendarEvents(
-        filterHomeCalendarEvents(
-          calendarRows
-            .map((row) => signalCalendarToCalendarEvent(row))
-            .filter((row): row is CalendarEvent => row != null),
-          watchlist,
-          selectedYmd,
-          shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
-        ),
-      );
-      if (selectedYmd === todayYmd) {
-        setBoardPosts(boardPage.items ?? []);
-      } else {
-        setBoardPosts([]);
-      }
+
+      /** Wave 2 — below-fold; runs after first paint (load returns after wave 1). */
+      void (async () => {
+        const [briefings, disclosurePage, calendarRows, boardPage] = await Promise.all([
+          fetchSignalMarketBriefings(
+            { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
+            { cacheMode },
+          ).catch(() => []),
+          fetchSignalDisclosureDigests(
+            { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
+            { cacheMode },
+          ).catch(() => ({ items: [] })),
+          fetchSignalCalendar(
+            {
+              from: shiftYmd(selectedYmd, -1),
+              to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+              limit: 120,
+            },
+            { cacheMode },
+          ).catch(() => []),
+          fetchBoardPosts,
+        ]);
+
+        if (generation !== loadGenerationRef.current) return;
+        setBriefings(
+          uniqueVisibleBriefings(
+            [...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
+          ).slice(0, HOME_SIGNAL_LIMIT),
+        );
+        setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
+        setCalendarEvents(
+          filterHomeCalendarEvents(
+            calendarRows
+              .map((row) => signalCalendarToCalendarEvent(row))
+              .filter((row): row is CalendarEvent => row != null),
+            watchlist,
+            selectedYmd,
+            shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+          ),
+        );
+        if (selectedYmd === todayYmd) {
+          setBoardPosts(boardPage.items ?? []);
+        } else {
+          setBoardPosts([]);
+        }
+      })();
     } catch (e) {
       if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));

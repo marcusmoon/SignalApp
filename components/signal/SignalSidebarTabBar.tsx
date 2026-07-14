@@ -16,7 +16,12 @@ import { SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM } from '@/constants/segmentTabBar';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useLocale } from '@/contexts/LocaleContext';
-import { useIpadSidebarNav, type YoutubeSortKey } from '@/contexts/IpadSidebarNavContext';
+import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
+import {
+  useIpadSidebarNavActions,
+  useIpadSidebarNavState,
+  type YoutubeSortKey,
+} from '@/contexts/IpadSidebarNavContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import type { MessageId } from '@/locales/messages';
 import {
@@ -93,23 +98,29 @@ function isCurrentTabHref(href: string, pathname: string, activeTabName: string 
 }
 
 type Props = {
+  /** Optional overrides — default reads from FeedUnreadBadgesContext. */
   newsHasUnread?: boolean;
   signalHasUnread?: boolean;
   disclosureHasUnread?: boolean;
 };
 
 export function SignalSidebarTabBar({
-  newsHasUnread = false,
-  signalHasUnread = false,
-  disclosureHasUnread = false,
-}: Props) {
+  newsHasUnread: newsHasUnreadProp,
+  signalHasUnread: signalHasUnreadProp,
+  disclosureHasUnread: disclosureHasUnreadProp,
+}: Props = {}) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { subTabs, activeSubTabKey } = useSidebarSubTabs();
-  const ipadNav = useIpadSidebarNav();
+  const ipadState = useIpadSidebarNavState();
+  const ipadNav = useIpadSidebarNavActions();
+  const badges = useFeedUnreadBadges();
+  const newsHasUnread = newsHasUnreadProp ?? badges.newsTabBadge;
+  const signalHasUnread = signalHasUnreadProp ?? badges.signalTabBadge;
+  const disclosureHasUnread = disclosureHasUnreadProp ?? badges.disclosureTabBadge;
   const [refLinksVisible, setRefLinksVisible] = useState(cachedRefLinksVisible ?? true);
 
   const reloadRefLinksPref = useCallback(async () => {
@@ -127,10 +138,10 @@ export function SignalSidebarTabBar({
 
   const accountActive =
     pathname.startsWith('/account') ||
-    ipadNav.isAccountPaneActive ||
-    ipadNav.isSettingsPaneActive ||
+    ipadState.isAccountPaneActive ||
+    ipadState.isSettingsPaneActive ||
     ACCOUNT_AUX_PATHS.some((path) => pathname.startsWith(path));
-  const homeActive = ipadNav.isHomePaneActive && !accountActive;
+  const homeActive = ipadState.isHomePaneActive && !accountActive;
 
   const activeTabName = accountActive
     ? 'account'
@@ -143,7 +154,7 @@ export function SignalSidebarTabBar({
         )?.name ?? 'news';
 
   const activeYoutubeSubKey: YoutubeSortKey | null =
-    activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
+    activeTabName === 'youtube' && ipadNav.isAvailable ? ipadState.youtubeSort : null;
 
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 

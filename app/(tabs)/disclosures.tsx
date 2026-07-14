@@ -29,7 +29,7 @@ import {
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -105,7 +105,7 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
-  const ipadNav = useIpadSidebarNav();
+  const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('disclosures');
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));

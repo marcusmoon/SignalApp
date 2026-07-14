@@ -31,7 +31,7 @@ import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions, useIpadSidebarNavState } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -65,6 +65,27 @@ function TabBarIcon({
   );
 }
 
+/** Badge subscription stays in this leaf so tab layout does not re-render on poll. */
+function NewsTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+  const { newsTabBadge } = useFeedUnreadBadges();
+  return <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsTabBadge} />;
+}
+
+function SignalTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+  const { signalTabBadge } = useFeedUnreadBadges();
+  return <TabBarIcon name="chart-area" color={color} focused={focused} showDot={signalTabBadge} />;
+}
+
+function DisclosureTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+  const { disclosureTabBadge } = useFeedUnreadBadges();
+  return <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureTabBadge} />;
+}
+
+function MoreTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+  const { moreTabBadge } = useFeedUnreadBadges();
+  return <TabBarIcon name="th-large" color={color} focused={focused} showDot={moreTabBadge} />;
+}
+
 const tabIconWrap = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
@@ -86,12 +107,6 @@ export default function TabLayout() {
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const { isWideLayout } = useResponsiveLayout();
-  const {
-    newsTabBadge,
-    signalTabBadge,
-    disclosureTabBadge,
-    moreTabBadge,
-  } = useFeedUnreadBadges();
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
 
   useEffect(() => {
@@ -239,22 +254,18 @@ export default function TabLayout() {
     (): BottomTabNavigationOptions => ({
       ...screenOptions,
       tabBarStyle: { display: 'none' },
-      /** Wide sidebar: eager mount — lazy + detach blanked the right pane on web. */
-      lazy: false,
+      /**
+       * Wide: lazy-mount visited tabs only; freeze inactive trees.
+       * Keep detachInactiveScreens=false — detach + lazy blanked the right pane on web.
+       */
+      lazy: true,
+      freezeOnBlur: true,
     }),
     [screenOptions],
   );
 
   if (isWideLayout) {
-    return (
-      <IpadWideTabLayout
-        iPadScreenOptions={iPadScreenOptions}
-        newsTabBadge={newsTabBadge}
-        signalTabBadge={signalTabBadge}
-        disclosureTabBadge={disclosureTabBadge}
-        t={t}
-      />
-    );
+    return <IpadWideTabLayout iPadScreenOptions={iPadScreenOptions} t={t} />;
   }
 
   return (
@@ -277,9 +288,7 @@ export default function TabLayout() {
         name="news"
         options={{
           title: t('tabNews'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsTabBadge} />
-          ),
+          tabBarIcon: ({ color, focused }) => <NewsTabBarIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -287,18 +296,14 @@ export default function TabLayout() {
         options={{
           href: null,
           title: t('tabDisclosures'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureTabBadge} />
-          ),
+          tabBarIcon: ({ color, focused }) => <DisclosureTabBarIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="signal"
         options={{
           title: t('tabSignal'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="chart-area" color={color} focused={focused} showDot={signalTabBadge} />
-          ),
+          tabBarIcon: ({ color, focused }) => <SignalTabBarIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -312,9 +317,7 @@ export default function TabLayout() {
         name="more"
         options={{
           title: t('tabMore'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="th-large" color={color} focused={focused} showDot={moreTabBadge} />
-          ),
+          tabBarIcon: ({ color, focused }) => <MoreTabBarIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -374,17 +377,11 @@ const sidebarLayoutStyles = StyleSheet.create({
 
 type IpadWideTabLayoutProps = {
   iPadScreenOptions: BottomTabNavigationOptions;
-  newsTabBadge: boolean;
-  signalTabBadge: boolean;
-  disclosureTabBadge: boolean;
   t: ReturnType<typeof useLocale>['t'];
 };
 
 function IpadWideTabLayout({
   iPadScreenOptions,
-  newsTabBadge: _newsTabBadge,
-  signalTabBadge: _signalTabBadge,
-  disclosureTabBadge: _disclosureTabBadge,
   t,
 }: IpadWideTabLayoutProps) {
   const {
@@ -396,10 +393,8 @@ function IpadWideTabLayout({
     alertsFromAccount,
     termsType,
     termsFromHistory,
-    showHome,
-    showAccount,
-    showTermsHistory,
-  } = useIpadSidebarNav();
+  } = useIpadSidebarNavState();
+  const { showHome, showAccount, showTermsHistory } = useIpadSidebarNavActions();
   const { theme } = useSignalTheme();
 
   return (

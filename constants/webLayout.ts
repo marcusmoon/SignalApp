@@ -61,6 +61,10 @@ export const webSidebarContentStyle = {
 export const WEB_FLATLIST_INITIAL = 12;
 export const WEB_FLATLIST_WINDOW = 7;
 export const WEB_FLATLIST_BATCH = 10;
+/** Viewport recycle overscan (items) for WebWheelFlatList virtualization. */
+export const WEB_FLATLIST_OVERSCAN = 6;
+/** Fallback row height when getItemLayout / measure is unavailable. */
+export const WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT = 96;
 
 /** Horizontal carousels on web — hide native scrollbars (use arrow nav instead). */
 export const webHorizontalCarouselScrollProps =

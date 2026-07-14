@@ -45,6 +45,10 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
+import {
+  clearPhoneMoreEntry,
+  usePhoneEnteredFromMore,
+} from '@/services/phoneMoreEntry';
 import { formatFeedItemTimeLabel, toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
@@ -90,10 +94,9 @@ function providerLabel(item: SignalApiDisclosure): string {
 }
 
 export default function DisclosuresScreen() {
-  const { symbol: symbolParam, market: marketParam, from: fromParam } = useLocalSearchParams<{
+  const { symbol: symbolParam, market: marketParam } = useLocalSearchParams<{
     symbol?: string | string[];
     market?: string | string[];
-    from?: string | string[];
   }>();
   const symbolFilter = useMemo(
     () => String(Array.isArray(symbolParam) ? symbolParam[0] : symbolParam || '').trim().toUpperCase(),
@@ -107,8 +110,9 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore = !useTwoPane && firstRouteParam(fromParam) === 'more';
+  const fromMore = !useTwoPane && usePhoneEnteredFromMore('disclosures');
   const goBackToMore = useCallback(() => {
+    clearPhoneMoreEntry();
     router.navigate('/(tabs)/more' as never);
   }, [router]);
   const ipadNav = useIpadSidebarNavActions();

@@ -112,7 +112,7 @@ wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화�
 
 | 진입 | 뒤로 크롬 |
 |---|---|
-| More → 보드·공시·유튜브 (`?from=more`) | `WideSubpaneHeader`(chevron + 「뒤로」 + 제목). `SignalHeader`는 숨김. 탭바·홈 등 다른 진입은 헤더만. |
+| More → 보드·공시·유튜브 | `WideSubpaneHeader`(chevron + 「뒤로」 + 제목). 출처는 URL이 아니라 인메모리 `phoneMoreEntry`(wide `drillFrom`과 동일). `SignalHeader`는 숨김. 홈 등 다른 진입은 헤더만. |
 | More → My info (스택) | Expo Stack 기본 뒤로. `(tabs)`에 `headerBackTitle: commonBack` |
 | My info → 프로필·비밀번호·소셜 | `PhoneHeaderBackButton`(chevron + 「뒤로」) → 허브 |
 
@@ -179,7 +179,8 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 | 컴포넌트 | 용도 |
 |---|---|
 | `WideWebShell` | wide — 고정 사이드바 + 전역 `SignalHeader` |
-| `WideSubpaneHeader` | wide 우측 pane 드릴인 — 뒤로 + 제목 |
+| `WideSubpaneHeader` | wide 우측 pane 드릴인 · iPhone More 자식 — 뒤로 + 제목 |
+| `phoneMoreEntry` | iPhone More → 보드·공시·유튜브 출처 (URL `from=` 없음) |
 | `IpadSidebarScreen` | wide 스택 — (레거시/미사용에 가깝고, 신규는 `WideSubpaneHeader` 규칙 우선) |
 | `MasterDetailLayout` | 시세·공시 2-pane |
 | `IpadHomeScreen` | wide 홈 |

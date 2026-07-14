@@ -7,6 +7,7 @@ import type { DisclosureFlowMarket, NewsIssuesCategory } from '@/constants/ipadH
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
+import { clearPhoneMoreEntry } from '@/services/phoneMoreEntry';
 import {
   communityIdFromPathname,
   isWideHomePath,
@@ -625,6 +626,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         );
         return;
       }
+      clearPhoneMoreEntry();
       router.navigate({
         pathname: '/(tabs)/board',
         params: options?.source ? { source: options.source } : {},
@@ -728,6 +730,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         router.setParams({ sort: next });
         return;
       }
+      clearPhoneMoreEntry();
       router.navigate({
         pathname: '/(tabs)/youtube',
         params: { sort: next },

@@ -52,6 +52,10 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCommunityPost, SignalCommunityListMeta } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
+import {
+  clearPhoneMoreEntry,
+  usePhoneEnteredFromMore,
+} from '@/services/phoneMoreEntry';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 
 const PAGE_SIZE = 30;
@@ -87,16 +91,14 @@ export function BoardContent({
   const { t } = useLocale();
   const router = useRouter();
   const setRouteParams = useSafeSetRouteParams();
-  const routeParams = useLocalSearchParams<{ source?: string | string[]; from?: string | string[] }>();
+  const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore =
-    !useTwoPane &&
-    !embedded &&
-    String(Array.isArray(routeParams.from) ? routeParams.from[0] : routeParams.from || '') === 'more';
+  const fromMore = !useTwoPane && !embedded && usePhoneEnteredFromMore('board');
   const goBackToMore = useCallback(() => {
+    clearPhoneMoreEntry();
     router.navigate('/(tabs)/more' as never);
   }, [router]);
   const ipadNav = useIpadSidebarNavActions();

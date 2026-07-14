@@ -50,6 +50,10 @@ import {
 } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
+import {
+  clearPhoneMoreEntry,
+  usePhoneEnteredFromMore,
+} from '@/services/phoneMoreEntry';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, fetchSignalYoutubeChannels, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
@@ -85,17 +89,17 @@ export default function YoutubeScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const setRouteParams = useSafeSetRouteParams();
   const router = useRouter();
-  const { sort: sortParam, from: fromParam } = useLocalSearchParams<{
+  const { sort: sortParam } = useLocalSearchParams<{
     sort?: string | string[];
-    from?: string | string[];
   }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore = !useTwoPane && firstRouteParam(fromParam) === 'more';
+  const fromMore = !useTwoPane && usePhoneEnteredFromMore('youtube');
   const goBackToMore = useCallback(() => {
+    clearPhoneMoreEntry();
     router.navigate('/(tabs)/more' as never);
   }, [router]);
   const ipadState = useIpadSidebarNavState();

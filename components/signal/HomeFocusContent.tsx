@@ -108,6 +108,7 @@ import {
   subscribeHomeWatchlistDisplayCountChanged,
 } from '@/services/homeWatchlistDisplayPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
+import { clearPhoneMoreEntry } from '@/services/phoneMoreEntry';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import {
@@ -596,6 +597,7 @@ export function HomeFocusContent({
       ipadNav.showBoard({ drillFrom: 'home' });
       return;
     }
+    clearPhoneMoreEntry();
     router.navigate('/(tabs)/board' as never);
   }, [ipadNav, router]);
 

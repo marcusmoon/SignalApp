@@ -14,6 +14,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -89,9 +90,10 @@ function providerLabel(item: SignalApiDisclosure): string {
 }
 
 export default function DisclosuresScreen() {
-  const { symbol: symbolParam, market: marketParam } = useLocalSearchParams<{
+  const { symbol: symbolParam, market: marketParam, from: fromParam } = useLocalSearchParams<{
     symbol?: string | string[];
     market?: string | string[];
+    from?: string | string[];
   }>();
   const symbolFilter = useMemo(
     () => String(Array.isArray(symbolParam) ? symbolParam[0] : symbolParam || '').trim().toUpperCase(),
@@ -105,6 +107,10 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
+  const fromMore = !useTwoPane && firstRouteParam(fromParam) === 'more';
+  const goBackToMore = useCallback(() => {
+    router.navigate('/(tabs)/more' as never);
+  }, [router]);
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('disclosures');
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -526,7 +532,12 @@ export default function DisclosuresScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {fromMore ? (
+        <View style={styles.moreBackPad}>
+          <WideSubpaneHeader title={t('tabDisclosures')} onBack={goBackToMore} />
+        </View>
+      ) : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane && !symbolFilter ? (
           <View style={styles.topFixedStack}>
@@ -626,6 +637,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
+    moreBackPad: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

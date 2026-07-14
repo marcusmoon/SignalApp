@@ -128,7 +128,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const setRouteParams = useSafeSetRouteParams();
   const useIpadSidebar = useTwoPane && !embedded;
   const showStackHeader = !embedded && !useIpadSidebar;
-  const showPaneTitleInContent = embedded;
+  /** wide 스택·임베디드 모두 본문 제목 (IpadSidebarScreen topBar 없음) */
+  const showPaneTitleInContent = embedded || useIpadSidebar;
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
@@ -933,7 +934,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
         {user ? (
           <>
-            {embedded && accountPane !== 'hub' ? (
+            {showPaneTitleInContent && accountPane !== 'hub' ? (
               <Pressable
                 onPress={returnToAccountHub}
                 accessibilityRole="button"
@@ -1540,7 +1541,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   );
 
   return useIpadSidebar ? (
-    <IpadSidebarScreen title={t('screenAccount')} backHref="/(tabs)/news">
+    <IpadSidebarScreen title={t('screenAccount')} hideTopBar>
       {screen}
     </IpadSidebarScreen>
   ) : (

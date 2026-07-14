@@ -6,7 +6,7 @@
  */
 import { usePathname, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -145,7 +145,7 @@ export function SignalSidebarTabBar({
   const activeYoutubeSubKey: YoutubeSortKey | null =
     activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
 
-  const styles = makeStyles(theme, scaleFont, insets.bottom);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
   const navigateMainTab = (tab: TabDef) => {
     if (tab.name === 'account') {

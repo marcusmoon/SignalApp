@@ -328,13 +328,14 @@ export default function YoutubeScreen() {
   });
 
   useEffect(() => {
+    if (!isFocused) return;
     if (selectedHandles === null) return;
     if (skipLoadOnSelectedHandlesRef.current) {
       skipLoadOnSelectedHandlesRef.current = false;
       return;
     }
     void load();
-  }, [load, selectedHandles, effectiveSort]);
+  }, [isFocused, load, selectedHandles, effectiveSort]);
 
   useEffect(() => {
     if (!hasExplicitSortParam) return;

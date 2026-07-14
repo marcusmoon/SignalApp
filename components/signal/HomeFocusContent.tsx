@@ -200,7 +200,7 @@ async function fetchTopIssues(
           category,
           ...range,
           limit: ISSUE_FETCH_LIMIT,
-          batches: 20,
+          batches: 3,
           locale,
         },
         { cacheMode },

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Platform,
@@ -8,6 +8,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
+import { WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL } from '@/constants/webLayout';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
@@ -71,6 +72,8 @@ function WebWheelFlatListInner<T>(
     scrollResetKey,
     numColumns = 1,
     columnWrapperStyle,
+    initialNumToRender,
+    maxToRenderPerBatch,
     ...rest
   }: WebWheelFlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
@@ -91,6 +94,32 @@ function WebWheelFlatListInner<T>(
   onEndReachedRef.current = onEndReached;
   onEndReachedThresholdRef.current = onEndReachedThreshold;
 
+  const items = useMemo(() => Array.from(data ?? []), [data]);
+  const initialWindow = typeof initialNumToRender === 'number' ? initialNumToRender : WEB_FLATLIST_INITIAL;
+  const batchSize = typeof maxToRenderPerBatch === 'number' ? maxToRenderPerBatch : WEB_FLATLIST_BATCH;
+  const [renderCount, setRenderCount] = useState(() => Math.min(items.length, initialWindow));
+
+  useEffect(() => {
+    // filter/segment change → start from a small window again
+    setRenderCount(Math.min(items.length, initialWindow));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when scrollResetKey changes
+  }, [scrollResetKey, initialWindow]);
+
+  useEffect(() => {
+    setRenderCount((prev) => {
+      if (items.length === 0) return 0;
+      if (prev <= 0) return Math.min(items.length, initialWindow);
+      return Math.min(items.length, Math.max(prev, Math.min(items.length, initialWindow)));
+    });
+  }, [items.length, initialWindow]);
+
+  const growWindow = useCallback(() => {
+    setRenderCount((prev) => {
+      if (prev >= items.length) return prev;
+      return Math.min(items.length, prev + Math.max(1, batchSize));
+    });
+  }, [batchSize, items.length]);
+
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
       nativeEvent: {
@@ -109,6 +138,7 @@ function WebWheelFlatListInner<T>(
   }, []);
 
   const emitWebEndReached = useCallback((node: HTMLElement) => {
+    growWindow();
     const handler = onEndReachedRef.current;
     if (!handler) return;
 
@@ -125,7 +155,7 @@ function WebWheelFlatListInner<T>(
     const contentHeight = node.scrollHeight;
     const distanceFromEnd = Math.max(0, contentHeight - (node.scrollTop + node.clientHeight));
     handler({ distanceFromEnd } as EndReachedInfo);
-  }, []);
+  }, [growWindow]);
 
   const getWebNode = useCallback((event?: unknown) => (
     (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
@@ -247,7 +277,7 @@ function WebWheelFlatListInner<T>(
   };
 
   if (Platform.OS === 'web') {
-    const items = Array.from(data ?? []);
+    const visibleItems = items.slice(0, Math.max(renderCount, Math.min(items.length, initialWindow)));
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
     const emitFromWebEvent = (event: unknown) => {
       const node = getWebNode(event);
@@ -282,11 +312,8 @@ function WebWheelFlatListInner<T>(
       }
     };
 
-    const webScrollKey = scrollResetKey != null ? `wwf-${scrollResetKey}` : undefined;
-
     return (
       <View
-        key={webScrollKey}
         ref={setWebRef}
         style={[webListViewportStyle, style] as never}
         {...(webEventProps as Record<string, unknown>)}>
@@ -296,8 +323,8 @@ function WebWheelFlatListInner<T>(
           {numColumns > 1
             ? (() => {
                 const rowViews: React.ReactElement[] = [];
-                for (let rowStart = 0; rowStart < items.length; rowStart += numColumns) {
-                  const rowItems = items.slice(rowStart, rowStart + numColumns);
+                for (let rowStart = 0; rowStart < visibleItems.length; rowStart += numColumns) {
+                  const rowItems = visibleItems.slice(rowStart, rowStart + numColumns);
                   const rowIndex = rowStart / numColumns;
                   rowViews.push(
                     <View
@@ -327,14 +354,14 @@ function WebWheelFlatListInner<T>(
                 }
                 return rowViews;
               })()
-            : items.map((item, index) => (
+            : visibleItems.map((item, index) => (
                 <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
                   {renderItem?.({
                     item,
                     index,
                     separators: webSeparators,
                   } as ListRenderItemInfo<T>)}
-                  {Separator && index < items.length - 1 ? <Separator /> : null}
+                  {Separator && index < visibleItems.length - 1 ? <Separator /> : null}
                 </View>
               ))}
           <View ref={webEndSentinelRef} style={{ height: 1 }} />
@@ -364,6 +391,8 @@ function WebWheelFlatListInner<T>(
       onLayout={handleLayout}
       onContentSizeChange={onContentSizeChange}
       refreshControl={refreshControl}
+      initialNumToRender={initialNumToRender}
+      maxToRenderPerBatch={maxToRenderPerBatch}
       ref={(instance) => {
         localRef.current = instance;
         if (typeof forwardedRef === 'function') {

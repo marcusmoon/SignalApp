@@ -252,6 +252,7 @@ export function LegacyNewsFeedScreen() {
 
   useEffect(() => {
     if (!hasSignalApi()) return;
+    if (!isFocused) return;
     const POLL_MS = 3 * 60 * 1000;
     const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'watch', 'video'];
 
@@ -274,6 +275,7 @@ export function LegacyNewsFeedScreen() {
     };
 
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       await Promise.all(
         pollSegments.map(async (seg) => {
           try {
@@ -290,7 +292,7 @@ export function LegacyNewsFeedScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [locale, markSegmentHasNewContent]);
+  }, [isFocused, locale, markSegmentHasNewContent]);
 
   const segmentHydratedRef = useRef(false);
 

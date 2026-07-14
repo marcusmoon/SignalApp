@@ -209,7 +209,7 @@ export function NewsIssuesContent({
               category: cat,
               ...utcRangeForLocalYmd(selectedYmd),
               limit: 80,
-              batches: 20,
+              batches: 5,
               locale,
             }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
           ),
@@ -220,7 +220,7 @@ export function NewsIssuesContent({
           category,
           ...utcRangeForLocalYmd(selectedYmd),
           limit: 80,
-          batches: 20,
+          batches: 5,
           locale,
         });
         setItems(sortDigests(page.items));

@@ -468,6 +468,8 @@ export default function SignalScreen() {
       FLAT_TABS.map((tab) => ({
         key: tab.key,
         label: flatTabLabel(tab.key),
+        href: '/(tabs)/signal',
+        params: { session: tab.key },
         onPress: () => onPickSessionTab(tab.key),
       })),
     );
@@ -503,9 +505,8 @@ export default function SignalScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   return (

@@ -163,6 +163,9 @@ export default function BoardScreen() {
     isBusyRef: loadingMoreRef,
   });
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   const changeSource = useCallback(
     (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
       if (next === sourceRef.current) {
@@ -179,17 +182,16 @@ export default function BoardScreen() {
       if (!options?.fromRoute) {
         setRouteParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
       }
-      void load({ sourceFilter: next });
+      void loadRef.current({ sourceFilter: next });
     },
-    [load, setActiveSubTabKey, setRouteParams, useTwoPane],
+    [setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      const paramSource = parseCommunitySourceParam(routeParams.source);
-      changeSource(paramSource ?? COMMUNITY_SOURCE_ALL, { fromRoute: true });
-    }, [changeSource, routeParams.source]),
-  );
+  /** URL → state only. focus-effect로 되돌리면 클릭·setParams 경합이 난다. */
+  useEffect(() => {
+    const paramSource = parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL;
+    changeSource(paramSource, { fromRoute: true });
+  }, [changeSource, routeParams.source]);
 
   const registerBoardSubTabs = useCallback(() => {
     if (!useTwoPane) return;
@@ -198,6 +200,8 @@ export default function BoardScreen() {
       COMMUNITY_SOURCE_ORDER.map((key) => ({
         key,
         label: t(SOURCE_LABEL[key]),
+        href: '/(tabs)/board',
+        params: { source: key === COMMUNITY_SOURCE_ALL ? undefined : key },
         onPress: () => changeSource(key),
       })),
     );
@@ -211,9 +215,8 @@ export default function BoardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerBoardSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerBoardSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);

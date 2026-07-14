@@ -429,6 +429,8 @@ export default function QuotesScreen() {
       segmentOrder.map((key) => ({
         key,
         label: t(QUOTE_SEGMENT_LABEL[key]),
+        href: '/(tabs)/quotes',
+        params: { segment: key === 'watch' ? undefined : key },
         onPress: () => onPickSegment(key),
       })),
     );
@@ -442,9 +444,8 @@ export default function QuotesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerQuoteSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerQuoteSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   const renderQuoteItem = useCallback(

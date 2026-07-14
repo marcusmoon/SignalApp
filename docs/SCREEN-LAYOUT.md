@@ -135,7 +135,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 | 항목 | iPhone | iPad / wide web |
 |---|---|---|
 | 상단 헤더 | 탭마다 `SignalHeader` | `_layout` 전역 1회 |
-| 세그먼트 | `topFixed` 또는 화면 내 | `SidebarSubTabsContext`로 사이드바 |
+| 세그먼트 | `topFixed` 또는 화면 내 | `SidebarSubTabsContext`(`href`+`params`)로 사이드바 — 각 서브탭이 공유·새로고침 가능한 URL을 가짐 |
 | 콘텐츠 폭 | max 720 중앙 | pane 전체 또는 max 1120 |
 | 하단 | 탭바 + inset 헬퍼 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` |
 | 가로 pad | 16 | 탭 pane: 16 또는 0(`wideContentFill`); 임베디드 스택: 20 |

@@ -261,7 +261,31 @@ export function SignalSidebarTabBar({
                             subActive && styles.subTabItemActive,
                             pressed && styles.subTabItemPressed,
                           ]}
-                          onPress={sub.onPress}
+                          onPress={() => {
+                            if (sub.href) {
+                              ipadNav.showTabs();
+                              const rawParams = sub.params ?? {};
+                              const setParams = Object.fromEntries(
+                                Object.entries(rawParams).filter(
+                                  ([, value]) => value != null && value !== '',
+                                ),
+                              );
+                              const clearParams = Object.fromEntries(
+                                Object.entries(rawParams)
+                                  .filter(([, value]) => value == null || value === '')
+                                  .map(([key]) => [key, undefined]),
+                              );
+                              router.navigate({
+                                pathname: sub.href,
+                                params: setParams,
+                              } as Parameters<typeof router.navigate>[0]);
+                              // navigate만으로는 이전 쿼리가 남을 수 있어 기본값 키는 명시적으로 지운다.
+                              if (Object.keys(clearParams).length > 0) {
+                                router.setParams(clearParams);
+                              }
+                            }
+                            sub.onPress?.();
+                          }}
                           accessibilityRole="button"
                           accessibilityState={{ selected: subActive }}>
                           <View style={[styles.subTabDot, subActive && styles.subTabDotActive]} />

@@ -218,14 +218,17 @@ export default function DisclosuresScreen() {
   );
 
   useEffect(() => {
+    if (!isFocused) return;
     void loadDigests();
-  }, [loadDigests]);
+  }, [isFocused, loadDigests]);
 
-  /** 백그라운드 폴링: 3분마다 시장별 최신 공시 ID 확인 → chip 표시 (다이제스트·리스트는 탭 시 함께 갱신) */
+  /** 포커스 중일 때만 백그라운드 폴링: 3분마다 시장별 최신 공시 ID 확인 → chip 표시 */
   useEffect(() => {
+    if (!isFocused) return;
     if (symbolFilter || !hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       await Promise.all(
         FILTER_ORDER.map(async (market) => {
           try {
@@ -243,9 +246,10 @@ export default function DisclosuresScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [markFilterHasNewContent, symbolFilter]);
+  }, [isFocused, markFilterHasNewContent, symbolFilter]);
 
   useEffect(() => {
+    if (!isFocused) return;
     const query = currentQuery;
 
     let cancelled = false;
@@ -276,7 +280,7 @@ export default function DisclosuresScreen() {
     return () => {
       cancelled = true;
     };
-  }, [currentQuery, queryDisclosureList, syncFilterLatestSeen, t]);
+  }, [currentQuery, isFocused, queryDisclosureList, syncFilterLatestSeen, t]);
 
   useFocusEffect(
     useCallback(() => {

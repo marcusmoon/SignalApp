@@ -236,6 +236,7 @@ export default function SignalScreen() {
   }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t, locale]);
 
   useEffect(() => {
+    if (!isFocused) return;
     let cancelled = false;
     const ymdChanged = loadedYmdRef.current !== selectedYmd;
     setLoading(true);
@@ -255,7 +256,7 @@ export default function SignalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load, selectedYmd, t]);
+  }, [isFocused, load, selectedYmd, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -272,12 +273,14 @@ export default function SignalScreen() {
     }, [routeParams.date, routeParams.session]),
   );
 
-  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
+  /** 오늘 날짜 + 포커스일 때만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
   useEffect(() => {
+    if (!isFocused) return;
     if (selectedYmd < todayYmd) return;
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const rows = await fetchSignalMarketBriefings(
           { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30, locale },
@@ -297,7 +300,7 @@ export default function SignalScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [locale, markTabHasNewContent, selectedYmd, todayYmd]);
+  }, [isFocused, locale, markTabHasNewContent, selectedYmd, todayYmd]);
 
   useEffect(() => {
     if (selectedYmd < todayYmd) {

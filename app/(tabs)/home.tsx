@@ -10,10 +10,12 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { tabScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { webFlexFill, webShellBackground } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 
 export default function HomeTabScreen() {
   const { theme } = useSignalTheme();
+  const { useTwoPane } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
@@ -28,8 +30,11 @@ export default function HomeTabScreen() {
     setSelectedYmd((prev) => (prev === prevToday || prev > todayYmd ? todayYmd : prev));
   }, [todayYmd]);
 
+  // Wide: home lives in the overlay pane (`IpadHomeScreen`). Skip the hidden tab tree.
+  if (useTwoPane) return null;
+
   return (
-      <SafeAreaView style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }} edges={['top']}>
+    <SafeAreaView style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }} edges={['top']}>
       <SignalHeader compact onBrandPress={() => pullRefreshRef.current?.()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>

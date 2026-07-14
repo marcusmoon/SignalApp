@@ -142,9 +142,10 @@ export default function BoardScreen() {
   );
 
   useEffect(() => {
+    if (!isFocused) return;
     void load({ sourceFilter: source });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isFocused]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);

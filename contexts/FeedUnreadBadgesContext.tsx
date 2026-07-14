@@ -101,16 +101,29 @@ export function FeedUnreadBadgesProvider({ children }: { children: React.ReactNo
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
 
+    const isDocVisible = () => {
+      if (typeof document === 'undefined') return true;
+      return document.visibilityState === 'visible';
+    };
+
     const startPolling = async () => {
       const minutes = await loadNewsUnreadCheckIntervalMinutes();
       if (cancelled) return;
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(() => {
+        if (!isDocVisible()) return;
         void refreshFromServer();
       }, newsUnreadCheckIntervalMs(minutes));
     };
 
     void startPolling();
+
+    const onVisibility = () => {
+      if (isDocVisible()) void refreshFromServer();
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibility);
+    }
 
     const unsubscribeNews = subscribeNewsSeenChanged(() => {
       void hydrateFeedUnreadBadgesFromCache({ news: suppress.news }).then((cached) => {
@@ -148,6 +161,9 @@ export function FeedUnreadBadgesProvider({ children }: { children: React.ReactNo
       unsubscribeInterval();
       if (pollTimer) clearInterval(pollTimer);
       appStateSub.remove();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility);
+      }
     };
   }, [applyCached, refreshFromServer, suppress.alerts, suppress.disclosure, suppress.news, suppress.signal]);
 

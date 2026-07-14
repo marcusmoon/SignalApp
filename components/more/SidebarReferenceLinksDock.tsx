@@ -43,6 +43,7 @@ function DockCell({ item, styles, label }: DockCellProps) {
             source={{ uri: faviconUrl }}
             style={styles.favicon}
             contentFit="contain"
+            cachePolicy="memory-disk"
             onError={() => {
               markSourceIconFailed(faviconUrl);
               setIconFailed(true);

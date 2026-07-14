@@ -49,6 +49,8 @@ function shouldRefreshAccessSoonFromIso(iso: string, nowMs: number = Date.now())
 }
 
 let refreshSingleFlight: Promise<string | null> | null = null;
+/** Concurrent identical GET → one network request */
+const getInflight = new Map<string, Promise<unknown>>();
 
 async function refreshAccessTokenImpl(): Promise<string | null> {
   try {
@@ -218,6 +220,16 @@ export async function signalApiRequest<T>(
   }
   const timeoutMs = Math.max(1000, Math.floor(Number(options.timeoutMs)) || DEFAULT_TIMEOUT_MS);
   const maxAttempts = Math.max(1, Math.floor(Number(options.attempts)) || MAX_ATTEMPTS);
+
+  /** Same GET URL in flight → share one network call (wide-web boot / double home mount). */
+  const inflightKey =
+    method === 'GET' && options.body == null ? `${method}:${base}${suffix}` : null;
+  if (inflightKey) {
+    const existing = getInflight.get(inflightKey);
+    if (existing) return existing as Promise<T>;
+  }
+
+  const run = (async (): Promise<T> => {
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const startedAt = Date.now();
@@ -281,6 +293,15 @@ export async function signalApiRequest<T>(
     }
   }
   throw lastError instanceof Error ? lastError : new SignalApiError('network', 'SIGNAL_API_NETWORK');
+  })();
+
+  if (inflightKey) {
+    getInflight.set(inflightKey, run);
+    void run.finally(() => {
+      if (getInflight.get(inflightKey) === run) getInflight.delete(inflightKey);
+    });
+  }
+  return run;
 }
 
 export async function signalApi<T>(

@@ -576,8 +576,8 @@ export function HomeFocusContent({
         ipadNav.showSignalTab(session, selectedYmd);
         return;
       }
-      router.navigate({
-        pathname: '/(tabs)/signal',
+      router.push({
+        pathname: '/market-briefing',
         params,
       } as never);
     },
@@ -596,7 +596,7 @@ export function HomeFocusContent({
       ipadNav.showBoard({ drillFrom: 'home' });
       return;
     }
-    router.navigate('/(tabs)/board' as never);
+    router.push('/more-board' as never);
   }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(

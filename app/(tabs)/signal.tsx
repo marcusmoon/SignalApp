@@ -30,6 +30,7 @@ import {
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+  stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -37,6 +38,7 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/const
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
+import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -117,6 +119,7 @@ export default function SignalScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
+  const stackChrome = usePhoneMoreStackChrome();
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('signal');
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -448,7 +451,9 @@ export default function SignalScreen() {
   const hasAnyBriefing = marketBriefings.length > 0;
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
-    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+    : stackChrome
+      ? stackScreenScrollBottomPadding(insets.bottom)
+      : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
   const availableSessionTabKeys = useMemo(
     () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
@@ -514,9 +519,9 @@ export default function SignalScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      <Stack.Screen options={{ title: t('screenSignal') }} />
-      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+    <SafeAreaView style={styles.safe} edges={useTwoPane || stackChrome ? [] : ['top']}>
+      {stackChrome ? null : <Stack.Screen options={{ title: t('screenSignal') }} />}
+      {!useTwoPane && !stackChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>

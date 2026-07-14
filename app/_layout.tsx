@@ -232,6 +232,7 @@ function RootLayoutNav() {
           'more-board': t('screenBoard'),
           'more-disclosures': t('tabDisclosures'),
           'more-youtube': t('tabYoutube'),
+          'market-briefing': t('ipadHomeSignalTitle'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

@@ -62,21 +62,13 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push('/alerts')}
-            style={({ pressed }) => [
-              fullWidth ? styles.notifBtn : styles.iconBtn,
-              pressed && styles.actionPressed,
-            ]}
+            style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
             <View style={styles.iconBtnInner}>
               <FontAwesome name="bell" size={18} color={theme.textMuted} />
               {alertsHasUnread ? <View style={styles.alertDot} /> : null}
             </View>
-            {fullWidth ? (
-              <Text style={styles.notifLabel} numberOfLines={1}>
-                {t('screenAlerts')}
-              </Text>
-            ) : null}
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}

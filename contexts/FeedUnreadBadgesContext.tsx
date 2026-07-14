@@ -167,11 +167,24 @@ export function FeedUnreadBadgesProvider({ children }: { children: React.ReactNo
     };
   }, [applyCached, refreshFromServer, suppress.alerts, suppress.disclosure, suppress.news, suppress.signal]);
 
-  const value = useMemo(() => toContextValue(badges, suppress), [badges, suppress]);
+  const value = useMemo(
+    () => toContextValue(badges, suppress),
+    [
+      badges.news,
+      badges.signal,
+      badges.disclosure,
+      badges.alerts,
+      suppress.news,
+      suppress.signal,
+      suppress.disclosure,
+      suppress.alerts,
+    ],
+  );
 
   return <FeedUnreadBadgesContext.Provider value={value}>{children}</FeedUnreadBadgesContext.Provider>;
 }
 
+/** Prefer this in leaves (tab icons, sidebar dots) so parent trees do not re-render on poll. */
 export function useFeedUnreadBadges(): FeedUnreadBadgesContextValue {
   return useContext(FeedUnreadBadgesContext);
 }

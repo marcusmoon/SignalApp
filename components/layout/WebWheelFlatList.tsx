@@ -6,9 +6,15 @@ import {
   type FlatListProps,
   type LayoutChangeEvent,
   type ListRenderItemInfo,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 
-import { WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL } from '@/constants/webLayout';
+import {
+  WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT,
+  WEB_FLATLIST_INITIAL,
+  WEB_FLATLIST_OVERSCAN,
+} from '@/constants/webLayout';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
@@ -73,7 +79,8 @@ function WebWheelFlatListInner<T>(
     numColumns = 1,
     columnWrapperStyle,
     initialNumToRender,
-    maxToRenderPerBatch,
+    maxToRenderPerBatch: _maxToRenderPerBatch,
+    getItemLayout,
     ...rest
   }: WebWheelFlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
@@ -88,6 +95,8 @@ function WebWheelFlatListInner<T>(
   const onEndReachedRef = useRef(onEndReached);
   const onEndReachedThresholdRef = useRef(onEndReachedThreshold);
   const lastWebEndReachedAtRef = useRef(0);
+  const heightsRef = useRef<Map<number, number>>(new Map());
+  const scrollRafRef = useRef<number | null>(null);
   onLayoutRef.current = onLayout;
   onContentSizeChangeRef.current = onContentSizeChange;
   onScrollRef.current = onScroll;
@@ -96,31 +105,120 @@ function WebWheelFlatListInner<T>(
 
   const items = useMemo(() => Array.from(data ?? []), [data]);
   const initialWindow = typeof initialNumToRender === 'number' ? initialNumToRender : WEB_FLATLIST_INITIAL;
-  const batchSize = typeof maxToRenderPerBatch === 'number' ? maxToRenderPerBatch : WEB_FLATLIST_BATCH;
-  const [renderCount, setRenderCount] = useState(() => Math.min(items.length, initialWindow));
+  const estimatedItemHeight = WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT;
+  const overscan = WEB_FLATLIST_OVERSCAN;
+  const cols = Math.max(1, numColumns);
+
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [heightsVersion, setHeightsVersion] = useState(0);
 
   useEffect(() => {
-    // filter/segment change → start from a small window again
-    setRenderCount(Math.min(items.length, initialWindow));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when scrollResetKey changes
-  }, [scrollResetKey, initialWindow]);
+    heightsRef.current = new Map();
+    setScrollTop(0);
+    setHeightsVersion((v) => v + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset window metrics on filter/scroll-key change
+  }, [scrollResetKey]);
 
   useEffect(() => {
-    setRenderCount((prev) => {
-      if (items.length === 0) return 0;
-      if (prev <= 0) return Math.min(items.length, initialWindow);
-      return Math.min(items.length, Math.max(prev, Math.min(items.length, initialWindow)));
-    });
-  }, [items.length, initialWindow]);
+    // Drop height entries beyond the new length after filter/pagination shrink.
+    const map = heightsRef.current;
+    for (const key of map.keys()) {
+      if (key >= items.length) map.delete(key);
+    }
+  }, [items.length]);
 
-  const growWindow = useCallback(() => {
-    setRenderCount((prev) => {
-      if (prev >= items.length) return prev;
-      return Math.min(items.length, prev + Math.max(1, batchSize));
-    });
-  }, [batchSize, items.length]);
+  const measureItemHeight = useCallback((index: number, height: number) => {
+    if (!(height > 0)) return;
+    const prev = heightsRef.current.get(index);
+    if (prev != null && Math.abs(prev - height) < 0.5) return;
+    heightsRef.current.set(index, height);
+    setHeightsVersion((v) => v + 1);
+  }, []);
+
+  const rowCount = Math.ceil(items.length / cols);
+
+  const getRowHeight = useCallback(
+    (rowIndex: number) => {
+      if (getItemLayout) {
+        const firstIndex = rowIndex * cols;
+        const layout = getItemLayout(items as never, firstIndex);
+        return layout.length;
+      }
+      let maxH = 0;
+      let measured = false;
+      for (let c = 0; c < cols; c++) {
+        const index = rowIndex * cols + c;
+        if (index >= items.length) break;
+        const h = heightsRef.current.get(index);
+        if (h != null) {
+          measured = true;
+          maxH = Math.max(maxH, h);
+        }
+      }
+      return measured ? maxH : estimatedItemHeight;
+    },
+    [cols, estimatedItemHeight, getItemLayout, items, heightsVersion],
+  );
+
+  const { startRow, endRow, topSpacer, bottomSpacer } = useMemo(() => {
+    if (rowCount === 0) {
+      return { startRow: 0, endRow: -1, topSpacer: 0, bottomSpacer: 0 };
+    }
+
+    const overscanPx = overscan * estimatedItemHeight;
+    const viewTop = Math.max(0, scrollTop - overscanPx);
+    const viewBottom = scrollTop + Math.max(viewportHeight, estimatedItemHeight) + overscanPx;
+
+    let acc = 0;
+    let start = 0;
+    for (let row = 0; row < rowCount; row++) {
+      const h = getRowHeight(row);
+      if (acc + h > viewTop) {
+        start = row;
+        break;
+      }
+      acc += h;
+      if (row === rowCount - 1) start = row;
+    }
+
+    let end = start;
+    let scan = acc;
+    for (let row = start; row < rowCount; row++) {
+      scan += getRowHeight(row);
+      end = row;
+      if (scan >= viewBottom) break;
+    }
+
+    // Before any scroll metrics: render a progressive window so TTI stays small.
+    if (viewportHeight <= 0) {
+      const coldEnd = Math.min(rowCount - 1, Math.ceil(initialWindow / cols) - 1);
+      let coldTop = 0;
+      let coldBottom = 0;
+      for (let row = coldEnd + 1; row < rowCount; row++) coldBottom += getRowHeight(row);
+      return { startRow: 0, endRow: Math.max(0, coldEnd), topSpacer: coldTop, bottomSpacer: coldBottom };
+    }
+
+    let top = 0;
+    for (let row = 0; row < start; row++) top += getRowHeight(row);
+    let bottom = 0;
+    for (let row = end + 1; row < rowCount; row++) bottom += getRowHeight(row);
+
+    return { startRow: start, endRow: end, topSpacer: top, bottomSpacer: bottom };
+  }, [
+    cols,
+    estimatedItemHeight,
+    getRowHeight,
+    initialWindow,
+    overscan,
+    rowCount,
+    scrollTop,
+    viewportHeight,
+    heightsVersion,
+  ]);
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
+    setViewportHeight(node.clientHeight);
     onLayoutRef.current?.({
       nativeEvent: {
         layout: { height: node.clientHeight, width: node.clientWidth, x: 0, y: 0 },
@@ -133,12 +231,17 @@ function WebWheelFlatListInner<T>(
   }, []);
 
   const emitWebScroll = useCallback((node: HTMLElement) => {
+    const nextTop = node.scrollTop;
+    if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      setScrollTop(nextTop);
+    });
     const event = syntheticScrollEventFromDom(node);
-    onScrollRef.current?.(event);
+    onScrollRef.current?.(event as NativeSyntheticEvent<NativeScrollEvent>);
   }, []);
 
   const emitWebEndReached = useCallback((node: HTMLElement) => {
-    growWindow();
     const handler = onEndReachedRef.current;
     if (!handler) return;
 
@@ -155,7 +258,7 @@ function WebWheelFlatListInner<T>(
     const contentHeight = node.scrollHeight;
     const distanceFromEnd = Math.max(0, contentHeight - (node.scrollTop + node.clientHeight));
     handler({ distanceFromEnd } as EndReachedInfo);
-  }, [growWindow]);
+  }, []);
 
   const getWebNode = useCallback((event?: unknown) => (
     (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
@@ -248,6 +351,7 @@ function WebWheelFlatListInner<T>(
     return () => {
       if (retryTimer) clearTimeout(retryTimer);
       if (nearEndProbeTimer) clearTimeout(nearEndProbeTimer);
+      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
       if (node && handleScroll) node.removeEventListener('scroll', handleScroll);
       if (node && handleNearEndProbe) {
         node.removeEventListener('wheel', handleNearEndProbe);
@@ -277,7 +381,6 @@ function WebWheelFlatListInner<T>(
   };
 
   if (Platform.OS === 'web') {
-    const visibleItems = items.slice(0, Math.max(renderCount, Math.min(items.length, initialWindow)));
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
     const emitFromWebEvent = (event: unknown) => {
       const node = getWebNode(event);
@@ -312,6 +415,52 @@ function WebWheelFlatListInner<T>(
       }
     };
 
+    const renderIndexedItem = (item: T, index: number) => (
+      <View
+        key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}
+        onLayout={(e) => measureItemHeight(index, e.nativeEvent.layout.height)}
+        style={cols > 1 ? { flex: 1, minWidth: 0 } : undefined}>
+        {renderItem?.({
+          item,
+          index,
+          separators: webSeparators,
+        } as ListRenderItemInfo<T>)}
+      </View>
+    );
+
+    const rowViews: React.ReactElement[] = [];
+    for (let row = startRow; row <= endRow; row++) {
+      const rowStart = row * cols;
+      if (cols > 1) {
+        const rowItems = items.slice(rowStart, Math.min(items.length, rowStart + cols));
+        rowViews.push(
+          <View key={`web-row-${row}`} style={[{ flexDirection: 'row' }, columnWrapperStyle]}>
+            {rowItems.map((item, colIndex) => renderIndexedItem(item, rowStart + colIndex))}
+            {rowItems.length < cols
+              ? Array.from({ length: cols - rowItems.length }, (_, padIndex) => (
+                  <View key={`web-pad-${row}-${padIndex}`} style={{ flex: 1, minWidth: 0 }} />
+                ))
+              : null}
+          </View>,
+        );
+      } else {
+        const item = items[rowStart];
+        if (!item) continue;
+        rowViews.push(
+          <View key={keyExtractor?.(item, rowStart) ?? getDefaultKey(item, rowStart)}>
+            <View onLayout={(e) => measureItemHeight(rowStart, e.nativeEvent.layout.height)}>
+              {renderItem?.({
+                item,
+                index: rowStart,
+                separators: webSeparators,
+              } as ListRenderItemInfo<T>)}
+            </View>
+            {Separator && rowStart < items.length - 1 ? <Separator /> : null}
+          </View>,
+        );
+      }
+    }
+
     return (
       <View
         ref={setWebRef}
@@ -320,50 +469,13 @@ function WebWheelFlatListInner<T>(
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}
-          {numColumns > 1
-            ? (() => {
-                const rowViews: React.ReactElement[] = [];
-                for (let rowStart = 0; rowStart < visibleItems.length; rowStart += numColumns) {
-                  const rowItems = visibleItems.slice(rowStart, rowStart + numColumns);
-                  const rowIndex = rowStart / numColumns;
-                  rowViews.push(
-                    <View
-                      key={`web-row-${rowIndex}`}
-                      style={[{ flexDirection: 'row' }, columnWrapperStyle]}>
-                      {rowItems.map((item, colIndex) => {
-                        const index = rowStart + colIndex;
-                        return (
-                          <View
-                            key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}
-                            style={{ flex: 1, minWidth: 0 }}>
-                            {renderItem?.({
-                              item,
-                              index,
-                              separators: webSeparators,
-                            } as ListRenderItemInfo<T>)}
-                          </View>
-                        );
-                      })}
-                      {rowItems.length < numColumns
-                        ? Array.from({ length: numColumns - rowItems.length }, (_, padIndex) => (
-                            <View key={`web-pad-${rowIndex}-${padIndex}`} style={{ flex: 1, minWidth: 0 }} />
-                          ))
-                        : null}
-                    </View>,
-                  );
-                }
-                return rowViews;
-              })()
-            : visibleItems.map((item, index) => (
-                <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
-                  {renderItem?.({
-                    item,
-                    index,
-                    separators: webSeparators,
-                  } as ListRenderItemInfo<T>)}
-                  {Separator && index < visibleItems.length - 1 ? <Separator /> : null}
-                </View>
-              ))}
+          {items.length > 0 ? (
+            <>
+              {topSpacer > 0 ? <View style={{ height: topSpacer }} /> : null}
+              {rowViews}
+              {bottomSpacer > 0 ? <View style={{ height: bottomSpacer }} /> : null}
+            </>
+          ) : null}
           <View ref={webEndSentinelRef} style={{ height: 1 }} />
           {renderListSlot(ListFooterComponent)}
         </View>
@@ -392,7 +504,8 @@ function WebWheelFlatListInner<T>(
       onContentSizeChange={onContentSizeChange}
       refreshControl={refreshControl}
       initialNumToRender={initialNumToRender}
-      maxToRenderPerBatch={maxToRenderPerBatch}
+      maxToRenderPerBatch={_maxToRenderPerBatch}
+      getItemLayout={getItemLayout}
       ref={(instance) => {
         localRef.current = instance;
         if (typeof forwardedRef === 'function') {

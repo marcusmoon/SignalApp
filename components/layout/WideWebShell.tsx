@@ -6,7 +6,6 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { webFlexFill, webShellBackground, webSidebarContentStyle } from '@/constants/webLayout';
 import { WebHeaderRefreshProvider, useWebHeaderRefreshTrigger } from '@/contexts/WebHeaderRefreshContext';
-import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
@@ -16,7 +15,6 @@ type Props = {
 
 function WideWebShellFrame({ children }: Props) {
   const { theme } = useSignalTheme();
-  const { newsTabBadge, signalTabBadge, disclosureTabBadge } = useFeedUnreadBadges();
   const triggerHeaderRefresh = useWebHeaderRefreshTrigger();
 
   return (
@@ -29,11 +27,7 @@ function WideWebShellFrame({ children }: Props) {
         onBrandPress={Platform.OS === 'web' ? () => void triggerHeaderRefresh() : undefined}
       />
       <View style={[styles.body, { backgroundColor: webShellBackground(theme.bg) }]}>
-        <SignalSidebarTabBar
-          newsHasUnread={newsTabBadge}
-          signalHasUnread={signalTabBadge}
-          disclosureHasUnread={disclosureTabBadge}
-        />
+        <SignalSidebarTabBar />
         <View style={[styles.content, { backgroundColor: webShellBackground(theme.bg) }]}>
           {children}
         </View>

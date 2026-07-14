@@ -36,7 +36,7 @@ import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -117,7 +117,7 @@ export default function SignalScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const ipadNav = useIpadSidebarNav();
+  const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('signal');
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 

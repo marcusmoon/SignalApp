@@ -44,7 +44,7 @@ export type IpadDisclosureFlowPaneParams = {
   digestId?: string | null;
 };
 
-type IpadSidebarNavContextValue = {
+type IpadSidebarNavState = {
   isAvailable: boolean;
   contentPane: IpadContentPane;
   isHomePaneActive: boolean;
@@ -59,6 +59,10 @@ type IpadSidebarNavContextValue = {
   alertsFromAccount: boolean;
   termsType: 'service' | 'privacy';
   termsFromHistory: boolean;
+};
+
+type IpadSidebarNavActions = {
+  isAvailable: boolean;
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
@@ -78,7 +82,9 @@ type IpadSidebarNavContextValue = {
   takePendingSignalDate: () => string | null;
 };
 
-const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
+export type IpadSidebarNavContextValue = IpadSidebarNavState & IpadSidebarNavActions;
+
+const defaultState: IpadSidebarNavState = {
   isAvailable: false,
   contentPane: 'tabs',
   isHomePaneActive: false,
@@ -93,6 +99,10 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   alertsFromAccount: false,
   termsType: 'service',
   termsFromHistory: false,
+};
+
+const defaultActions: IpadSidebarNavActions = {
+  isAvailable: false,
   showHome: () => {},
   showAccount: () => {},
   showTabs: () => {},
@@ -110,7 +120,10 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   takePendingNewsSegment: () => null,
   takePendingSignalSession: () => null,
   takePendingSignalDate: () => null,
-});
+};
+
+const IpadSidebarNavStateContext = createContext<IpadSidebarNavState>(defaultState);
+const IpadSidebarNavActionsContext = createContext<IpadSidebarNavActions>(defaultActions);
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -564,8 +577,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     (contentPane === 'alerts' && alertsFromAccount) ||
     (contentPane === 'calendar' && calendarFromAccount);
 
-  const value = useMemo(
-    () => ({
+  const stateValue = useMemo(
+    (): IpadSidebarNavState => ({
       isAvailable: useTwoPane,
       contentPane,
       isHomePaneActive,
@@ -580,6 +593,27 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       alertsFromAccount,
       termsType,
       termsFromHistory,
+    }),
+    [
+      useTwoPane,
+      contentPane,
+      isHomePaneActive,
+      isAccountPaneActive,
+      settingsTab,
+      youtubeSort,
+      newsIssuesParams,
+      disclosureFlowParams,
+      todayBriefingDate,
+      calendarFromAccount,
+      alertsFromAccount,
+      termsType,
+      termsFromHistory,
+    ],
+  );
+
+  const actionsValue = useMemo(
+    (): IpadSidebarNavActions => ({
+      isAvailable: useTwoPane,
       showHome,
       showAccount,
       showTabs,
@@ -600,18 +634,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     }),
     [
       useTwoPane,
-      contentPane,
-      isHomePaneActive,
-      isAccountPaneActive,
-      settingsTab,
-      youtubeSort,
-      newsIssuesParams,
-      disclosureFlowParams,
-      todayBriefingDate,
-      calendarFromAccount,
-      alertsFromAccount,
-      termsType,
-      termsFromHistory,
       showHome,
       showAccount,
       showSettings,
@@ -632,9 +654,26 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <IpadSidebarNavContext.Provider value={value}>{children}</IpadSidebarNavContext.Provider>;
+  return (
+    <IpadSidebarNavActionsContext.Provider value={actionsValue}>
+      <IpadSidebarNavStateContext.Provider value={stateValue}>{children}</IpadSidebarNavStateContext.Provider>
+    </IpadSidebarNavActionsContext.Provider>
+  );
 }
 
-export function useIpadSidebarNav() {
-  return useContext(IpadSidebarNavContext);
+/** Pane/UI state — re-renders when overlays/tabs change. */
+export function useIpadSidebarNavState() {
+  return useContext(IpadSidebarNavStateContext);
+}
+
+/** Stable navigation actions — safe to call without pane-driven re-renders. */
+export function useIpadSidebarNavActions() {
+  return useContext(IpadSidebarNavActionsContext);
+}
+
+/** Combined hook for callers that need both state and actions. */
+export function useIpadSidebarNav(): IpadSidebarNavContextValue {
+  const state = useIpadSidebarNavState();
+  const actions = useIpadSidebarNavActions();
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }

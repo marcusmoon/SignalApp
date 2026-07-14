@@ -42,7 +42,7 @@ import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -160,7 +160,7 @@ export function LegacyNewsFeedScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const adsEnabled = useAdsEnabled();
-  const ipadNav = useIpadSidebarNav();
+  const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('news');
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
@@ -196,7 +196,13 @@ export function LegacyNewsFeedScreen() {
   const serverRowsRef = useRef(serverRows);
   const digestLookupRowsRef = useRef<SignalApiNewsItem[]>([]);
   const youtubeRowsRef = useRef(youtubeRows);
+  const itemsRef = useRef(items);
+  const videoItemsRef = useRef(videoItems);
+  const feedFilterKeyRef = useRef(`${segment}|${activeTag ?? ''}|${locale}`);
+  const feedReloadNonceRef = useRef(0);
   serverRowsRef.current = serverRows;
+  itemsRef.current = items;
+  videoItemsRef.current = videoItems;
   youtubeRowsRef.current = youtubeRows;
   const feedMetaRef = useRef<SignalNewsListMeta | null>(null);
   const loadMoreInFlightRef = useRef(false);
@@ -351,9 +357,9 @@ export function LegacyNewsFeedScreen() {
   }, []);
 
   const load = useCallback(
-    async (forceRefresh?: boolean): Promise<FeedLoadResult> => {
+    async (forceRefresh?: boolean, keepRows?: boolean): Promise<FeedLoadResult> => {
       setError(null);
-      const isRefresh = forceRefresh === true;
+      const isRefresh = forceRefresh === true || keepRows === true;
       if (!isRefresh) {
         setHasMore(false);
         setLoadingMore(false);
@@ -376,7 +382,7 @@ export function LegacyNewsFeedScreen() {
         return { itemIds: [], kind: 'news' };
       }
 
-      const cacheMode = signalCacheMode(forceRefresh);
+      const cacheMode = signalCacheMode(forceRefresh === true);
 
       if (segment === 'video') {
         if (!isRefresh) {
@@ -700,29 +706,45 @@ export function LegacyNewsFeedScreen() {
     }, [locale]),
   );
 
-  /** 포커스·세그먼트·태그 변경 시 로드. loadSeq로 경합 시 stale 응답·loading 고착을 막는다. */
+  /** 포커스·세그먼트·태그 변경 시 로드. 동일 필터 재진입은 기존 rows 유지 + soft refresh. */
   useEffect(() => {
     if (!isFocused) return;
 
     let cancelled = false;
     const seq = ++loadSeqRef.current;
-    setLoading(true);
-    setItems([]);
-    setVideoItems([]);
-    setServerRows([]);
-    setServerDigestRows([]);
-    setYoutubeRows([]);
-    setHasMore(false);
-    setError(null);
+    const filterKey = `${segment}|${activeTag ?? ''}|${locale}`;
+    const filterChanged = feedFilterKeyRef.current !== filterKey;
+    feedFilterKeyRef.current = filterKey;
+    const reloadBumped = feedReloadNonceRef.current !== feedReloadNonce;
+    feedReloadNonceRef.current = feedReloadNonce;
+    const hasExisting =
+      !filterChanged &&
+      !reloadBumped &&
+      (segment === 'video' ? videoItemsRef.current.length > 0 : itemsRef.current.length > 0);
+
+    setLoading(!hasExisting);
+    if (!hasExisting) {
+      setItems([]);
+      setVideoItems([]);
+      setServerRows([]);
+      setServerDigestRows([]);
+      setYoutubeRows([]);
+      setHasMore(false);
+      setError(null);
+    } else {
+      setError(null);
+    }
 
     void (async () => {
       try {
-        await load(false);
+        await load(false, hasExisting);
       } catch (e) {
         if (cancelled || seq !== loadSeqRef.current) return;
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
-        setItems([]);
-        setServerRows([]);
+        if (!hasExisting) {
+          setItems([]);
+          setServerRows([]);
+        }
       } finally {
         if (cancelled || seq !== loadSeqRef.current) return;
         setLoading(false);

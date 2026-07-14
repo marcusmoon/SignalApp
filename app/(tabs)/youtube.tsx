@@ -43,7 +43,10 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
-import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import {
+  useIpadSidebarNavActions,
+  useIpadSidebarNavState,
+} from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
@@ -86,7 +89,8 @@ export default function YoutubeScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const ipadNav = useIpadSidebarNav();
+  const ipadState = useIpadSidebarNavState();
+  const ipadNav = useIpadSidebarNavActions();
   const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
   /** URL이 있으면 우선 — wide에서도 새로고침·공유가 ipadNav 초기값에 가리지 않게 한다. */
   const urlSort = parseYoutubeSortParam(sortParam);
@@ -95,7 +99,7 @@ export default function YoutubeScreen() {
     hasExplicitSortParam
       ? urlSort
       : useTwoPane && ipadNav.isAvailable
-        ? ipadNav.youtubeSort
+        ? ipadState.youtubeSort
         : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -124,7 +128,7 @@ export default function YoutubeScreen() {
   const youtubeReplacingRef = useRef(false);
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
   const skipLoadOnSelectedHandlesRef = useRef(false);
-  const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
+  const syncedYoutubeSortRef = useRef(ipadState.youtubeSort);
 
   const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles], {
     resyncDeps: [items],
@@ -346,10 +350,10 @@ export default function YoutubeScreen() {
   useEffect(() => {
     if (!useTwoPane || !ipadNav.isAvailable) return;
     if (hasExplicitSortParam) return;
-    if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
-    syncedYoutubeSortRef.current = ipadNav.youtubeSort;
-    setSort(ipadNav.youtubeSort);
-  }, [hasExplicitSortParam, ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
+    if (syncedYoutubeSortRef.current === ipadState.youtubeSort) return;
+    syncedYoutubeSortRef.current = ipadState.youtubeSort;
+    setSort(ipadState.youtubeSort);
+  }, [hasExplicitSortParam, ipadNav.isAvailable, ipadState.youtubeSort, useTwoPane]);
 
   const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
     if (a === null || b === null) return a === b;

@@ -2,12 +2,10 @@ import { Stack, useRouter, type Href } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SignalHeader } from '@/components/signal/SignalHeader';
-import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { webFlexFill } from '@/constants/webLayout';
 
 type Props = {
   title: string;
@@ -17,6 +15,7 @@ type Props = {
   hideTopBar?: boolean;
 };
 
+/** Wide web/iPad: 사이드바·헤더는 `WideWebShell`이 담당. 여기는 우측 콘텐츠 영역만. */
 export function IpadSidebarScreen({ title, children, backHref, hideTopBar = false }: Props) {
   const router = useRouter();
   const { t } = useLocale();
@@ -36,32 +35,26 @@ export function IpadSidebarScreen({ title, children, backHref, hideTopBar = fals
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
-      <SignalHeader compact fullWidth />
-      <View style={styles.body}>
-        <SignalSidebarTabBar />
-        <View style={styles.content}>
-          {hideTopBar ? null : (
-            <View style={styles.topBar}>
-              <Pressable
-                onPress={onBack}
-                style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
-                accessibilityRole="button"
-                accessibilityLabel={t('commonBack')}>
-                <FontAwesome name="chevron-left" size={14} color={theme.green} />
-                <Text style={styles.backText}>{t('commonBack')}</Text>
-              </Pressable>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              <View style={styles.spacer} />
-            </View>
-          )}
-          <View style={styles.contentBody}>{children}</View>
+      {hideTopBar ? null : (
+        <View style={styles.topBar}>
+          <Pressable
+            onPress={onBack}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('commonBack')}>
+            <FontAwesome name="chevron-left" size={14} color={theme.green} />
+            <Text style={styles.backText}>{t('commonBack')}</Text>
+          </Pressable>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={styles.spacer} />
         </View>
-      </View>
-    </SafeAreaView>
+      )}
+      <View style={styles.contentBody}>{children}</View>
+    </View>
   );
 }
 
@@ -70,19 +63,13 @@ function makeStyles(
   sf: (n: number) => number,
 ) {
   return StyleSheet.create({
-    safe: {
-      flex: 1,
+    root: {
+      ...webFlexFill,
       backgroundColor: theme.bg,
     },
-    body: {
+    contentBody: {
       flex: 1,
-      flexDirection: 'row',
       minHeight: 0,
-    },
-    content: {
-      flex: 1,
-      minWidth: 0,
-      backgroundColor: theme.bg,
     },
     topBar: {
       minHeight: 54,
@@ -124,10 +111,6 @@ function makeStyles(
     spacer: {
       width: 78,
       flexShrink: 0,
-    },
-    contentBody: {
-      flex: 1,
-      minHeight: 0,
     },
   });
 }

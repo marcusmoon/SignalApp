@@ -76,6 +76,8 @@ const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
 /** 내 정보에서 진입하는 보조 화면 — 사이드바에서는 내 정보 활성으로 표시 */
 const ACCOUNT_AUX_PATHS = ['/alerts', '/calendar', '/settings', '/terms', '/terms-history'];
 
+let cachedRefLinksVisible: boolean | null = null;
+
 function resolveTabNameFromHref(href: string): string | null {
   const fromTabs = href.match(/\/\(tabs\)\/([^/?]+)/);
   if (fromTabs?.[1]) return fromTabs[1];
@@ -108,10 +110,12 @@ export function SignalSidebarTabBar({
   const insets = useSafeAreaInsets();
   const { subTabs, activeSubTabKey } = useSidebarSubTabs();
   const ipadNav = useIpadSidebarNav();
-  const [refLinksVisible, setRefLinksVisible] = useState(true);
+  const [refLinksVisible, setRefLinksVisible] = useState(cachedRefLinksVisible ?? true);
 
   const reloadRefLinksPref = useCallback(async () => {
-    setRefLinksVisible(await loadMoreReferenceLinksVisible());
+    const visible = await loadMoreReferenceLinksVisible();
+    cachedRefLinksVisible = visible;
+    setRefLinksVisible(visible);
   }, []);
 
   useEffect(() => {

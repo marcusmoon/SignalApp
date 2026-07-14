@@ -8,11 +8,13 @@ import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
 import {
+  communityIdFromPathname,
   isWideHomePath,
   isWideOverlayKind,
   legacyPathnameToOverlayKind,
   overlayKindToContentPane,
   overlayParamsFromRecord,
+  symbolTickerFromPathname,
   WIDE_HOME_ROUTE,
   WIDE_OVERLAY_CLEAR_PARAMS,
   type WideOverlayKind,
@@ -31,7 +33,10 @@ export type IpadContentPane =
   | 'calendar'
   | 'alerts'
   | 'termsHistory'
-  | 'terms';
+  | 'terms'
+  | 'board'
+  | 'community'
+  | 'symbol';
 
 export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
@@ -44,7 +49,7 @@ export type IpadDisclosureFlowPaneParams = {
   digestId?: string | null;
 };
 
-export type WidePaneDrillFrom = 'home' | 'account' | 'termsHistory' | 'tabs' | 'alerts';
+export type WidePaneDrillFrom = 'home' | 'account' | 'termsHistory' | 'tabs' | 'alerts' | 'board';
 
 export type WidePaneDrillOptions = {
   /** In-memory drill origin — never put this in the shareable URL. */
@@ -64,6 +69,8 @@ type IpadSidebarNavState = {
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
   todayBriefingDate: string | null;
+  communityPostId: string | null;
+  symbolTicker: string | null;
   calendarFromAccount: boolean;
   alertsFromAccount: boolean;
   termsType: 'service' | 'privacy';
@@ -86,6 +93,9 @@ type IpadSidebarNavActions = {
     type?: 'service' | 'privacy',
     options?: { from?: 'account' | 'terms-history' } & WidePaneDrillOptions,
   ) => void;
+  showBoard: (options?: WidePaneDrillOptions & { source?: string }) => void;
+  showCommunityPost: (id: string, options?: WidePaneDrillOptions) => void;
+  showSymbol: (ticker: string, options?: WidePaneDrillOptions) => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
@@ -110,6 +120,8 @@ const defaultState: IpadSidebarNavState = {
   newsIssuesParams: null,
   disclosureFlowParams: null,
   todayBriefingDate: null,
+  communityPostId: null,
+  symbolTicker: null,
   calendarFromAccount: false,
   alertsFromAccount: false,
   termsType: 'service',
@@ -129,6 +141,9 @@ const defaultActions: IpadSidebarNavActions = {
   showAlerts: () => {},
   showTermsHistory: () => {},
   showTerms: () => {},
+  showBoard: () => {},
+  showCommunityPost: () => {},
+  showSymbol: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -184,6 +199,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     date?: string | string[];
     digestId?: string | string[];
     market?: string | string[];
+    id?: string | string[];
+    ticker?: string | string[];
   }>();
   const [contentPane, setContentPane] = useState<IpadContentPane>(() =>
     resolveIpadContentPaneFromPathname(pathname),
@@ -198,6 +215,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
+  const [communityPostId, setCommunityPostId] = useState<string | null>(null);
+  const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
   const [alertsFromAccount, setAlertsFromAccount] = useState(false);
   const [termsType, setTermsType] = useState<'service' | 'privacy'>('service');
@@ -273,6 +292,20 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       if (kind === 'terms') {
         setTermsType(p.type === 'privacy' ? 'privacy' : 'service');
         setTermsFromHistory(p.from === 'terms-history');
+        return;
+      }
+
+      if (kind === 'board') {
+        return;
+      }
+
+      if (kind === 'community') {
+        setCommunityPostId(p.id ?? null);
+        return;
+      }
+
+      if (kind === 'symbol') {
+        setSymbolTicker(p.ticker ? p.ticker.toUpperCase() : null);
       }
     },
     [],
@@ -330,7 +363,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     if (legacyOverlay && !isWideHomePath(pathname)) {
       if (!programmaticOverlayRef.current) clearWideBackStack();
       programmaticOverlayRef.current = false;
-      applyOverlayKind(legacyOverlay, params);
+      if (legacyOverlay === 'community') {
+        const id = communityIdFromPathname(pathname) ?? firstParam(params.id);
+        applyOverlayKind(legacyOverlay, { ...params, ...(id ? { id } : {}) });
+      } else if (legacyOverlay === 'symbol') {
+        const ticker = symbolTickerFromPathname(pathname) ?? firstParam(params.ticker);
+        applyOverlayKind(legacyOverlay, { ...params, ...(ticker ? { ticker } : {}) });
+      } else {
+        applyOverlayKind(legacyOverlay, params);
+      }
       return;
     }
 
@@ -390,10 +431,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     params.date,
     params.digestId,
     params.from,
+    params.id,
     params.market,
     params.overlay,
     params.pane,
     params.tab,
+    params.ticker,
     params.sort,
     pathname,
     useTwoPane,
@@ -572,6 +615,54 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [beginWideOverlay, router, useTwoPane],
   );
 
+  const showBoard = useCallback(
+    (options?: WidePaneDrillOptions & { source?: string }) => {
+      if (useTwoPane) {
+        beginWideOverlay(
+          'board',
+          options?.source ? { source: options.source } : {},
+          options?.drillFrom,
+        );
+        return;
+      }
+      router.navigate({
+        pathname: '/(tabs)/board',
+        params: options?.source ? { source: options.source } : {},
+      } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showCommunityPost = useCallback(
+    (id: string, options?: WidePaneDrillOptions) => {
+      const postId = String(id || '').trim();
+      if (!postId) return;
+      setCommunityPostId(postId);
+      if (useTwoPane) {
+        beginWideOverlay('community', { id: postId }, options?.drillFrom);
+        return;
+      }
+      router.push(`/community/${encodeURIComponent(postId)}` as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showSymbol = useCallback(
+    (ticker: string, options?: WidePaneDrillOptions) => {
+      const next = String(ticker || '')
+        .trim()
+        .toUpperCase();
+      if (!next || next === '—') return;
+      setSymbolTicker(next);
+      if (useTwoPane) {
+        beginWideOverlay('symbol', { ticker: next }, options?.drillFrom);
+        return;
+      }
+      router.push(`/symbol/${encodeURIComponent(next)}` as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
   const goBackWidePane = useCallback(() => {
     const stack = wideBackStackRef.current;
     if (stack.length === 0) return;
@@ -607,6 +698,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
             overlay: 'alerts',
             ...(alertsFromAccount ? { from: 'account' } : {}),
           },
+        } as never);
+      } else if (target === 'board') {
+        applyOverlayKind('board', {});
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'board' },
         } as never);
       } else {
         setContentPane('tabs');
@@ -692,6 +789,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'newsIssues' ||
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
+    contentPane === 'board' ||
+    contentPane === 'community' ||
+    contentPane === 'symbol' ||
     (contentPane === 'calendar' && !calendarFromAccount) ||
     (contentPane === 'alerts' && !alertsFromAccount);
 
@@ -716,6 +816,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,
+      communityPostId,
+      symbolTicker,
       calendarFromAccount,
       alertsFromAccount,
       termsType,
@@ -732,6 +834,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,
+      communityPostId,
+      symbolTicker,
       calendarFromAccount,
       alertsFromAccount,
       termsType,
@@ -753,6 +857,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showAlerts,
       showTermsHistory,
       showTerms,
+      showBoard,
+      showCommunityPost,
+      showSymbol,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -775,6 +882,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showAlerts,
       showTermsHistory,
       showTerms,
+      showBoard,
+      showCommunityPost,
+      showSymbol,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

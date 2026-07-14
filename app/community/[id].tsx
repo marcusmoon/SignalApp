@@ -5,12 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommunityPostDetailContent } from '@/components/community/CommunityPostDetailContent';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import {
+  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunityPost } from '@/integrations/signal-api/community';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCommunityPost } from '@/integrations/signal-api/types';
@@ -20,12 +27,19 @@ function paramId(raw: string | string[] | undefined): string {
   return String(Array.isArray(raw) ? raw[0] : raw || '').trim();
 }
 
-export default function CommunityPostDetailScreen() {
-  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
-  const id = useMemo(() => paramId(rawId), [rawId]);
+export type CommunityPostContentProps = {
+  id: string;
+  embedded?: boolean;
+  onBack?: () => void;
+};
+
+export function CommunityPostContent({ id, embedded = false, onBack }: CommunityPostContentProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, embedded),
+    [theme, scaleFont, embedded],
+  );
   const [item, setItem] = useState<SignalApiCommunityPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,8 +80,13 @@ export default function CommunityPostDetailScreen() {
   const screenTitle = item ? t(communitySourceLabelId(item.source)) : t('communityDetailTitle');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: screenTitle }} />
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
+      {!embedded ? <Stack.Screen options={{ title: screenTitle }} /> : null}
+      {onBack ? (
+        <View style={styles.headerPad}>
+          <WideSubpaneHeader title={screenTitle} onBack={onBack} />
+        </View>
+      ) : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -86,9 +105,13 @@ export default function CommunityPostDetailScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, embedded: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
+    headerPad: {
+      paddingHorizontal: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
+      paddingTop: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : 8,
+    },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     scrollContent: { flexGrow: 1 },
     error: {
@@ -108,4 +131,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 20,
     },
   });
+}
+
+export default function CommunityPostDetailScreen() {
+  const { useTwoPane } = useResponsiveLayout();
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = useMemo(() => paramId(rawId), [rawId]);
+
+  if (useTwoPane) {
+    return <WideOverlayRouteRedirect kind="community" params={id ? { id } : {}} />;
+  }
+
+  return <CommunityPostContent id={id} />;
 }

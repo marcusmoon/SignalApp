@@ -25,9 +25,17 @@ type Props = {
   showSource?: boolean;
   /** 0이면 본문 숨김 */
   bodyLines?: number;
+  /** Wide pane drill-in — when set, skips default stack push. */
+  onPress?: () => void;
 };
 
-export function CommunityPostCard({ item, sourceLabelId, showSource = true, bodyLines = 2 }: Props) {
+export function CommunityPostCard({
+  item,
+  sourceLabelId,
+  showSource = true,
+  bodyLines = 2,
+  onPress,
+}: Props) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -38,6 +46,10 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true, body
   return (
     <Pressable
       onPress={() => {
+        if (onPress) {
+          onPress();
+          return;
+        }
         router.push(`/community/${encodeURIComponent(item.id)}`);
       }}
       accessibilityRole="button"

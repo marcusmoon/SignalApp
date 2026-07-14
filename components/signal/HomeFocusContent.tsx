@@ -592,16 +592,24 @@ export function HomeFocusContent({
   }, [ipadNav, router]);
 
   const openBoard = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showBoard({ drillFrom: 'home' });
+      return;
+    }
     router.navigate('/(tabs)/board' as never);
-  }, [router]);
+  }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
       if (!trimmed || trimmed === '—') return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showSymbol(trimmed, { drillFrom: 'home' });
+        return;
+      }
       router.push(`/symbol/${encodeURIComponent(trimmed)}` as never);
     },
-    [router],
+    [ipadNav, router],
   );
 
   const openDisclosureFlow = useCallback(
@@ -922,7 +930,13 @@ export function HomeFocusContent({
                     </View>
                   }
                   bordered={index < boardPosts.length - 1}
-                  onPress={() => router.push(`/community/${encodeURIComponent(post.id)}`)}
+                  onPress={() => {
+                    if (ipadNav.isAvailable) {
+                      ipadNav.showCommunityPost(post.id, { drillFrom: 'home' });
+                      return;
+                    }
+                    router.push(`/community/${encodeURIComponent(post.id)}`);
+                  }}
                 />
               );
             })}

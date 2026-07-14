@@ -13,7 +13,7 @@ const TAB_ROUTE_PREFIXES = [
 /** My info 허브에서 여는 스택 — 사이드바는 내 정보 활성으로 표시 */
 const ACCOUNT_AUX_PREFIXES = ['/alerts', '/calendar', '/terms', '/terms-history'] as const;
 
-const STACK_OVER_TAB_PREFIXES = ['/symbol/', '/disclosures/', '/community/'] as const;
+const STACK_OVER_TAB_PREFIXES = ['/disclosures/'] as const;
 
 /** Wide web/iPad: URL → sidebar overlay pane. Refresh 시 현재 경로를 복원한다. */
 export function resolveIpadContentPaneFromPathname(pathname: string): IpadContentPane {
@@ -27,6 +27,8 @@ export function resolveIpadContentPaneFromPathname(pathname: string): IpadConten
   }
   if (path.startsWith('/news-issues')) return 'newsIssues';
   if (path.startsWith('/disclosure-flow')) return 'disclosureFlow';
+  if (path.startsWith('/community/')) return 'community';
+  if (path.startsWith('/symbol/')) return 'symbol';
 
   if (TAB_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return 'tabs';

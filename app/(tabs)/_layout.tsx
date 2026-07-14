@@ -29,6 +29,9 @@ import SettingsScreen from '@/app/settings';
 import TermsHistoryScreen from '@/app/terms-history';
 import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
+import { CommunityPostContent } from '@/app/community/[id]';
+import { SymbolDetailContent } from '@/app/symbol/[ticker]';
+import { BoardContent } from '@/components/community/BoardContent';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useIpadSidebarNavActions, useIpadSidebarNavState } from '@/contexts/IpadSidebarNavContext';
@@ -389,6 +392,8 @@ function IpadWideTabLayout({
     newsIssuesParams,
     disclosureFlowParams,
     todayBriefingDate,
+    communityPostId,
+    symbolTicker,
     calendarFromAccount,
     alertsFromAccount,
     termsType,
@@ -448,6 +453,12 @@ function IpadWideTabLayout({
                 termsType={termsType}
                 onBack={subpaneBack}
               />
+            ) : contentPane === 'board' ? (
+              <BoardContent embedded onBack={subpaneBack} active />
+            ) : contentPane === 'community' && communityPostId ? (
+              <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />
+            ) : contentPane === 'symbol' && symbolTicker ? (
+              <SymbolDetailContent embedded ticker={symbolTicker} onBack={subpaneBack} />
             ) : null}
           </View>
         ) : null}

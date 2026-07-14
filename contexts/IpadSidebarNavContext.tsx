@@ -211,24 +211,47 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     (sort: YoutubeSortKey = 'latest') => {
       setYoutubeSort(sort);
       setContentPane('tabs');
+      if (sort === 'latest') {
+        router.navigate('/(tabs)/youtube' as never);
+        // Clear stale ?sort=popular — navigate alone may keep the old search param.
+        router.setParams({ sort: undefined });
+        return;
+      }
       router.navigate({
         pathname: '/(tabs)/youtube',
-        params: { sort: sort === 'latest' ? undefined : sort },
+        params: { sort },
       } as never);
     },
     [router],
   );
 
-  const showNewsTab = useCallback((segment?: NewsSegmentKey) => {
-    if (segment) pendingNewsSegmentRef.current = segment;
-    setContentPane('tabs');
-  }, []);
+  const showNewsTab = useCallback(
+    (segment?: NewsSegmentKey) => {
+      if (segment) pendingNewsSegmentRef.current = segment;
+      setContentPane('tabs');
+      router.navigate({
+        pathname: '/(tabs)/news',
+        params: segment && segment !== 'video' ? { segment } : {},
+      } as never);
+    },
+    [router],
+  );
 
-  const showSignalTab = useCallback((session?: SignalSessionKey, date?: string) => {
-    if (session) pendingSignalSessionRef.current = session;
-    if (date) pendingSignalDateRef.current = date;
-    setContentPane('tabs');
-  }, []);
+  const showSignalTab = useCallback(
+    (session?: SignalSessionKey, date?: string) => {
+      if (session) pendingSignalSessionRef.current = session;
+      if (date) pendingSignalDateRef.current = date;
+      setContentPane('tabs');
+      router.navigate({
+        pathname: '/(tabs)/signal',
+        params: {
+          ...(session ? { session } : null),
+          ...(date ? { date } : null),
+        },
+      } as never);
+    },
+    [router],
+  );
 
   const takePendingNewsSegment = useCallback(() => {
     const segment = pendingNewsSegmentRef.current;

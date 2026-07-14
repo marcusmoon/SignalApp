@@ -8,9 +8,10 @@ const TAB_ROUTE_PREFIXES = [
   '/youtube',
   '/board',
   '/more',
-  '/alerts',
-  '/calendar',
 ] as const;
+
+/** My info 허브에서 여는 스택 — 사이드바는 내 정보 활성으로 표시 */
+const ACCOUNT_AUX_PREFIXES = ['/alerts', '/calendar', '/terms', '/terms-history'] as const;
 
 const STACK_OVER_TAB_PREFIXES = ['/symbol/', '/disclosures/', '/community/'] as const;
 
@@ -21,6 +22,9 @@ export function resolveIpadContentPaneFromPathname(pathname: string): IpadConten
   if (path === '/' || path === '/home') return 'home';
   if (path.startsWith('/account')) return 'account';
   if (path.startsWith('/settings')) return 'settings';
+  if (ACCOUNT_AUX_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    return 'account';
+  }
   if (path.startsWith('/news-issues')) return 'newsIssues';
   if (path.startsWith('/disclosure-flow')) return 'disclosureFlow';
 

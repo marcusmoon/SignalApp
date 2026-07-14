@@ -802,7 +802,11 @@ export function LegacyNewsFeedScreen() {
 
       if (!segmentHydratedRef.current) {
         segmentHydratedRef.current = true;
-        void loadNewsSegment().then((s) => setSegment(s));
+        void loadNewsSegment().then((s) => {
+          if (s && s !== 'video') {
+            onPickSegmentRef.current(s);
+          }
+        });
       }
     }, [ipadNav, routeParams.segment, useTwoPane]),
   );

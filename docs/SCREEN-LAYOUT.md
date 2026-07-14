@@ -183,13 +183,14 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
 1. `useResponsiveLayout()` → `useTwoPane` 분기
 2. Safe Area `edges` 표준 적용
-3. iPhone만 `SignalHeader compact` (wide는 중복 금지)
-4. 고정 UI 있으면 `getScreenFixedHeaderStyles()` → `topFixed` + `SCREEN_FIXED_HEADER_*`
-5. 리스트 `paddingTop`: 다이제스트 있으면 `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`, 없으면 `SCREEN_LIST_CONTENT_PADDING_TOP`
-6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
-7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
-8. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)
-9. PTR·chip·폴링: [FEED-INTERACTION.md](./FEED-INTERACTION.md) 체크리스트
+3. iPhone만 `SignalHeader compact` (wide는 `WideWebShell` 전역 헤더 — 중복 금지)
+4. wide에서 우측 드릴인이면 `WideSubpaneHeader` (루트 진입·직접 URL에는 없음)
+5. 고정 UI 있으면 `getScreenFixedHeaderStyles()` → `topFixed` + `SCREEN_FIXED_HEADER_*`
+6. 리스트 `paddingTop`: 다이제스트 있으면 `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`, 없으면 `SCREEN_LIST_CONTENT_PADDING_TOP`
+7. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
+8. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
+9. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)
+10. PTR·chip·폴링: [FEED-INTERACTION.md](./FEED-INTERACTION.md) 체크리스트
 
 ## 관련 파일
 

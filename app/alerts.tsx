@@ -9,7 +9,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
@@ -353,7 +353,9 @@ export default function AlertsScreen() {
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
           {fromAccount ? (
-            <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+            <View style={styles.subpaneHeaderPad}>
+              <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+            </View>
           ) : null}
           <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
           <View style={styles.authGateCard}>
@@ -378,9 +380,11 @@ export default function AlertsScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {fromAccount ? (
-          <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+          <View style={styles.subpaneHeaderPad}>
+            <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+          </View>
         ) : null}
-        <View style={styles.topFixed}>{alertsTopFixed}</View>
+        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>{alertsTopFixed}</View>
         {isFocused ? (
           <FeedNewContentChip
             visible={newContentAvailable}
@@ -404,6 +408,7 @@ export default function AlertsScreen() {
           }
           contentContainerStyle={[
             styles.listContent,
+            useTwoPane && styles.listContentWide,
             { paddingBottom: bottomPad },
             filteredItems.length === 0 ? styles.listContentEmpty : null,
           ]}
@@ -432,14 +437,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     mainColumnWide: {
       ...wideContentFill,
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
     },
     topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
+    subpaneHeaderPad: {
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+    },
     list: {
       flex: 1,
       minHeight: 0,
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    listContentWide: { paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentEmpty: { flexGrow: 1 },
     filterRow: {
       flexDirection: 'row',

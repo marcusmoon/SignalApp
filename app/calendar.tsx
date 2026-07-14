@@ -23,8 +23,10 @@ import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -414,7 +416,9 @@ export default function CalendarScreen() {
           ]}
           showsVerticalScrollIndicator={false}>
           {fromAccount ? (
-            <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+            <View style={styles.subpaneHeaderPad}>
+              <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+            </View>
           ) : null}
           <View style={styles.errBox}>
             <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
@@ -431,9 +435,11 @@ export default function CalendarScreen() {
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
         {fromAccount ? (
-          <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+          <View style={styles.subpaneHeaderPad}>
+            <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+          </View>
         ) : null}
-      <View style={styles.fixedTop}>
+      <View style={[styles.fixedTop, useTwoPane && styles.fixedTopWide]}>
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -565,7 +571,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     pageColumnWide: {
       ...wideContentFill,
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
     },
     scroll: {
       width: '100%',
@@ -577,11 +582,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     scrollWide: {
       ...wideContentFill,
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+    },
+    subpaneHeaderPad: {
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
     },
     fixedTop: {
       ...fixedHeader.strip,
       width: '100%',
+    },
+    fixedTopWide: {
+      ...fixedHeader.stripWide,
     },
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,

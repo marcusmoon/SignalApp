@@ -1,4 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useNavigation, useRouter } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { useLocale } from '@/contexts/LocaleContext';
@@ -29,6 +30,24 @@ export function PhoneHeaderBackButton({ onPress }: Props) {
       style={({ pressed }) => [styles.hit, pressed && styles.pressed]}>
       <FontAwesome5 name="chevron-left" size={SIGNAL_BACK_CHEVRON_SIZE} color={theme.green} />
     </Pressable>
+  );
+}
+
+/** root Stack `headerLeft` 기본값 — 화면마다 색/형태가 갈리지 않게 한다 */
+export function StackHeaderBackButton() {
+  const navigation = useNavigation();
+  const router = useRouter();
+
+  return (
+    <PhoneHeaderBackButton
+      onPress={() => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return;
+        }
+        router.back();
+      }}
+    />
   );
 }
 

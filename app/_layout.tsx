@@ -13,6 +13,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 import { WideWebShell } from '@/components/layout/WideWebShell';
+import { StackHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
@@ -238,6 +239,9 @@ function RootLayoutNav() {
           title: titleByName[route.name] ?? route.name,
           headerBackButtonDisplayMode: 'minimal' as const,
           headerBackTitle: '',
+          headerBackVisible: false,
+          headerLeft: ({ canGoBack }: { canGoBack?: boolean }) =>
+            canGoBack ? <StackHeaderBackButton /> : null,
           contentStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerStyle: { backgroundColor: webShellBackground(theme.bg) },
           headerTintColor: theme.green,

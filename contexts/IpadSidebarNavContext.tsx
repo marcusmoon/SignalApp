@@ -161,7 +161,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showAccount = useCallback(() => {
     setContentPane('account');
-    router.navigate('/account' as never);
+    router.navigate({ pathname: '/account', params: { pane: 'hub' } } as never);
   }, [router]);
 
   const showTabs = useCallback(() => {
@@ -213,12 +213,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     (sort: YoutubeSortKey = 'latest') => {
       setYoutubeSort(sort);
       setContentPane('tabs');
-      if (sort === 'latest') {
-        router.navigate('/(tabs)/youtube' as never);
-        // Clear stale ?sort=popular — navigate alone may keep the old search param.
-        router.setParams({ sort: undefined });
-        return;
-      }
       router.navigate({
         pathname: '/(tabs)/youtube',
         params: { sort },
@@ -233,7 +227,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       setContentPane('tabs');
       router.navigate({
         pathname: '/(tabs)/news',
-        params: segment && segment !== 'video' ? { segment } : {},
+        params: segment && segment !== 'video' ? { segment } : { segment: 'global' },
       } as never);
     },
     [router],

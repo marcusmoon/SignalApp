@@ -47,7 +47,8 @@ const PAGE_SIZE = 30;
 
 function parseCommunitySourceParam(raw: string | string[] | undefined): CommunitySourceFilter | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (!value || value === COMMUNITY_SOURCE_ALL) return null;
+  if (!value) return null;
+  if (value === COMMUNITY_SOURCE_ALL) return COMMUNITY_SOURCE_ALL;
   return isCommunitySourceKey(value) ? value : null;
 }
 
@@ -68,7 +69,9 @@ export default function BoardScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
-  const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
+  const [source, setSource] = useState<CommunitySourceFilter>(
+    () => parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL,
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -163,6 +166,9 @@ export default function BoardScreen() {
     isBusyRef: loadingMoreRef,
   });
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   const changeSource = useCallback(
     (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
       if (next === sourceRef.current) {
@@ -177,19 +183,19 @@ export default function BoardScreen() {
       setMeta(null);
       setLoading(true);
       if (!options?.fromRoute) {
-        setRouteParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
+        // 공유·직접 진입을 위해 기본값(all)도 URL에 명시한다.
+        setRouteParams({ source: next });
       }
-      void load({ sourceFilter: next });
+      void loadRef.current({ sourceFilter: next });
     },
-    [load, setActiveSubTabKey, setRouteParams, useTwoPane],
+    [setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      const paramSource = parseCommunitySourceParam(routeParams.source);
-      changeSource(paramSource ?? COMMUNITY_SOURCE_ALL, { fromRoute: true });
-    }, [changeSource, routeParams.source]),
-  );
+  /** URL → state only. focus-effect로 되돌리면 클릭·setParams 경합이 난다. */
+  useEffect(() => {
+    const paramSource = parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL;
+    changeSource(paramSource, { fromRoute: true });
+  }, [changeSource, routeParams.source]);
 
   const registerBoardSubTabs = useCallback(() => {
     if (!useTwoPane) return;
@@ -198,6 +204,8 @@ export default function BoardScreen() {
       COMMUNITY_SOURCE_ORDER.map((key) => ({
         key,
         label: t(SOURCE_LABEL[key]),
+        href: '/(tabs)/board',
+        params: { source: key },
         onPress: () => changeSource(key),
       })),
     );
@@ -211,9 +219,8 @@ export default function BoardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerBoardSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerBoardSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);

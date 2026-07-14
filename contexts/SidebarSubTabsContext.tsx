@@ -1,6 +1,9 @@
 /**
  * iPad 사이드바에 서브탭을 등록하기 위한 Context.
  * 각 탭 화면은 포커스 시 자신의 서브탭 목록을 등록하고, 블러 시 지운다.
+ *
+ * Wide 웹: `href`+`params`로 URL을 갱신한다. 기본값도 쿼리에 명시해
+ * 주소 직접 입력·링크 공유·새로고침이 같은 화면을 복원한다.
  */
 import React, { createContext, useCallback, useContext, useState } from 'react';
 
@@ -9,7 +12,11 @@ export type SidebarSubTab = {
   label: string;
   /** @deprecated activeSubTabKey를 사용한다. 하위 호환용으로만 남김 */
   active?: boolean;
-  onPress: () => void;
+  /** Expo Router pathname (예: `/(tabs)/board`) */
+  href?: string;
+  /** Query params — undefined 값은 제거 대상으로 전달 */
+  params?: Record<string, string | undefined>;
+  onPress?: () => void;
 };
 
 type SidebarSubTabsContextType = {

@@ -64,8 +64,16 @@ import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notifi
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 type AccountPane = 'hub' | 'profile' | 'social' | 'password';
+
+const ACCOUNT_PANES: ReadonlyArray<AccountPane> = ['hub', 'profile', 'social', 'password'];
+
+function parseAccountPaneParam(raw: string | string[] | undefined): AccountPane {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return ACCOUNT_PANES.includes(value as AccountPane) ? (value as AccountPane) : 'hub';
+}
 type Mode = 'login' | 'register';
 type RegisterStep = 'terms' | 'method' | 'info';
 
@@ -116,7 +124,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const params = useLocalSearchParams<{ from?: string }>();
+  const params = useLocalSearchParams<{ from?: string; pane?: string | string[] }>();
+  const setRouteParams = useSafeSetRouteParams();
   const useIpadSidebar = useTwoPane && !embedded;
   const showStackHeader = !embedded && !useIpadSidebar;
   const showPaneTitleInContent = embedded;
@@ -142,7 +151,21 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [registerStep, setRegisterStep] = useState<RegisterStep>('terms');
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
-  const [accountPane, setAccountPane] = useState<AccountPane>('hub');
+  const [accountPane, setAccountPaneState] = useState<AccountPane>(() =>
+    parseAccountPaneParam(params.pane),
+  );
+  const setAccountPane = useCallback(
+    (pane: AccountPane) => {
+      setAccountPaneState(pane);
+      setRouteParams({ pane });
+    },
+    [setRouteParams],
+  );
+
+  useEffect(() => {
+    const fromUrl = parseAccountPaneParam(params.pane);
+    setAccountPaneState((prev) => (prev === fromUrl ? prev : fromUrl));
+  }, [params.pane]);
   const { ref: accountScrollRef } = useScrollToTopOnChange([accountPane]);
   const scrollResetKey = accountPane;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);

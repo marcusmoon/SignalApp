@@ -296,12 +296,16 @@ export function LegacyNewsFeedScreen() {
 
   useEffect(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
-    if (fromUrl) {
+    if (fromUrl && fromUrl !== 'video') {
       segmentHydratedRef.current = true;
       return;
     }
     if (useTwoPane) return;
-    void loadNewsSegment().then((s) => setSegment(s));
+    if (segmentHydratedRef.current) return;
+    void loadNewsSegment().then((s) => {
+      segmentHydratedRef.current = true;
+      setSegment(s);
+    });
   }, [routeParams.segment, useTwoPane]);
 
   useEffect(() => {
@@ -745,11 +749,21 @@ export function LegacyNewsFeedScreen() {
     setSegment(key);
     if (useTwoPane) setActiveSubTabKey(key);
     void saveNewsSegment(key);
-    setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
+    setRouteParams({ segment: key });
   }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   const onPickSegmentRef = useRef(onPickSegment);
   onPickSegmentRef.current = onPickSegment;
+
+  /** URL → state. focus-effect에 두면 setParams 경합으로 클릭이 되돌아간다. */
+  useEffect(() => {
+    const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
+    if (!fromUrl || fromUrl === 'video') return;
+    segmentHydratedRef.current = true;
+    if (fromUrl !== segmentRef.current) {
+      onPickSegmentRef.current(fromUrl);
+    }
+  }, [routeParams.segment]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
@@ -765,6 +779,8 @@ export function LegacyNewsFeedScreen() {
       ipadSegmentOrder.map((key) => ({
         key,
         label: t(NEWS_SEGMENT_LABEL[key]),
+        href: '/(tabs)/news',
+        params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
     );
@@ -781,26 +797,26 @@ export function LegacyNewsFeedScreen() {
     onPickSegment(next);
   }, [ipadSegmentOrder, onPickSegment, segment, useTwoPane]);
 
-  // iPad: 홈·사이드바에서 넘어온 세그먼트를 저장값보다 우선 적용
+  // iPad: 홈·사이드바 pending / 저장 세그먼트 (URL과 충돌하지 않을 때만)
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane || !ipadNav.isAvailable) return;
 
-      const paramSegment = parseNewsSegmentKey(
-        Array.isArray(routeParams.segment) ? routeParams.segment[0] : routeParams.segment,
-      );
       const pending = ipadNav.takePendingNewsSegment();
-      const target = pending || paramSegment;
-
-      if (target && target !== 'video') {
+      if (pending && pending !== 'video') {
         segmentHydratedRef.current = true;
-        if (target !== segmentRef.current) {
-          onPickSegmentRef.current(target, { force: true });
+        if (pending !== segmentRef.current) {
+          onPickSegmentRef.current(pending, { force: true });
         }
         return;
       }
 
       if (!segmentHydratedRef.current) {
+        const paramSegment = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
+        if (paramSegment && paramSegment !== 'video') {
+          segmentHydratedRef.current = true;
+          return;
+        }
         segmentHydratedRef.current = true;
         void loadNewsSegment().then((s) => {
           if (s && s !== 'video') {
@@ -814,9 +830,8 @@ export function LegacyNewsFeedScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerNewsSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerNewsSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';

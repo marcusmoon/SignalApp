@@ -329,7 +329,7 @@ export default function DisclosuresScreen() {
       setFilter(key);
       if (useTwoPane) setActiveSubTabKey(key);
       setRouteParams({
-        market: key === 'us' ? undefined : key,
+        market: key,
       });
     },
     [filter, setActiveSubTabKey, setRouteParams, useTwoPane],
@@ -337,22 +337,39 @@ export default function DisclosuresScreen() {
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
 
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    if (symbolFilter) {
+      clearSubTabs();
+      return;
+    }
+    setActiveSubTabKey(filter);
+    setSubTabs(
+      FILTERS.map((item) => ({
+        key: item.key,
+        label: t(item.label),
+        href: '/(tabs)/disclosures',
+        params: { market: item.key },
+        onPress: () => onPickFilter(item.key),
+      })),
+    );
+  }, [
+    clearSubTabs,
+    filter,
+    isFocused,
+    onPickFilter,
+    setActiveSubTabKey,
+    setSubTabs,
+    symbolFilter,
+    t,
+    useTwoPane,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane || symbolFilter) {
-        clearSubTabs();
-        return;
-      }
-      setActiveSubTabKey(filter);
-      setSubTabs(
-        FILTERS.map((item) => ({
-          key: item.key,
-          label: t(item.label),
-          onPress: () => onPickFilter(item.key),
-        })),
-      );
+      if (!useTwoPane) return;
       return () => clearSubTabs();
-    }, [clearSubTabs, filter, onPickFilter, setActiveSubTabKey, setSubTabs, symbolFilter, t, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   useEffect(() => {

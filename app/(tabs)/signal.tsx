@@ -307,7 +307,7 @@ export default function SignalScreen() {
 
   const syncDateRouteParam = useCallback(
     (ymd: string) => {
-      setRouteParams({ date: ymd === todayYmdRef.current ? undefined : ymd });
+      setRouteParams({ date: ymd });
     },
     [setRouteParams],
   );
@@ -468,6 +468,8 @@ export default function SignalScreen() {
       FLAT_TABS.map((tab) => ({
         key: tab.key,
         label: flatTabLabel(tab.key),
+        href: '/(tabs)/signal',
+        params: { session: tab.key },
         onPress: () => onPickSessionTab(tab.key),
       })),
     );
@@ -493,7 +495,7 @@ export default function SignalScreen() {
         const clamped = pendingDate > todayYmdRef.current ? todayYmdRef.current : pendingDate;
         setSelectedYmd(clamped);
         setCalendarMonth(monthFromYmd(clamped));
-        setRouteParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
+        setRouteParams({ date: clamped });
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }
@@ -503,9 +505,8 @@ export default function SignalScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   return (

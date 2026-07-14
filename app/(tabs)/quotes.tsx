@@ -417,7 +417,7 @@ export default function QuotesScreen() {
     setError(null);
     setSegment(key);
     if (useTwoPane) setActiveSubTabKey(key);
-    setRouteParams({ segment: key === 'watch' ? undefined : key });
+    setRouteParams({ segment: key });
   }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
@@ -429,6 +429,8 @@ export default function QuotesScreen() {
       segmentOrder.map((key) => ({
         key,
         label: t(QUOTE_SEGMENT_LABEL[key]),
+        href: '/(tabs)/quotes',
+        params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
     );
@@ -442,9 +444,8 @@ export default function QuotesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      registerQuoteSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerQuoteSubTabs, useTwoPane]),
+    }, [clearSubTabs, useTwoPane]),
   );
 
   const renderQuoteItem = useCallback(

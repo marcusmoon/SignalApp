@@ -62,13 +62,21 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push('/alerts')}
-            style={styles.iconBtn}
+            style={({ pressed }) => [
+              fullWidth ? styles.notifBtn : styles.iconBtn,
+              pressed && styles.actionPressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
             <View style={styles.iconBtnInner}>
               <FontAwesome name="bell" size={18} color={theme.textMuted} />
               {alertsHasUnread ? <View style={styles.alertDot} /> : null}
             </View>
+            {fullWidth ? (
+              <Text style={styles.notifLabel} numberOfLines={1}>
+                {t('screenAlerts')}
+              </Text>
+            ) : null}
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}
@@ -116,6 +124,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bgElevated,
+    },
+    notifBtn: {
+      minHeight: 36,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: theme.bgElevated,
+    },
+    notifLabel: {
+      fontSize: sf(12),
+      fontWeight: '700',
+      color: theme.textMuted,
+      maxWidth: 110,
+    },
+    actionPressed: {
+      opacity: 0.72,
     },
     iconBtnInner: {
       width: 18,

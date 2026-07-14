@@ -745,7 +745,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             icon: 'bell',
             title: t('accountActivityAlerts'),
             body: t('accountActivityAlertsDesc'),
-            onPress: () => router.push('/alerts'),
+            onPress: () => router.push({ pathname: '/alerts', params: { from: 'account' } }),
           },
         ],
       },

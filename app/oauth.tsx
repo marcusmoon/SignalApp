@@ -5,6 +5,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 const authCompletion = WebBrowser.maybeCompleteAuthSession({
@@ -14,6 +15,7 @@ const authCompletion = WebBrowser.maybeCompleteAuthSession({
 
 export default function OAuthReturnScreen() {
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -29,10 +31,14 @@ export default function OAuthReturnScreen() {
     }
 
     const timer = setTimeout(() => {
+      if (ipadNav.isAvailable) {
+        ipadNav.showAccount();
+        return;
+      }
       router.replace('/account');
     }, 450);
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [ipadNav, router]);
 
   return (
     <SafeAreaView style={styles.safe}>

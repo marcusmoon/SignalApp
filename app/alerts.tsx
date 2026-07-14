@@ -181,8 +181,12 @@ export default function AlertsScreen({
   );
 
   const openNotificationSettings = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showSettings('notifications');
+      return;
+    }
     router.push('/settings?tab=notifications');
-  }, [router]);
+  }, [ipadNav, router]);
 
   const onDeleteAllAlerts = useCallback(() => {
     if (items.length === 0) return;
@@ -380,7 +384,13 @@ export default function AlertsScreen({
             <Text style={styles.authGateTitle}>{t('alertsLoginRequiredTitle')}</Text>
             <Text style={styles.authGateBody}>{t('alertsLoginRequiredBody')}</Text>
             <Pressable
-              onPress={() => router.push('/account')}
+              onPress={() => {
+                if (ipadNav.isAvailable) {
+                  ipadNav.showAccount();
+                  return;
+                }
+                router.push('/account');
+              }}
               style={styles.authGateButton}
               accessibilityRole="button"
               accessibilityLabel={t('alertsLoginRequiredButton')}>

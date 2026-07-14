@@ -9,9 +9,23 @@ export type WideOverlayKind =
   | 'account'
   | 'settings'
   | 'alerts'
-  | 'terms-history';
+  | 'terms-history'
+  | 'terms';
 
 export const WIDE_HOME_ROUTE = '/(tabs)/home';
+
+export const WIDE_OVERLAY_CLEAR_PARAMS: Record<string, undefined> = {
+  overlay: undefined,
+  category: undefined,
+  date: undefined,
+  digestId: undefined,
+  market: undefined,
+  tab: undefined,
+  from: undefined,
+  pane: undefined,
+  type: undefined,
+  sort: undefined,
+};
 
 export function normalizePathname(pathname: string): string {
   return (pathname.split('?')[0] ?? '').replace(/\/$/, '') || '/';
@@ -32,6 +46,7 @@ export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind |
   if (path.startsWith('/settings')) return 'settings';
   if (path.startsWith('/alerts')) return 'alerts';
   if (path.startsWith('/terms-history')) return 'terms-history';
+  if (path.startsWith('/terms')) return 'terms';
   return null;
 }
 
@@ -53,6 +68,8 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
       return 'alerts';
     case 'terms-history':
       return 'termsHistory';
+    case 'terms':
+      return 'terms';
     default:
       return 'home';
   }
@@ -67,7 +84,8 @@ export function isWideOverlayKind(value: string | undefined): value is WideOverl
     value === 'account' ||
     value === 'settings' ||
     value === 'alerts' ||
-    value === 'terms-history'
+    value === 'terms-history' ||
+    value === 'terms'
   );
 }
 

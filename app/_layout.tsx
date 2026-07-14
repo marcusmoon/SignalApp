@@ -24,6 +24,7 @@ import { IpadSidebarNavProvider } from '@/contexts/IpadSidebarNavContext';
 import { SidebarSubTabsProvider } from '@/contexts/SidebarSubTabsContext';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { WEB_THEME_BG, webFlexFill, webShellBackground } from '@/constants/webLayout';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { runAppBootstrap, SPLASH_MIN_DISPLAY_MS } from '@/services/appBootstrap';
@@ -145,6 +146,7 @@ function RootLayoutNav() {
 
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
+  const { useTwoPane } = useResponsiveLayout();
   /**
    * iOS standalone/dev-client: react-native-screens `statusBarStyle` 사용, plist YES 필요.
    * Expo Go는 native Info.plist를 통제할 수 없어 RNSScreen statusBarStyle 전달 금지.
@@ -175,12 +177,37 @@ function RootLayoutNav() {
     [effectiveColorScheme, theme],
   );
 
+  const wideOverlayStackRoutes = useMemo(
+    () =>
+      new Set([
+        'settings',
+        'account',
+        'alerts',
+        'calendar',
+        'today-briefing',
+        'news-issues',
+        'disclosure-flow',
+        'terms',
+        'terms-history',
+      ]),
+    [],
+  );
+
   const rootScreenOptions = useMemo(
     () =>
       ({ route }: { route: { name: string } }) => {
         if (route.name === '(tabs)') {
           return {
             headerShown: false,
+            contentStyle: { backgroundColor: webShellBackground(theme.bg) },
+            ...screenStatusBarOptions,
+          };
+        }
+        // Wide overlay routes redirect immediately — never flash native stack headers.
+        if (useTwoPane && wideOverlayStackRoutes.has(route.name)) {
+          return {
+            headerShown: false,
+            animation: 'none' as const,
             contentStyle: { backgroundColor: webShellBackground(theme.bg) },
             ...screenStatusBarOptions,
           };
@@ -210,7 +237,7 @@ function RootLayoutNav() {
           ...screenStatusBarOptions,
         };
       },
-    [screenStatusBarOptions, t, theme],
+    [screenStatusBarOptions, t, theme, useTwoPane, wideOverlayStackRoutes],
   );
 
   return (

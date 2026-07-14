@@ -60,7 +60,13 @@ export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScr
             return (
               <Pressable
                 key={item.key}
-                onPress={() => router.push({ pathname: '/terms', params: { type: item.type } })}
+                onPress={() => {
+                  if (ipadNav.isAvailable) {
+                    ipadNav.showTerms(item.type, { from: 'terms-history' });
+                    return;
+                  }
+                  router.push({ pathname: '/terms', params: { type: item.type } });
+                }}
                 style={({ pressed }) => [
                   styles.menuRow,
                   index === DOCUMENT_LINKS.length - 1 && styles.menuRowLast,

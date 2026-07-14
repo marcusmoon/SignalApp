@@ -406,9 +406,13 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
   const openTerms = useCallback(
     (type: 'service' | 'privacy') => {
+      if (ipadNav.isAvailable) {
+        ipadNav.showTerms(type);
+        return;
+      }
       router.push({ pathname: '/terms', params: { type } });
     },
-    [router],
+    [ipadNav, router],
   );
 
   const reload = useCallback(async () => {

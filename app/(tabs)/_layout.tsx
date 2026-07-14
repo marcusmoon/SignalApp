@@ -27,6 +27,7 @@ import { NewsIssuesContent } from '@/app/news-issues';
 import { DisclosureFlowContent } from '@/app/disclosure-flow';
 import SettingsScreen from '@/app/settings';
 import TermsHistoryScreen from '@/app/terms-history';
+import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
@@ -393,8 +394,11 @@ function IpadWideTabLayout({
     todayBriefingDate,
     calendarFromAccount,
     alertsFromAccount,
+    termsType,
+    termsFromHistory,
     showHome,
     showAccount,
+    showTermsHistory,
   } = useIpadSidebarNav();
   const { theme } = useSignalTheme();
 
@@ -441,6 +445,12 @@ function IpadWideTabLayout({
               />
             ) : contentPane === 'termsHistory' ? (
               <TermsHistoryScreen embedded onBack={showAccount} />
+            ) : contentPane === 'terms' ? (
+              <TermsContent
+                embedded
+                termsType={termsType}
+                onBack={termsFromHistory ? showTermsHistory : showAccount}
+              />
             ) : null}
           </View>
         ) : null}

@@ -183,6 +183,10 @@ export default function MoreHubScreen() {
         return;
       }
       if (item === 'account') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showAccount();
+          return;
+        }
         router.push({ pathname: '/account', params: { from: 'more' } } as never);
       }
     },

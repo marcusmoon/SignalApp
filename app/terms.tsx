@@ -3,10 +3,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   fetchSignalLegalTerms,
   fetchSignalMyTerms,
@@ -19,9 +23,17 @@ import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSes
 
 type TermsType = 'service' | 'privacy';
 
-export default function TermsScreen() {
-  const { type } = useLocalSearchParams<{ type?: string }>();
-  const termsType: TermsType = type === 'privacy' ? 'privacy' : 'service';
+export type TermsScreenProps = {
+  embedded?: boolean;
+  termsType?: TermsType;
+  onBack?: () => void;
+};
+
+export function TermsContent({
+  embedded = false,
+  termsType = 'service',
+  onBack,
+}: TermsScreenProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
@@ -105,9 +117,10 @@ export default function TermsScreen() {
   const body = term.body;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title }} />
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
+      {!embedded ? <Stack.Screen options={{ title }} /> : null}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
+        {onBack ? <AccountSubpaneHeader title={title} onBack={onBack} /> : null}
         <View style={styles.card}>
           <Text style={styles.kicker}>{t('termsKicker')}</Text>
           <Text style={styles.title}>{title}</Text>
@@ -154,6 +167,19 @@ export default function TermsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+export default function TermsScreen() {
+  const { type, from } = useLocalSearchParams<{ type?: string; from?: string }>();
+  const { useTwoPane } = useResponsiveLayout();
+  const termsType: TermsType = type === 'privacy' ? 'privacy' : 'service';
+  const fromParam = from === 'terms-history' ? 'terms-history' : 'account';
+
+  if (useTwoPane) {
+    return <WideOverlayRouteRedirect kind="terms" params={{ type: termsType, from: fromParam }} />;
+  }
+
+  return <TermsContent termsType={termsType} />;
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {

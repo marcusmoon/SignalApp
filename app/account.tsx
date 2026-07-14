@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { SocialProviderFavicon } from '@/components/account/SocialProviderFavicon';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
@@ -901,16 +902,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     navigation.setOptions({
       title: accountHeaderTitle,
       headerBackVisible: false,
-      headerLeft: () => (
-        <Pressable
-          onPress={returnToAccountHub}
-          hitSlop={8}
-          style={{ marginLeft: 4, padding: 10 }}
-          accessibilityRole="button"
-          accessibilityLabel={t('commonBack')}>
-          <FontAwesome5 name="chevron-left" size={18} color={theme.green} />
-        </Pressable>
-      ),
+      headerLeft: () => <PhoneHeaderBackButton onPress={returnToAccountHub} />,
     });
   }, [accountHeaderTitle, accountPane, navigation, returnToAccountHub, showStackHeader, t, theme.green, user]);
 

@@ -10,7 +10,8 @@ type Props = {
 };
 
 /**
- * Wide web/iPad 우측 서브 화면 공통 상단 — 홈·My info 오버레이 모두 동일한 뒤로 + 제목.
+ * 서브 화면 공통 상단 — chevron + 「뒤로」 + 제목.
+ * wide 우측 pane 드릴인, iPhone More 허브 자식(보드·공시·유튜브)에서 동일 패턴.
  */
 export function WideSubpaneHeader({ title, onBack }: Props) {
   const { t } = useLocale();

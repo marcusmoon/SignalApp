@@ -106,7 +106,17 @@ SafeAreaView edges={['top']}
 
 ## iPhone · 좁은 웹
 
-wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화면별 `SignalHeader compact` 등 **현행 유지**. `WideSubpaneHeader`는 wide 전용.
+wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화면별 `SignalHeader compact` 등 **현행 유지**.
+
+### More 허브 자식 · My info 하위
+
+| 진입 | 뒤로 크롬 |
+|---|---|
+| More → 보드·공시·유튜브 (`?from=more`) | `WideSubpaneHeader`(chevron + 「뒤로」 + 제목). `SignalHeader`는 숨김. 탭바·홈 등 다른 진입은 헤더만. |
+| More → My info (스택) | Expo Stack 기본 뒤로. `(tabs)`에 `headerBackTitle: commonBack` |
+| My info → 프로필·비밀번호·소셜 | `PhoneHeaderBackButton`(chevron + 「뒤로」) → 허브 |
+
+뒤로 UI는 **항상 chevron + 라벨**. 아이콘만 두지 않는다.
 
 ## Pull-to-refresh · chip · digest (상호작용)
 

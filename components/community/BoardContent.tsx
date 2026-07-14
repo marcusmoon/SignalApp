@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from 'expo-router/react-navigation';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
@@ -85,12 +85,20 @@ export function BoardContent({
   active = true,
 }: BoardContentProps) {
   const { t } = useLocale();
+  const router = useRouter();
   const setRouteParams = useSafeSetRouteParams();
-  const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
+  const routeParams = useLocalSearchParams<{ source?: string | string[]; from?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
+  const fromMore =
+    !useTwoPane &&
+    !embedded &&
+    String(Array.isArray(routeParams.from) ? routeParams.from[0] : routeParams.from || '') === 'more';
+  const goBackToMore = useCallback(() => {
+    router.navigate('/(tabs)/more' as never);
+  }, [router]);
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('board');
   const [source, setSource] = useState<CommunitySourceFilter>(
@@ -278,13 +286,18 @@ export function BoardContent({
     [ipadNav.isAvailable, openPost, styles.rowWrap],
   );
 
-  const showPhoneChrome = !useTwoPane && !embedded;
-  const showPhoneSegments = showPhoneChrome;
+  const showPhoneChrome = !useTwoPane && !embedded && !fromMore;
+  const showPhoneSegments = !useTwoPane && !embedded;
   const showEmbeddedSegments = embedded;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane || embedded ? [] : ['top']}>
       {showPhoneChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {fromMore ? (
+        <View style={styles.moreBackPad}>
+          <WideSubpaneHeader title={t('screenBoard')} onBack={goBackToMore} />
+        </View>
+      ) : null}
       {active ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>
         {onBack ? <WideSubpaneHeader title={t('screenBoard')} onBack={onBack} /> : null}
@@ -441,5 +454,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.danger,
     },
     pressed: { opacity: 0.78 },
+    moreBackPad: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
   });
 }

@@ -199,6 +199,8 @@ function RootLayoutNav() {
         if (route.name === '(tabs)') {
           return {
             headerShown: false,
+            /** More → Account 등 탭에서 스택으로 나갈 때 back 라벨 */
+            headerBackTitle: t('commonBack'),
             contentStyle: { backgroundColor: webShellBackground(theme.bg) },
             ...screenStatusBarOptions,
           };

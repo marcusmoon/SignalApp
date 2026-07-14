@@ -12,11 +12,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -83,12 +84,20 @@ export default function YoutubeScreen() {
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const setRouteParams = useSafeSetRouteParams();
-  const { sort: sortParam } = useLocalSearchParams<{ sort?: string | string[] }>();
+  const router = useRouter();
+  const { sort: sortParam, from: fromParam } = useLocalSearchParams<{
+    sort?: string | string[];
+    from?: string | string[];
+  }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
+  const fromMore = !useTwoPane && firstRouteParam(fromParam) === 'more';
+  const goBackToMore = useCallback(() => {
+    router.navigate('/(tabs)/more' as never);
+  }, [router]);
   const ipadState = useIpadSidebarNavState();
   const ipadNav = useIpadSidebarNavActions();
   const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
@@ -587,7 +596,12 @@ export default function YoutubeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {fromMore ? (
+        <View style={styles.moreBackPad}>
+          <WideSubpaneHeader title={t('tabYoutube')} onBack={goBackToMore} />
+        </View>
+      ) : null}
       {isFocused ? <OtaUpdateBanner /> : null}
 
       {youtubeListPanel}
@@ -642,6 +656,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
+    moreBackPad: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

@@ -41,10 +41,18 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
-  board: { href: '/(tabs)/board' as Href, icon: 'comments', titleId: 'screenBoard' },
-  disclosures: { href: '/(tabs)/disclosures' as Href, icon: 'file-text-o', titleId: 'tabDisclosures' },
-  youtube: { href: '/(tabs)/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
-  account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
+  board: { href: { pathname: '/(tabs)/board', params: { from: 'more' } } as Href, icon: 'comments', titleId: 'screenBoard' },
+  disclosures: {
+    href: { pathname: '/(tabs)/disclosures', params: { from: 'more' } } as Href,
+    icon: 'file-text-o',
+    titleId: 'tabDisclosures',
+  },
+  youtube: {
+    href: { pathname: '/(tabs)/youtube', params: { from: 'more' } } as Href,
+    icon: 'youtube-play',
+    titleId: 'tabYoutube',
+  },
+  account: { href: { pathname: '/account', params: { from: 'more' } } as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
 
 const GRID_GAP = 8;

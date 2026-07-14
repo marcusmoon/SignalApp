@@ -14,8 +14,12 @@ export function useResponsiveLayout() {
   const isWeb = Platform.OS === 'web';
   const isIOS = Platform.OS === 'ios';
   const isPad = isIOS && 'isPad' in Platform && Platform.isPad === true;
-  /** iPad or desktop web: sidebar + wide content instead of floating phone tab bar. */
-  const isWideLayout = (isPad || isWeb) && width >= APP_WIDE_LAYOUT_MIN_WIDTH;
+  /**
+   * Wide shell (sidebar + in-pane overlays):
+   * - Native iPad: always — portrait widths are often under 900 but still use two-pane.
+   * - Web: only when width ≥ APP_WIDE_LAYOUT_MIN_WIDTH (phone browsers stay compact).
+   */
+  const isWideLayout = isPad || (isWeb && width >= APP_WIDE_LAYOUT_MIN_WIDTH);
   const mode: ResponsiveLayoutMode = isWideLayout ? 'wide' : width >= 768 ? 'regular' : 'compact';
 
   return {

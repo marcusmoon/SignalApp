@@ -4,6 +4,7 @@
  */
 export const APP_CONTENT_MAX_WIDTH = 720;
 
+/** Web only — below this width the phone shell is used. Native iPad is always wide. */
 export const APP_WIDE_LAYOUT_MIN_WIDTH = 900;
 
 export const APP_WIDE_CONTENT_MAX_WIDTH = 1120;

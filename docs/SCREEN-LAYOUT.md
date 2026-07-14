@@ -15,11 +15,12 @@
 | 모드 | 조건 | `useTwoPane` |
 |---|---|---|
 | compact | 너비 < 768 | false |
-| regular | 768 ≤ 너비 < 900 | false |
-| wide | iPad 또는 웹, 너비 ≥ 900 | true |
+| regular | 768 ≤ 너비 < 900 (웹·iPhone) | false |
+| wide | **네이티브 iPad** (항상) 또는 **웹** 너비 ≥ 900 | true |
 
 - **iPhone**: compact / regular — 하단 플로팅 탭바, 탭마다 `SignalHeader compact`.
-- **iPad·넓은 웹**: wide — 좌측 `SignalSidebarTabBar`·상단 `SignalHeader`는 `WideWebShell`에서 **고정 1회**. 우측 pane만 페이지가 바뀐다. 탭 화면에서 헤더·탭바 중복 금지.
+- **iPad**: 세로·가로 모두 wide — 좌측 `SignalSidebarTabBar`·상단 `SignalHeader`는 `WideWebShell`에서 **고정 1회**. 우측 pane만 페이지가 바뀐다 (홈·내 정보 드릴인도 전체 Stack 전환 금지).
+- **넓은 웹** (≥900): iPad와 동일. 좁은 웹은 iPhone과 동일.
 - **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
 
 콘텐츠 최대 폭: `APP_CONTENT_MAX_WIDTH` (720), wide는 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
@@ -173,7 +174,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 | 하단 | 탭바 + inset 헬퍼 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` |
 | 가로 pad | 16 | 탭 pane: 16 또는 0(`wideContentFill`); 임베디드 스택: 20 |
 
-웹은 iPad와 동일 breakpoint(900px)를 쓰고, 스크롤 viewport는 `constants/webLayout.ts`의 `webScrollViewportStyle`을 따른다.
+웹 wide는 900px breakpoint를 쓰고, 네이티브 iPad는 항상 wide다. 스크롤 viewport는 `constants/webLayout.ts`의 `webScrollViewportStyle`을 따른다.
 
 ## 재사용 레이아웃 컴포넌트
 

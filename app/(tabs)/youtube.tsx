@@ -35,6 +35,8 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_B
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
+  SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -648,7 +650,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     topFixedStackWide: fixedHeader.fixedStackWide,
     topFixedSubmenu: fixedHeader.submenuStrip,
     topFixedChannelFilter: fixedHeader.digestSlot,
-    topFixedChannelFilterWide: fixedHeader.digestSlotWide,
+    /** wide도 리스트 inset과 동일 — digests의 edge-to-edge(0)를 쓰지 않는다 */
+    topFixedChannelFilterWide: {
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingBottom: SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
+    },
     channelFilterRow: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
@@ -659,7 +665,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
-    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    listContent: {
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
     channelFilterChip: {
       minHeight: 32,
       flexDirection: 'row',

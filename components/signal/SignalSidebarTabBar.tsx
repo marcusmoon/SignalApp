@@ -141,6 +141,7 @@ export function SignalSidebarTabBar({
     if (tab.name === 'youtube') {
       if (ipadNav.isAvailable) {
         ipadNav.showYoutubeTab('latest');
+        return;
       }
       ipadNav.showTabs();
       router.navigate(tab.route as Parameters<typeof router.navigate>[0]);
@@ -164,12 +165,7 @@ export function SignalSidebarTabBar({
             ]}
             onPress={() => {
               if (!ipadNav.isAvailable) return;
-              const sortKey = sub.key as YoutubeSortKey;
-              ipadNav.showYoutubeTab(sortKey);
-              router.navigate({
-                pathname: sub.route,
-                params: { sort: sortKey === 'latest' ? undefined : sortKey },
-              } as Parameters<typeof router.navigate>[0]);
+              ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: subActive }}>

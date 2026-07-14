@@ -345,7 +345,7 @@ export default function DisclosureFlowScreen() {
   );
 
   return useTwoPane ? (
-    <IpadSidebarScreen title={t('disclosureFlowTitle')} backHref="/(tabs)/more">
+    <IpadSidebarScreen title={t('disclosureFlowTitle')} backHref="/(tabs)/home">
       {content}
     </IpadSidebarScreen>
   ) : (

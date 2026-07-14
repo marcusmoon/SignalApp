@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, StyleSheet, View, type ColorValue } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from "expo-router/js-tabs";
+import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -436,12 +437,14 @@ function IpadWideTabLayout({
             ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
               <TodayBriefingContent embedded date={todayBriefingDate} onBack={subpaneBack} />
             ) : contentPane === 'marketBriefing' ? (
-              <SignalScreen
-                embedded
-                onBack={subpaneBack}
-                initialSession={marketBriefingParams?.session ?? null}
-                initialDate={marketBriefingParams?.date ?? null}
-              />
+              <BottomTabBarHeightContext.Provider value={0}>
+                <SignalScreen
+                  embedded
+                  onBack={subpaneBack}
+                  initialSession={marketBriefingParams?.session ?? null}
+                  initialDate={marketBriefingParams?.date ?? null}
+                />
+              </BottomTabBarHeightContext.Provider>
             ) : contentPane === 'calendar' ? (
               <CalendarScreen
                 embedded

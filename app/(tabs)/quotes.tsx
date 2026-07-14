@@ -116,6 +116,11 @@ export default function QuotesScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>(() => parseQuoteSegmentParam(segmentParam));
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
+
+  useEffect(() => {
+    const fromUrl = parseQuoteSegmentParam(segmentParam);
+    setSegment((prev) => (prev === fromUrl ? prev : fromUrl));
+  }, [segmentParam]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);

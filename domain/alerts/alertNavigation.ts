@@ -269,6 +269,7 @@ export function navigateToAlert(
     const session = normalizeSignalSessionParam(params.session || '') ?? undefined;
     if (ipadNav.isAvailable) {
       ipadNav.showSignalTab(session, date);
+      return;
     }
     router.navigate({
       pathname: '/(tabs)/signal',

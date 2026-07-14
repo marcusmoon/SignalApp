@@ -28,6 +28,7 @@ import {
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -113,6 +114,7 @@ export function NewsIssuesContent({
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
+  const setRouteParams = useSafeSetRouteParams();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
@@ -141,10 +143,51 @@ export function NewsIssuesContent({
     setExpandedId(initialDigestId);
   }, [initialDigestId]);
 
+  const syncRoute = useCallback(
+    (next: { category?: NewsIssuesCategory; date?: string; digestId?: string | null }) => {
+      const nextCategory = next.category ?? category;
+      const nextDate = next.date ?? selectedYmd;
+      const nextDigestId = next.digestId === undefined ? expandedId : next.digestId;
+      setRouteParams({
+        category: nextCategory === 'all' ? undefined : nextCategory,
+        date: nextDate,
+        digestId: nextDigestId || undefined,
+      });
+    },
+    [category, expandedId, selectedYmd, setRouteParams],
+  );
+
+  const onPickCategory = useCallback(
+    (key: NewsIssuesCategory) => {
+      if (key === category) return;
+      setCategory(key);
+      syncRoute({ category: key });
+    },
+    [category, syncRoute],
+  );
+
+  const onPickDate = useCallback(
+    (ymd: string) => {
+      if (ymd === selectedYmd) return;
+      setSelectedYmd(ymd);
+      syncRoute({ date: ymd });
+    },
+    [selectedYmd, syncRoute],
+  );
+
+  const onToggleExpand = useCallback(
+    (id: string) => {
+      const next = expandedId === id ? null : id;
+      setExpandedId(next);
+      syncRoute({ digestId: next });
+    },
+    [expandedId, syncRoute],
+  );
+
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
     selectedYmd,
     todayYmd,
-    onSelectYmd: setSelectedYmd,
+    onSelectYmd: onPickDate,
   });
 
   const load = useCallback(async () => {
@@ -226,7 +269,7 @@ export function NewsIssuesContent({
                 return (
                   <Pressable
                     key={key}
-                    onPress={() => setCategory(key)}
+                    onPress={() => onPickCategory(key)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     style={[styles.categoryTab, active && styles.categoryTabActive]}>
@@ -245,10 +288,10 @@ export function NewsIssuesContent({
             nextA11y={t('calendarDayNextA11y')}
             labelA11y={t('insightOpenCalendar')}
             todayLabel={t('commonToday')}
-            onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
-            onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
+            onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
             onPressLabel={openDatePicker}
-            onToday={() => setSelectedYmd(todayYmd)}
+            onToday={() => onPickDate(todayYmd)}
             showToday={selectedYmd !== todayYmd}
             nextDisabled={selectedYmd >= todayYmd}
             style={styles.dateNav}
@@ -310,7 +353,7 @@ export function NewsIssuesContent({
                         })}
                       </Text>
                       <Pressable
-                        onPress={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                        onPress={() => onToggleExpand(item.id)}
                         accessibilityRole="button"
                         accessibilityState={{ expanded }}
                         style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>

@@ -35,6 +35,7 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { MessageId } from '@/locales/messages';
@@ -125,6 +126,7 @@ export function DisclosureFlowContent({
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
+  const setRouteParams = useSafeSetRouteParams();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
@@ -153,10 +155,42 @@ export function DisclosureFlowContent({
     setHighlightId(initialDigestId);
   }, [initialDigestId]);
 
+  const syncRoute = useCallback(
+    (next: { market?: DisclosureFlowMarket; date?: string; digestId?: string | null }) => {
+      const nextMarket = next.market ?? market;
+      const nextDate = next.date ?? selectedYmd;
+      const nextDigestId = next.digestId === undefined ? highlightId : next.digestId;
+      setRouteParams({
+        market: nextMarket === 'all' ? undefined : nextMarket,
+        date: nextDate,
+        digestId: nextDigestId || undefined,
+      });
+    },
+    [highlightId, market, selectedYmd, setRouteParams],
+  );
+
+  const onPickMarket = useCallback(
+    (key: DisclosureFlowMarket) => {
+      if (key === market) return;
+      setMarket(key);
+      syncRoute({ market: key });
+    },
+    [market, syncRoute],
+  );
+
+  const onPickDate = useCallback(
+    (ymd: string) => {
+      if (ymd === selectedYmd) return;
+      setSelectedYmd(ymd);
+      syncRoute({ date: ymd });
+    },
+    [selectedYmd, syncRoute],
+  );
+
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
     selectedYmd,
     todayYmd,
-    onSelectYmd: setSelectedYmd,
+    onSelectYmd: onPickDate,
   });
 
   const openDetail = useCallback(
@@ -234,7 +268,7 @@ export function DisclosureFlowContent({
                 return (
                   <Pressable
                     key={key}
-                    onPress={() => setMarket(key)}
+                    onPress={() => onPickMarket(key)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     style={[styles.categoryTab, active && styles.categoryTabActive]}>
@@ -253,10 +287,10 @@ export function DisclosureFlowContent({
             nextA11y={t('calendarDayNextA11y')}
             labelA11y={t('insightOpenCalendar')}
             todayLabel={t('commonToday')}
-            onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
-            onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
+            onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
             onPressLabel={openDatePicker}
-            onToday={() => setSelectedYmd(todayYmd)}
+            onToday={() => onPickDate(todayYmd)}
             showToday={selectedYmd !== todayYmd}
             nextDisabled={selectedYmd >= todayYmd}
             style={styles.dateNav}

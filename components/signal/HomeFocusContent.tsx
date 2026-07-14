@@ -557,10 +557,6 @@ export function HomeFocusContent({
       const params = { date: selectedYmd, ...(session ? { session } : null) };
       if (ipadNav.isAvailable) {
         ipadNav.showSignalTab(session, selectedYmd);
-        router.navigate({
-          pathname: '/(tabs)/signal',
-          params,
-        } as never);
         return;
       }
       router.navigate({

@@ -187,9 +187,7 @@ export default function BoardScreen() {
   useFocusEffect(
     useCallback(() => {
       const paramSource = parseCommunitySourceParam(routeParams.source);
-      if (paramSource) {
-        changeSource(paramSource, { fromRoute: true });
-      }
+      changeSource(paramSource ?? COMMUNITY_SOURCE_ALL, { fromRoute: true });
     }, [changeSource, routeParams.source]),
   );
 

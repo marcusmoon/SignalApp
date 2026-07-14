@@ -35,7 +35,7 @@ import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChan
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -112,7 +112,7 @@ export default function QuotesScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('quotes');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>(() => parseQuoteSegmentParam(segmentParam));
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
@@ -444,8 +444,9 @@ export default function QuotesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
+      registerQuoteSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, useTwoPane]),
+    }, [clearSubTabs, registerQuoteSubTabs, useTwoPane]),
   );
 
   const renderQuoteItem = useCallback(

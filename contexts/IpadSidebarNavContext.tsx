@@ -1,4 +1,4 @@
-import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
+import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { isSettingsTab, type SettingsTab } from '@/constants/settingsTabs';
@@ -76,6 +76,11 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return text || undefined;
 }
 
+function parseYoutubeSortParam(raw: string | undefined): YoutubeSortKey | null {
+  if (raw === 'popular' || raw === 'latest') return raw;
+  return null;
+}
+
 function parseNewsIssuesCategory(raw: string | undefined): NewsIssuesCategory {
   if (raw === 'us') return 'global';
   if (raw === 'kr') return 'korea';
@@ -92,7 +97,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const { useTwoPane } = useResponsiveLayout();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{
+  /** Root Layout 밖에서는 local params가 비다. 새로고침 복원은 global params를 쓴다. */
+  const params = useGlobalSearchParams<{
     tab?: string | string[];
     sort?: string | string[];
     category?: string | string[];
@@ -108,14 +114,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     return isSettingsTab(tab) ? tab : 'display';
   });
   const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>(() => {
-    const sort = firstParam(params.sort);
-    return sort === 'popular' ? 'popular' : 'latest';
+    return parseYoutubeSortParam(firstParam(params.sort)) ?? 'latest';
   });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
+  const youtubeSortRef = useRef(youtubeSort);
+  youtubeSortRef.current = youtubeSort;
 
   /** URL이 바뀌면 pane·서브 상태를 맞춰 새로고침·공유 링크를 복원한다. */
   useEffect(() => {
@@ -127,8 +134,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     if (isSettingsTab(tab)) setSettingsTab(tab);
 
     if (pathname.includes('/youtube')) {
-      const sort = firstParam(params.sort);
-      setYoutubeSort(sort === 'popular' ? 'popular' : 'latest');
+      const sort = parseYoutubeSortParam(firstParam(params.sort));
+      // 명시된 값만 반영 — 쿼리 부재 시 latest로 덮어쓰지 않는다.
+      if (sort) setYoutubeSort(sort);
     }
 
     if (pane === 'newsIssues') {
@@ -210,12 +218,13 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   );
 
   const showYoutubeTab = useCallback(
-    (sort: YoutubeSortKey = 'latest') => {
-      setYoutubeSort(sort);
+    (sort?: YoutubeSortKey) => {
+      const next = sort ?? youtubeSortRef.current;
+      setYoutubeSort(next);
       setContentPane('tabs');
       router.navigate({
         pathname: '/(tabs)/youtube',
-        params: { sort },
+        params: { sort: next },
       } as never);
     },
     [router],

@@ -32,7 +32,7 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_B
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
@@ -68,7 +68,7 @@ export default function BoardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('board');
   const [source, setSource] = useState<CommunitySourceFilter>(
     () => parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL,
   );
@@ -219,8 +219,9 @@ export default function BoardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
+      registerBoardSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, useTwoPane]),
+    }, [clearSubTabs, registerBoardSubTabs, useTwoPane]),
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);

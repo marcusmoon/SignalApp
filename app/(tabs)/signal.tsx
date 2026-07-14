@@ -38,7 +38,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
@@ -118,7 +118,7 @@ export default function SignalScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('signal');
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const initialTodayYmd = toYmd(new Date());
@@ -505,8 +505,9 @@ export default function SignalScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
+      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, useTwoPane]),
+    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
   );
 
   return (

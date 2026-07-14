@@ -31,7 +31,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -106,7 +106,7 @@ export default function DisclosuresScreen() {
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('disclosures');
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);

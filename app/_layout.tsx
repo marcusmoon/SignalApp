@@ -12,6 +12,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
+import { WideWebShell } from '@/components/layout/WideWebShell';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
@@ -219,7 +220,9 @@ function RootLayoutNav() {
         <PushDeviceRegistrar />
         <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
           <ThemedStatusBar />
-          <Stack screenOptions={rootScreenOptions} />
+          <WideWebShell>
+            <Stack screenOptions={rootScreenOptions} />
+          </WideWebShell>
         </View>
       </FeedUnreadBadgesProvider>
     </ThemeProvider>

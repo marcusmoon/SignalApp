@@ -176,7 +176,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 컴포넌트 | 용도 |
 |---|---|
 | `SignalHeader` | iPhone 탭 상단 / wide 전역(고정) |
-| `WideSubpaneHeader` | wide 우측 pane **드릴인** 전용 뒤로+제목 |
+| `WideSubpaneHeader` | wide 우측 pane **드릴인** — chevron + 제목 (`PhoneHeaderBackButton`) |
 | `SignalFloatingTabBar` | iPhone 하단 탭 |
 | `IpadSidebarScreen` | wide 스택 |
 | `MasterDetailLayout` | 시세·공시 2-pane |

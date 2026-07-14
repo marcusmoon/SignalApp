@@ -19,6 +19,7 @@ import { FeedUnreadBadgesProvider } from '@/contexts/FeedUnreadBadgesContext';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
+import { IpadSidebarNavProvider } from '@/contexts/IpadSidebarNavContext';
 import { SidebarSubTabsProvider } from '@/contexts/SidebarSubTabsContext';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { WEB_THEME_BG, webFlexFill, webShellBackground } from '@/constants/webLayout';
@@ -101,9 +102,11 @@ export default function RootLayout() {
       <LocaleProvider>
         <SignalThemeProvider>
           <SidebarSubTabsProvider>
-            <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
-              <RootLayoutNav />
-            </OtaBannerProvider>
+            <IpadSidebarNavProvider>
+              <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
+                <RootLayoutNav />
+              </OtaBannerProvider>
+            </IpadSidebarNavProvider>
           </SidebarSubTabsProvider>
         </SignalThemeProvider>
       </LocaleProvider>

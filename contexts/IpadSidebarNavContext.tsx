@@ -1,10 +1,11 @@
-import { useLocalSearchParams, usePathname } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { isSettingsTab, type SettingsTab } from '@/constants/settingsTabs';
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
-import type { DisclosureFlowMarket, HomeDigestCategory, NewsIssuesCategory } from '@/constants/ipadHomeNav';
+import type { DisclosureFlowMarket, NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
 
 export type YoutubeSortKey = 'latest' | 'popular';
@@ -69,19 +70,43 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   takePendingSignalDate: () => null,
 });
 
+function firstParam(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const text = String(raw || '').trim();
+  return text || null;
+}
+
+function parseNewsIssuesCategory(raw: string | null): NewsIssuesCategory {
+  if (raw === 'us' || raw === 'kr' || raw === 'crypto' || raw === 'all') return raw;
+  return 'all';
+}
+
+function parseDisclosureMarket(raw: string | null): DisclosureFlowMarket | undefined {
+  if (raw === 'us' || raw === 'kr') return raw;
+  return undefined;
+}
+
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
+  const { useTwoPane } = useResponsiveLayout();
+  const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ tab?: string | string[]; sort?: string | string[] }>();
-  const restoredFromUrlRef = useRef(false);
+  const params = useLocalSearchParams<{
+    tab?: string | string[];
+    sort?: string | string[];
+    category?: string | string[];
+    date?: string | string[];
+    digestId?: string | string[];
+    market?: string | string[];
+  }>();
   const [contentPane, setContentPane] = useState<IpadContentPane>(() =>
     resolveIpadContentPaneFromPathname(pathname),
   );
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
-    const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const tab = firstParam(params.tab);
     return isSettingsTab(tab) ? tab : 'display';
   });
   const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>(() => {
-    const sort = Array.isArray(params.sort) ? params.sort[0] : params.sort;
+    const sort = firstParam(params.sort);
     return sort === 'popular' ? 'popular' : 'latest';
   });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
@@ -90,51 +115,109 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
 
-  /** 브라우저 새로고침: URL이 준비된 뒤 한 번만 pane을 복원한다. */
+  /** URL이 바뀌면 pane·서브 상태를 맞춰 새로고침·공유 링크를 복원한다. */
   useEffect(() => {
-    if (restoredFromUrlRef.current) return;
-    if (!pathname) return;
-    restoredFromUrlRef.current = true;
-    setContentPane(resolveIpadContentPaneFromPathname(pathname));
-    const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (!useTwoPane) return;
+    const pane = resolveIpadContentPaneFromPathname(pathname);
+    setContentPane(pane);
+
+    const tab = firstParam(params.tab);
     if (isSettingsTab(tab)) setSettingsTab(tab);
+
     if (pathname.includes('/youtube')) {
-      const sort = Array.isArray(params.sort) ? params.sort[0] : params.sort;
-      if (sort === 'popular') setYoutubeSort('popular');
+      const sort = firstParam(params.sort);
+      setYoutubeSort(sort === 'popular' ? 'popular' : 'latest');
     }
-  }, [pathname, params.sort, params.tab]);
+
+    if (pane === 'newsIssues') {
+      const date = firstParam(params.date);
+      if (date) {
+        setNewsIssuesParams({
+          category: parseNewsIssuesCategory(firstParam(params.category)),
+          date,
+          digestId: firstParam(params.digestId),
+        });
+      }
+    }
+
+    if (pane === 'disclosureFlow') {
+      const date = firstParam(params.date);
+      if (date) {
+        setDisclosureFlowParams({
+          date,
+          market: parseDisclosureMarket(firstParam(params.market)),
+          digestId: firstParam(params.digestId),
+        });
+      }
+    }
+  }, [pathname, params.tab, params.sort, params.category, params.date, params.digestId, params.market, useTwoPane]);
 
   const showHome = useCallback(() => {
     setContentPane('home');
-  }, []);
+    router.navigate('/(tabs)/home' as never);
+  }, [router]);
 
   const showAccount = useCallback(() => {
     setContentPane('account');
-  }, []);
+    router.navigate('/account' as never);
+  }, [router]);
 
   const showTabs = useCallback(() => {
     setContentPane('tabs');
   }, []);
 
-  const showSettings = useCallback((tab: SettingsTab = 'display') => {
-    setSettingsTab(tab);
-    setContentPane('settings');
-  }, []);
+  const showSettings = useCallback(
+    (tab: SettingsTab = 'display') => {
+      setSettingsTab(tab);
+      setContentPane('settings');
+      router.navigate({ pathname: '/settings', params: { tab, from: 'account' } } as never);
+    },
+    [router],
+  );
 
-  const showNewsIssues = useCallback((params: IpadNewsIssuesPaneParams) => {
-    setNewsIssuesParams(params);
-    setContentPane('newsIssues');
-  }, []);
+  const showNewsIssues = useCallback(
+    (next: IpadNewsIssuesPaneParams) => {
+      setNewsIssuesParams(next);
+      setContentPane('newsIssues');
+      router.navigate({
+        pathname: '/news-issues',
+        params: {
+          category: next.category,
+          date: next.date,
+          ...(next.digestId ? { digestId: next.digestId } : null),
+        },
+      } as never);
+    },
+    [router],
+  );
 
-  const showDisclosureFlow = useCallback((params: IpadDisclosureFlowPaneParams) => {
-    setDisclosureFlowParams(params);
-    setContentPane('disclosureFlow');
-  }, []);
+  const showDisclosureFlow = useCallback(
+    (next: IpadDisclosureFlowPaneParams) => {
+      setDisclosureFlowParams(next);
+      setContentPane('disclosureFlow');
+      router.navigate({
+        pathname: '/disclosure-flow',
+        params: {
+          date: next.date,
+          ...(next.market ? { market: next.market } : null),
+          ...(next.digestId ? { digestId: next.digestId } : null),
+        },
+      } as never);
+    },
+    [router],
+  );
 
-  const showYoutubeTab = useCallback((sort: YoutubeSortKey = 'latest') => {
-    setYoutubeSort(sort);
-    setContentPane('tabs');
-  }, []);
+  const showYoutubeTab = useCallback(
+    (sort: YoutubeSortKey = 'latest') => {
+      setYoutubeSort(sort);
+      setContentPane('tabs');
+      router.navigate({
+        pathname: '/(tabs)/youtube',
+        params: { sort: sort === 'latest' ? undefined : sort },
+      } as never);
+    },
+    [router],
+  );
 
   const showNewsTab = useCallback((segment?: NewsSegmentKey) => {
     if (segment) pendingNewsSegmentRef.current = segment;
@@ -167,7 +250,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      isAvailable: true,
+      isAvailable: useTwoPane,
       contentPane,
       isHomePaneActive: contentPane === 'home' || contentPane === 'newsIssues' || contentPane === 'disclosureFlow',
       isAccountPaneActive: contentPane === 'account',
@@ -190,6 +273,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       takePendingSignalDate,
     }),
     [
+      useTwoPane,
       contentPane,
       settingsTab,
       youtubeSort,

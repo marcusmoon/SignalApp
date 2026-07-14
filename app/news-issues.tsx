@@ -389,7 +389,7 @@ export default function NewsIssuesScreen() {
   );
 
   return useTwoPane ? (
-    <IpadSidebarScreen title={t('newsIssuesTitle')} backHref="/(tabs)/more">
+    <IpadSidebarScreen title={t('newsIssuesTitle')} backHref="/(tabs)/home">
       {content}
     </IpadSidebarScreen>
   ) : (

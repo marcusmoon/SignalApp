@@ -29,7 +29,7 @@ import { DisclosureFlowContent } from '@/app/disclosure-flow';
 import SettingsScreen from '@/app/settings';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
-import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { WebHeaderRefreshProvider, useWebHeaderRefreshTrigger } from '@/contexts/WebHeaderRefreshContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -246,17 +246,15 @@ export default function TabLayout() {
 
   if (isWideLayout) {
     return (
-      <IpadSidebarNavProvider>
-        <WebHeaderRefreshProvider>
-          <IpadWideTabLayout
-            iPadScreenOptions={iPadScreenOptions}
-            newsTabBadge={newsTabBadge}
-            signalTabBadge={signalTabBadge}
-            disclosureTabBadge={disclosureTabBadge}
-            t={t}
-          />
-        </WebHeaderRefreshProvider>
-      </IpadSidebarNavProvider>
+      <WebHeaderRefreshProvider>
+        <IpadWideTabLayout
+          iPadScreenOptions={iPadScreenOptions}
+          newsTabBadge={newsTabBadge}
+          signalTabBadge={signalTabBadge}
+          disclosureTabBadge={disclosureTabBadge}
+          t={t}
+        />
+      </WebHeaderRefreshProvider>
     );
   }
 

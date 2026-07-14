@@ -44,7 +44,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   appendUniqueNewsRows,
@@ -161,7 +161,7 @@ export function LegacyNewsFeedScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const adsEnabled = useAdsEnabled();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('news');
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
     return fromUrl ?? DEFAULT_NEWS_SEGMENT;
@@ -830,8 +830,9 @@ export function LegacyNewsFeedScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
+      registerNewsSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, useTwoPane]),
+    }, [clearSubTabs, registerNewsSubTabs, useTwoPane]),
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';

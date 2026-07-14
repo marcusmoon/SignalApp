@@ -140,7 +140,8 @@ export function SignalSidebarTabBar({
     }
     if (tab.name === 'youtube') {
       if (ipadNav.isAvailable) {
-        ipadNav.showYoutubeTab('latest');
+        // 현재 정렬 유지 (사이드바 메인 클릭이 latest로 리셋하지 않음)
+        ipadNav.showYoutubeTab();
         return;
       }
       ipadNav.showTabs();

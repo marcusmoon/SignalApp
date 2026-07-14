@@ -86,7 +86,15 @@ export default function YoutubeScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
   const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
-  const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
+  /** URL이 있으면 우선 — wide에서도 새로고침·공유가 ipadNav 초기값에 가리지 않게 한다. */
+  const urlSort = parseYoutubeSortParam(sortParam);
+  const hasExplicitSortParam = firstRouteParam(sortParam) === 'popular' || firstRouteParam(sortParam) === 'latest';
+  const effectiveSort =
+    hasExplicitSortParam
+      ? urlSort
+      : useTwoPane && ipadNav.isAvailable
+        ? ipadNav.youtubeSort
+        : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -327,11 +335,18 @@ export default function YoutubeScreen() {
   }, [load, selectedHandles, effectiveSort]);
 
   useEffect(() => {
+    if (!hasExplicitSortParam) return;
+    if (sort === urlSort) return;
+    setSort(urlSort);
+  }, [hasExplicitSortParam, sort, urlSort]);
+
+  useEffect(() => {
     if (!useTwoPane || !ipadNav.isAvailable) return;
+    if (hasExplicitSortParam) return;
     if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
     syncedYoutubeSortRef.current = ipadNav.youtubeSort;
     setSort(ipadNav.youtubeSort);
-  }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
+  }, [hasExplicitSortParam, ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
 
   const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
     if (a === null || b === null) return a === b;
@@ -346,18 +361,18 @@ export default function YoutubeScreen() {
   }, [selectedHandles]);
 
   const applyPopularFilter = useCallback(() => {
-    if (sort === 'popular') return;
+    if (effectiveSort === 'popular') return;
     setSort('popular');
     if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('popular');
     setRouteParams({ sort: 'popular' });
-  }, [ipadNav, setRouteParams, sort, useTwoPane]);
+  }, [effectiveSort, ipadNav, setRouteParams, useTwoPane]);
 
   const applyLatestSortFilter = useCallback(() => {
-    if (sort === 'latest') return;
+    if (effectiveSort === 'latest') return;
     setSort('latest');
     if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
     setRouteParams({ sort: 'latest' });
-  }, [ipadNav, setRouteParams, sort, useTwoPane]);
+  }, [effectiveSort, ipadNav, setRouteParams, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);
@@ -444,19 +459,19 @@ export default function YoutubeScreen() {
               <View style={styles.segment}>
                 <Pressable
                   onPress={applyLatestSortFilter}
-                  style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
+                  style={[styles.segBtn, effectiveSort === 'latest' && styles.segBtnActive]}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: sort === 'latest' }}>
-                  <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
+                  accessibilityState={{ selected: effectiveSort === 'latest' }}>
+                  <Text style={[styles.segText, effectiveSort === 'latest' && styles.segTextActive]}>
                     {t('youtubeSortLatest')}
                   </Text>
                 </Pressable>
                 <Pressable
                   onPress={applyPopularFilter}
-                  style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+                  style={[styles.segBtn, effectiveSort === 'popular' && styles.segBtnActive]}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: sort === 'popular' }}>
-                  <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+                  accessibilityState={{ selected: effectiveSort === 'popular' }}>
+                  <Text style={[styles.segText, effectiveSort === 'popular' && styles.segTextActive]}>
                     {t('youtubeSortPopular')}
                   </Text>
                 </Pressable>

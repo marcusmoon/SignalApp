@@ -44,12 +44,21 @@ export type IpadDisclosureFlowPaneParams = {
   digestId?: string | null;
 };
 
+export type WidePaneDrillFrom = 'home' | 'account' | 'termsHistory' | 'tabs' | 'alerts';
+
+export type WidePaneDrillOptions = {
+  /** In-memory drill origin — never put this in the shareable URL. */
+  drillFrom?: WidePaneDrillFrom;
+};
+
 type IpadSidebarNavState = {
   isAvailable: boolean;
   contentPane: IpadContentPane;
   isHomePaneActive: boolean;
   isAccountPaneActive: boolean;
   isSettingsPaneActive: boolean;
+  /** True when the right pane was opened via in-pane drill-in (show WideSubpaneHeader). */
+  widePaneCanGoBack: boolean;
   settingsTab: SettingsTab;
   youtubeSort: YoutubeSortKey;
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
@@ -66,17 +75,22 @@ type IpadSidebarNavActions = {
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
-  showSettings: (tab?: SettingsTab) => void;
-  showNewsIssues: (params: IpadNewsIssuesPaneParams) => void;
-  showDisclosureFlow: (params: IpadDisclosureFlowPaneParams) => void;
-  showTodayBriefing: (date: string) => void;
-  showCalendar: (options?: { from?: 'account' }) => void;
-  showAlerts: (options?: { from?: 'account' }) => void;
-  showTermsHistory: () => void;
-  showTerms: (type?: 'service' | 'privacy', options?: { from?: 'account' | 'terms-history' }) => void;
+  showSettings: (tab?: SettingsTab, options?: WidePaneDrillOptions) => void;
+  showNewsIssues: (params: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => void;
+  showDisclosureFlow: (params: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => void;
+  showTodayBriefing: (date: string, options?: WidePaneDrillOptions) => void;
+  showCalendar: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
+  showAlerts: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
+  showTermsHistory: (options?: WidePaneDrillOptions) => void;
+  showTerms: (
+    type?: 'service' | 'privacy',
+    options?: { from?: 'account' | 'terms-history' } & WidePaneDrillOptions,
+  ) => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
+  goBackWidePane: () => void;
+  markWideRootEntry: () => void;
   takePendingNewsSegment: () => NewsSegmentKey | null;
   takePendingSignalSession: () => SignalSessionKey | null;
   takePendingSignalDate: () => string | null;
@@ -90,6 +104,7 @@ const defaultState: IpadSidebarNavState = {
   isHomePaneActive: false,
   isAccountPaneActive: false,
   isSettingsPaneActive: false,
+  widePaneCanGoBack: false,
   settingsTab: 'display',
   youtubeSort: 'latest',
   newsIssuesParams: null,
@@ -117,6 +132,8 @@ const defaultActions: IpadSidebarNavActions = {
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
+  goBackWidePane: () => {},
+  markWideRootEntry: () => {},
   takePendingNewsSegment: () => null,
   takePendingSignalSession: () => null,
   takePendingSignalDate: () => null,
@@ -185,6 +202,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [alertsFromAccount, setAlertsFromAccount] = useState(false);
   const [termsType, setTermsType] = useState<'service' | 'privacy'>('service');
   const [termsFromHistory, setTermsFromHistory] = useState(false);
+  const [wideBackStack, setWideBackStack] = useState<WidePaneDrillFrom[]>([]);
+  const programmaticOverlayRef = useRef(false);
+  const restoringWideBackRef = useRef(false);
+  const wideBackStackRef = useRef(wideBackStack);
+  wideBackStackRef.current = wideBackStack;
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
@@ -256,8 +278,21 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const clearWideBackStack = useCallback(() => {
+    setWideBackStack([]);
+  }, []);
+
+  const markWideRootEntry = useCallback(() => {
+    setWideBackStack([]);
+  }, []);
+
+  const pushWideDrillFrom = useCallback((from: WidePaneDrillFrom) => {
+    setWideBackStack((prev) => [...prev, from]);
+  }, []);
+
   const navigateWideOverlay = useCallback(
     (kind: WideOverlayKind, overlayParams: Record<string, string | undefined>) => {
+      programmaticOverlayRef.current = true;
       applyOverlayKind(kind, overlayParams);
       const nextParams: Record<string, string | undefined> = {
         ...WIDE_OVERLAY_CLEAR_PARAMS,
@@ -272,11 +307,29 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [applyOverlayKind, router],
   );
 
+  const beginWideOverlay = useCallback(
+    (
+      kind: WideOverlayKind,
+      overlayParams: Record<string, string | undefined>,
+      drillFrom?: WidePaneDrillFrom,
+    ) => {
+      if (drillFrom) {
+        pushWideDrillFrom(drillFrom);
+      } else if (!restoringWideBackRef.current) {
+        clearWideBackStack();
+      }
+      navigateWideOverlay(kind, overlayParams);
+    },
+    [clearWideBackStack, navigateWideOverlay, pushWideDrillFrom],
+  );
+
   useEffect(() => {
     if (!useTwoPane) return;
 
     const legacyOverlay = legacyPathnameToOverlayKind(pathname);
     if (legacyOverlay && !isWideHomePath(pathname)) {
+      if (!programmaticOverlayRef.current) clearWideBackStack();
+      programmaticOverlayRef.current = false;
       applyOverlayKind(legacyOverlay, params);
       return;
     }
@@ -284,12 +337,19 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     if (isWideHomePath(pathname)) {
       const overlay = firstParam(params.overlay);
       if (isWideOverlayKind(overlay)) {
+        if (!programmaticOverlayRef.current) clearWideBackStack();
+        programmaticOverlayRef.current = false;
         applyOverlayKind(overlay, params);
         return;
       }
+      if (!programmaticOverlayRef.current) clearWideBackStack();
+      programmaticOverlayRef.current = false;
       setContentPane('home');
       return;
     }
+
+    if (!programmaticOverlayRef.current) clearWideBackStack();
+    programmaticOverlayRef.current = false;
 
     const pane = resolveIpadContentPaneFromPathname(pathname);
     setContentPane(pane);
@@ -325,6 +385,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     }
   }, [
     applyOverlayKind,
+    clearWideBackStack,
     params.category,
     params.date,
     params.digestId,
@@ -339,6 +400,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   ]);
 
   const showHome = useCallback(() => {
+    clearWideBackStack();
+    programmaticOverlayRef.current = true;
     setContentPane('home');
     if (isWideHomePath(pathname) && !firstParam(params.overlay)) return;
     if (useTwoPane) {
@@ -350,44 +413,50 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     }
     if (pathname.includes('/home')) return;
     router.navigate(WIDE_HOME_ROUTE as never);
-  }, [params.overlay, pathname, router, useTwoPane]);
+  }, [clearWideBackStack, params.overlay, pathname, router, useTwoPane]);
 
   const showAccount = useCallback(() => {
+    if (!restoringWideBackRef.current) clearWideBackStack();
     if (useTwoPane) {
-      navigateWideOverlay('account', { pane: 'hub' });
+      beginWideOverlay('account', { pane: 'hub' });
       return;
     }
     setContentPane('account');
     if (pathname.startsWith('/account')) return;
     router.navigate({ pathname: '/account', params: { pane: 'hub' } } as never);
-  }, [navigateWideOverlay, pathname, router, useTwoPane]);
+  }, [beginWideOverlay, clearWideBackStack, pathname, router, useTwoPane]);
 
   const showTabs = useCallback(() => {
+    if (!restoringWideBackRef.current) clearWideBackStack();
     setContentPane('tabs');
-  }, []);
+  }, [clearWideBackStack]);
 
   const showSettings = useCallback(
-    (tab: SettingsTab = 'display') => {
+    (tab: SettingsTab = 'display', options?: WidePaneDrillOptions) => {
       setSettingsTab(tab);
       if (useTwoPane) {
-        navigateWideOverlay('settings', { tab, from: 'account' });
+        beginWideOverlay('settings', { tab, from: 'account' }, options?.drillFrom);
         return;
       }
       setContentPane('settings');
       router.navigate({ pathname: '/settings', params: { tab, from: 'account' } } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
   const showNewsIssues = useCallback(
-    (next: IpadNewsIssuesPaneParams) => {
+    (next: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => {
       setNewsIssuesParams(next);
       if (useTwoPane) {
-        navigateWideOverlay('news-issues', {
-          category: next.category,
-          date: next.date,
-          ...(next.digestId ? { digestId: next.digestId } : {}),
-        });
+        beginWideOverlay(
+          'news-issues',
+          {
+            category: next.category,
+            date: next.date,
+            ...(next.digestId ? { digestId: next.digestId } : {}),
+          },
+          options?.drillFrom,
+        );
         return;
       }
       setContentPane('newsIssues');
@@ -400,18 +469,22 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
   const showDisclosureFlow = useCallback(
-    (next: IpadDisclosureFlowPaneParams) => {
+    (next: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => {
       setDisclosureFlowParams(next);
       if (useTwoPane) {
-        navigateWideOverlay('disclosure-flow', {
-          date: next.date,
-          ...(next.market ? { market: next.market } : {}),
-          ...(next.digestId ? { digestId: next.digestId } : {}),
-        });
+        beginWideOverlay(
+          'disclosure-flow',
+          {
+            date: next.date,
+            ...(next.market ? { market: next.market } : {}),
+            ...(next.digestId ? { digestId: next.digestId } : {}),
+          },
+          options?.drillFrom,
+        );
         return;
       }
       setContentPane('disclosureFlow');
@@ -424,27 +497,27 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
   const showTodayBriefing = useCallback(
-    (date: string) => {
+    (date: string, options?: WidePaneDrillOptions) => {
       setTodayBriefingDate(date);
       if (useTwoPane) {
-        navigateWideOverlay('today-briefing', { date });
+        beginWideOverlay('today-briefing', { date }, options?.drillFrom);
         return;
       }
       router.navigate({ pathname: '/today-briefing', params: { date } } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
   const showCalendar = useCallback(
-    (options?: { from?: 'account' }) => {
-      const fromAccount = options?.from === 'account';
+    (options?: { from?: 'account' } & WidePaneDrillOptions) => {
+      const fromAccount = options?.from === 'account' || options?.drillFrom === 'account';
       setCalendarFromAccount(fromAccount);
       if (useTwoPane) {
-        navigateWideOverlay('calendar', fromAccount ? { from: 'account' } : {});
+        beginWideOverlay('calendar', fromAccount ? { from: 'account' } : {}, options?.drillFrom);
         return;
       }
       router.navigate({
@@ -452,15 +525,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: fromAccount ? { from: 'account' } : {},
       } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
   const showAlerts = useCallback(
-    (options?: { from?: 'account' }) => {
-      const fromAccount = options?.from === 'account';
+    (options?: { from?: 'account' } & WidePaneDrillOptions) => {
+      const fromAccount = options?.from === 'account' || options?.drillFrom === 'account';
       setAlertsFromAccount(fromAccount);
       if (useTwoPane) {
-        navigateWideOverlay('alerts', fromAccount ? { from: 'account' } : {});
+        beginWideOverlay('alerts', fromAccount ? { from: 'account' } : {}, options?.drillFrom);
         return;
       }
       router.navigate({
@@ -468,33 +541,84 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: fromAccount ? { from: 'account' } : {},
       } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
 
-  const showTermsHistory = useCallback(() => {
-    if (useTwoPane) {
-      navigateWideOverlay('terms-history', { from: 'account' });
-      return;
-    }
-    router.navigate('/terms-history' as never);
-  }, [navigateWideOverlay, router, useTwoPane]);
+  const showTermsHistory = useCallback(
+    (options?: WidePaneDrillOptions) => {
+      if (useTwoPane) {
+        beginWideOverlay('terms-history', { from: 'account' }, options?.drillFrom);
+        return;
+      }
+      router.navigate('/terms-history' as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
 
   const showTerms = useCallback(
-    (type: 'service' | 'privacy' = 'service', options?: { from?: 'account' | 'terms-history' }) => {
-      const from = options?.from ?? 'account';
+    (
+      type: 'service' | 'privacy' = 'service',
+      options?: { from?: 'account' | 'terms-history' } & WidePaneDrillOptions,
+    ) => {
+      const from = options?.from ?? (options?.drillFrom === 'termsHistory' ? 'terms-history' : 'account');
       setTermsType(type);
       setTermsFromHistory(from === 'terms-history');
       if (useTwoPane) {
-        navigateWideOverlay('terms', { type, from });
+        beginWideOverlay('terms', { type, from }, options?.drillFrom);
         return;
       }
       router.navigate({ pathname: '/terms', params: { type } } as never);
     },
-    [navigateWideOverlay, router, useTwoPane],
+    [beginWideOverlay, router, useTwoPane],
   );
+
+  const goBackWidePane = useCallback(() => {
+    const stack = wideBackStackRef.current;
+    if (stack.length === 0) return;
+    const target = stack[stack.length - 1];
+    setWideBackStack(stack.slice(0, -1));
+    restoringWideBackRef.current = true;
+    programmaticOverlayRef.current = true;
+    try {
+      if (target === 'home') {
+        setContentPane('home');
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: { ...WIDE_OVERLAY_CLEAR_PARAMS },
+        } as never);
+      } else if (target === 'account') {
+        applyOverlayKind('account', { pane: 'hub' });
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'account', pane: 'hub' },
+        } as never);
+      } else if (target === 'termsHistory') {
+        applyOverlayKind('terms-history', { from: 'account' });
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'terms-history', from: 'account' },
+        } as never);
+      } else if (target === 'alerts') {
+        applyOverlayKind('alerts', alertsFromAccount ? { from: 'account' } : {});
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: {
+            ...WIDE_OVERLAY_CLEAR_PARAMS,
+            overlay: 'alerts',
+            ...(alertsFromAccount ? { from: 'account' } : {}),
+          },
+        } as never);
+      } else {
+        setContentPane('tabs');
+      }
+    } finally {
+      restoringWideBackRef.current = false;
+    }
+  }, [alertsFromAccount, applyOverlayKind, router]);
 
   const showYoutubeTab = useCallback(
     (sort?: YoutubeSortKey) => {
+      clearWideBackStack();
       const next = sort ?? youtubeSortRef.current;
       const onYoutube = pathname.includes('/youtube');
       if (onYoutube && next === youtubeSortRef.current) {
@@ -512,11 +636,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: { sort: next },
       } as never);
     },
-    [router, pathname],
+    [clearWideBackStack, router, pathname],
   );
 
   const showNewsTab = useCallback(
     (segment?: NewsSegmentKey) => {
+      clearWideBackStack();
       if (segment) pendingNewsSegmentRef.current = segment;
       setContentPane('tabs');
       router.navigate({
@@ -524,11 +649,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: segment && segment !== 'video' ? { segment } : { segment: 'global' },
       } as never);
     },
-    [router],
+    [clearWideBackStack, router],
   );
 
   const showSignalTab = useCallback(
     (session?: SignalSessionKey, date?: string) => {
+      clearWideBackStack();
       if (session) pendingSignalSessionRef.current = session;
       if (date) pendingSignalDateRef.current = date;
       setContentPane('tabs');
@@ -540,7 +666,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [router],
+    [clearWideBackStack, router],
   );
 
   const takePendingNewsSegment = useCallback(() => {
@@ -584,6 +710,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       isHomePaneActive,
       isAccountPaneActive,
       isSettingsPaneActive: contentPane === 'settings',
+      widePaneCanGoBack: wideBackStack.length > 0,
       settingsTab,
       youtubeSort,
       newsIssuesParams,
@@ -599,6 +726,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       contentPane,
       isHomePaneActive,
       isAccountPaneActive,
+      wideBackStack.length,
       settingsTab,
       youtubeSort,
       newsIssuesParams,
@@ -628,6 +756,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
+      goBackWidePane,
+      markWideRootEntry,
       takePendingNewsSegment,
       takePendingSignalSession,
       takePendingSignalDate,
@@ -648,6 +778,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
+      goBackWidePane,
+      markWideRootEntry,
       takePendingNewsSegment,
       takePendingSignalSession,
       takePendingSignalDate,

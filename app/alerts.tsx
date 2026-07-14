@@ -182,7 +182,7 @@ export default function AlertsScreen({
 
   const openNotificationSettings = useCallback(() => {
     if (ipadNav.isAvailable) {
-      ipadNav.showSettings('notifications');
+      ipadNav.showSettings('notifications', { drillFrom: 'alerts' });
       return;
     }
     router.push('/settings?tab=notifications');

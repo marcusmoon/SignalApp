@@ -950,9 +950,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 type SettingsScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
   embedded?: boolean;
+  /** Wide drill-in back — only set when opened from another right-pane screen. */
+  onBack?: () => void;
 };
 
-export default function SettingsScreen({ embedded = false }: SettingsScreenProps) {
+export default function SettingsScreen({ embedded = false, onBack }: SettingsScreenProps) {
   const {
     theme,
     effectiveColorScheme,
@@ -977,23 +979,26 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const router = useRouter();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const useIpadSidebar = useTwoPane && !embedded;
   const fromAccount = params.from === 'account';
   const settingsScrollTopPad =
     embedded || useTwoPane ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
-  const showAccountSubpaneChrome = embedded || useIpadSidebar;
+  const showAccountSubpaneChrome = Boolean(onBack);
   const settingsTitle = t(
     SETTINGS_TABS.find((item) => item.key === selectedTab)?.labelId ?? 'screenSettings',
   );
   const returnToAccountHub = useCallback(() => {
+    if (onBack) {
+      onBack();
+      return;
+    }
     if (ipadNav.isAvailable) {
       ipadNav.showAccount();
       return;
     }
     router.replace('/account' as never);
-  }, [ipadNav, router]);
+  }, [ipadNav, onBack, router]);
   const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
   const scrollResetKey = selectedTab;
 

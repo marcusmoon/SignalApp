@@ -159,7 +159,7 @@ export default function DisclosuresScreen() {
     const date = toYmd(new Date());
     const market = filter;
     if (ipadNav.isAvailable) {
-      ipadNav.showDisclosureFlow({ date, market, digestId: null });
+      ipadNav.showDisclosureFlow({ date, market, digestId: null }, { drillFrom: 'tabs' });
       return;
     }
     router.push({

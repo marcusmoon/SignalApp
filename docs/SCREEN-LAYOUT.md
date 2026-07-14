@@ -83,7 +83,7 @@ SafeAreaView edges={['top']}
 - **뉴스·공시 고정 스택**: 세그먼트는 `submenuStrip`(카드 배경), 다이제스트는 `digestSlot`(배경 없음)으로 분리. `fixedStack` 내부 gap은 `COMFORT_TOP_FIXED_GAP`(12).
 - **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
 - **설정**: More 탭에는 없음. **My info** 허브의 「환경 설정」에서 진입. iPhone은 `app/settings?from=account` — 이때 설정 상단 pill 서브탭은 숨긴다. 웹·iPad는 사이드바 **게시판 아래 내 정보**로 진입하고, 퀵 링크는 사이드바 하단 도크(`SidebarReferenceLinksDock`)에 둔다. More 항목은 사이드바에 없음.
-- **My info**: 허브(`hub`) + 서브 pane·설정·알림·약관. wide My info 진입은 `AccountSubpaneHeader`(뒤로→허브). 헤더 벨·캘린더는 전체 앱 크롬(`IpadSidebarScreen`, 사이드바+SignalHeader)만 쓰고 서브pane 헤더는 없다. 알림·캘린더 본문은 탭 화면과 같이 `wideContentFill`로 우측 pane을 채운다. 헤더 벨은 wide에서 `screenAlerts`(EN: Notifications) 라벨을 함께 표시한다.
+- **My info**: 허브(`hub`) + 서브 pane·설정·알림·약관. wide My info 진입은 `AccountSubpaneHeader`(뒤로→허브). 헤더 벨·캘린더는 전체 앱 크롬(`IpadSidebarScreen`, 사이드바+SignalHeader)만 쓰고 서브pane 헤더는 없다. 알림·캘린더 본문은 탭 화면과 같이 `wideContentFill`로 우측 pane을 채운다.
 - **마감 브리핑 상세** (`app/today-briefing.tsx`): Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`.
 
 ## Pull-to-refresh · chip · digest (상호작용)

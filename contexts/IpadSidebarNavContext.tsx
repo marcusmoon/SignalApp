@@ -14,6 +14,7 @@ import {
   overlayKindToContentPane,
   overlayParamsFromRecord,
   WIDE_HOME_ROUTE,
+  WIDE_OVERLAY_CLEAR_PARAMS,
   type WideOverlayKind,
 } from '@/utils/wideOverlayRoute';
 
@@ -29,7 +30,8 @@ export type IpadContentPane =
   | 'todayBriefing'
   | 'calendar'
   | 'alerts'
-  | 'termsHistory';
+  | 'termsHistory'
+  | 'terms';
 
 export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
@@ -55,6 +57,8 @@ type IpadSidebarNavContextValue = {
   todayBriefingDate: string | null;
   calendarFromAccount: boolean;
   alertsFromAccount: boolean;
+  termsType: 'service' | 'privacy';
+  termsFromHistory: boolean;
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
@@ -65,6 +69,7 @@ type IpadSidebarNavContextValue = {
   showCalendar: (options?: { from?: 'account' }) => void;
   showAlerts: (options?: { from?: 'account' }) => void;
   showTermsHistory: () => void;
+  showTerms: (type?: 'service' | 'privacy', options?: { from?: 'account' | 'terms-history' }) => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
@@ -86,6 +91,8 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   todayBriefingDate: null,
   calendarFromAccount: false,
   alertsFromAccount: false,
+  termsType: 'service',
+  termsFromHistory: false,
   showHome: () => {},
   showAccount: () => {},
   showTabs: () => {},
@@ -96,6 +103,7 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   showCalendar: () => {},
   showAlerts: () => {},
   showTermsHistory: () => {},
+  showTerms: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -162,6 +170,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
   const [alertsFromAccount, setAlertsFromAccount] = useState(false);
+  const [termsType, setTermsType] = useState<'service' | 'privacy'>('service');
+  const [termsFromHistory, setTermsFromHistory] = useState(false);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
@@ -222,6 +232,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       if (kind === 'account') {
         setCalendarFromAccount(false);
         setAlertsFromAccount(false);
+        return;
+      }
+
+      if (kind === 'terms') {
+        setTermsType(p.type === 'privacy' ? 'privacy' : 'service');
+        setTermsFromHistory(p.from === 'terms-history');
       }
     },
     [],
@@ -230,9 +246,14 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const navigateWideOverlay = useCallback(
     (kind: WideOverlayKind, overlayParams: Record<string, string | undefined>) => {
       applyOverlayKind(kind, overlayParams);
+      const nextParams: Record<string, string | undefined> = {
+        ...WIDE_OVERLAY_CLEAR_PARAMS,
+        overlay: kind,
+        ...overlayParams,
+      };
       router.navigate({
         pathname: WIDE_HOME_ROUTE,
-        params: { overlay: kind, ...overlayParams },
+        params: nextParams,
       } as never);
     },
     [applyOverlayKind, router],
@@ -308,7 +329,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     setContentPane('home');
     if (isWideHomePath(pathname) && !firstParam(params.overlay)) return;
     if (useTwoPane) {
-      router.navigate(WIDE_HOME_ROUTE as never);
+      router.navigate({
+        pathname: WIDE_HOME_ROUTE,
+        params: { ...WIDE_OVERLAY_CLEAR_PARAMS },
+      } as never);
       return;
     }
     if (pathname.includes('/home')) return;
@@ -442,6 +466,20 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     router.navigate('/terms-history' as never);
   }, [navigateWideOverlay, router, useTwoPane]);
 
+  const showTerms = useCallback(
+    (type: 'service' | 'privacy' = 'service', options?: { from?: 'account' | 'terms-history' }) => {
+      const from = options?.from ?? 'account';
+      setTermsType(type);
+      setTermsFromHistory(from === 'terms-history');
+      if (useTwoPane) {
+        navigateWideOverlay('terms', { type, from });
+        return;
+      }
+      router.navigate({ pathname: '/terms', params: { type } } as never);
+    },
+    [navigateWideOverlay, router, useTwoPane],
+  );
+
   const showYoutubeTab = useCallback(
     (sort?: YoutubeSortKey) => {
       const next = sort ?? youtubeSortRef.current;
@@ -515,13 +553,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'newsIssues' ||
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
-    (contentPane === 'calendar' && !calendarFromAccount);
+    (contentPane === 'calendar' && !calendarFromAccount) ||
+    (contentPane === 'alerts' && !alertsFromAccount);
 
   const isAccountPaneActive =
     contentPane === 'account' ||
     contentPane === 'settings' ||
-    contentPane === 'alerts' ||
     contentPane === 'termsHistory' ||
+    contentPane === 'terms' ||
+    (contentPane === 'alerts' && alertsFromAccount) ||
     (contentPane === 'calendar' && calendarFromAccount);
 
   const value = useMemo(
@@ -538,6 +578,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       todayBriefingDate,
       calendarFromAccount,
       alertsFromAccount,
+      termsType,
+      termsFromHistory,
       showHome,
       showAccount,
       showTabs,
@@ -548,6 +590,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showCalendar,
       showAlerts,
       showTermsHistory,
+      showTerms,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -567,6 +610,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       todayBriefingDate,
       calendarFromAccount,
       alertsFromAccount,
+      termsType,
+      termsFromHistory,
       showHome,
       showAccount,
       showSettings,
@@ -577,6 +622,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showCalendar,
       showAlerts,
       showTermsHistory,
+      showTerms,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

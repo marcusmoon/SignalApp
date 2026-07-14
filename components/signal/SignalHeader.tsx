@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -20,11 +21,28 @@ type Props = {
 
 export function SignalHeader({ onBrandPress, compact = false, fullWidth = false }: Props) {
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, compact, fullWidth), [compact, fullWidth, theme, scaleFont]);
   const brandAccent = theme.green;
   const { alerts: alertsHasUnread } = useFeedUnreadBadges();
+
+  const openAlerts = () => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showAlerts();
+      return;
+    }
+    router.push('/alerts');
+  };
+
+  const openCalendar = () => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showCalendar();
+      return;
+    }
+    router.push('/calendar');
+  };
 
   const logo = (
     <>
@@ -61,7 +79,7 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
         )}
         <View style={styles.headerActions}>
           <Pressable
-            onPress={() => router.push('/alerts')}
+            onPress={openAlerts}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
@@ -71,7 +89,7 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
             </View>
           </Pressable>
           <Pressable
-            onPress={() => router.push('/calendar')}
+            onPress={openCalendar}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yCalendar')}>

@@ -21,6 +21,15 @@ type AlertIpadNav = {
   showNewsIssues: (params: { category: NewsIssuesCategory; date: string; digestId?: string | null }) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
   showTodayBriefing: (date: string) => void;
+  showDisclosureFlow: (params: {
+    date: string;
+    market?: 'us' | 'kr' | 'all';
+    digestId?: string | null;
+  }) => void;
+  showCalendar: (options?: { from?: 'account' }) => void;
+  showSettings: (tab?: 'display' | 'notifications' | 'news' | 'quotes' | 'server') => void;
+  showAccount: () => void;
+  showAlerts: (options?: { from?: 'account' }) => void;
 };
 
 function cleanText(value: unknown): string {
@@ -289,6 +298,63 @@ export function navigateToAlert(
       pathname: '/today-briefing',
       params: { date },
     } as Href);
+    return;
+  }
+
+  if (target.pathname === '/disclosure-flow') {
+    const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
+    const marketRaw = cleanText(params.market);
+    const market = marketRaw === 'us' || marketRaw === 'kr' || marketRaw === 'all' ? marketRaw : undefined;
+    const digestId = cleanText(params.digestId) || null;
+    if (ipadNav.isAvailable) {
+      ipadNav.showDisclosureFlow({ date, market, digestId });
+      return;
+    }
+    router.push({
+      pathname: '/disclosure-flow',
+      params: { date, ...(market ? { market } : {}), ...(digestId ? { digestId } : {}) },
+    } as Href);
+    return;
+  }
+
+  if (target.pathname === '/calendar') {
+    if (ipadNav.isAvailable) {
+      ipadNav.showCalendar();
+      return;
+    }
+    router.push('/calendar' as Href);
+    return;
+  }
+
+  if (target.pathname === '/settings') {
+    const tab = cleanText(params.tab);
+    if (ipadNav.isAvailable) {
+      ipadNav.showSettings(
+        tab === 'display' || tab === 'notifications' || tab === 'news' || tab === 'quotes' || tab === 'server'
+          ? tab
+          : 'display',
+      );
+      return;
+    }
+    router.push({ pathname: '/settings', params: tab ? { tab } : {} } as Href);
+    return;
+  }
+
+  if (target.pathname === '/account') {
+    if (ipadNav.isAvailable) {
+      ipadNav.showAccount();
+      return;
+    }
+    router.push('/account' as Href);
+    return;
+  }
+
+  if (target.pathname === '/alerts') {
+    if (ipadNav.isAvailable) {
+      ipadNav.showAlerts();
+      return;
+    }
+    router.push('/alerts' as Href);
     return;
   }
 

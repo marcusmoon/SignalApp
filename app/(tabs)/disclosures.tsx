@@ -329,7 +329,7 @@ export default function DisclosuresScreen() {
       setFilter(key);
       if (useTwoPane) setActiveSubTabKey(key);
       setRouteParams({
-        market: key === 'us' ? undefined : key,
+        market: key,
       });
     },
     [filter, setActiveSubTabKey, setRouteParams, useTwoPane],
@@ -349,7 +349,7 @@ export default function DisclosuresScreen() {
         key: item.key,
         label: t(item.label),
         href: '/(tabs)/disclosures',
-        params: { market: item.key === 'us' ? undefined : item.key },
+        params: { market: item.key },
         onPress: () => onPickFilter(item.key),
       })),
     );

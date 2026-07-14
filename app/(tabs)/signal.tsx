@@ -307,7 +307,7 @@ export default function SignalScreen() {
 
   const syncDateRouteParam = useCallback(
     (ymd: string) => {
-      setRouteParams({ date: ymd === todayYmdRef.current ? undefined : ymd });
+      setRouteParams({ date: ymd });
     },
     [setRouteParams],
   );
@@ -495,7 +495,7 @@ export default function SignalScreen() {
         const clamped = pendingDate > todayYmdRef.current ? todayYmdRef.current : pendingDate;
         setSelectedYmd(clamped);
         setCalendarMonth(monthFromYmd(clamped));
-        setRouteParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
+        setRouteParams({ date: clamped });
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }

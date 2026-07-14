@@ -47,7 +47,8 @@ const PAGE_SIZE = 30;
 
 function parseCommunitySourceParam(raw: string | string[] | undefined): CommunitySourceFilter | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (!value || value === COMMUNITY_SOURCE_ALL) return null;
+  if (!value) return null;
+  if (value === COMMUNITY_SOURCE_ALL) return COMMUNITY_SOURCE_ALL;
   return isCommunitySourceKey(value) ? value : null;
 }
 
@@ -68,7 +69,9 @@ export default function BoardScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
-  const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
+  const [source, setSource] = useState<CommunitySourceFilter>(
+    () => parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL,
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -180,7 +183,8 @@ export default function BoardScreen() {
       setMeta(null);
       setLoading(true);
       if (!options?.fromRoute) {
-        setRouteParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
+        // 공유·직접 진입을 위해 기본값(all)도 URL에 명시한다.
+        setRouteParams({ source: next });
       }
       void loadRef.current({ sourceFilter: next });
     },
@@ -201,7 +205,7 @@ export default function BoardScreen() {
         key,
         label: t(SOURCE_LABEL[key]),
         href: '/(tabs)/board',
-        params: { source: key === COMMUNITY_SOURCE_ALL ? undefined : key },
+        params: { source: key },
         onPress: () => changeSource(key),
       })),
     );

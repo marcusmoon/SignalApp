@@ -417,7 +417,7 @@ export default function QuotesScreen() {
     setError(null);
     setSegment(key);
     if (useTwoPane) setActiveSubTabKey(key);
-    setRouteParams({ segment: key === 'watch' ? undefined : key });
+    setRouteParams({ segment: key });
   }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
@@ -430,7 +430,7 @@ export default function QuotesScreen() {
         key,
         label: t(QUOTE_SEGMENT_LABEL[key]),
         href: '/(tabs)/quotes',
-        params: { segment: key === 'watch' ? undefined : key },
+        params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
     );

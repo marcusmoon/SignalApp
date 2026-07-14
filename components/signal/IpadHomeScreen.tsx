@@ -34,10 +34,8 @@ export function IpadHomeScreen() {
 
   useEffect(() => {
     const urlDate = parseHomeDateParam(params.date, todayYmd);
-    const nextParam = selectedYmd === todayYmd ? undefined : selectedYmd;
-    const urlParam = urlDate === todayYmd ? undefined : urlDate;
-    if (nextParam === urlParam) return;
-    setRouteParams({ date: nextParam });
+    if (selectedYmd === urlDate) return;
+    setRouteParams({ date: selectedYmd });
   }, [params.date, selectedYmd, setRouteParams, todayYmd]);
 
   const onSelectedYmdChange = (ymd: string) => {

@@ -356,7 +356,7 @@ export default function YoutubeScreen() {
     if (sort === 'latest') return;
     setSort('latest');
     if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
-    setRouteParams({ sort: undefined });
+    setRouteParams({ sort: 'latest' });
   }, [ipadNav, setRouteParams, sort, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {

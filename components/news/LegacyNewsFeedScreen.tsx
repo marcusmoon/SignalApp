@@ -749,7 +749,7 @@ export function LegacyNewsFeedScreen() {
     setSegment(key);
     if (useTwoPane) setActiveSubTabKey(key);
     void saveNewsSegment(key);
-    setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
+    setRouteParams({ segment: key });
   }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   const onPickSegmentRef = useRef(onPickSegment);
@@ -780,7 +780,7 @@ export function LegacyNewsFeedScreen() {
         key,
         label: t(NEWS_SEGMENT_LABEL[key]),
         href: '/(tabs)/news',
-        params: { segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key },
+        params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
     );

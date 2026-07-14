@@ -9,11 +9,12 @@ import { SourceBadge } from '@/components/signal/SourceBadge';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { communityShowsOriginalLink, communitySourceAccent } from '@/constants/communitySources';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { SignalApiCommunityPost } from '@/integrations/signal-api/types';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatInstantLabel, formatRelativeFromIso } from '@/utils/date';
@@ -28,8 +29,12 @@ type Props = {
 export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = false, onRefresh }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
+  const { useTwoPane } = useResponsiveLayout();
   const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, accent), [theme, scaleFont, feedTypo, accent]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, feedTypo, accent, useTwoPane),
+    [theme, scaleFont, feedTypo, accent, useTwoPane],
+  );
   const sourceLabelId = communitySourceLabelId(item.source);
   const relativeTime = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
   const absoluteTime = item.publishedAt ? formatInstantLabel(item.publishedAt, locale) : '';
@@ -85,6 +90,7 @@ function makeStyles(
   sf: (n: number) => number,
   ft: FeedContentTypography,
   accent: ReturnType<typeof communitySourceAccent>,
+  useTwoPane: boolean,
 ) {
   return StyleSheet.create({
     root: {
@@ -92,6 +98,7 @@ function makeStyles(
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+      ...(useTwoPane ? wideContentFill : null),
     },
     headerFixed: {
       flexShrink: 0,

@@ -82,8 +82,8 @@ pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.
 | 모드 | 조건 | 동작 |
 |---|---|---|
 | compact | 너비 < 768 | iPhone — 플로팅 탭바, 탭마다 `SignalHeader compact` |
-| regular | 768–899 | iPhone 가로 등 |
-| wide | iPad·웹 ≥ 900 | 좌측 사이드바, 전역 헤더 1회, 2-pane 가능 |
+| regular | 768–899 | iPhone 가로·좁은 웹 등 |
+| wide | 네이티브 iPad(항상) · 웹 ≥ 900 | 좌측 사이드바, 전역 헤더 1회, 우측 pane만 교체 |
 
 콘텐츠 최대 폭: 720 (일반) / 1120 (wide). 가로 inset 16.
 

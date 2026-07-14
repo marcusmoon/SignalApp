@@ -19,8 +19,8 @@
 | wide | iPad 또는 웹, 너비 ≥ 900 | true |
 
 - **iPhone**: compact / regular — 하단 플로팅 탭바, 탭마다 `SignalHeader compact`.
-- **iPad·넓은 웹**: wide — 좌측 `SignalSidebarTabBar`, 상단 `SignalHeader`는 `(tabs)/_layout` 한 곳, 탭 화면은 `useTwoPane`일 때 헤더·탭바 중복 금지.
-- **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams` — Root Layout에서도 `?sort=` 등 복원). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
+- **iPad·넓은 웹**: wide — 좌측 `SignalSidebarTabBar`·상단 `SignalHeader`는 `WideWebShell`에서 **고정 1회**. 우측 pane만 페이지가 바뀐다. 탭 화면에서 헤더·탭바 중복 금지.
+- **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
 
 콘텐츠 최대 폭: `APP_CONTENT_MAX_WIDTH` (720), wide는 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
 가로 inset: `APP_CONTENT_SIDE_PADDING` (16).
@@ -83,8 +83,30 @@ SafeAreaView edges={['top']}
 - **뉴스·공시 고정 스택**: 세그먼트는 `submenuStrip`(카드 배경), 다이제스트는 `digestSlot`(배경 없음)으로 분리. `fixedStack` 내부 gap은 `COMFORT_TOP_FIXED_GAP`(12).
 - **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
 - **설정**: More 탭에는 없음. **My info** 허브의 「환경 설정」에서 진입. iPhone은 `app/settings?from=account` — 이때 설정 상단 pill 서브탭은 숨긴다. 웹·iPad는 사이드바 **게시판 아래 내 정보**로 진입하고, 퀵 링크는 사이드바 하단 도크(`SidebarReferenceLinksDock`)에 둔다. More 항목은 사이드바에 없음.
-- **My info / Home 오버레이**: wide 우측 서브화면(설정·알림·약관·뉴스플로우·브리핑 등)은 공통 `WideSubpaneHeader`(chevron 뒤로 + 제목). 헤더 벨·캘린더도 동일. 알림·캘린더 본문은 `wideContentFill`로 우측 pane을 채운다.
-- **마감 브리핑 상세** (`app/today-briefing.tsx`): wide는 오버레이 + `WideSubpaneHeader`. 폰은 Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`.
+- **마감 브리핑 상세** (`app/today-briefing.tsx`): 폰은 Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`. wide는 아래 우측 pane 규칙을 따른다.
+
+## Wide 우측 pane 내비 (iPad · 넓은 웹)
+
+모달형 overlay가 아니다. **좌측 메뉴 + 상단 `SignalHeader`는 고정**이고, **우측만** 페이지처럼 교체한다.
+
+| 상황 | `WideSubpaneHeader` |
+|---|---|
+| 사이드바·직접 URL로 우측 루트 화면을 연 경우 | **없음** (본문만) |
+| 우측 화면 **안에서** 다른 화면으로 드릴인 | **있음** — 뒤로 → **직전 우측 화면** |
+
+규칙:
+
+1. 크롬은 `WideSubpaneHeader`(chevron 뒤로 + 제목) **하나**로 통일. 화면마다 다른 back UI를 두지 않는다.
+2. 진입 출처는 **공유 URL 쿼리(`from=`)에 넣지 않는다.** 세션/인메모리(또는 router state)로만 둔다. URL을 복사해 다른 브라우저에서 열면 루트 진입과 같이 헤더 없음.
+3. 본문 레이아웃(뉴스 리스트·보드 카드 등)은 화면 고유. 맞추는 것은 **back 헤더 스트립뿐**.
+4. 드릴인이 2단 이상이면 우측 pane 안에서 back 스택을 쌓아 한 단계씩 복귀한다.
+5. 구현 식별자 `?overlay=` 등은 **우측 pane 라우팅용**이며 UI 오버레이가 아니다. 점진적으로 전용 경로/`contentPane`으로 정리해도 된다.
+
+대상 예: 홈 → 뉴스플로우·공시플로우·브리핑·캘린더·보드 목록·내 정보 하위(설정·알림·약관) 및 그 안의 상세.
+
+## iPhone · 좁은 웹
+
+wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화면별 `SignalHeader compact` 등 **현행 유지**. `WideSubpaneHeader`는 wide 전용.
 
 ## Pull-to-refresh · chip · digest (상호작용)
 
@@ -146,7 +168,9 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
 | 컴포넌트 | 용도 |
 |---|---|
-| `IpadSidebarScreen` | wide 스택 — 헤더 + 사이드바 + 뒤로가기 |
+| `WideWebShell` | wide — 고정 사이드바 + 전역 `SignalHeader` |
+| `WideSubpaneHeader` | wide 우측 pane 드릴인 — 뒤로 + 제목 |
+| `IpadSidebarScreen` | wide 스택 — (레거시/미사용에 가깝고, 신규는 `WideSubpaneHeader` 규칙 우선) |
 | `MasterDetailLayout` | 시세·공시 2-pane |
 | `IpadHomeScreen` | wide 홈 |
 | `WebWheelScrollView` / `WebWheelFlatList` | 웹 휠 스크롤 |

@@ -16,8 +16,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
-import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -601,11 +601,7 @@ export default function YoutubeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? (
-        <View style={styles.moreBackPad}>
-          <WideSubpaneHeader title={t('tabYoutube')} onBack={goBackToMore} />
-        </View>
-      ) : null}
+      {fromMore ? <PhoneDrillHeader title={t('tabYoutube')} onBack={goBackToMore} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
 
       {youtubeListPanel}
@@ -660,11 +656,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
-    moreBackPad: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 4,
-    },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

@@ -9,6 +9,7 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
+import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -295,11 +296,7 @@ export function BoardContent({
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane || embedded ? [] : ['top']}>
       {showPhoneChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? (
-        <View style={styles.moreBackPad}>
-          <WideSubpaneHeader title={t('screenBoard')} onBack={goBackToMore} />
-        </View>
-      ) : null}
+      {fromMore ? <PhoneDrillHeader title={t('screenBoard')} onBack={goBackToMore} /> : null}
       {active ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>
         {onBack ? <WideSubpaneHeader title={t('screenBoard')} onBack={onBack} /> : null}
@@ -456,10 +453,5 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.danger,
     },
     pressed: { opacity: 0.78 },
-    moreBackPad: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 4,
-    },
   });
 }

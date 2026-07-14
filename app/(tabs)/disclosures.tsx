@@ -14,7 +14,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
+import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -537,11 +537,7 @@ export default function DisclosuresScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? (
-        <View style={styles.moreBackPad}>
-          <WideSubpaneHeader title={t('tabDisclosures')} onBack={goBackToMore} />
-        </View>
-      ) : null}
+      {fromMore ? <PhoneDrillHeader title={t('tabDisclosures')} onBack={goBackToMore} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane && !symbolFilter ? (
           <View style={styles.topFixedStack}>
@@ -641,11 +637,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
-    moreBackPad: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 4,
-    },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

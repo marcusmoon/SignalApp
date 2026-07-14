@@ -70,18 +70,20 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   takePendingSignalDate: () => null,
 });
 
-function firstParam(value: string | string[] | undefined): string | null {
+function firstParam(value: string | string[] | undefined): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   const text = String(raw || '').trim();
-  return text || null;
+  return text || undefined;
 }
 
-function parseNewsIssuesCategory(raw: string | null): NewsIssuesCategory {
-  if (raw === 'us' || raw === 'kr' || raw === 'crypto' || raw === 'all') return raw;
+function parseNewsIssuesCategory(raw: string | undefined): NewsIssuesCategory {
+  if (raw === 'us') return 'global';
+  if (raw === 'kr') return 'korea';
+  if (raw === 'global' || raw === 'korea' || raw === 'crypto' || raw === 'all') return raw;
   return 'all';
 }
 
-function parseDisclosureMarket(raw: string | null): DisclosureFlowMarket | undefined {
+function parseDisclosureMarket(raw: string | undefined): DisclosureFlowMarket | undefined {
   if (raw === 'us' || raw === 'kr') return raw;
   return undefined;
 }

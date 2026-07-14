@@ -21,7 +21,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
@@ -2350,10 +2351,14 @@ clearCalendarCache();
 
   return embedded ? (
     screen
-  ) : useIpadSidebar ? (
-    <IpadSidebarScreen title={settingsTitle} hideTopBar>
-      {screen}
-    </IpadSidebarScreen>
+  ) : useTwoPane ? (
+    <WideOverlayRouteRedirect
+      kind="settings"
+      params={{
+        tab: selectedTab,
+        from: fromAccount ? 'account' : undefined,
+      }}
+    />
   ) : (
     screen
   );

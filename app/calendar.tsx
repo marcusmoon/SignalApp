@@ -13,7 +13,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -150,7 +150,17 @@ function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   );
 }
 
-export default function CalendarScreen() {
+export type CalendarScreenProps = {
+  embedded?: boolean;
+  fromAccount?: boolean;
+  onBack?: () => void;
+};
+
+export default function CalendarScreen({
+  embedded = false,
+  fromAccount: fromAccountProp,
+  onBack,
+}: CalendarScreenProps = {}) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -159,6 +169,7 @@ export default function CalendarScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const fromAccount =
+    fromAccountProp ??
     (Array.isArray(params.from) ? params.from[0] : params.from) === 'account';
 
   const insets = useSafeAreaInsets();
@@ -172,6 +183,17 @@ export default function CalendarScreen() {
     router.replace('/account' as never);
   }, [ipadNav, router]);
 
+  const subpaneBack = onBack ?? (fromAccount ? returnToAccountHub : undefined);
+
+  if (useTwoPane && !embedded) {
+    return (
+      <WideOverlayRouteRedirect
+        kind="calendar"
+        params={fromAccount ? { from: 'account' } : {}}
+      />
+    );
+  }
+
   const wrapWide = useCallback(
     (body: ReactNode) => {
       if (!useTwoPane) {
@@ -182,11 +204,7 @@ export default function CalendarScreen() {
           </>
         );
       }
-      return (
-        <IpadSidebarScreen title={t('screenCalendar')} hideTopBar>
-          {body}
-        </IpadSidebarScreen>
-      );
+      return body;
     },
     [t, useTwoPane],
   );
@@ -415,9 +433,9 @@ export default function CalendarScreen() {
             { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
           ]}
           showsVerticalScrollIndicator={false}>
-          {fromAccount ? (
+          {subpaneBack ? (
             <View style={styles.subpaneHeaderPad}>
-              <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+              <AccountSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
             </View>
           ) : null}
           <View style={styles.errBox}>
@@ -434,9 +452,9 @@ export default function CalendarScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
-        {fromAccount ? (
+        {subpaneBack ? (
           <View style={styles.subpaneHeaderPad}>
-            <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+            <AccountSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
           </View>
         ) : null}
       <View style={[styles.fixedTop, useTwoPane && styles.fixedTopWide]}>

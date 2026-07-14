@@ -626,15 +626,23 @@ export function HomeFocusContent({
   );
 
   const openCalendar = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showCalendar();
+      return;
+    }
     router.navigate('/calendar' as never);
-  }, [router]);
+  }, [ipadNav, router]);
 
   const openTodayBriefing = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showTodayBriefing(selectedYmd);
+      return;
+    }
     router.navigate({
       pathname: '/today-briefing',
       params: { date: selectedYmd },
     } as never);
-  }, [router, selectedYmd]);
+  }, [ipadNav, router, selectedYmd]);
 
   const formatCalendarDateLabel = useCallback(
     (event: CalendarEvent) =>

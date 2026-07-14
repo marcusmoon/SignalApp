@@ -21,9 +21,13 @@ import { AppQuickActions } from '@/components/AppQuickActions';
 import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import AccountScreen from '@/app/account';
+import AlertsScreen from '@/app/alerts';
+import CalendarScreen from '@/app/calendar';
 import { NewsIssuesContent } from '@/app/news-issues';
 import { DisclosureFlowContent } from '@/app/disclosure-flow';
 import SettingsScreen from '@/app/settings';
+import TermsHistoryScreen from '@/app/terms-history';
+import { TodayBriefingContent } from '@/app/today-briefing';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -382,7 +386,16 @@ function IpadWideTabLayout({
   disclosureTabBadge: _disclosureTabBadge,
   t,
 }: IpadWideTabLayoutProps) {
-  const { contentPane, newsIssuesParams, disclosureFlowParams, showHome } = useIpadSidebarNav();
+  const {
+    contentPane,
+    newsIssuesParams,
+    disclosureFlowParams,
+    todayBriefingDate,
+    calendarFromAccount,
+    alertsFromAccount,
+    showHome,
+    showAccount,
+  } = useIpadSidebarNav();
   const { theme } = useSignalTheme();
 
   return (
@@ -412,6 +425,22 @@ function IpadWideTabLayout({
               <AccountScreen embedded />
             ) : contentPane === 'settings' ? (
               <SettingsScreen embedded />
+            ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
+              <TodayBriefingContent embedded date={todayBriefingDate} onBack={showHome} />
+            ) : contentPane === 'calendar' ? (
+              <CalendarScreen
+                embedded
+                fromAccount={calendarFromAccount}
+                onBack={calendarFromAccount ? showAccount : showHome}
+              />
+            ) : contentPane === 'alerts' ? (
+              <AlertsScreen
+                embedded
+                fromAccount={alertsFromAccount}
+                onBack={alertsFromAccount ? showAccount : showHome}
+              />
+            ) : contentPane === 'termsHistory' ? (
+              <TermsHistoryScreen embedded onBack={showAccount} />
             ) : null}
           </View>
         ) : null}

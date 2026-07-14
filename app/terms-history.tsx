@@ -5,7 +5,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -18,7 +18,12 @@ const DOCUMENT_LINKS = [
   { key: 'privacy', type: 'privacy' as const, icon: 'user-shield' as const },
 ];
 
-export default function TermsHistoryScreen() {
+export type TermsHistoryScreenProps = {
+  embedded?: boolean;
+  onBack?: () => void;
+};
+
+export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScreenProps = {}) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
@@ -35,13 +40,19 @@ export default function TermsHistoryScreen() {
     router.replace('/account' as never);
   }, [ipadNav, router]);
 
-  const screen = (
+  const subpaneBack = onBack ?? returnToAccountHub;
+
+  if (useTwoPane && !embedded) {
+    return <WideOverlayRouteRedirect kind="terms-history" params={{ from: 'account' }} />;
+  }
+
+  return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
       {!useTwoPane ? <Stack.Screen options={{ title: t('accountHubTermsTitle') }} /> : null}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
         {useTwoPane ? (
-          <AccountSubpaneHeader title={t('accountHubTermsTitle')} onBack={returnToAccountHub} />
+          <AccountSubpaneHeader title={t('accountHubTermsTitle')} onBack={subpaneBack} />
         ) : null}
         <View style={styles.menuStack}>
           {DOCUMENT_LINKS.map((item, index) => {
@@ -69,15 +80,9 @@ export default function TermsHistoryScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-
-  return useTwoPane ? (
-    <IpadSidebarScreen title={t('accountHubTermsTitle')} hideTopBar>
-      {screen}
-    </IpadSidebarScreen>
-  ) : (
-    screen
-  );
 }
+
+export default TermsHistoryScreen;
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
@@ -91,18 +96,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       overflow: 'hidden',
     },
     menuRow: {
-      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      gap: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    menuRowLast: {
-      borderBottomWidth: 0,
-    },
+    menuRowLast: { borderBottomWidth: 0 },
+    rowPressed: { opacity: 0.72 },
     menuIcon: {
       width: 28,
       height: 28,
@@ -117,6 +120,5 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '600',
       color: theme.text,
     },
-    rowPressed: { opacity: 0.72 },
   });
 }

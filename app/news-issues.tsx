@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
@@ -247,20 +248,7 @@ export function NewsIssuesContent({
         showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
-            <View style={styles.paneTopBar}>
-              <Pressable
-                onPress={onBack}
-                accessibilityRole="button"
-                accessibilityLabel={t('commonBack')}
-                style={({ pressed }) => [styles.paneBackBtn, pressed && styles.pressed]}>
-                <FontAwesome name="chevron-left" size={13} color={theme.green} />
-                <Text style={styles.paneBackText}>{t('commonBack')}</Text>
-              </Pressable>
-              <Text style={styles.paneTitle} numberOfLines={1}>
-                {t('newsIssuesTitle')}
-              </Text>
-              <View style={styles.paneSpacer} />
-            </View>
+            <AccountSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} />
           ) : null}
           <View style={styles.header}>
             <View style={styles.categoryTabs}>
@@ -422,20 +410,30 @@ export default function NewsIssuesScreen() {
   const initialCategory = parseCategory(params.category);
   const initialDate = parseDateParam(params.date);
   const initialDigestId = firstStringParam(params.digestId);
+
+  if (useTwoPane) {
+    return (
+      <WideOverlayRouteRedirect
+        kind="news-issues"
+        params={{
+          category: initialCategory,
+          date: initialDate,
+          ...(initialDigestId ? { digestId: initialDigestId } : {}),
+        }}
+      />
+    );
+  }
+
   const content = (
     <NewsIssuesContent
-      embedded={useTwoPane}
+      embedded={false}
       initialCategory={initialCategory}
       initialDate={initialDate}
       initialDigestId={initialDigestId}
     />
   );
 
-  return useTwoPane ? (
-    <IpadSidebarScreen title={t('newsIssuesTitle')} backHref="/(tabs)/home">
-      {content}
-    </IpadSidebarScreen>
-  ) : (
+  return (
     <>
       <Stack.Screen options={{ title: t('newsIssuesTitle') }} />
       {content}
@@ -460,42 +458,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
       paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-    },
-    paneTopBar: {
-      minHeight: 42,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: 2,
-    },
-    paneBackBtn: {
-      minHeight: 34,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 7,
-      paddingHorizontal: 11,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-    },
-    paneBackText: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '700',
-      color: theme.green,
-    },
-    paneTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: '700',
-      color: theme.text,
-    },
-    paneSpacer: {
-      width: 78,
-      flexShrink: 0,
     },
     header: { gap: 20 },
     title: {

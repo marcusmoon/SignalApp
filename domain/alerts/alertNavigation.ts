@@ -20,6 +20,7 @@ type AlertIpadNav = {
   isAvailable: boolean;
   showNewsIssues: (params: { category: NewsIssuesCategory; date: string; digestId?: string | null }) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
+  showTodayBriefing: (date: string) => void;
 };
 
 function cleanText(value: unknown): string {
@@ -279,9 +280,14 @@ export function navigateToAlert(
   }
 
   if (target.pathname === '/today-briefing') {
+    const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
+    if (ipadNav.isAvailable) {
+      ipadNav.showTodayBriefing(date);
+      return;
+    }
     router.push({
       pathname: '/today-briefing',
-      params: isYmd(params.date || '') ? { date: params.date } : undefined,
+      params: { date },
     } as Href);
     return;
   }

@@ -7,10 +7,30 @@ import type { DisclosureFlowMarket, NewsIssuesCategory } from '@/constants/ipadH
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
+import {
+  isWideHomePath,
+  isWideOverlayKind,
+  legacyPathnameToOverlayKind,
+  overlayKindToContentPane,
+  overlayParamsFromRecord,
+  WIDE_HOME_ROUTE,
+  type WideOverlayKind,
+} from '@/utils/wideOverlayRoute';
 
 export type YoutubeSortKey = 'latest' | 'popular';
 
-export type IpadContentPane = 'home' | 'tabs' | 'account' | 'settings' | 'newsIssues' | 'disclosureFlow';
+export type IpadContentPane =
+  | 'home'
+  | 'tabs'
+  | 'account'
+  | 'settings'
+  | 'newsIssues'
+  | 'disclosureFlow'
+  | 'todayBriefing'
+  | 'calendar'
+  | 'alerts'
+  | 'termsHistory';
+
 export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
   date: string;
@@ -32,12 +52,19 @@ type IpadSidebarNavContextValue = {
   youtubeSort: YoutubeSortKey;
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
+  todayBriefingDate: string | null;
+  calendarFromAccount: boolean;
+  alertsFromAccount: boolean;
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
   showSettings: (tab?: SettingsTab) => void;
   showNewsIssues: (params: IpadNewsIssuesPaneParams) => void;
   showDisclosureFlow: (params: IpadDisclosureFlowPaneParams) => void;
+  showTodayBriefing: (date: string) => void;
+  showCalendar: (options?: { from?: 'account' }) => void;
+  showAlerts: (options?: { from?: 'account' }) => void;
+  showTermsHistory: () => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
@@ -56,12 +83,19 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   youtubeSort: 'latest',
   newsIssuesParams: null,
   disclosureFlowParams: null,
+  todayBriefingDate: null,
+  calendarFromAccount: false,
+  alertsFromAccount: false,
   showHome: () => {},
   showAccount: () => {},
   showTabs: () => {},
   showSettings: () => {},
   showNewsIssues: () => {},
   showDisclosureFlow: () => {},
+  showTodayBriefing: () => {},
+  showCalendar: () => {},
+  showAlerts: () => {},
+  showTermsHistory: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -93,13 +127,20 @@ function parseDisclosureMarket(raw: string | undefined): DisclosureFlowMarket | 
   return undefined;
 }
 
+function parseDateParam(raw: string | undefined): string | undefined {
+  const text = String(raw || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : undefined;
+}
+
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const { useTwoPane } = useResponsiveLayout();
   const router = useRouter();
   const pathname = usePathname();
-  /** Root Layout 밖에서는 local params가 비다. 새로고침 복원은 global params를 쓴다. */
   const params = useGlobalSearchParams<{
+    overlay?: string | string[];
+    pane?: string | string[];
     tab?: string | string[];
+    from?: string | string[];
     sort?: string | string[];
     category?: string | string[];
     date?: string | string[];
@@ -118,15 +159,104 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
+  const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
+  const [calendarFromAccount, setCalendarFromAccount] = useState(false);
+  const [alertsFromAccount, setAlertsFromAccount] = useState(false);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
   const youtubeSortRef = useRef(youtubeSort);
   youtubeSortRef.current = youtubeSort;
 
-  /** URL이 바뀌면 pane·서브 상태를 맞춰 새로고침·공유 링크를 복원한다. */
+  const applyOverlayKind = useCallback(
+    (kind: WideOverlayKind, rawParams: Record<string, string | string[] | undefined>) => {
+      const p = overlayParamsFromRecord(rawParams);
+      const pane = overlayKindToContentPane(kind);
+      setContentPane(pane);
+
+      if (kind === 'news-issues') {
+        const date = parseDateParam(p.date);
+        if (date) {
+          setNewsIssuesParams({
+            category: parseNewsIssuesCategory(p.category),
+            date,
+            digestId: p.digestId ?? null,
+          });
+        }
+        return;
+      }
+
+      if (kind === 'disclosure-flow') {
+        const date = parseDateParam(p.date);
+        if (date) {
+          setDisclosureFlowParams({
+            date,
+            market: parseDisclosureMarket(p.market),
+            digestId: p.digestId ?? null,
+          });
+        }
+        return;
+      }
+
+      if (kind === 'today-briefing') {
+        setTodayBriefingDate(parseDateParam(p.date) ?? null);
+        return;
+      }
+
+      if (kind === 'calendar') {
+        setCalendarFromAccount(p.from === 'account');
+        return;
+      }
+
+      if (kind === 'alerts') {
+        setAlertsFromAccount(p.from === 'account');
+        return;
+      }
+
+      if (kind === 'settings') {
+        const tab = firstParam(p.tab);
+        if (isSettingsTab(tab)) setSettingsTab(tab);
+        return;
+      }
+
+      if (kind === 'account') {
+        setCalendarFromAccount(false);
+        setAlertsFromAccount(false);
+      }
+    },
+    [],
+  );
+
+  const navigateWideOverlay = useCallback(
+    (kind: WideOverlayKind, overlayParams: Record<string, string | undefined>) => {
+      applyOverlayKind(kind, overlayParams);
+      router.navigate({
+        pathname: WIDE_HOME_ROUTE,
+        params: { overlay: kind, ...overlayParams },
+      } as never);
+    },
+    [applyOverlayKind, router],
+  );
+
   useEffect(() => {
     if (!useTwoPane) return;
+
+    const legacyOverlay = legacyPathnameToOverlayKind(pathname);
+    if (legacyOverlay && !isWideHomePath(pathname)) {
+      applyOverlayKind(legacyOverlay, params);
+      return;
+    }
+
+    if (isWideHomePath(pathname)) {
+      const overlay = firstParam(params.overlay);
+      if (isWideOverlayKind(overlay)) {
+        applyOverlayKind(overlay, params);
+        return;
+      }
+      setContentPane('home');
+      return;
+    }
+
     const pane = resolveIpadContentPaneFromPathname(pathname);
     setContentPane(pane);
 
@@ -135,44 +265,65 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
     if (pathname.includes('/youtube')) {
       const sort = parseYoutubeSortParam(firstParam(params.sort));
-      // 명시된 값만 반영 — 쿼리 부재 시 latest로 덮어쓰지 않는다.
       if (sort) setYoutubeSort(sort);
     }
 
     if (pane === 'newsIssues') {
-      const date = firstParam(params.date);
+      const date = parseDateParam(firstParam(params.date));
       if (date) {
         setNewsIssuesParams({
           category: parseNewsIssuesCategory(firstParam(params.category)),
           date,
-          digestId: firstParam(params.digestId),
+          digestId: firstParam(params.digestId) ?? null,
         });
       }
     }
 
     if (pane === 'disclosureFlow') {
-      const date = firstParam(params.date);
+      const date = parseDateParam(firstParam(params.date));
       if (date) {
         setDisclosureFlowParams({
           date,
           market: parseDisclosureMarket(firstParam(params.market)),
-          digestId: firstParam(params.digestId),
+          digestId: firstParam(params.digestId) ?? null,
         });
       }
     }
-  }, [pathname, params.tab, params.sort, params.category, params.date, params.digestId, params.market, useTwoPane]);
+  }, [
+    applyOverlayKind,
+    params.category,
+    params.date,
+    params.digestId,
+    params.from,
+    params.market,
+    params.overlay,
+    params.pane,
+    params.tab,
+    params.sort,
+    pathname,
+    useTwoPane,
+  ]);
 
   const showHome = useCallback(() => {
     setContentPane('home');
+    if (isWideHomePath(pathname) && !firstParam(params.overlay)) return;
+    if (useTwoPane) {
+      router.navigate(WIDE_HOME_ROUTE as never);
+      return;
+    }
     if (pathname.includes('/home')) return;
-    router.navigate('/(tabs)/home' as never);
-  }, [router, pathname]);
+    router.navigate(WIDE_HOME_ROUTE as never);
+  }, [params.overlay, pathname, router, useTwoPane]);
 
   const showAccount = useCallback(() => {
+    if (useTwoPane) {
+      navigateWideOverlay('account', { pane: 'hub' });
+      return;
+    }
     setContentPane('account');
     if (pathname.startsWith('/account')) return;
     router.navigate({ pathname: '/account', params: { pane: 'hub' } } as never);
-  }, [router, pathname]);
+  }, [navigateWideOverlay, pathname, router, useTwoPane]);
 
   const showTabs = useCallback(() => {
     setContentPane('tabs');
@@ -181,21 +332,27 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showSettings = useCallback(
     (tab: SettingsTab = 'display') => {
       setSettingsTab(tab);
-      setContentPane('settings');
-      if (pathname.startsWith('/settings')) {
-        const currentTab = firstParam(params.tab);
-        if (isSettingsTab(currentTab) && currentTab === tab) return;
-        router.setParams({ tab, from: 'account' } as never);
+      if (useTwoPane) {
+        navigateWideOverlay('settings', { tab, from: 'account' });
         return;
       }
+      setContentPane('settings');
       router.navigate({ pathname: '/settings', params: { tab, from: 'account' } } as never);
     },
-    [params.tab, pathname, router],
+    [navigateWideOverlay, router, useTwoPane],
   );
 
   const showNewsIssues = useCallback(
     (next: IpadNewsIssuesPaneParams) => {
       setNewsIssuesParams(next);
+      if (useTwoPane) {
+        navigateWideOverlay('news-issues', {
+          category: next.category,
+          date: next.date,
+          ...(next.digestId ? { digestId: next.digestId } : {}),
+        });
+        return;
+      }
       setContentPane('newsIssues');
       router.navigate({
         pathname: '/news-issues',
@@ -206,12 +363,20 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [router],
+    [navigateWideOverlay, router, useTwoPane],
   );
 
   const showDisclosureFlow = useCallback(
     (next: IpadDisclosureFlowPaneParams) => {
       setDisclosureFlowParams(next);
+      if (useTwoPane) {
+        navigateWideOverlay('disclosure-flow', {
+          date: next.date,
+          ...(next.market ? { market: next.market } : {}),
+          ...(next.digestId ? { digestId: next.digestId } : {}),
+        });
+        return;
+      }
       setContentPane('disclosureFlow');
       router.navigate({
         pathname: '/disclosure-flow',
@@ -222,8 +387,60 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [router],
+    [navigateWideOverlay, router, useTwoPane],
   );
+
+  const showTodayBriefing = useCallback(
+    (date: string) => {
+      setTodayBriefingDate(date);
+      if (useTwoPane) {
+        navigateWideOverlay('today-briefing', { date });
+        return;
+      }
+      router.navigate({ pathname: '/today-briefing', params: { date } } as never);
+    },
+    [navigateWideOverlay, router, useTwoPane],
+  );
+
+  const showCalendar = useCallback(
+    (options?: { from?: 'account' }) => {
+      const fromAccount = options?.from === 'account';
+      setCalendarFromAccount(fromAccount);
+      if (useTwoPane) {
+        navigateWideOverlay('calendar', fromAccount ? { from: 'account' } : {});
+        return;
+      }
+      router.navigate({
+        pathname: '/calendar',
+        params: fromAccount ? { from: 'account' } : {},
+      } as never);
+    },
+    [navigateWideOverlay, router, useTwoPane],
+  );
+
+  const showAlerts = useCallback(
+    (options?: { from?: 'account' }) => {
+      const fromAccount = options?.from === 'account';
+      setAlertsFromAccount(fromAccount);
+      if (useTwoPane) {
+        navigateWideOverlay('alerts', fromAccount ? { from: 'account' } : {});
+        return;
+      }
+      router.navigate({
+        pathname: '/alerts',
+        params: fromAccount ? { from: 'account' } : {},
+      } as never);
+    },
+    [navigateWideOverlay, router, useTwoPane],
+  );
+
+  const showTermsHistory = useCallback(() => {
+    if (useTwoPane) {
+      navigateWideOverlay('terms-history', { from: 'account' });
+      return;
+    }
+    router.navigate('/terms-history' as never);
+  }, [navigateWideOverlay, router, useTwoPane]);
 
   const showYoutubeTab = useCallback(
     (sort?: YoutubeSortKey) => {
@@ -293,23 +510,44 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     return date;
   }, []);
 
+  const isHomePaneActive =
+    contentPane === 'home' ||
+    contentPane === 'newsIssues' ||
+    contentPane === 'disclosureFlow' ||
+    contentPane === 'todayBriefing' ||
+    (contentPane === 'calendar' && !calendarFromAccount);
+
+  const isAccountPaneActive =
+    contentPane === 'account' ||
+    contentPane === 'settings' ||
+    contentPane === 'alerts' ||
+    contentPane === 'termsHistory' ||
+    (contentPane === 'calendar' && calendarFromAccount);
+
   const value = useMemo(
     () => ({
       isAvailable: useTwoPane,
       contentPane,
-      isHomePaneActive: contentPane === 'home' || contentPane === 'newsIssues' || contentPane === 'disclosureFlow',
-      isAccountPaneActive: contentPane === 'account',
+      isHomePaneActive,
+      isAccountPaneActive,
       isSettingsPaneActive: contentPane === 'settings',
       settingsTab,
       youtubeSort,
       newsIssuesParams,
       disclosureFlowParams,
+      todayBriefingDate,
+      calendarFromAccount,
+      alertsFromAccount,
       showHome,
       showAccount,
       showTabs,
       showSettings,
       showNewsIssues,
       showDisclosureFlow,
+      showTodayBriefing,
+      showCalendar,
+      showAlerts,
+      showTermsHistory,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -320,16 +558,25 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [
       useTwoPane,
       contentPane,
+      isHomePaneActive,
+      isAccountPaneActive,
       settingsTab,
       youtubeSort,
       newsIssuesParams,
       disclosureFlowParams,
+      todayBriefingDate,
+      calendarFromAccount,
+      alertsFromAccount,
       showHome,
       showAccount,
       showSettings,
       showTabs,
       showNewsIssues,
       showDisclosureFlow,
+      showTodayBriefing,
+      showCalendar,
+      showAlerts,
+      showTermsHistory,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

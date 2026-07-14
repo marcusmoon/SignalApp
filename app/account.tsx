@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { Alert, BackHandler, Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
+import { Stack, useGlobalSearchParams, useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Constants from 'expo-constants';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { SocialProviderFavicon } from '@/components/account/SocialProviderFavicon';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
@@ -75,6 +75,12 @@ function parseAccountPaneParam(raw: string | string[] | undefined): AccountPane 
   const value = Array.isArray(raw) ? raw[0] : raw;
   return ACCOUNT_PANES.includes(value as AccountPane) ? (value as AccountPane) : 'hub';
 }
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const text = String(raw || '').trim();
+  return text || undefined;
+}
 type Mode = 'login' | 'register';
 type RegisterStep = 'terms' | 'method' | 'info';
 
@@ -126,8 +132,13 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
   const params = useLocalSearchParams<{ from?: string; pane?: string | string[] }>();
+  const globalParams = useGlobalSearchParams<{ overlay?: string | string[]; pane?: string | string[] }>();
   const setRouteParams = useSafeSetRouteParams();
   const useIpadSidebar = useTwoPane && !embedded;
+  const paneFromRoute =
+    embedded && useTwoPane && firstParam(globalParams.overlay) === 'account'
+      ? parseAccountPaneParam(globalParams.pane)
+      : parseAccountPaneParam(params.pane);
   const showStackHeader = !embedded && !useIpadSidebar;
   /** wide 스택·임베디드 모두 본문 제목 (IpadSidebarScreen topBar 없음) */
   const showPaneTitleInContent = embedded || useIpadSidebar;
@@ -153,9 +164,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [registerStep, setRegisterStep] = useState<RegisterStep>('terms');
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
-  const [accountPane, setAccountPaneState] = useState<AccountPane>(() =>
-    parseAccountPaneParam(params.pane),
-  );
+  const [accountPane, setAccountPaneState] = useState<AccountPane>(() => paneFromRoute);
   const accountPaneRef = useRef(accountPane);
   accountPaneRef.current = accountPane;
   const setAccountPane = useCallback(
@@ -168,9 +177,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   );
 
   useEffect(() => {
-    const fromUrl = parseAccountPaneParam(params.pane);
-    setAccountPaneState((prev) => (prev === fromUrl ? prev : fromUrl));
-  }, [params.pane]);
+    setAccountPaneState((prev) => (prev === paneFromRoute ? prev : paneFromRoute));
+  }, [paneFromRoute]);
   const { ref: accountScrollRef } = useScrollToTopOnChange([accountPane]);
   const scrollResetKey = accountPane;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);
@@ -748,7 +756,13 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             icon: 'bell',
             title: t('accountActivityAlerts'),
             body: t('accountActivityAlertsDesc'),
-            onPress: () => router.push({ pathname: '/alerts', params: { from: 'account' } }),
+            onPress: () => {
+              if (ipadNav.isAvailable) {
+                ipadNav.showAlerts({ from: 'account' });
+                return;
+              }
+              router.push({ pathname: '/alerts', params: { from: 'account' } });
+            },
           },
         ],
       },
@@ -787,7 +801,13 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             icon: 'file-alt',
             title: t('accountHubTermsTitle'),
             body: t('accountHubTermsDesc'),
-            onPress: () => router.push('/terms-history' as never),
+            onPress: () => {
+              if (ipadNav.isAvailable) {
+                ipadNav.showTermsHistory();
+                return;
+              }
+              router.push('/terms-history' as never);
+            },
           },
         ],
       },
@@ -1528,11 +1548,14 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     </SafeAreaView>
   );
 
-  return useIpadSidebar ? (
-    <IpadSidebarScreen title={t('screenAccount')} hideTopBar>
-      {screen}
-    </IpadSidebarScreen>
-  ) : (
-    screen
-  );
+  if (useTwoPane && !embedded) {
+    return (
+      <WideOverlayRouteRedirect
+        kind="account"
+        params={{ pane: parseAccountPaneParam(params.pane) }}
+      />
+    );
+  }
+
+  return screen;
 }

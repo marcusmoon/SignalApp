@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -120,7 +120,7 @@ export function TermsContent({
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
       {!embedded ? <Stack.Screen options={{ title }} /> : null}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
-        {onBack ? <AccountSubpaneHeader title={title} onBack={onBack} /> : null}
+        {onBack ? <WideSubpaneHeader title={title} onBack={onBack} /> : null}
         <View style={styles.card}>
           <Text style={styles.kicker}>{t('termsKicker')}</Text>
           <Text style={styles.title}>{title}</Text>

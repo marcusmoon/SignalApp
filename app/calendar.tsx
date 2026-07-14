@@ -12,7 +12,7 @@ import { useIsFocused } from "expo-router/react-navigation";
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
@@ -435,7 +435,7 @@ export default function CalendarScreen({
           showsVerticalScrollIndicator={false}>
           {subpaneBack ? (
             <View style={styles.subpaneHeaderPad}>
-              <AccountSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
+              <WideSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
             </View>
           ) : null}
           <View style={styles.errBox}>
@@ -454,7 +454,7 @@ export default function CalendarScreen({
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
         {subpaneBack ? (
           <View style={styles.subpaneHeaderPad}>
-            <AccountSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
+            <WideSubpaneHeader title={t('screenCalendar')} onBack={subpaneBack} />
           </View>
         ) : null}
       <View style={[styles.fixedTop, useTwoPane && styles.fixedTopWide]}>

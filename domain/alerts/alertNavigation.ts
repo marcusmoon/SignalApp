@@ -25,6 +25,11 @@ type AlertIpadNav = {
     options?: AlertDrillOptions,
   ) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
+  showMarketBriefing: (
+    session?: SignalSessionKey,
+    date?: string,
+    options?: AlertDrillOptions,
+  ) => void;
   showTodayBriefing: (date: string, options?: AlertDrillOptions) => void;
   showDisclosureFlow: (
     params: {
@@ -289,7 +294,7 @@ export function navigateToAlert(
     const date = isYmd(params.date || '') ? params.date : undefined;
     const session = normalizeSignalSessionParam(params.session || '') ?? undefined;
     if (ipadNav.isAvailable) {
-      ipadNav.showSignalTab(session, date);
+      ipadNav.showMarketBriefing(session, date, { drillFrom: 'alerts' });
       return;
     }
     router.push({

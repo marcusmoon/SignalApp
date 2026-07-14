@@ -13,9 +13,11 @@ type Props = {
   title: string;
   children: ReactNode;
   backHref?: Href;
+  /** 사이드바 1급 화면(내 정보 등) — 전역 SignalHeader만 두고 뒤로/제목 줄을 숨긴다 */
+  hideTopBar?: boolean;
 };
 
-export function IpadSidebarScreen({ title, children, backHref }: Props) {
+export function IpadSidebarScreen({ title, children, backHref, hideTopBar = false }: Props) {
   const router = useRouter();
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
@@ -40,20 +42,22 @@ export function IpadSidebarScreen({ title, children, backHref }: Props) {
       <View style={styles.body}>
         <SignalSidebarTabBar />
         <View style={styles.content}>
-          <View style={styles.topBar}>
-            <Pressable
-              onPress={onBack}
-              style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
-              accessibilityRole="button"
-              accessibilityLabel={t('commonBack')}>
-              <FontAwesome name="chevron-left" size={14} color={theme.green} />
-              <Text style={styles.backText}>{t('commonBack')}</Text>
-            </Pressable>
-            <Text style={styles.title} numberOfLines={1}>
-              {title}
-            </Text>
-            <View style={styles.spacer} />
-          </View>
+          {hideTopBar ? null : (
+            <View style={styles.topBar}>
+              <Pressable
+                onPress={onBack}
+                style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={t('commonBack')}>
+                <FontAwesome name="chevron-left" size={14} color={theme.green} />
+                <Text style={styles.backText}>{t('commonBack')}</Text>
+              </Pressable>
+              <Text style={styles.title} numberOfLines={1}>
+                {title}
+              </Text>
+              <View style={styles.spacer} />
+            </View>
+          )}
           <View style={styles.contentBody}>{children}</View>
         </View>
       </View>

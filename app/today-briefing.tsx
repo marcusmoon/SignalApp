@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
@@ -10,11 +12,16 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
-import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
+  SCREEN_HEADER_CONTENT_GAP,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
@@ -39,12 +46,16 @@ async function fetchTodayBriefingWithFallback(
   return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode }).catch(() => null);
 }
 
-export default function TodayBriefingScreen() {
-  const params = useLocalSearchParams<{ date?: string | string[] }>();
-  const date = useMemo(() => parseDateParam(params.date), [params.date]);
+export type TodayBriefingContentProps = {
+  date: string;
+  embedded?: boolean;
+  onBack?: () => void;
+};
+
+export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBriefingContentProps) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, embedded), [theme, scaleFont, feedTypo, embedded]);
   const [item, setItem] = useState<SignalApiTodayBriefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,11 +109,13 @@ export default function TodayBriefingScreen() {
   const bodyText = item?.summary?.trim() || '';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: t('todayBriefingDetailKicker') }} />
-      <View style={styles.dateBar}>
-        <Text style={styles.dateHeader}>{dateLabel}</Text>
-      </View>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
+      {!embedded ? <Stack.Screen options={{ title: t('todayBriefingDetailKicker') }} /> : null}
+      {embedded ? null : (
+        <View style={styles.dateBar}>
+          <Text style={styles.dateHeader}>{dateLabel}</Text>
+        </View>
+      )}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -115,6 +128,10 @@ export default function TodayBriefingScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
+          {onBack ? (
+            <AccountSubpaneHeader title={t('todayBriefingDetailKicker')} onBack={onBack} />
+          ) : null}
+          {embedded ? <Text style={styles.dateHeader}>{dateLabel}</Text> : null}
           {error ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -188,10 +205,23 @@ export default function TodayBriefingScreen() {
   );
 }
 
+export default function TodayBriefingScreen() {
+  const params = useLocalSearchParams<{ date?: string | string[] }>();
+  const { useTwoPane } = useResponsiveLayout();
+  const date = useMemo(() => parseDateParam(params.date), [params.date]);
+
+  if (useTwoPane) {
+    return <WideOverlayRouteRedirect kind="today-briefing" params={{ date }} />;
+  }
+
+  return <TodayBriefingContent date={date} />;
+}
+
 function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
   ft: FeedContentTypography,
+  embedded: boolean,
 ) {
   return StyleSheet.create({
     safe: {
@@ -219,11 +249,11 @@ function makeStyles(
     },
     content: {
       flexGrow: 1,
-      paddingHorizontal: 16,
-      paddingTop: 14,
+      paddingHorizontal: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
+      paddingTop: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : 14,
       paddingBottom: 28,
       gap: 14,
-      maxWidth: APP_CONTENT_MAX_WIDTH,
+      maxWidth: embedded ? APP_WIDE_CONTENT_MAX_WIDTH : APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       width: '100%',
     },

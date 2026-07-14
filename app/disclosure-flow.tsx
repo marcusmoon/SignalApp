@@ -1,11 +1,11 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -245,20 +245,7 @@ export function DisclosureFlowContent({
         showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
-            <View style={styles.paneTopBar}>
-              <Pressable
-                onPress={onBack}
-                accessibilityRole="button"
-                accessibilityLabel={t('commonBack')}
-                style={({ pressed }) => [styles.paneBackBtn, pressed && styles.pressed]}>
-                <FontAwesome name="chevron-left" size={13} color={theme.green} />
-                <Text style={styles.paneBackText}>{t('commonBack')}</Text>
-              </Pressable>
-              <Text style={styles.paneTitle} numberOfLines={1}>
-                {t('disclosureFlowTitle')}
-              </Text>
-              <View style={styles.paneSpacer} />
-            </View>
+            <AccountSubpaneHeader title={t('disclosureFlowTitle')} onBack={onBack} />
           ) : null}
 
           <View style={styles.header}>
@@ -369,20 +356,30 @@ export default function DisclosureFlowScreen() {
   const initialDate = parseDateParam(params.date);
   const initialMarket = parseMarketParam(params.market);
   const initialDigestId = typeof params.digestId === 'string' ? params.digestId : null;
+
+  if (useTwoPane) {
+    return (
+      <WideOverlayRouteRedirect
+        kind="disclosure-flow"
+        params={{
+          date: initialDate,
+          market: initialMarket,
+          ...(initialDigestId ? { digestId: initialDigestId } : {}),
+        }}
+      />
+    );
+  }
+
   const content = (
     <DisclosureFlowContent
-      embedded={useTwoPane}
+      embedded={false}
       initialDate={initialDate}
       initialMarket={initialMarket}
       initialDigestId={initialDigestId}
     />
   );
 
-  return useTwoPane ? (
-    <IpadSidebarScreen title={t('disclosureFlowTitle')} backHref="/(tabs)/home">
-      {content}
-    </IpadSidebarScreen>
-  ) : (
+  return (
     <>
       <Stack.Screen options={{ title: t('disclosureFlowTitle') }} />
       {content}
@@ -407,42 +404,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
       paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-    },
-    paneTopBar: {
-      minHeight: 42,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: 2,
-    },
-    paneBackBtn: {
-      minHeight: 34,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 7,
-      paddingHorizontal: 11,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-    },
-    paneBackText: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '700',
-      color: theme.green,
-    },
-    paneTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: '700',
-      color: theme.text,
-    },
-    paneSpacer: {
-      width: 78,
-      flexShrink: 0,
     },
     header: { gap: 20 },
     categoryTabs: {

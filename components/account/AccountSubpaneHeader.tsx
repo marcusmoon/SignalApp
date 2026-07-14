@@ -10,8 +10,7 @@ type Props = {
 };
 
 /**
- * My info 하위 영역(계정 pane·설정·알림·약관) wide 공통 상단:
- * 본문 안 뒤로 + 제목. IpadSidebarScreen topBar / Stack 헤더와 섞지 않는다.
+ * Wide web/iPad 서브 화면 공통 상단 — 홈·My info 오버레이 모두 동일한 뒤로 + 제목.
  */
 export function AccountSubpaneHeader({ title, onBack }: Props) {
   const { t } = useLocale();

@@ -8,7 +8,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
@@ -43,7 +43,17 @@ import { alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificat
 import { notificationSourceIconEntries } from '@/domain/alerts/notificationSourceIcons';
 import { navigateToAlert, resolveAlertHref } from '@/domain/alerts/alertNavigation';
 
-export default function AlertsScreen() {
+export type AlertsScreenProps = {
+  embedded?: boolean;
+  fromAccount?: boolean;
+  onBack?: () => void;
+};
+
+export default function AlertsScreen({
+  embedded = false,
+  fromAccount: fromAccountProp,
+  onBack,
+}: AlertsScreenProps = {}) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -54,6 +64,7 @@ export default function AlertsScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const fromAccount =
+    fromAccountProp ??
     (Array.isArray(params.from) ? params.from[0] : params.from) === 'account';
 
   const returnToAccountHub = useCallback(() => {
@@ -63,6 +74,17 @@ export default function AlertsScreen() {
     }
     router.replace('/account' as never);
   }, [ipadNav, router]);
+
+  const subpaneBack = onBack ?? (fromAccount ? returnToAccountHub : undefined);
+
+  if (useTwoPane && !embedded) {
+    return (
+      <WideOverlayRouteRedirect
+        kind="alerts"
+        params={fromAccount ? { from: 'account' } : {}}
+      />
+    );
+  }
 
   const wrapWide = useCallback(
     (body: ReactNode) => {
@@ -74,12 +96,7 @@ export default function AlertsScreen() {
           </>
         );
       }
-      // 헤더·홈 진입: 전체 앱 크롬만. My info 진입: 본문 서브pane 헤더는 body에서 처리.
-      return (
-        <IpadSidebarScreen title={t('screenAlerts')} hideTopBar>
-          {body}
-        </IpadSidebarScreen>
-      );
+      return body;
     },
     [t, useTwoPane],
   );
@@ -352,9 +369,9 @@ export default function AlertsScreen() {
       <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
-          {fromAccount ? (
+          {subpaneBack ? (
             <View style={styles.subpaneHeaderPad}>
-              <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+              <AccountSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
             </View>
           ) : null}
           <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
@@ -379,9 +396,9 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {fromAccount ? (
+        {subpaneBack ? (
           <View style={styles.subpaneHeaderPad}>
-            <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+            <AccountSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
           </View>
         ) : null}
         <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>{alertsTopFixed}</View>

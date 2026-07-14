@@ -117,24 +117,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       justifyContent: 'center',
       backgroundColor: theme.bgElevated,
     },
-    notifBtn: {
-      minHeight: 36,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.bgElevated,
-    },
-    notifLabel: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.textMuted,
-      maxWidth: 110,
-    },
-    actionPressed: {
-      opacity: 0.72,
-    },
     iconBtnInner: {
       width: 18,
       height: 18,

@@ -112,11 +112,11 @@ wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화�
 
 | 진입 | 뒤로 크롬 |
 |---|---|
-| More → 보드·공시·유튜브 | `PhoneDrillHeader`(Stack 헤더와 동일: 좌 「뒤로」 + 중앙 제목). 출처는 인메모리 `phoneMoreEntry`. `SignalHeader`·`WideSubpaneHeader` 금지. |
-| More → My info (스택) | Expo Stack 기본 헤더. `(tabs)`에 `headerBackTitle: commonBack` |
-| My info → 프로필·비밀번호·소셜 | `PhoneHeaderBackButton`(chevron + 「뒤로」) → 허브 |
+| More → 보드·공시·유튜브·My info | **같은 root Stack** (`/more-board`·`/more-disclosures`·`/more-youtube`·`/account`) — native 헤더 + `PhoneHeaderBackButton` |
+| My info → 프로필·비밀번호·소셜 | 같은 Stack 헤더 + `PhoneHeaderBackButton` → 허브 |
+| 홈 등 탭 직접 진입 (보드 등) | `SignalHeader` (Stack 드릴인 아님) |
 
-뒤로 UI는 **항상 chevron + 라벨**. 아이콘만 두지 않는다.
+뒤로 UI는 **항상** Stack 바 안의 `PhoneHeaderBackButton`(chevron + 「뒤로」). `WideSubpaneHeader`는 wide 전용.
 
 ## Pull-to-refresh · chip · digest (상호작용)
 
@@ -180,8 +180,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 |---|---|
 | `WideWebShell` | wide — 고정 사이드바 + 전역 `SignalHeader` |
 | `WideSubpaneHeader` | wide 우측 pane 드릴인 — 뒤로 + 제목 |
-| `PhoneDrillHeader` | iPhone More 자식 — Stack 헤더와 동일 크롬 |
-| `phoneMoreEntry` | iPhone More → 보드·공시·유튜브 출처 (URL `from=` 없음) |
+| `PhoneHeaderBackButton` | iPhone Stack 헤더 좌측 — chevron + 「뒤로」 |
 | `IpadSidebarScreen` | wide 스택 — (레거시/미사용에 가깝고, 신규는 `WideSubpaneHeader` 규칙 우선) |
 | `MasterDetailLayout` | 시세·공시 2-pane |
 | `IpadHomeScreen` | wide 홈 |

@@ -59,7 +59,6 @@ import {
 } from '@/domain/news';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
-import { clearPhoneMoreEntry } from '@/services/phoneMoreEntry';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
   loadNewsHashtagDisplayMax,
@@ -957,10 +956,7 @@ export function LegacyNewsFeedScreen() {
 
         {segment === 'video' ? (
           <Pressable
-            onPress={() => {
-              clearPhoneMoreEntry();
-              router.push('/youtube');
-            }}
+            onPress={() => router.push('/youtube')}
             style={({ pressed }) => [styles.videoOpenAll, pressed && styles.videoOpenAllPressed]}
             accessibilityRole="button"
             accessibilityLabel={t('feedVideoOpenAll')}>

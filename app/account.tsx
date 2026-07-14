@@ -893,8 +893,10 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     if (accountPane === 'hub') {
       navigation.setOptions({
         title: accountHeaderTitle,
-        headerBackVisible: true,
-        headerLeft: undefined,
+        headerBackVisible: false,
+        headerLeft: navigation.canGoBack()
+          ? () => <PhoneHeaderBackButton onPress={() => router.back()} />
+          : undefined,
       });
       return;
     }
@@ -904,7 +906,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       headerBackVisible: false,
       headerLeft: () => <PhoneHeaderBackButton onPress={returnToAccountHub} />,
     });
-  }, [accountHeaderTitle, accountPane, navigation, returnToAccountHub, showStackHeader, t, theme.green, user]);
+  }, [accountHeaderTitle, accountPane, navigation, returnToAccountHub, router, showStackHeader, user]);
 
   useEffect(() => {
     if (!user || accountPane === 'hub') return;

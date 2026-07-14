@@ -228,6 +228,9 @@ function RootLayoutNav() {
           'symbol/[ticker]': t('screenSymbolDetail'),
           'disclosures/[id]': t('disclosuresDetailTitle'),
           'community/[id]': t('communityDetailTitle'),
+          'more-board': t('screenBoard'),
+          'more-disclosures': t('tabDisclosures'),
+          'more-youtube': t('tabYoutube'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

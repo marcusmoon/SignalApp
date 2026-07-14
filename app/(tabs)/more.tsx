@@ -36,31 +36,24 @@ import {
   loadMoreReferenceLinksVisible,
   subscribeMoreReferenceLinksVisibilityChanged,
 } from '@/services/moreReferenceLinksPreference';
-import {
-  clearPhoneMoreEntry,
-  markPhoneEnteredFromMore,
-  type PhoneMoreEntryRoute,
-} from '@/services/phoneMoreEntry';
 
 const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
-  board: { href: '/(tabs)/board' as Href, icon: 'comments', titleId: 'screenBoard' },
+  board: { href: '/more-board' as Href, icon: 'comments', titleId: 'screenBoard' },
   disclosures: {
-    href: '/(tabs)/disclosures' as Href,
+    href: '/more-disclosures' as Href,
     icon: 'file-text-o',
     titleId: 'tabDisclosures',
   },
   youtube: {
-    href: '/(tabs)/youtube' as Href,
+    href: '/more-youtube' as Href,
     icon: 'youtube-play',
     titleId: 'tabYoutube',
   },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
-
-const PHONE_MORE_ENTRY_ROUTES: readonly PhoneMoreEntryRoute[] = ['board', 'disclosures', 'youtube'];
 
 const GRID_GAP = 8;
 const TILE_HEIGHT = 60;
@@ -159,7 +152,6 @@ export default function MoreHubScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      clearPhoneMoreEntry();
       void reloadOrder();
       void reloadRefLinksPref();
     }, [reloadOrder, reloadRefLinksPref]),
@@ -174,9 +166,6 @@ export default function MoreHubScreen() {
   const openHubItem = useCallback(
     (item: MoreHubRouteKey) => {
       if (!useTwoPane) {
-        if ((PHONE_MORE_ENTRY_ROUTES as readonly string[]).includes(item)) {
-          markPhoneEnteredFromMore(item as PhoneMoreEntryRoute);
-        }
         router.push(HUB_META[item].href);
         return;
       }

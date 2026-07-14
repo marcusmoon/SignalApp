@@ -9,7 +9,6 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
-import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -28,6 +27,7 @@ import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+  stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -53,10 +53,6 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCommunityPost, SignalCommunityListMeta } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
-import {
-  clearPhoneMoreEntry,
-  usePhoneEnteredFromMore,
-} from '@/services/phoneMoreEntry';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 
 const PAGE_SIZE = 30;
@@ -77,10 +73,12 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
 export type BoardContentProps = {
   embedded?: boolean;
   onBack?: () => void;
-  /** Tab bar height — 0 when embedded outside Tabs. */
+  /** Tab bar height — 0 when embedded / stack outside Tabs. */
   tabBarHeight?: number;
   /** When false, still load (embedded pane is always "active"). */
   active?: boolean;
+  /** Root Stack under More — native header owns chrome; no SignalHeader. */
+  stackChrome?: boolean;
 };
 
 export function BoardContent({
@@ -88,6 +86,7 @@ export function BoardContent({
   onBack,
   tabBarHeight = 0,
   active = true,
+  stackChrome = false,
 }: BoardContentProps) {
   const { t } = useLocale();
   const router = useRouter();
@@ -97,11 +96,6 @@ export function BoardContent({
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore = !useTwoPane && !embedded && usePhoneEnteredFromMore('board');
-  const goBackToMore = useCallback(() => {
-    clearPhoneMoreEntry();
-    router.navigate('/(tabs)/more' as never);
-  }, [router]);
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('board');
   const [source, setSource] = useState<CommunitySourceFilter>(
@@ -260,7 +254,9 @@ export function BoardContent({
 
   const listBottomPad = embedded
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
-    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+    : stackChrome
+      ? stackScreenScrollBottomPadding(insets.bottom)
+      : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
   const openPost = useCallback(
     (id: string) => {
@@ -289,14 +285,13 @@ export function BoardContent({
     [ipadNav.isAvailable, openPost, styles.rowWrap],
   );
 
-  const showPhoneChrome = !useTwoPane && !embedded && !fromMore;
+  const showPhoneChrome = !useTwoPane && !embedded && !stackChrome;
   const showPhoneSegments = !useTwoPane && !embedded;
   const showEmbeddedSegments = embedded;
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane || embedded ? [] : ['top']}>
+    <SafeAreaView style={styles.safe} edges={useTwoPane || embedded || stackChrome ? [] : ['top']}>
       {showPhoneChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? <PhoneDrillHeader title={t('screenBoard')} onBack={goBackToMore} /> : null}
       {active ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>
         {onBack ? <WideSubpaneHeader title={t('screenBoard')} onBack={onBack} /> : null}

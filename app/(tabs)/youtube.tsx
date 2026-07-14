@@ -16,7 +16,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -38,6 +37,7 @@ import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -48,12 +48,9 @@ import {
   useIpadSidebarNavActions,
   useIpadSidebarNavState,
 } from '@/contexts/IpadSidebarNavContext';
+import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
-import {
-  clearPhoneMoreEntry,
-  usePhoneEnteredFromMore,
-} from '@/services/phoneMoreEntry';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, fetchSignalYoutubeChannels, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
@@ -97,11 +94,7 @@ export default function YoutubeScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore = !useTwoPane && usePhoneEnteredFromMore('youtube');
-  const goBackToMore = useCallback(() => {
-    clearPhoneMoreEntry();
-    router.navigate('/(tabs)/more' as never);
-  }, [router]);
+  const stackChrome = usePhoneMoreStackChrome();
   const ipadState = useIpadSidebarNavState();
   const ipadNav = useIpadSidebarNavActions();
   const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
@@ -467,7 +460,9 @@ export default function YoutubeScreen() {
         })
       : loading && items.length === 0;
 
-  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const bottomPad = stackChrome
+    ? stackScreenScrollBottomPadding(insets.bottom)
+    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
   const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
@@ -599,9 +594,8 @@ export default function YoutubeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? <PhoneDrillHeader title={t('tabYoutube')} onBack={goBackToMore} /> : null}
+    <SafeAreaView style={styles.safe} edges={useTwoPane || stackChrome ? [] : ['top']}>
+      {!useTwoPane && !stackChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
 
       {youtubeListPanel}

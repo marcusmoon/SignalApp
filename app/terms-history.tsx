@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -52,7 +52,7 @@ export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScr
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
         {useTwoPane ? (
-          <AccountSubpaneHeader title={t('accountHubTermsTitle')} onBack={subpaneBack} />
+          <WideSubpaneHeader title={t('accountHubTermsTitle')} onBack={subpaneBack} />
         ) : null}
         <View style={styles.menuStack}>
           {DOCUMENT_LINKS.map((item, index) => {

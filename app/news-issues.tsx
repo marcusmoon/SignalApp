@@ -5,7 +5,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
@@ -248,7 +248,7 @@ export function NewsIssuesContent({
         showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
-            <AccountSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} />
+            <WideSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} />
           ) : null}
           <View style={styles.header}>
             <View style={styles.categoryTabs}>

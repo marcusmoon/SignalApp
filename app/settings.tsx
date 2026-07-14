@@ -21,9 +21,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
@@ -1391,7 +1390,7 @@ clearCalendarCache();
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {showAccountSubpaneChrome ? (
-          <AccountSubpaneHeader title={settingsTitle} onBack={returnToAccountHub} />
+          <WideSubpaneHeader title={settingsTitle} onBack={returnToAccountHub} />
         ) : null}
         {selectedTab === 'quotes' ? (
           <>

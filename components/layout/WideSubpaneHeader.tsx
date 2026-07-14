@@ -10,9 +10,9 @@ type Props = {
 };
 
 /**
- * Wide web/iPad 서브 화면 공통 상단 — 홈·My info 오버레이 모두 동일한 뒤로 + 제목.
+ * Wide web/iPad 우측 서브 화면 공통 상단 — 홈·My info 오버레이 모두 동일한 뒤로 + 제목.
  */
-export function AccountSubpaneHeader({ title, onBack }: Props) {
+export function WideSubpaneHeader({ title, onBack }: Props) {
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = makeStyles(theme, scaleFont);

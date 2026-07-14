@@ -7,7 +7,7 @@ import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
@@ -375,7 +375,7 @@ export default function AlertsScreen({
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
           {subpaneBack ? (
             <View style={styles.subpaneHeaderPad}>
-              <AccountSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
+              <WideSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
             </View>
           ) : null}
           <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
@@ -408,7 +408,7 @@ export default function AlertsScreen({
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {subpaneBack ? (
           <View style={styles.subpaneHeaderPad}>
-            <AccountSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
+            <WideSubpaneHeader title={t('screenAlerts')} onBack={subpaneBack} />
           </View>
         ) : null}
         <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>{alertsTopFixed}</View>

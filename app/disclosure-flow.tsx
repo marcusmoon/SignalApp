@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -245,7 +245,7 @@ export function DisclosureFlowContent({
         showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
-            <AccountSubpaneHeader title={t('disclosureFlowTitle')} onBack={onBack} />
+            <WideSubpaneHeader title={t('disclosureFlowTitle')} onBack={onBack} />
           ) : null}
 
           <View style={styles.header}>

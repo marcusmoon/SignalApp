@@ -8,7 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { SocialProviderFavicon } from '@/components/account/SocialProviderFavicon';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
@@ -963,7 +963,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         {user ? (
           <>
             {showPaneTitleInContent && accountPane !== 'hub' ? (
-              <AccountSubpaneHeader title={accountHeaderTitle} onBack={returnToAccountHub} />
+              <WideSubpaneHeader title={accountHeaderTitle} onBack={returnToAccountHub} />
             ) : null}
 
             {accountPane === 'hub' ? (

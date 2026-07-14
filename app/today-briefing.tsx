@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
@@ -129,7 +129,7 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
           {onBack ? (
-            <AccountSubpaneHeader title={t('todayBriefingDetailKicker')} onBack={onBack} />
+            <WideSubpaneHeader title={t('todayBriefingDetailKicker')} onBack={onBack} />
           ) : null}
           {embedded ? <Text style={styles.dateHeader}>{dateLabel}</Text> : null}
           {error ? (

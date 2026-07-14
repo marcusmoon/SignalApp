@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -32,15 +32,7 @@ export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScr
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
 
-  const returnToAccountHub = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showAccount();
-      return;
-    }
-    router.replace('/account' as never);
-  }, [ipadNav, router]);
-
-  const subpaneBack = onBack ?? returnToAccountHub;
+  const subpaneBack = onBack;
 
   if (useTwoPane && !embedded) {
     return <WideOverlayRouteRedirect kind="terms-history" params={{ from: 'account' }} />;
@@ -51,7 +43,7 @@ export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScr
       {!useTwoPane ? <Stack.Screen options={{ title: t('accountHubTermsTitle') }} /> : null}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
-        {useTwoPane ? (
+        {subpaneBack ? (
           <WideSubpaneHeader title={t('accountHubTermsTitle')} onBack={subpaneBack} />
         ) : null}
         <View style={styles.menuStack}>
@@ -62,7 +54,10 @@ export function TermsHistoryScreen({ embedded = false, onBack }: TermsHistoryScr
                 key={item.key}
                 onPress={() => {
                   if (ipadNav.isAvailable) {
-                    ipadNav.showTerms(item.type, { from: 'terms-history' });
+                    ipadNav.showTerms(item.type, {
+                      from: 'terms-history',
+                      drillFrom: 'termsHistory',
+                    });
                     return;
                   }
                   router.push({ pathname: '/terms', params: { type: item.type } });

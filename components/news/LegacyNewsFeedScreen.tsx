@@ -246,7 +246,7 @@ export function LegacyNewsFeedScreen() {
     const date = toYmd(new Date());
     const category = newsSegmentToIssuesCategory(segment);
     if (ipadNav.isAvailable) {
-      ipadNav.showNewsIssues({ category, date, digestId: null });
+      ipadNav.showNewsIssues({ category, date, digestId: null }, { drillFrom: 'tabs' });
       return;
     }
     router.push({

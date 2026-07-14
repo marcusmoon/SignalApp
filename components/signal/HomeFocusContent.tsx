@@ -550,11 +550,14 @@ export function HomeFocusContent({
       };
       if (row?.item.id) params.digestId = row.item.id;
       if (ipadNav.isAvailable) {
-        ipadNav.showNewsIssues({
-          category: params.category as NewsIssuesCategory,
-          date: params.date,
-          digestId: params.digestId ?? null,
-        });
+        ipadNav.showNewsIssues(
+          {
+            category: params.category as NewsIssuesCategory,
+            date: params.date,
+            digestId: params.digestId ?? null,
+          },
+          { drillFrom: 'home' },
+        );
         return;
       }
       router.push({
@@ -610,11 +613,14 @@ export function HomeFocusContent({
       }
       if (row?.id) params.digestId = row.id;
       if (ipadNav.isAvailable) {
-        ipadNav.showDisclosureFlow({
-          date: params.date,
-          market: (params.market as DisclosureFlowMarket | undefined) ?? 'all',
-          digestId: params.digestId ?? null,
-        });
+        ipadNav.showDisclosureFlow(
+          {
+            date: params.date,
+            market: (params.market as DisclosureFlowMarket | undefined) ?? 'all',
+            digestId: params.digestId ?? null,
+          },
+          { drillFrom: 'home' },
+        );
         return;
       }
       router.push({
@@ -641,7 +647,7 @@ export function HomeFocusContent({
 
   const openCalendar = useCallback(() => {
     if (ipadNav.isAvailable) {
-      ipadNav.showCalendar();
+      ipadNav.showCalendar({ drillFrom: 'home' });
       return;
     }
     router.navigate('/calendar' as never);
@@ -649,7 +655,7 @@ export function HomeFocusContent({
 
   const openTodayBriefing = useCallback(() => {
     if (ipadNav.isAvailable) {
-      ipadNav.showTodayBriefing(selectedYmd);
+      ipadNav.showTodayBriefing(selectedYmd, { drillFrom: 'home' });
       return;
     }
     router.navigate({

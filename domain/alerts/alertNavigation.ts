@@ -16,20 +16,31 @@ const SIGNAL_TAB_KEYS = new Set<SignalSessionKey>([
   'kr-close',
 ]);
 
+type AlertDrillOptions = { drillFrom?: 'alerts' };
+
 type AlertIpadNav = {
   isAvailable: boolean;
-  showNewsIssues: (params: { category: NewsIssuesCategory; date: string; digestId?: string | null }) => void;
+  showNewsIssues: (
+    params: { category: NewsIssuesCategory; date: string; digestId?: string | null },
+    options?: AlertDrillOptions,
+  ) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
-  showTodayBriefing: (date: string) => void;
-  showDisclosureFlow: (params: {
-    date: string;
-    market?: 'us' | 'kr' | 'all';
-    digestId?: string | null;
-  }) => void;
-  showCalendar: (options?: { from?: 'account' }) => void;
-  showSettings: (tab?: 'display' | 'notifications' | 'news' | 'quotes' | 'server') => void;
+  showTodayBriefing: (date: string, options?: AlertDrillOptions) => void;
+  showDisclosureFlow: (
+    params: {
+      date: string;
+      market?: 'us' | 'kr' | 'all';
+      digestId?: string | null;
+    },
+    options?: AlertDrillOptions,
+  ) => void;
+  showCalendar: (options?: { from?: 'account' } & AlertDrillOptions) => void;
+  showSettings: (
+    tab?: 'display' | 'notifications' | 'news' | 'quotes' | 'server',
+    options?: AlertDrillOptions,
+  ) => void;
   showAccount: () => void;
-  showAlerts: (options?: { from?: 'account' }) => void;
+  showAlerts: (options?: { from?: 'account' } & AlertDrillOptions) => void;
 };
 
 function cleanText(value: unknown): string {
@@ -264,7 +275,7 @@ export function navigateToAlert(
     const category = (cleanText(params.category) || 'global') as NewsIssuesCategory;
     const digestId = cleanText(params.digestId) || null;
     if (ipadNav.isAvailable) {
-      ipadNav.showNewsIssues({ category, date, digestId });
+      ipadNav.showNewsIssues({ category, date, digestId }, { drillFrom: 'alerts' });
       return;
     }
     router.push({
@@ -291,7 +302,7 @@ export function navigateToAlert(
   if (target.pathname === '/today-briefing') {
     const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
     if (ipadNav.isAvailable) {
-      ipadNav.showTodayBriefing(date);
+      ipadNav.showTodayBriefing(date, { drillFrom: 'alerts' });
       return;
     }
     router.push({
@@ -307,7 +318,7 @@ export function navigateToAlert(
     const market = marketRaw === 'us' || marketRaw === 'kr' || marketRaw === 'all' ? marketRaw : undefined;
     const digestId = cleanText(params.digestId) || null;
     if (ipadNav.isAvailable) {
-      ipadNav.showDisclosureFlow({ date, market, digestId });
+      ipadNav.showDisclosureFlow({ date, market, digestId }, { drillFrom: 'alerts' });
       return;
     }
     router.push({
@@ -319,7 +330,7 @@ export function navigateToAlert(
 
   if (target.pathname === '/calendar') {
     if (ipadNav.isAvailable) {
-      ipadNav.showCalendar();
+      ipadNav.showCalendar({ drillFrom: 'alerts' });
       return;
     }
     router.push('/calendar' as Href);
@@ -333,6 +344,7 @@ export function navigateToAlert(
         tab === 'display' || tab === 'notifications' || tab === 'news' || tab === 'quotes' || tab === 'server'
           ? tab
           : 'display',
+        { drillFrom: 'alerts' },
       );
       return;
     }

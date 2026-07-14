@@ -392,10 +392,12 @@ function IpadWideTabLayout({
     calendarFromAccount,
     alertsFromAccount,
     termsType,
-    termsFromHistory,
+    termsFromHistory: _termsFromHistory,
+    widePaneCanGoBack,
   } = useIpadSidebarNavState();
-  const { showHome, showAccount, showTermsHistory } = useIpadSidebarNavActions();
+  const { goBackWidePane } = useIpadSidebarNavActions();
   const { theme } = useSignalTheme();
+  const subpaneBack = widePaneCanGoBack ? goBackWidePane : undefined;
 
   return (
     <>
@@ -410,7 +412,7 @@ function IpadWideTabLayout({
                 initialCategory={newsIssuesParams.category}
                 initialDate={newsIssuesParams.date}
                 initialDigestId={newsIssuesParams.digestId}
-                onBack={showHome}
+                onBack={subpaneBack}
               />
             ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
               <DisclosureFlowContent
@@ -418,33 +420,33 @@ function IpadWideTabLayout({
                 initialDate={disclosureFlowParams.date}
                 initialMarket={disclosureFlowParams.market}
                 initialDigestId={disclosureFlowParams.digestId}
-                onBack={showHome}
+                onBack={subpaneBack}
               />
             ) : contentPane === 'account' ? (
               <AccountScreen embedded />
             ) : contentPane === 'settings' ? (
-              <SettingsScreen embedded />
+              <SettingsScreen embedded onBack={subpaneBack} />
             ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
-              <TodayBriefingContent embedded date={todayBriefingDate} onBack={showHome} />
+              <TodayBriefingContent embedded date={todayBriefingDate} onBack={subpaneBack} />
             ) : contentPane === 'calendar' ? (
               <CalendarScreen
                 embedded
                 fromAccount={calendarFromAccount}
-                onBack={calendarFromAccount ? showAccount : showHome}
+                onBack={subpaneBack}
               />
             ) : contentPane === 'alerts' ? (
               <AlertsScreen
                 embedded
                 fromAccount={alertsFromAccount}
-                onBack={alertsFromAccount ? showAccount : showHome}
+                onBack={subpaneBack}
               />
             ) : contentPane === 'termsHistory' ? (
-              <TermsHistoryScreen embedded onBack={showAccount} />
+              <TermsHistoryScreen embedded onBack={subpaneBack} />
             ) : contentPane === 'terms' ? (
               <TermsContent
                 embedded
                 termsType={termsType}
-                onBack={termsFromHistory ? showTermsHistory : showAccount}
+                onBack={subpaneBack}
               />
             ) : null}
           </View>

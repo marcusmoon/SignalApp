@@ -407,7 +407,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const openTerms = useCallback(
     (type: 'service' | 'privacy') => {
       if (ipadNav.isAvailable) {
-        ipadNav.showTerms(type);
+        ipadNav.showTerms(type, { drillFrom: 'account' });
         return;
       }
       router.push({ pathname: '/terms', params: { type } });
@@ -739,7 +739,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         trailing: tab === 'notifications' ? pushLabel : undefined,
         onPress: () => {
           if (ipadNav.isAvailable) {
-            ipadNav.showSettings(tab);
+            ipadNav.showSettings(tab, { drillFrom: 'account' });
             return;
           }
           router.push({ pathname: '/settings', params: { tab, from: 'account' } });
@@ -762,7 +762,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             body: t('accountActivityAlertsDesc'),
             onPress: () => {
               if (ipadNav.isAvailable) {
-                ipadNav.showAlerts({ from: 'account' });
+                ipadNav.showAlerts({ from: 'account', drillFrom: 'account' });
                 return;
               }
               router.push({ pathname: '/alerts', params: { from: 'account' } });
@@ -807,7 +807,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             body: t('accountHubTermsDesc'),
             onPress: () => {
               if (ipadNav.isAvailable) {
-                ipadNav.showTermsHistory();
+                ipadNav.showTermsHistory({ drillFrom: 'account' });
                 return;
               }
               router.push('/terms-history' as never);

@@ -146,7 +146,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
 - **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 유튜브 · 게시판 · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
-- **설정** (`app/settings.tsx`): My info에서 진입. `from=account`이면 상단 pill 서브탭 숨김(iPhone). 웹·iPad embedded는 `ipadNav.showSettings`. 탭 순서는 `constants/settingsTabs.ts`.
+- **설정** (`app/settings.tsx`): My info에서 진입. `from=account`이면 상단 pill 서브탭 숨김(iPhone). 웹·iPad는 `ipadNav.showSettings` + `AccountSubpaneHeader`(뒤로→내 정보). 탭 순서는 `constants/settingsTabs.ts`.
 - **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만, iPhone).
 
 ### 마감 브리핑 상세

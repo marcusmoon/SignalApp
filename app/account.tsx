@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { SocialProviderFavicon } from '@/components/account/SocialProviderFavicon';
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
@@ -722,7 +723,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         body: t(SETTINGS_HUB_META[tab].descId),
         trailing: tab === 'notifications' ? pushLabel : undefined,
         onPress: () => {
-          if (embedded && ipadNav.isAvailable) {
+          if (ipadNav.isAvailable) {
             ipadNav.showSettings(tab);
             return;
           }
@@ -730,7 +731,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         },
       })),
     };
-  }, [embedded, ipadNav, notificationPrefs?.pushEnabled, router, t]);
+  }, [ipadNav, notificationPrefs?.pushEnabled, router, t]);
 
   const hubSections = useMemo((): HubMenuSection[] => {
     return [
@@ -935,14 +936,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         {user ? (
           <>
             {showPaneTitleInContent && accountPane !== 'hub' ? (
-              <Pressable
-                onPress={returnToAccountHub}
-                accessibilityRole="button"
-                accessibilityLabel={t('commonBack')}
-                style={({ pressed }) => [styles.embeddedBackRow, pressed && styles.activityRowPressed]}>
-                <FontAwesome5 name="chevron-left" size={12} color={theme.green} />
-                <Text style={styles.paneBackText}>{t('commonBack')}</Text>
-              </Pressable>
+              <AccountSubpaneHeader title={accountHeaderTitle} onBack={returnToAccountHub} />
             ) : null}
 
             {accountPane === 'hub' ? (
@@ -1096,9 +1090,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             </View>
 
             <View style={styles.card}>
-              {showPaneTitleInContent ? (
-                <Text style={styles.sectionTitle}>{t('accountProfileSectionTitle')}</Text>
-              ) : null}
               <TextInput
                 value={nickname}
                 onChangeText={setNickname}
@@ -1123,9 +1114,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
             {accountPane === 'social' ? (
               <View style={styles.card}>
-                {showPaneTitleInContent ? (
-                  <Text style={styles.sectionTitle}>{t('accountSocialLinkMenuTitle')}</Text>
-                ) : null}
                 <Text style={styles.sectionLead}>{t('accountSocialLinkHint')}</Text>
                 {!socialCatalog ? (
                   <Text style={styles.mutedText}>{t('commonLoading')}</Text>
@@ -1185,9 +1173,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
             {accountPane === 'password' ? (
             <View style={styles.card}>
-              {showPaneTitleInContent ? (
-                <Text style={styles.sectionTitle}>{t('accountPasswordMenuTitle')}</Text>
-              ) : null}
               <View style={styles.subSectionHeader}>
                 <Text style={styles.subSectionTitle}>{t('accountPasswordSectionTitle')}</Text>
                 <Text style={styles.subSectionMeta}>

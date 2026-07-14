@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
@@ -26,6 +28,7 @@ import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { checkAlertsHasUnread, loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
@@ -48,6 +51,34 @@ export default function AlertsScreen() {
   const isFocused = useIsFocused();
   const router = useRouter();
   const ipadNav = useIpadSidebarNav();
+  const { useTwoPane } = useResponsiveLayout();
+
+  const returnToAccountHub = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showAccount();
+      return;
+    }
+    router.replace('/account' as never);
+  }, [ipadNav, router]);
+
+  const wrapWide = useCallback(
+    (body: ReactNode) => {
+      if (!useTwoPane) {
+        return (
+          <>
+            <Stack.Screen options={{ title: t('screenAlerts') }} />
+            {body}
+          </>
+        );
+      }
+      return (
+        <IpadSidebarScreen title={t('screenAlerts')} hideTopBar>
+          {body}
+        </IpadSidebarScreen>
+      );
+    },
+    [t, useTwoPane],
+  );
   const [items, setItems] = useState<StoredNotification[]>([]);
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -303,20 +334,23 @@ export default function AlertsScreen() {
   const bottomPad = stackScreenScrollBottomPadding(insets.bottom);
 
   if (!authChecked) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+    return wrapWide(
+      <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
         <View style={styles.loadingCenter} accessibilityRole="progressbar" accessibilityLabel={t('commonLoadingA11y')}>
           <ActivityIndicator color={theme.green} />
         </View>
-      </SafeAreaView>
+      </SafeAreaView>,
     );
   }
 
   if (authChecked && !getSessionAccessToken(authSession)) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+    return wrapWide(
+      <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
+          {useTwoPane ? (
+            <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+          ) : null}
           <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
           <View style={styles.authGateCard}>
             <Text style={styles.authGateKicker}>{t('screenAlerts')}</Text>
@@ -331,14 +365,17 @@ export default function AlertsScreen() {
             </Pressable>
           </View>
         </View>
-      </SafeAreaView>
+      </SafeAreaView>,
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+  return wrapWide(
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
+        {useTwoPane ? (
+          <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
+        ) : null}
         <View style={styles.topFixed}>{alertsTopFixed}</View>
         {isFocused ? (
           <FeedNewContentChip
@@ -374,7 +411,7 @@ export default function AlertsScreen() {
           windowSize={7}
         />
       </View>
-    </SafeAreaView>
+    </SafeAreaView>,
   );
 }
 

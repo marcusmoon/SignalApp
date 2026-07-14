@@ -292,8 +292,8 @@ export function navigateToAlert(
       ipadNav.showSignalTab(session, date);
       return;
     }
-    router.navigate({
-      pathname: '/(tabs)/signal',
+    router.push({
+      pathname: '/market-briefing',
       params: { ...(date ? { date } : {}), ...(session ? { session } : {}) },
     } as never);
     return;

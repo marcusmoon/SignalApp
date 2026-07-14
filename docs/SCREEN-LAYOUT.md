@@ -113,8 +113,9 @@ wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화�
 | 진입 | 뒤로 크롬 |
 |---|---|
 | More → 보드·공시·유튜브·My info | **같은 root Stack** — native 헤더 + `PhoneHeaderBackButton`(chevron만) |
+| 홈 → 시장 브리핑·보드 | root Stack (`/market-briefing`, `/more-board`) — 동일 `PhoneHeaderBackButton` |
 | My info → 프로필·비밀번호·소셜 | 같은 Stack 헤더 + `PhoneHeaderBackButton` → 허브 |
-| 홈 등 탭 직접 진입 (보드 등) | `SignalHeader` (Stack 드릴인 아님) |
+| 홈 등에서 시장 탭 직접 | `SignalHeader` (하단 탭 진입 — Stack 드릴인 아님) |
 
 뒤로 UI는 **플랫폼 공통 chevron만** (`PhoneHeaderBackButton`). 「뒤로」 라벨·pill 배경 없음. a11y만 `commonBack`. `WideSubpaneHeader` / `IpadSidebarScreen`도 동일 컨트롤.
 

@@ -74,7 +74,7 @@ const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
 ];
 
 /** 내 정보에서 진입하는 보조 화면 — 사이드바에서는 내 정보 활성으로 표시 */
-const ACCOUNT_AUX_PATHS = ['/alerts', '/calendar', '/settings'];
+const ACCOUNT_AUX_PATHS = ['/alerts', '/calendar', '/settings', '/terms', '/terms-history'];
 
 type Props = {
   newsHasUnread?: boolean;

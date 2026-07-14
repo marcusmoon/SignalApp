@@ -76,6 +76,20 @@ const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
 /** 내 정보에서 진입하는 보조 화면 — 사이드바에서는 내 정보 활성으로 표시 */
 const ACCOUNT_AUX_PATHS = ['/alerts', '/calendar', '/settings', '/terms', '/terms-history'];
 
+function resolveTabNameFromHref(href: string): string | null {
+  const fromTabs = href.match(/\/\(tabs\)\/([^/?]+)/);
+  if (fromTabs?.[1]) return fromTabs[1];
+  const fromRoot = href.match(/^\/([^/?]+)/);
+  return fromRoot?.[1] ?? null;
+}
+
+function isCurrentTabHref(href: string, pathname: string, activeTabName: string | null): boolean {
+  const name = resolveTabNameFromHref(href);
+  if (!name) return false;
+  if (activeTabName === name) return true;
+  return pathname.startsWith(`/${name}`) || pathname === href.replace('/(tabs)', '');
+}
+
 type Props = {
   newsHasUnread?: boolean;
   signalHasUnread?: boolean;
@@ -131,11 +145,16 @@ export function SignalSidebarTabBar({
 
   const navigateMainTab = (tab: TabDef) => {
     if (tab.name === 'account') {
+      if (accountActive) return;
       if (ipadNav.isAvailable) {
         ipadNav.showAccount();
         return;
       }
       router.navigate({ pathname: '/account', params: { from: 'sidebar' } } as never);
+      return;
+    }
+    if (activeTabName === tab.name) {
+      if (ipadNav.isAvailable) ipadNav.showTabs();
       return;
     }
     if (tab.name === 'youtube') {
@@ -152,6 +171,42 @@ export function SignalSidebarTabBar({
     router.navigate(tab.route as Parameters<typeof router.navigate>[0]);
   };
 
+  const handleSubPress = (sub: (typeof subTabs)[number]) => {
+    if (sub.key === activeSubTabKey) return;
+
+    const onSameTab = sub.href ? isCurrentTabHref(sub.href, pathname, activeTabName) : false;
+
+    if (onSameTab) {
+      // 같은 화면: onPress만 — navigate + setParams + onPress 중복을 피한다.
+      sub.onPress?.();
+      return;
+    }
+
+    if (sub.href) {
+      ipadNav.showTabs();
+      const rawParams = sub.params ?? {};
+      const setParams = Object.fromEntries(
+        Object.entries(rawParams).filter(([, value]) => value != null && value !== ''),
+      );
+      const clearParams = Object.fromEntries(
+        Object.entries(rawParams)
+          .filter(([, value]) => value == null || value === '')
+          .map(([key]) => [key, undefined]),
+      );
+      router.navigate({
+        pathname: sub.href,
+        params: setParams,
+      } as Parameters<typeof router.navigate>[0]);
+      // navigate만으로는 이전 쿼리가 남을 수 있어 기본값 키는 명시적으로 지운다.
+      if (Object.keys(clearParams).length > 0) {
+        router.setParams(clearParams);
+      }
+      return;
+    }
+
+    sub.onPress?.();
+  };
+
   const renderYoutubeSubTabs = (activeKey: string | null) => (
     <View style={styles.subTabList}>
       {YOUTUBE_SUB_TABS.map((sub) => {
@@ -166,6 +221,7 @@ export function SignalSidebarTabBar({
             ]}
             onPress={() => {
               if (!ipadNav.isAvailable) return;
+              if (activeYoutubeSubKey === sub.key) return;
               ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
             }}
             accessibilityRole="button"
@@ -200,7 +256,10 @@ export function SignalSidebarTabBar({
               homeActive && styles.tabItemActive,
               pressed && styles.tabItemPressed,
             ]}
-            onPress={() => ipadNav.showHome()}
+            onPress={() => {
+              if (homeActive) return;
+              ipadNav.showHome();
+            }}
             accessibilityRole="button"
             accessibilityState={{ selected: homeActive }}>
             <View style={styles.iconWrap}>
@@ -262,31 +321,7 @@ export function SignalSidebarTabBar({
                             subActive && styles.subTabItemActive,
                             pressed && styles.subTabItemPressed,
                           ]}
-                          onPress={() => {
-                            if (sub.href) {
-                              ipadNav.showTabs();
-                              const rawParams = sub.params ?? {};
-                              const setParams = Object.fromEntries(
-                                Object.entries(rawParams).filter(
-                                  ([, value]) => value != null && value !== '',
-                                ),
-                              );
-                              const clearParams = Object.fromEntries(
-                                Object.entries(rawParams)
-                                  .filter(([, value]) => value == null || value === '')
-                                  .map(([key]) => [key, undefined]),
-                              );
-                              router.navigate({
-                                pathname: sub.href,
-                                params: setParams,
-                              } as Parameters<typeof router.navigate>[0]);
-                              // navigate만으로는 이전 쿼리가 남을 수 있어 기본값 키는 명시적으로 지운다.
-                              if (Object.keys(clearParams).length > 0) {
-                                router.setParams(clearParams);
-                              }
-                            }
-                            sub.onPress?.();
-                          }}
+                          onPress={() => handleSubPress(sub)}
                           accessibilityRole="button"
                           accessibilityState={{ selected: subActive }}>
                           <View style={[styles.subTabDot, subActive && styles.subTabDotActive]} />

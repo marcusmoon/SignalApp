@@ -164,13 +164,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showHome = useCallback(() => {
     setContentPane('home');
+    if (pathname.includes('/home')) return;
     router.navigate('/(tabs)/home' as never);
-  }, [router]);
+  }, [router, pathname]);
 
   const showAccount = useCallback(() => {
     setContentPane('account');
+    if (pathname.startsWith('/account')) return;
     router.navigate({ pathname: '/account', params: { pane: 'hub' } } as never);
-  }, [router]);
+  }, [router, pathname]);
 
   const showTabs = useCallback(() => {
     setContentPane('tabs');
@@ -220,14 +222,23 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showYoutubeTab = useCallback(
     (sort?: YoutubeSortKey) => {
       const next = sort ?? youtubeSortRef.current;
+      const onYoutube = pathname.includes('/youtube');
+      if (onYoutube && next === youtubeSortRef.current) {
+        setContentPane('tabs');
+        return;
+      }
       setYoutubeSort(next);
       setContentPane('tabs');
+      if (onYoutube) {
+        router.setParams({ sort: next });
+        return;
+      }
       router.navigate({
         pathname: '/(tabs)/youtube',
         params: { sort: next },
       } as never);
     },
-    [router],
+    [router, pathname],
   );
 
   const showNewsTab = useCallback(

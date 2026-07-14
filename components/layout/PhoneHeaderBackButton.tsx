@@ -1,5 +1,5 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -8,45 +8,42 @@ type Props = {
   onPress: () => void;
 };
 
+/** 백 버튼 공통 규격 — iPhone Stack · iPad/web 드릴인 모두 동일 */
+export const SIGNAL_BACK_CHEVRON_SIZE = 16;
+
 /**
- * iPhone native stack `headerLeft` — chevron + 「뒤로」라벨 (아이콘만인 경우와 통일).
+ * 상단 뒤로 — chevron만. 라벨·pill 배경 없음.
+ * iPhone / iPad / web 동일. a11y 라벨만 `commonBack`.
  */
 export function PhoneHeaderBackButton({ onPress }: Props) {
   const { t } = useLocale();
-  const { theme, scaleFont } = useSignalTheme();
-  const styles = makeStyles(theme, scaleFont);
+  const { theme } = useSignalTheme();
+  const styles = makeStyles();
 
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={8}
+      hitSlop={12}
       accessibilityRole="button"
       accessibilityLabel={t('commonBack')}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-      <FontAwesome5 name="chevron-left" size={14} color={theme.green} />
-      <Text style={styles.label}>{t('commonBack')}</Text>
+      style={({ pressed }) => [styles.hit, pressed && styles.pressed]}>
+      <FontAwesome5 name="chevron-left" size={SIGNAL_BACK_CHEVRON_SIZE} color={theme.green} />
     </Pressable>
   );
 }
 
-function makeStyles(theme: ReturnType<typeof useSignalTheme>['theme'], sf: (n: number) => number) {
+function makeStyles() {
   return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
+    hit: {
       alignItems: 'center',
-      gap: 6,
-      paddingVertical: 8,
-      paddingHorizontal: 4,
-      marginLeft: 2,
+      justifyContent: 'center',
+      width: 36,
+      height: 36,
+      backgroundColor: 'transparent',
+      borderWidth: 0,
     },
     pressed: {
-      opacity: 0.72,
-    },
-    label: {
-      fontSize: sf(15),
-      lineHeight: sf(20),
-      fontWeight: '600',
-      color: theme.green,
+      opacity: 0.55,
     },
   });
 }

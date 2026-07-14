@@ -96,7 +96,7 @@ export const en = {
 
   screenSettings: 'Settings',
   screenAccount: 'My info',
-  screenAlerts: 'Alerts',
+  screenAlerts: 'Notifications',
   screenCalendar: 'Invest calendar',
   screenDisclosures: 'Filings',
   screenSignal: 'Market',
@@ -402,8 +402,8 @@ export const en = {
   settingsLlmProviderOpenai: 'ChatGPT',
 
   headerTagline: 'Cut the noise. Keep the signal.',
-  a11yAlerts: 'Alerts',
-  a11yAlertsUnread: 'Alerts, new notifications',
+  a11yAlerts: 'Notifications',
+  a11yAlertsUnread: 'Notifications, new items',
   a11yCalendar: 'Invest calendar',
   a11ySettings: 'Settings',
   a11yNewsFilter: 'Open news source filter',
@@ -422,7 +422,7 @@ export const en = {
   settingsTabQuotes: 'Quotes',
   settingsTabDisplay: 'Display',
   settingsTabCalendar: 'Calendar',
-  settingsTabNotifications: 'Alerts',
+  settingsTabNotifications: 'Notifications',
   settingsTabServer: 'Server',
   settingsTabDevMode: 'Developer mode',
 

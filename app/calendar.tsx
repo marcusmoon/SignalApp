@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -9,8 +9,11 @@ import {
   type ListRenderItem,
 } from 'react-native';
 import { useIsFocused } from "expo-router/react-navigation";
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
+import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -20,7 +23,7 @@ import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
@@ -28,7 +31,9 @@ import {
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -147,9 +152,42 @@ export default function CalendarScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
+  const { useTwoPane } = useResponsiveLayout();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const fromAccount =
+    (Array.isArray(params.from) ? params.from[0] : params.from) === 'account';
 
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+
+  const returnToAccountHub = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showAccount();
+      return;
+    }
+    router.replace('/account' as never);
+  }, [ipadNav, router]);
+
+  const wrapWide = useCallback(
+    (body: ReactNode) => {
+      if (!useTwoPane) {
+        return (
+          <>
+            <Stack.Screen options={{ title: t('screenCalendar') }} />
+            {body}
+          </>
+        );
+      }
+      return (
+        <IpadSidebarScreen title={t('screenCalendar')} hideTopBar>
+          {body}
+        </IpadSidebarScreen>
+      );
+    },
+    [t, useTwoPane],
+  );
 
   const todayYmd = toYmd(new Date());
 
@@ -365,25 +403,36 @@ export default function CalendarScreen() {
   const showTodayNav = selectedYmd !== todayYmd;
 
   if (!hasSignalApi()) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+    return wrapWide(
+      <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <WebWheelScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}
+          contentContainerStyle={[
+            styles.scroll,
+            useTwoPane && styles.scrollWide,
+            { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
+          ]}
           showsVerticalScrollIndicator={false}>
+          {fromAccount ? (
+            <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+          ) : null}
           <View style={styles.errBox}>
             <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
           </View>
           <SignalBannerAd />
         </WebWheelScrollView>
-      </SafeAreaView>
+      </SafeAreaView>,
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+  return wrapWide(
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
 
+      <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
+        {fromAccount ? (
+          <AccountSubpaneHeader title={t('screenCalendar')} onBack={returnToAccountHub} />
+        ) : null}
       <View style={styles.fixedTop}>
         {error ? (
           <View style={styles.errBox}>
@@ -498,7 +547,8 @@ export default function CalendarScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </View>
+    </SafeAreaView>,
   );
 }
 
@@ -506,6 +556,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    pageColumn: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+    },
+    pageColumnWide: {
+      ...wideContentFill,
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+    },
     scroll: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
@@ -514,11 +575,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       paddingBottom: stackScreenScrollBottomPadding(0),
     },
+    scrollWide: {
+      ...wideContentFill,
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+    },
     fixedTop: {
       ...fixedHeader.strip,
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
     },
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
@@ -555,8 +618,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     listScroll: { flex: 1, minHeight: 0 },
     listContent: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
       paddingHorizontal: 16,
       flexGrow: 1,
     },

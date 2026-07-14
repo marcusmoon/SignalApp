@@ -4,12 +4,12 @@ import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { AccountSubpaneHeader } from '@/components/account/AccountSubpaneHeader';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
@@ -52,6 +52,9 @@ export default function AlertsScreen() {
   const router = useRouter();
   const ipadNav = useIpadSidebarNav();
   const { useTwoPane } = useResponsiveLayout();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const fromAccount =
+    (Array.isArray(params.from) ? params.from[0] : params.from) === 'account';
 
   const returnToAccountHub = useCallback(() => {
     if (ipadNav.isAvailable) {
@@ -71,6 +74,7 @@ export default function AlertsScreen() {
           </>
         );
       }
+      // 헤더·홈 진입: 전체 앱 크롬만. My info 진입: 본문 서브pane 헤더는 body에서 처리.
       return (
         <IpadSidebarScreen title={t('screenAlerts')} hideTopBar>
           {body}
@@ -348,7 +352,7 @@ export default function AlertsScreen() {
       <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
-          {useTwoPane ? (
+          {fromAccount ? (
             <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
           ) : null}
           <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
@@ -372,8 +376,8 @@ export default function AlertsScreen() {
   return wrapWide(
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.mainColumn}>
-        {useTwoPane ? (
+      <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        {fromAccount ? (
           <AccountSubpaneHeader title={t('screenAlerts')} onBack={returnToAccountHub} />
         ) : null}
         <View style={styles.topFixed}>{alertsTopFixed}</View>
@@ -425,6 +429,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    mainColumnWide: {
+      ...wideContentFill,
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
     },
     topFixed: fixedHeader.strip,
     list: {

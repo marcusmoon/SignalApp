@@ -11,7 +11,7 @@ type Props = {
 
 /**
  * Wide web/iPad 우측 서브 화면 공통 상단 — chevron + 「뒤로」 + 제목.
- * iPhone More 드릴인은 `PhoneDrillHeader`(Stack 헤더 톤)를 쓴다.
+ * iPhone More 드릴인은 root Stack + `PhoneHeaderBackButton`을 쓴다.
  */
 export function WideSubpaneHeader({ title, onBack }: Props) {
   const { t } = useLocale();

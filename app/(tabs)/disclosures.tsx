@@ -14,11 +14,11 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { PhoneDrillHeader } from '@/components/layout/PhoneDrillHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
+  stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -31,6 +31,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
+import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -45,10 +46,6 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import {
-  clearPhoneMoreEntry,
-  usePhoneEnteredFromMore,
-} from '@/services/phoneMoreEntry';
 import { formatFeedItemTimeLabel, toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
@@ -110,11 +107,7 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
-  const fromMore = !useTwoPane && usePhoneEnteredFromMore('disclosures');
-  const goBackToMore = useCallback(() => {
-    clearPhoneMoreEntry();
-    router.navigate('/(tabs)/more' as never);
-  }, [router]);
+  const stackChrome = usePhoneMoreStackChrome();
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('disclosures');
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -401,7 +394,9 @@ export default function DisclosuresScreen() {
     [items, selectedDisclosureId],
   );
 
-  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const bottomPad = stackChrome
+    ? stackScreenScrollBottomPadding(insets.bottom)
+    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const showDigest = !symbolFilter;
   const newContentAvailable = !symbolFilter && newContentFilters.has(filter);
 
@@ -535,9 +530,8 @@ export default function DisclosuresScreen() {
   ) : null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane && !fromMore ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
-      {fromMore ? <PhoneDrillHeader title={t('tabDisclosures')} onBack={goBackToMore} /> : null}
+    <SafeAreaView style={styles.safe} edges={useTwoPane || stackChrome ? [] : ['top']}>
+      {!useTwoPane && !stackChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane && !symbolFilter ? (
           <View style={styles.topFixedStack}>

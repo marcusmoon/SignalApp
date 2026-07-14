@@ -44,7 +44,6 @@ import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
-import { clearPhoneMoreEntry } from '@/services/phoneMoreEntry';
 import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
 import { SymbolExternalLinksGrid } from '@/components/symbol/SymbolExternalLinksGrid';
 import { buildSymbolExternalLinks } from '@/utils/symbolExternalLinks';
@@ -519,7 +518,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
 
   const disclosureRows = disclosures.slice(0, 5);
   const openAllDisclosures = useCallback(() => {
-    clearPhoneMoreEntry();
     router.push(`/disclosures?symbol=${encodeURIComponent(ticker)}` as Href);
   }, [router, ticker]);
 

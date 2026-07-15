@@ -12,7 +12,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -26,9 +25,8 @@ import {
   selectionFilterRowStyles,
 } from '@/components/signal/SelectionFilterSheet';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
-  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
@@ -44,10 +42,6 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
-import {
-  useIpadSidebarNavActions,
-  useIpadSidebarNavState,
-} from '@/contexts/IpadSidebarNavContext';
 import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
@@ -58,8 +52,6 @@ import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrati
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
-import { firstRouteParam } from '@/utils/routeSearchParams';
-import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
@@ -68,13 +60,7 @@ import {
   YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL,
 } from '@/utils/youtubeQuota';
 
-type SortKey = 'popular' | 'latest';
-
 const YOUTUBE_PAGE_SIZE = 30;
-
-function parseYoutubeSortParam(raw: string | string[] | undefined): SortKey {
-  return firstRouteParam(raw) === 'popular' ? 'popular' : 'latest';
-}
 
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
 function normalizeHandlesKey(handles: string[]): string {
@@ -84,29 +70,12 @@ function normalizeHandlesKey(handles: string[]): string {
 export default function YoutubeScreen() {
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
-  const setRouteParams = useSafeSetRouteParams();
-  const router = useRouter();
-  const { sort: sortParam } = useLocalSearchParams<{
-    sort?: string | string[];
-  }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const stackChrome = usePhoneMoreStackChrome();
-  const ipadState = useIpadSidebarNavState();
-  const ipadNav = useIpadSidebarNavActions();
-  const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
-  /** URL이 있으면 우선 — wide에서도 새로고침·공유가 ipadNav 초기값에 가리지 않게 한다. */
-  const urlSort = parseYoutubeSortParam(sortParam);
-  const hasExplicitSortParam = firstRouteParam(sortParam) === 'popular' || firstRouteParam(sortParam) === 'latest';
-  const effectiveSort =
-    hasExplicitSortParam
-      ? urlSort
-      : useTwoPane && ipadNav.isAvailable
-        ? ipadState.youtubeSort
-        : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -134,14 +103,13 @@ export default function YoutubeScreen() {
   const youtubeReplacingRef = useRef(false);
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
   const skipLoadOnSelectedHandlesRef = useRef(false);
-  const syncedYoutubeSortRef = useRef(ipadState.youtubeSort);
 
-  const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles], {
+  const { ref: ytListRef } = useScrollToTopOnChange([selectedHandles], {
     resyncDeps: [items],
   });
   const listScrollResetKey = useMemo(
-    () => `${effectiveSort}:${normalizeHandlesKey(selectedHandles ?? [])}`,
-    [effectiveSort, selectedHandles],
+    () => normalizeHandlesKey(selectedHandles ?? []),
+    [selectedHandles],
   );
 
   useTabScreenLoadingRecovery(items, setLoading);
@@ -199,7 +167,6 @@ export default function YoutubeScreen() {
       forceRefresh?: boolean;
       channelHandles?: string[];
       availableHandles?: string[];
-      sort?: SortKey;
       errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
     }) => {
       setError(null);
@@ -235,12 +202,11 @@ export default function YoutubeScreen() {
       }
       try {
         const availableHandles = opts?.availableHandles ?? curationHandles;
-        const requestedSort = opts?.sort ?? effectiveSort;
         const page = await fetchSignalYoutube(
           {
             offset: 0,
             limit: YOUTUBE_PAGE_SIZE,
-            sort: requestedSort,
+            sort: 'latest',
             channelHandles: availableHandles && handles.length === availableHandles.length ? undefined : handles,
           },
           { cacheMode: signalCacheMode(opts?.forceRefresh) },
@@ -256,7 +222,7 @@ export default function YoutubeScreen() {
         youtubeReplacingRef.current = false;
       }
     },
-    [selectedHandles, curationHandles, locale, effectiveSort, t, applyLoadError],
+    [selectedHandles, curationHandles, locale, t, applyLoadError],
   );
 
   const loadMore = useCallback(async () => {
@@ -274,7 +240,7 @@ export default function YoutubeScreen() {
         {
           offset: nextOff,
           limit: YOUTUBE_PAGE_SIZE,
-          sort: effectiveSort,
+          sort: 'latest',
           channelHandles:
             selectedHandles && curationHandles && selectedHandles.length !== curationHandles.length
               ? selectedHandles
@@ -308,7 +274,7 @@ export default function YoutubeScreen() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
+  }, [selectedHandles, curationHandles, locale, applyLoadError]);
 
   const onRefreshBase = useCallback(async () => {
     if (selectedHandles === null) return;
@@ -345,21 +311,7 @@ export default function YoutubeScreen() {
       return;
     }
     void load();
-  }, [isFocused, load, selectedHandles, effectiveSort]);
-
-  useEffect(() => {
-    if (!hasExplicitSortParam) return;
-    if (sort === urlSort) return;
-    setSort(urlSort);
-  }, [hasExplicitSortParam, sort, urlSort]);
-
-  useEffect(() => {
-    if (!useTwoPane || !ipadNav.isAvailable) return;
-    if (hasExplicitSortParam) return;
-    if (syncedYoutubeSortRef.current === ipadState.youtubeSort) return;
-    syncedYoutubeSortRef.current = ipadState.youtubeSort;
-    setSort(ipadState.youtubeSort);
-  }, [hasExplicitSortParam, ipadNav.isAvailable, ipadState.youtubeSort, useTwoPane]);
+  }, [isFocused, load, selectedHandles]);
 
   const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
     if (a === null || b === null) return a === b;
@@ -372,20 +324,6 @@ export default function YoutubeScreen() {
     setFilterDraftHandles(selectedHandles ? [...selectedHandles] : []);
     setChannelModalVisible(true);
   }, [selectedHandles]);
-
-  const applyPopularFilter = useCallback(() => {
-    if (effectiveSort === 'popular') return;
-    setSort('popular');
-    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('popular');
-    setRouteParams({ sort: 'popular' });
-  }, [effectiveSort, ipadNav, setRouteParams, useTwoPane]);
-
-  const applyLatestSortFilter = useCallback(() => {
-    if (effectiveSort === 'latest') return;
-    setSort('latest');
-    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
-    setRouteParams({ sort: 'latest' });
-  }, [effectiveSort, ipadNav, setRouteParams, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);
@@ -449,7 +387,7 @@ export default function YoutubeScreen() {
   }, [channelFilterActive, selectedHandles, t]);
   /**
    * 채널 부트스트랩 전: 목록이 있으면 가리지 않음(탭 복귀·경합).
-   * 채널 준비 후: 캐시 없이 최신↔인기 전환·강제 새로고침 등으로 `loading`이면 스크롤 영역에 로딩(이미 카드가 있어도 표시).
+   * 채널 준비 후: 캐시 없이 강제 새로고침 등으로 `loading`이면 스크롤 영역에 로딩(이미 카드가 있어도 표시).
    */
   const showScrollLoading =
     selectedHandles === null
@@ -469,30 +407,6 @@ export default function YoutubeScreen() {
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         <View style={[styles.topFixedStack, useTwoPane && styles.topFixedStackWide]}>
-          {!useTwoPane ? (
-            <View style={styles.topFixedSubmenu}>
-              <View style={styles.segment}>
-                <Pressable
-                  onPress={applyLatestSortFilter}
-                  style={[styles.segBtn, effectiveSort === 'latest' && styles.segBtnActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: effectiveSort === 'latest' }}>
-                  <Text style={[styles.segText, effectiveSort === 'latest' && styles.segTextActive]}>
-                    {t('youtubeSortLatest')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={applyPopularFilter}
-                  style={[styles.segBtn, effectiveSort === 'popular' && styles.segBtnActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: effectiveSort === 'popular' }}>
-                  <Text style={[styles.segText, effectiveSort === 'popular' && styles.segTextActive]}>
-                    {t('youtubeSortPopular')}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
           <View style={[styles.topFixedChannelFilter, useTwoPane && styles.topFixedChannelFilterWide]}>
             <View style={styles.channelFilterRow}>
               <Pressable
@@ -646,7 +560,6 @@ export default function YoutubeScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const segmentTab = getSegmentTabBarStyles(theme, sf);
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
@@ -661,9 +574,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     topFixedStack: fixedHeader.fixedStack,
     topFixedStackWide: fixedHeader.fixedStackWide,
-    topFixedSubmenu: fixedHeader.submenuStrip,
-    topFixedChannelFilter: fixedHeader.digestSlot,
-    /** wide도 리스트 inset과 동일 — digests의 edge-to-edge(0)를 쓰지 않는다 */
+    topFixedChannelFilter: fixedHeader.strip,
+    /** wide도 리스트 inset과 동일 — digests의 edge-to-edge(0)을 쓰지 않는다 */
     topFixedChannelFilterWide: {
       paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
       paddingBottom: SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
@@ -672,11 +584,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       justifyContent: 'flex-end',
     },
-    segment: segmentTab.segment,
-    segBtn: segmentTab.segBtn,
-    segBtnActive: segmentTab.segBtnActive,
-    segText: segmentTab.segText,
-    segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
     listContent: {
       paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,

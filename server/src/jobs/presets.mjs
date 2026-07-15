@@ -35,7 +35,7 @@ export const JOB_PRESETS = {
     area: 'youtube',
     labelKey: 'jobPresetYoutubeRefresh',
     descriptionKey: 'jobPresetYoutubeRefreshDesc',
-    jobKeys: ['youtube_economy_latest', 'youtube_economy_popular'],
+    jobKeys: ['youtube_economy_latest'],
   },
   community_refresh: {
     id: 'community_refresh',

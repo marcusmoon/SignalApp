@@ -442,8 +442,6 @@ export const en = {
   youtubeErrorRefresh: 'Refresh failed',
   youtubeScreenTitle: 'Economy YouTube',
   youtubeTopicEconomy: 'Economy',
-  youtubeSortLatest: 'Latest',
-  youtubeSortPopular: 'Popular',
   youtubeFilterChannel: 'Channel',
   youtubeFilterChannelCount: 'Channel {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'Open in YouTube',

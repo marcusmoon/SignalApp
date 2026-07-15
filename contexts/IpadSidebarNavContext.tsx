@@ -401,6 +401,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     if (isWideHomePath(pathname)) {
       const overlay = firstParam(params.overlay);
       if (isWideOverlayKind(overlay)) {
+        // Leaving overlay for a main tab — keep contentPane=tabs until pathname catches up.
+        // Otherwise a stale /home?overlay=… sync snaps the pane back and Home looks dead.
+        if (programmaticOverlayRef.current && contentPaneRef.current === 'tabs') {
+          return;
+        }
         if (!programmaticOverlayRef.current) {
           // Same overlay + param-only sync (category/session/date submenu) must keep drill back.
           // Only clear when navigating to a different overlay root without drillFrom.
@@ -469,9 +474,14 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showHome = useCallback(() => {
     clearWideBackStack();
+    const onHomeRoot =
+      contentPaneRef.current === 'home' &&
+      isWideHomePath(pathname) &&
+      !firstParam(params.overlay);
+    if (onHomeRoot) return;
+
     programmaticOverlayRef.current = true;
     setContentPane('home');
-    if (isWideHomePath(pathname) && !firstParam(params.overlay)) return;
     if (useTwoPane) {
       router.navigate({
         pathname: WIDE_HOME_ROUTE,
@@ -496,8 +506,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showTabs = useCallback(() => {
     if (!restoringWideBackRef.current) clearWideBackStack();
+    // Leaving a home overlay for a sidebar tab — block stale overlay URL from re-applying.
+    if (useTwoPane && isWideHomePath(pathname) && firstParam(params.overlay)) {
+      programmaticOverlayRef.current = true;
+    }
     setContentPane('tabs');
-  }, [clearWideBackStack]);
+  }, [clearWideBackStack, params.overlay, pathname, useTwoPane]);
 
   const showSettings = useCallback(
     (tab: SettingsTab = 'display', options?: WidePaneDrillOptions) => {
@@ -771,22 +785,28 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showYoutubeTab = useCallback(() => {
     clearWideBackStack();
     const onYoutube = pathname.includes('/youtube');
+    if (useTwoPane && isWideHomePath(pathname) && firstParam(params.overlay)) {
+      programmaticOverlayRef.current = true;
+    }
     setContentPane('tabs');
     if (onYoutube) return;
     router.navigate('/(tabs)/youtube' as never);
-  }, [clearWideBackStack, router, pathname]);
+  }, [clearWideBackStack, params.overlay, pathname, router, useTwoPane]);
 
   const showNewsTab = useCallback(
     (segment?: NewsSegmentKey) => {
       clearWideBackStack();
       if (segment) pendingNewsSegmentRef.current = segment;
+      if (useTwoPane && isWideHomePath(pathname) && firstParam(params.overlay)) {
+        programmaticOverlayRef.current = true;
+      }
       setContentPane('tabs');
       router.navigate({
         pathname: '/(tabs)/news',
         params: segment && segment !== 'video' ? { segment } : { segment: 'global' },
       } as never);
     },
-    [clearWideBackStack, router],
+    [clearWideBackStack, params.overlay, pathname, router, useTwoPane],
   );
 
   const showSignalTab = useCallback(
@@ -794,6 +814,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       clearWideBackStack();
       if (session) pendingSignalSessionRef.current = session;
       if (date) pendingSignalDateRef.current = date;
+      if (useTwoPane && isWideHomePath(pathname) && firstParam(params.overlay)) {
+        programmaticOverlayRef.current = true;
+      }
       setContentPane('tabs');
       router.navigate({
         pathname: '/(tabs)/signal',
@@ -803,7 +826,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         },
       } as never);
     },
-    [clearWideBackStack, router],
+    [clearWideBackStack, params.overlay, pathname, router, useTwoPane],
   );
 
   const takePendingNewsSegment = useCallback(() => {

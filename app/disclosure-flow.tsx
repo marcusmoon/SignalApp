@@ -18,7 +18,7 @@ import {
   FEED_PREVIEW_BODY_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
@@ -401,7 +401,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 20,
     },
     innerWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      ...wideContentFill,
       paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
       paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },

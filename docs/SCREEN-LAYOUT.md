@@ -24,7 +24,7 @@
 - **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
 
 콘텐츠 최대 폭: `APP_CONTENT_MAX_WIDTH` (720).  
-wide 탭·홈(`IpadHomeScreen`)·뉴스 플로우·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(공시 플로우·오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
+wide 탭·홈·뉴스 플로우·공시 플로우·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
 가로 inset: `APP_CONTENT_SIDE_PADDING` (16).
 
 ## Safe Area `edges`
@@ -102,7 +102,8 @@ SafeAreaView edges={['top']}
 2. 진입 출처는 **공유 URL 쿼리(`from=`)에 넣지 않는다.** 세션/인메모리(또는 router state)로만 둔다. URL을 복사해 다른 브라우저에서 열면 루트 진입과 같이 헤더 없음.
 3. 본문 레이아웃(뉴스 리스트·보드 카드 등)은 화면 고유. 맞추는 것은 **back 헤더 스트립뿐**.
 4. 드릴인이 2단 이상이면 우측 pane 안에서 back 스택을 쌓아 한 단계씩 복귀한다. **같은 overlay 안에서** 카테고리·세션·날짜 등 쿼리만 바뀌는 경우(서브메뉴)에는 drill back 스택을 비우지 않는다.
-5. 구현 식별자 `?overlay=` 등은 **우측 pane 라우팅용**이며 UI 오버레이가 아니다. 점진적으로 전용 경로/`contentPane`으로 정리해도 된다.
+5. 사이드바 **홈**은 홈 섹션(드릴 포함)에서 하이라이트되지만, 홈 루트가 아니면 탭 시 홈 루트로 리셋한다. 오버레이 → 다른 좌측 탭 이동 중에는 오래된 `?overlay=` URL sync가 pane을 되돌리지 않게 한다.
+6. 구현 식별자 `?overlay=` 등은 **우측 pane 라우팅용**이며 UI 오버레이가 아니다. 점진적으로 전용 경로/`contentPane`으로 정리해도 된다.
 
 대상 예: 홈 → 뉴스플로우·공시플로우·오늘의 브리핑·**시장 브리핑**·캘린더·**보드 목록·게시글·심볼**·내 정보 하위(설정·알림·약관) 및 그 안의 상세. 직접 `/community/…`·`/symbol/…`는 루트 진입(헤더 없음). 사이드바 **시장** 탭 직접 진입은 드릴인이 아니므로 `WideSubpaneHeader` 없음.
 
@@ -171,7 +172,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 |---|---|---|
 | 상단 헤더 | 탭마다 `SignalHeader` | `_layout` 전역 1회 |
 | 세그먼트 | `topFixed` 또는 화면 내 | `SidebarSubTabsContext`(`href`+`params`)로 사이드바 — 각 서브탭 URL에 필터 값을 항상 명시 |
-| 콘텐츠 폭 | max 720 중앙 | 탭·홈·뉴스 플로우: pane 전체 (`wideContentFill`); 일부 임베디드 상세: max 1120 |
+| 콘텐츠 폭 | max 720 중앙 | 탭·홈·뉴스/공시 플로우: pane 전체 (`wideContentFill`); 일부 임베디드 상세: max 1120 |
 | 하단 | 탭바 + inset 헬퍼 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` |
 | 가로 pad | 16 | 탭 pane: 16 또는 0(`wideContentFill`); 임베디드 스택: 20 |
 

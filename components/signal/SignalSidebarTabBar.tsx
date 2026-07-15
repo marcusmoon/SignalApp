@@ -206,7 +206,8 @@ export function SignalSidebarTabBar({
               pressed && styles.tabItemPressed,
             ]}
             onPress={() => {
-              if (homeActive) return;
+              // Highlight covers home drills (news/disclosure flow, etc.); still allow reset to home root.
+              if (homeActive && ipadState.contentPane === 'home') return;
               ipadNav.showHome();
             }}
             accessibilityRole="button"

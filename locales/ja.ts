@@ -74,6 +74,7 @@ export const ja = {
   settingsEntryYoutube: 'YouTube',
   settingsEntryMore: 'その他',
   settingsHomeDisplaySection: 'ホーム画面',
+  settingsHomeDisplayHint: 'ホーム各セクションの表示件数を調整します。',
   settingsHomeNewsFlowDisplaySection: 'ニュースフロー',
   settingsHomeNewsFlowDisplayHint: 'ホームに表示するニュースフローの件数を選びます。',
   settingsHomeNewsFlowDisplayValue: '{{count}}件表示',

@@ -72,6 +72,7 @@ export const ko = {
   settingsEntryYoutube: '유튜브',
   settingsEntryMore: '더보기',
   settingsHomeDisplaySection: '홈 화면',
+  settingsHomeDisplayHint: '홈 각 영역에 보여줄 개수를 조절합니다.',
   settingsHomeNewsFlowDisplaySection: '뉴스 흐름',
   settingsHomeNewsFlowDisplayHint: '홈에 표시할 뉴스 흐름 개수를 선택합니다.',
   settingsHomeNewsFlowDisplayValue: '{{count}}개 표시',

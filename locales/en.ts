@@ -74,6 +74,7 @@ export const en = {
   settingsEntryYoutube: 'YouTube',
   settingsEntryMore: 'More',
   settingsHomeDisplaySection: 'Home screen',
+  settingsHomeDisplayHint: 'How many items each home section shows.',
   settingsHomeNewsFlowDisplaySection: 'News flow',
   settingsHomeNewsFlowDisplayHint: 'Choose how many news flow items to show on the home screen.',
   settingsHomeNewsFlowDisplayValue: 'Show {{count}}',

@@ -755,6 +755,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     limitRowLast: {
       marginBottom: 0,
     },
+    homeCountControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
+    },
+    homeCountValue: {
+      minWidth: 28,
+      textAlign: 'right',
+      fontSize: sf(14),
+      fontWeight: '700',
+      color: theme.text,
+      fontVariant: ['tabular-nums'],
+    },
+    homeCountBtn: {
+      minWidth: 36,
+      minHeight: 32,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.green,
+    },
+    homeCountBtnText: { fontSize: sf(15), fontWeight: '700', color: '#FFFFFF', lineHeight: sf(18) },
     quotesSegmentOrderListWrap: {
       marginBottom: 2,
     },
@@ -1849,146 +1873,6 @@ clearCalendarCache();
         {selectedTab === 'display' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
-              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady || !homeBoardDisplayReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <Text style={[styles.displayCardKicker, { marginTop: 0 }]}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
-                  <Text style={styles.prefHint}>{t('settingsHomeNewsFlowDisplayHint')}</Text>
-                  <View style={[styles.row, { marginTop: 8 }]}>
-                    <Text style={styles.handleText}>
-                      {t('settingsHomeNewsFlowDisplayValue', {
-                        count: String(homeNewsFlowDisplayCount),
-                      })}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
-                      <Pressable
-                        onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
-                        disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeNewsFlowDisplayCount(1)}
-                        disabled={homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
-                    {t('settingsHomeWatchlistDisplaySection')}
-                  </Text>
-                  <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
-                  <View style={[styles.row, { marginTop: 8 }]}>
-                    <Text style={styles.handleText}>
-                      {t('settingsHomeWatchlistDisplayValue', {
-                        count: String(homeWatchlistDisplayCount),
-                      })}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
-                      <Pressable
-                        onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
-                        disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeWatchlistDisplayCount(1)}
-                        disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
-                    {t('settingsHomeBoardDisplaySection')}
-                  </Text>
-                  <Text style={styles.prefHint}>{t('settingsHomeBoardDisplayHint')}</Text>
-                  <View style={[styles.row, { marginTop: 8 }]}>
-                    <Text style={styles.handleText}>
-                      {t('settingsHomeBoardDisplayValue', {
-                        count: String(homeBoardDisplayCount),
-                      })}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
-                      <Pressable
-                        onPress={() => void bumpHomeBoardDisplayCount(-1)}
-                        disabled={homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeBoardDisplayCount(1)}
-                        disabled={homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.addBtn,
-                          (homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.addBtnText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
-              {!mainEntryReady ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
-                  {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
-                    <Pressable
-                      key={entry}
-                      onPress={() => {
-                        setMainEntry(entry);
-                        void saveMainEntry(entry);
-                      }}
-                      style={[styles.langSegment, mainEntry === entry && styles.langSegmentActive]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: mainEntry === entry }}
-                      accessibilityLabel={t(MAIN_ENTRY_LABEL[entry])}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          mainEntry === entry && styles.langSegmentTextActive,
-                        ]}>
-                        {t(MAIN_ENTRY_LABEL[entry])}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {LOCALE_ORDER.map((loc) => (
@@ -2158,6 +2042,137 @@ clearCalendarCache();
                   </Pressable>
                 ))}
               </View>
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
+              {!mainEntryReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
+                  {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
+                    <Pressable
+                      key={entry}
+                      onPress={() => {
+                        setMainEntry(entry);
+                        void saveMainEntry(entry);
+                      }}
+                      style={[styles.langSegment, mainEntry === entry && styles.langSegmentActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: mainEntry === entry }}
+                      accessibilityLabel={t(MAIN_ENTRY_LABEL[entry])}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          mainEntry === entry && styles.langSegmentTextActive,
+                        ]}>
+                        {t(MAIN_ENTRY_LABEL[entry])}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
+              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady || !homeBoardDisplayReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={[styles.limitRow, { marginTop: 8 }]}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
+                    <View style={styles.homeCountControls}>
+                      <Text style={styles.homeCountValue}>{homeNewsFlowDisplayCount}</Text>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
+                        disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('settingsHomeNewsFlowDisplayValue', {
+                          count: String(homeNewsFlowDisplayCount),
+                        })}>
+                        <Text style={styles.homeCountBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(1)}
+                        disabled={homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.homeCountBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
+                    <View style={styles.homeCountControls}>
+                      <Text style={styles.homeCountValue}>{homeWatchlistDisplayCount}</Text>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
+                        disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('settingsHomeWatchlistDisplayValue', {
+                          count: String(homeWatchlistDisplayCount),
+                        })}>
+                        <Text style={styles.homeCountBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(1)}
+                        disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.homeCountBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={[styles.limitRow, styles.limitRowLast]}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeBoardDisplaySection')}</Text>
+                    <View style={styles.homeCountControls}>
+                      <Text style={styles.homeCountValue}>{homeBoardDisplayCount}</Text>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(-1)}
+                        disabled={homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('settingsHomeBoardDisplayValue', {
+                          count: String(homeBoardDisplayCount),
+                        })}>
+                        <Text style={styles.homeCountBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(1)}
+                        disabled={homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.homeCountBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
 
             <View style={styles.displayCard}>

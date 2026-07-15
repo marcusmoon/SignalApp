@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
-import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { SCREEN_WIDE_SCROLL_BOTTOM_BASE } from '@/constants/screenLayout';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
@@ -48,7 +47,6 @@ export function IpadHomeScreen() {
       todayYmd={todayYmd}
       onSelectedYmdChange={onSelectedYmdChange}
       scrollContentPaddingBottom={SCREEN_WIDE_SCROLL_BOTTOM_BASE}
-      contentMaxWidth={APP_WIDE_CONTENT_MAX_WIDTH}
       showIssueSummary
     />
   );

@@ -134,7 +134,6 @@ type HomeFocusContentProps = {
   onSelectedYmdChange: (ymd: string) => void;
   scrollContentPaddingBottom?: number;
   headerAccessory?: ReactNode;
-  contentMaxWidth?: number;
   showIssueSummary?: boolean;
   /** iPhone `SignalHeader` 브랜드 탭 → PTR 연결용 */
   onPullRefreshReady?: (refresh: () => void) => void;
@@ -288,7 +287,6 @@ export function HomeFocusContent({
   onSelectedYmdChange,
   scrollContentPaddingBottom = 28,
   headerAccessory,
-  contentMaxWidth,
   showIssueSummary = false,
   onPullRefreshReady,
 }: HomeFocusContentProps) {
@@ -951,11 +949,7 @@ export function HomeFocusContent({
 
   return (
     <>
-    <View
-      style={[
-        styles.root,
-        contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' } : null,
-      ]}>
+    <View style={styles.root}>
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
         {headerAccessory}
         <SignalDateNavigator

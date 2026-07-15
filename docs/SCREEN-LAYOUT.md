@@ -24,7 +24,7 @@
 - **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
 
 콘텐츠 최대 폭: `APP_CONTENT_MAX_WIDTH` (720).  
-wide 탭·홈(`IpadHomeScreen`)·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(뉴스 이슈·오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
+wide 탭·홈(`IpadHomeScreen`)·뉴스 플로우·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(공시 플로우·오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
 가로 inset: `APP_CONTENT_SIDE_PADDING` (16).
 
 ## Safe Area `edges`
@@ -171,7 +171,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 |---|---|---|
 | 상단 헤더 | 탭마다 `SignalHeader` | `_layout` 전역 1회 |
 | 세그먼트 | `topFixed` 또는 화면 내 | `SidebarSubTabsContext`(`href`+`params`)로 사이드바 — 각 서브탭 URL에 필터 값을 항상 명시 |
-| 콘텐츠 폭 | max 720 중앙 | 탭·홈: pane 전체 (`wideContentFill`); 일부 임베디드 상세: max 1120 |
+| 콘텐츠 폭 | max 720 중앙 | 탭·홈·뉴스 플로우: pane 전체 (`wideContentFill`); 일부 임베디드 상세: max 1120 |
 | 하단 | 탭바 + inset 헬퍼 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` |
 | 가로 pad | 16 | 탭 pane: 16 또는 0(`wideContentFill`); 임베디드 스택: 20 |
 

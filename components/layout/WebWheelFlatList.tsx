@@ -14,6 +14,7 @@ import {
   WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT,
   WEB_FLATLIST_INITIAL,
   WEB_FLATLIST_OVERSCAN,
+  webScrollViewportDataSet,
 } from '@/constants/webLayout';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
@@ -464,6 +465,7 @@ function WebWheelFlatListInner<T>(
     return (
       <View
         ref={setWebRef}
+        dataSet={webScrollViewportDataSet}
         style={[webListViewportStyle, style] as never}
         {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>

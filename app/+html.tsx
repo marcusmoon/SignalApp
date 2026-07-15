@@ -161,6 +161,15 @@ body {
   display: none;
 }
 
+/* Vertical scroll panes (WebWheelScrollView / WebWheelFlatList) — hide scrollbar chrome. */
+[data-signal-scroll-viewport="true"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-signal-scroll-viewport="true"]::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mobile Safari can miss RN Web's initial fixed/absolute measurements until resize.
    Keep floating navigation controls in a CSS-owned fixed layer from first paint. */
 [data-signal-floating-tabbar="true"] {

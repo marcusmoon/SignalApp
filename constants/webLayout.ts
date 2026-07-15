@@ -74,3 +74,6 @@ export const webHorizontalCarouselScrollProps =
         dataSet: { signalHorizontalCarousel: 'true' },
       } as const)
     : ({ showsHorizontalScrollIndicator: false as const } as const);
+
+/** Vertical scroll panes on web — hide native scrollbars (wheel/trackpad still works). */
+export const webScrollViewportDataSet = isWeb ? ({ signalScrollViewport: 'true' } as const) : undefined;

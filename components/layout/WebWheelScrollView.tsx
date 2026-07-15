@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useRef, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 
-import { WEB_THEME_BG } from '@/constants/webLayout';
+import { WEB_THEME_BG, webScrollViewportDataSet } from '@/constants/webLayout';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
@@ -57,6 +57,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
       <View
         key={webScrollKey}
         {...(rest as object)}
+        dataSet={webScrollViewportDataSet}
         ref={setWebRef}
         style={[webViewportStyle, { backgroundColor }, style]}>
         <View

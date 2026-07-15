@@ -33,8 +33,8 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_B
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -406,26 +406,24 @@ export default function YoutubeScreen() {
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        <View style={[styles.topFixedStack, useTwoPane && styles.topFixedStackWide]}>
-          <View style={[styles.topFixedChannelFilter, useTwoPane && styles.topFixedChannelFilterWide]}>
-            <View style={styles.channelFilterRow}>
-              <Pressable
-                onPress={openChannelFilter}
-                disabled={!selectedHandles || !curationHandles}
-                style={[
-                  styles.channelFilterChip,
-                  !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
-                  channelFilterActive && styles.channelFilterChipActive,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={channelFilterLabel}
-                accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-                <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
-                <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
-                  {channelFilterLabel}
-                </Text>
-              </Pressable>
-            </View>
+        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+          <View style={styles.channelFilterRow}>
+            <Pressable
+              onPress={openChannelFilter}
+              disabled={!selectedHandles || !curationHandles}
+              style={[
+                styles.channelFilterChip,
+                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                channelFilterActive && styles.channelFilterChipActive,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={channelFilterLabel}
+              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
+              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+                {channelFilterLabel}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
@@ -572,17 +570,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    topFixedStack: fixedHeader.fixedStack,
-    topFixedStackWide: fixedHeader.fixedStackWide,
-    topFixedChannelFilter: fixedHeader.strip,
-    /** wide도 리스트 inset과 동일 — digests의 edge-to-edge(0)을 쓰지 않는다 */
-    topFixedChannelFilterWide: {
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingBottom: SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
+    /** 채널 필터 — 단일 topFixed 스트립 (wide에서 stack+strip 이중 상단 패딩 금지) */
+    topFixed: fixedHeader.strip,
+    /** sidebar scrollContent paddingVertical과 본문 시작 라인 정렬 */
+    topFixedWide: {
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_TOP,
     },
     channelFilterRow: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
+      alignItems: 'center',
+      minHeight: 32,
     },
     list: { ...webScrollViewportStyle },
     listContent: {

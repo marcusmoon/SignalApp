@@ -241,6 +241,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const restoringWideBackRef = useRef(false);
   const wideBackStackRef = useRef(wideBackStack);
   wideBackStackRef.current = wideBackStack;
+  const contentPaneRef = useRef(contentPane);
+  contentPaneRef.current = contentPane;
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
@@ -399,7 +401,14 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     if (isWideHomePath(pathname)) {
       const overlay = firstParam(params.overlay);
       if (isWideOverlayKind(overlay)) {
-        if (!programmaticOverlayRef.current) clearWideBackStack();
+        if (!programmaticOverlayRef.current) {
+          // Same overlay + param-only sync (category/session/date submenu) must keep drill back.
+          // Only clear when navigating to a different overlay root without drillFrom.
+          const nextPane = overlayKindToContentPane(overlay);
+          if (contentPaneRef.current !== nextPane) {
+            clearWideBackStack();
+          }
+        }
         programmaticOverlayRef.current = false;
         applyOverlayKind(overlay, params);
         return;

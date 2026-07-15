@@ -441,8 +441,6 @@ export const ko = {
   youtubeErrorRefresh: '새로고침 실패',
   youtubeScreenTitle: '경제 유튜브',
   youtubeTopicEconomy: '경제',
-  youtubeSortLatest: '최신',
-  youtubeSortPopular: '인기',
   youtubeFilterChannel: '채널',
   youtubeFilterChannelCount: '채널 {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'YouTube에서 열기',

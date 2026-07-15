@@ -442,8 +442,6 @@ export const ja = {
   youtubeErrorRefresh: '更新に失敗しました',
   youtubeScreenTitle: '経済 YouTube',
   youtubeTopicEconomy: '経済',
-  youtubeSortLatest: '最新',
-  youtubeSortPopular: '人気',
   youtubeFilterChannel: 'チャンネル',
   youtubeFilterChannelCount: 'チャンネル {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'YouTubeで開く',

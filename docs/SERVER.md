@@ -121,7 +121,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 - 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART). 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)로 유지
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)
-- YouTube (`youtube_economy_latest` sync, `youtube_economy_popular`)
+- YouTube (`youtube_economy_latest` sync)
 - 시세·일봉·코인
 
 ## 배포

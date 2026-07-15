@@ -20,7 +20,6 @@ import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import {
   useIpadSidebarNavActions,
   useIpadSidebarNavState,
-  type YoutubeSortKey,
 } from '@/contexts/IpadSidebarNavContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import type { MessageId } from '@/locales/messages';
@@ -43,14 +42,6 @@ type TabDef = {
   labelId: MessageId;
 };
 
-type SidebarSubDef = {
-  key: string;
-  kind: 'youtube';
-  route: string;
-  icon: 'list' | 'fire';
-  labelId: MessageId;
-};
-
 const SIDEBAR_TABS: TabDef[] = [
   { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
   { name: 'signal', route: '/(tabs)/signal', icon: 'chart-area', labelId: 'tabSignal' },
@@ -59,23 +50,6 @@ const SIDEBAR_TABS: TabDef[] = [
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
   { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },
   { name: 'account', route: '/account', icon: 'user-circle', labelId: 'screenAccount' },
-];
-
-const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
-  {
-    key: 'latest',
-    kind: 'youtube',
-    route: '/(tabs)/youtube',
-    icon: 'list',
-    labelId: 'youtubeSortLatest',
-  },
-  {
-    key: 'popular',
-    kind: 'youtube',
-    route: '/(tabs)/youtube',
-    icon: 'fire',
-    labelId: 'youtubeSortPopular',
-  },
 ];
 
 /** 내 정보에서 진입하는 보조 화면 — 사이드바에서는 내 정보 활성으로 표시 */
@@ -153,9 +127,6 @@ export function SignalSidebarTabBar({
             (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
         )?.name ?? 'news';
 
-  const activeYoutubeSubKey: YoutubeSortKey | null =
-    activeTabName === 'youtube' && ipadNav.isAvailable ? ipadState.youtubeSort : null;
-
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
   const navigateMainTab = (tab: TabDef) => {
@@ -174,7 +145,6 @@ export function SignalSidebarTabBar({
     }
     if (tab.name === 'youtube') {
       if (ipadNav.isAvailable) {
-        // 현재 정렬 유지 (사이드바 메인 클릭이 latest로 리셋하지 않음)
         ipadNav.showYoutubeTab();
         return;
       }
@@ -221,42 +191,6 @@ export function SignalSidebarTabBar({
 
     sub.onPress?.();
   };
-
-  const renderYoutubeSubTabs = (activeKey: string | null) => (
-    <View style={styles.subTabList}>
-      {YOUTUBE_SUB_TABS.map((sub) => {
-        const subActive = activeKey === sub.key;
-        return (
-          <Pressable
-            key={sub.key}
-            style={({ pressed }) => [
-              styles.subTabItem,
-              subActive && styles.subTabItemActive,
-              pressed && styles.subTabItemPressed,
-            ]}
-            onPress={() => {
-              if (!ipadNav.isAvailable) return;
-              if (activeYoutubeSubKey === sub.key) return;
-              ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: subActive }}>
-            <View style={styles.subIconWrap}>
-              <FontAwesome5
-                name={sub.icon}
-                size={12}
-                color={subActive ? theme.green : theme.textDim}
-                solid
-              />
-            </View>
-            <Text style={[styles.subTabLabel, subActive && styles.subTabLabelActive]} numberOfLines={1}>
-              {t(sub.labelId)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
 
   return (
     <View style={styles.sidebar}>
@@ -321,8 +255,6 @@ export function SignalSidebarTabBar({
                     {t(tab.labelId)}
                   </Text>
                 </Pressable>
-
-                {isActive && tab.name === 'youtube' ? renderYoutubeSubTabs(activeYoutubeSubKey) : null}
 
                 {isActive && tab.name !== 'youtube' && tab.name !== 'account' && subTabs.length > 0 ? (
                   <View style={styles.subTabList}>

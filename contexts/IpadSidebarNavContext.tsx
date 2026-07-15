@@ -20,8 +20,6 @@ import {
   type WideOverlayKind,
 } from '@/utils/wideOverlayRoute';
 
-export type YoutubeSortKey = 'latest' | 'popular';
-
 export type IpadContentPane =
   | 'home'
   | 'tabs'
@@ -70,7 +68,6 @@ type IpadSidebarNavState = {
   /** True when the right pane was opened via in-pane drill-in (show WideSubpaneHeader). */
   widePaneCanGoBack: boolean;
   settingsTab: SettingsTab;
-  youtubeSort: YoutubeSortKey;
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
   todayBriefingDate: string | null;
@@ -107,7 +104,7 @@ type IpadSidebarNavActions = {
   showBoard: (options?: WidePaneDrillOptions & { source?: string }) => void;
   showCommunityPost: (id: string, options?: WidePaneDrillOptions) => void;
   showSymbol: (ticker: string, options?: WidePaneDrillOptions) => void;
-  showYoutubeTab: (sort?: YoutubeSortKey) => void;
+  showYoutubeTab: () => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
   goBackWidePane: () => void;
@@ -127,7 +124,6 @@ const defaultState: IpadSidebarNavState = {
   isSettingsPaneActive: false,
   widePaneCanGoBack: false,
   settingsTab: 'display',
-  youtubeSort: 'latest',
   newsIssuesParams: null,
   disclosureFlowParams: null,
   todayBriefingDate: null,
@@ -174,11 +170,6 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   const text = String(raw || '').trim();
   return text || undefined;
-}
-
-function parseYoutubeSortParam(raw: string | undefined): YoutubeSortKey | null {
-  if (raw === 'popular' || raw === 'latest') return raw;
-  return null;
 }
 
 function parseNewsIssuesCategory(raw: string | undefined): NewsIssuesCategory {
@@ -235,9 +226,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     const tab = firstParam(params.tab);
     return isSettingsTab(tab) ? tab : 'display';
   });
-  const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>(() => {
-    return parseYoutubeSortParam(firstParam(params.sort)) ?? 'latest';
-  });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
@@ -256,8 +244,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
-  const youtubeSortRef = useRef(youtubeSort);
-  youtubeSortRef.current = youtubeSort;
 
   const applyOverlayKind = useCallback(
     (kind: WideOverlayKind, rawParams: Record<string, string | string[] | undefined>) => {
@@ -433,11 +419,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     const tab = firstParam(params.tab);
     if (isSettingsTab(tab)) setSettingsTab(tab);
 
-    if (pathname.includes('/youtube')) {
-      const sort = parseYoutubeSortParam(firstParam(params.sort));
-      if (sort) setYoutubeSort(sort);
-    }
-
     if (pane === 'newsIssues') {
       const date = parseDateParam(firstParam(params.date));
       if (date) {
@@ -473,7 +454,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     params.session,
     params.tab,
     params.ticker,
-    params.sort,
     pathname,
     useTwoPane,
   ]);
@@ -779,28 +759,13 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     }
   }, [alertsFromAccount, applyOverlayKind, router]);
 
-  const showYoutubeTab = useCallback(
-    (sort?: YoutubeSortKey) => {
-      clearWideBackStack();
-      const next = sort ?? youtubeSortRef.current;
-      const onYoutube = pathname.includes('/youtube');
-      if (onYoutube && next === youtubeSortRef.current) {
-        setContentPane('tabs');
-        return;
-      }
-      setYoutubeSort(next);
-      setContentPane('tabs');
-      if (onYoutube) {
-        router.setParams({ sort: next });
-        return;
-      }
-      router.navigate({
-        pathname: '/(tabs)/youtube',
-        params: { sort: next },
-      } as never);
-    },
-    [clearWideBackStack, router, pathname],
-  );
+  const showYoutubeTab = useCallback(() => {
+    clearWideBackStack();
+    const onYoutube = pathname.includes('/youtube');
+    setContentPane('tabs');
+    if (onYoutube) return;
+    router.navigate('/(tabs)/youtube' as never);
+  }, [clearWideBackStack, router, pathname]);
 
   const showNewsTab = useCallback(
     (segment?: NewsSegmentKey) => {
@@ -879,7 +844,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       isSettingsPaneActive: contentPane === 'settings',
       widePaneCanGoBack: wideBackStack.length > 0,
       settingsTab,
-      youtubeSort,
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,
@@ -898,7 +862,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       isAccountPaneActive,
       wideBackStack.length,
       settingsTab,
-      youtubeSort,
       newsIssuesParams,
       disclosureFlowParams,
       todayBriefingDate,

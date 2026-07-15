@@ -185,7 +185,7 @@ export default function MoreHubScreen() {
       }
       if (item === 'youtube') {
         if (ipadNav.isAvailable) {
-          ipadNav.showYoutubeTab('latest');
+          ipadNav.showYoutubeTab();
         }
         router.push('/(tabs)/youtube' as never);
         return;

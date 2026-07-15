@@ -579,7 +579,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     channelFilterRow: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       minHeight: 32,
     },

@@ -156,9 +156,9 @@ function MacroHighlightRow({
   return (
     <HomeDigestFeedRow
       title={item.title}
-      titleLines={2}
+      titleLines={null}
       summary={item.summary}
-      summaryLines={2}
+      summaryLines={null}
       trailText={sourceName}
       timeLabel={formatFeedItemTimeLabel(item.publishedAt || item.checkedAt, locale)}
       sourceEntries={
@@ -200,7 +200,7 @@ function SectorRow({
       <Text style={styles.sectorName} numberOfLines={1}>
         {item.name}
       </Text>
-      <Text style={styles.sectorSummary} numberOfLines={2}>{item.summary}</Text>
+      <Text style={styles.sectorSummary}>{item.summary}</Text>
     </View>
   );
 }
@@ -309,7 +309,7 @@ export function MarketBriefingBlock({
               <HomeDigestFeedRow
                 key={`${item.title}-${index}`}
                 title={item.title}
-                titleLines={3}
+                titleLines={null}
                 trailText={item.sourceName?.trim() || null}
                 timeLabel={formatFeedItemTimeLabel(item.publishedAt || item.checkedAt, locale)}
                 sourceEntries={briefingSourceIconEntries([item])}

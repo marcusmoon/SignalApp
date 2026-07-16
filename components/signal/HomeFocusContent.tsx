@@ -784,7 +784,6 @@ export function HomeFocusContent({
                 key={row.id}
                 variant="signal"
                 title={briefingLeadText(row)}
-                titleLines={showIssueSummary ? 4 : 3}
                 timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
                 trailText={sessionLabel}
                 sourceEntries={sourceEntries}

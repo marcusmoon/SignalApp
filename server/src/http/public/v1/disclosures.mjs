@@ -25,6 +25,37 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
+const HIGH_IMPORTANCE_FORMS = new Set(['8-K', '6-K', '주요사항보고서', '공정공시', '조회공시']);
+const MID_IMPORTANCE_FORMS = new Set(['10-K', '10-Q', '20-F', '사업보고서', '반기보고서', '분기보고서']);
+
+function formImportanceValue(form) {
+  const raw = cleanText(form);
+  const upper = raw.toUpperCase();
+  if (HIGH_IMPORTANCE_FORMS.has(raw) || HIGH_IMPORTANCE_FORMS.has(upper)) return 2;
+  if (/주요|중요|공정|조회|긴급|속보/.test(raw)) return 2;
+  if (MID_IMPORTANCE_FORMS.has(raw) || MID_IMPORTANCE_FORMS.has(upper)) return 1;
+  return 0;
+}
+
+/** 외부 에이전트 ingest용 — importance 명시 권장, 없으면 forms로 추론 */
+function resolveIngestImportance(item) {
+  const raw = Number(item?.importance);
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(2, Math.round(raw)));
+  const forms = Array.isArray(item?.forms) ? item.forms : [];
+  if (forms.length === 0) return 0;
+  return Math.max(0, ...forms.map(formImportanceValue));
+}
+
+function normalizeDisclosureDigestIngestItem(item, index, now) {
+  return {
+    ...item,
+    sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
+    importance: resolveIngestImportance(item),
+    score: item.score ?? 100 - index * 10,
+    updatedAt: now,
+  };
+}
+
 async function publishDigestNotification(item, queuePush) {
   const market = cleanText(item?.market) || 'us';
   const date =
@@ -72,12 +103,7 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
     const sendPush = resolveIngestSendPush(body);
     const notifyInbox = resolveIngestNotifyInbox(body);
     const now = new Date().toISOString();
-    const items = rawItems.map((item, index) => ({
-      ...item,
-      sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
-      score: item.score ?? (100 - index * 10),
-      updatedAt: now,
-    }));
+    const items = rawItems.map((item, index) => normalizeDisclosureDigestIngestItem(item, index, now));
     await upsertCollectionRows('disclosureDigestItems', items);
     let inboxPublished = 0;
     let pushQueued = 0;

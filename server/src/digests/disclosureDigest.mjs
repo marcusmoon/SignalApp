@@ -1,5 +1,11 @@
 import crypto from 'node:crypto';
 
+/**
+ * 로컬/검증용 공시 다이제스트 생성기.
+ * 운영에서는 외부 에이전트가 POST /v1/disclosure-digests/ingest 로 올린다.
+ * @see docs/DISCLOSURE-DIGEST-AUTOMATION.md
+ */
+
 // 중요도 높은 공시 유형 (8-K: 중요 이벤트, 6-K: 외국 기업 중요 이벤트)
 const HIGH_IMPORTANCE_FORMS = new Set(['8-K', '6-K', '주요사항보고서', '공정공시', '조회공시']);
 const MID_IMPORTANCE_FORMS = new Set(['10-K', '10-Q', '20-F', '사업보고서', '반기보고서', '분기보고서']);

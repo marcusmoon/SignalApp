@@ -98,6 +98,12 @@ import {
   subscribeHomeBoardDisplayCountChanged,
 } from '@/services/homeBoardDisplayPreference';
 import {
+  HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
+  HOME_MARKET_BRIEFING_DISPLAY_MAX,
+  loadHomeMarketBriefingDisplayCount,
+  subscribeHomeMarketBriefingDisplayCountChanged,
+} from '@/services/homeMarketBriefingDisplayPreference';
+import {
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
   loadHomeNewsFlowDisplayCount,
   subscribeHomeNewsFlowDisplayCountChanged,
@@ -123,7 +129,6 @@ import {
 
 const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
-const HOME_SIGNAL_LIMIT = 4;
 const DISCLOSURE_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
@@ -168,6 +173,13 @@ function briefingLeadText(row: SignalApiMarketBriefing): string {
   const summary = String(row.summary || row.headline || '').trim();
   if (summary) return summary;
   return row.overview[0] || '';
+}
+
+/** 홈 미리보기 — 짧은 헤드라인 우선 (전문은 상세에서) */
+function briefingHomeTitle(row: SignalApiMarketBriefing): string {
+  const headline = String(row.headline || '').trim();
+  if (headline) return headline;
+  return briefingLeadText(row);
 }
 
 function briefingVisibleKey(row: SignalApiMarketBriefing): string {
@@ -309,6 +321,9 @@ export function HomeFocusContent({
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [marketBriefingDisplayCount, setMarketBriefingDisplayCount] = useState(
+    HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
+  );
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [boardPosts, setBoardPosts] = useState<SignalApiCommunityPost[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
@@ -328,6 +343,10 @@ export function HomeFocusContent({
         .sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count)
         .slice(0, newsFlowDisplayCount),
     [issues, newsFlowDisplayCount],
+  );
+  const homeBriefings = useMemo(
+    () => briefings.slice(0, marketBriefingDisplayCount),
+    [briefings, marketBriefingDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading],
@@ -448,7 +467,7 @@ export function HomeFocusContent({
         setBriefings(
           uniqueVisibleBriefings(
             [...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
-          ).slice(0, HOME_SIGNAL_LIMIT),
+          ).slice(0, HOME_MARKET_BRIEFING_DISPLAY_MAX),
         );
         setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
         setCalendarEvents(
@@ -511,14 +530,16 @@ export function HomeFocusContent({
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   const reloadHomeDisplayPrefs = useCallback(async () => {
-    const [newsFlow, watchlist, board] = await Promise.all([
+    const [newsFlow, watchlist, board, marketBriefing] = await Promise.all([
       loadHomeNewsFlowDisplayCount(),
       loadHomeWatchlistDisplayCount(),
       loadHomeBoardDisplayCount(),
+      loadHomeMarketBriefingDisplayCount(),
     ]);
     setNewsFlowDisplayCount(newsFlow);
     setWatchlistDisplayCount(watchlist);
     setBoardDisplayCount(board);
+    setMarketBriefingDisplayCount(marketBriefing);
     setHomeDisplayPrefsReady(true);
   }, []);
 
@@ -532,6 +553,9 @@ export function HomeFocusContent({
         void reloadHomeDisplayPrefs();
       }),
       subscribeHomeBoardDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+      subscribeHomeMarketBriefingDisplayCountChanged(() => {
         void reloadHomeDisplayPrefs();
       }),
     ];
@@ -783,7 +807,8 @@ export function HomeFocusContent({
               <HomeDigestFeedRow
                 key={row.id}
                 variant="signal"
-                title={briefingLeadText(row)}
+                title={briefingHomeTitle(row)}
+                titleLines={2}
                 timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
                 trailText={sessionLabel}
                 sourceEntries={sourceEntries}
@@ -1026,11 +1051,11 @@ export function HomeFocusContent({
               title={t('ipadHomeSignalTitle')}
               subtitle={t('ipadHomeSignalSubtitle')}
               badge={<AiBadge />}
-              onPress={briefings.length > 0 ? openSignal : undefined}
-              accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
+              onPress={homeBriefings.length > 0 ? openSignal : undefined}
+              accessibilityLabel={homeBriefings.length > 0 ? t('commonViewAll') : undefined}
             />
-            {briefings.length > 0 ? (
-              renderSignalCard(briefings)
+            {homeBriefings.length > 0 ? (
+              renderSignalCard(homeBriefings)
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>

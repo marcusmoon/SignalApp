@@ -47,7 +47,7 @@ import {
   type TabBarOpacityLevel,
 } from '@/services/tabBarOpacityPreference';
 
-const TAB_ICON_SIZE = 25;
+const TAB_ICON_SIZE = 22;
 
 type TabBarIconName =
   | 'home'
@@ -62,7 +62,7 @@ type TabBarIconName =
 function TabBarIcon({
   name,
   color,
-  focused = false,
+  focused: _focused = false,
   showDot,
 }: {
   name: TabBarIconName;
@@ -72,7 +72,8 @@ function TabBarIcon({
 }) {
   return (
     <View style={tabIconWrap}>
-      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid={focused} />
+      {/* Always outline — solid glyphs read too heavy on the floating tab bar. */}
+      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid={false} />
       {showDot ? <View style={tabIconDot} /> : null}
     </View>
   );

@@ -131,6 +131,13 @@ import {
   saveHomeBoardDisplayCount,
 } from '@/services/homeBoardDisplayPreference';
 import {
+  HOME_MARKET_BRIEFING_DISPLAY_MAX,
+  HOME_MARKET_BRIEFING_DISPLAY_MIN,
+  HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
+  loadHomeMarketBriefingDisplayCount,
+  saveHomeMarketBriefingDisplayCount,
+} from '@/services/homeMarketBriefingDisplayPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -1073,6 +1080,10 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
   const [homeBoardDisplayCount, setHomeBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
   const [homeBoardDisplayReady, setHomeBoardDisplayReady] = useState(false);
+  const [homeMarketBriefingDisplayCount, setHomeMarketBriefingDisplayCount] = useState(
+    HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
+  );
+  const [homeMarketBriefingDisplayReady, setHomeMarketBriefingDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1303,6 +1314,22 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     setHomeBoardDisplayCount(next);
   }, []);
 
+  const reloadHomeMarketBriefingDisplayPref = useCallback(async () => {
+    const v = await loadHomeMarketBriefingDisplayCount();
+    setHomeMarketBriefingDisplayCount(v);
+    setHomeMarketBriefingDisplayReady(true);
+  }, []);
+
+  const bumpHomeMarketBriefingDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeMarketBriefingDisplayCount();
+    const next = Math.min(
+      HOME_MARKET_BRIEFING_DISPLAY_MAX,
+      Math.max(HOME_MARKET_BRIEFING_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeMarketBriefingDisplayCount(next);
+    setHomeMarketBriefingDisplayCount(next);
+  }, []);
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1328,6 +1355,7 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
     void reloadHomeBoardDisplayPref();
+    void reloadHomeMarketBriefingDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1343,6 +1371,7 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
     reloadHomeBoardDisplayPref,
+    reloadHomeMarketBriefingDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -2078,7 +2107,10 @@ clearCalendarCache();
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
-              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady || !homeBoardDisplayReady ? (
+              {!homeNewsFlowDisplayReady ||
+              !homeWatchlistDisplayReady ||
+              !homeBoardDisplayReady ||
+              !homeMarketBriefingDisplayReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
@@ -2105,6 +2137,40 @@ clearCalendarCache();
                         style={({ pressed }) => [
                           styles.homeCountBtn,
                           (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.homeCountBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeMarketBriefingDisplaySection')}</Text>
+                    <View style={styles.homeCountControls}>
+                      <Text style={styles.homeCountValue}>{homeMarketBriefingDisplayCount}</Text>
+                      <Pressable
+                        onPress={() => void bumpHomeMarketBriefingDisplayCount(-1)}
+                        disabled={homeMarketBriefingDisplayCount <= HOME_MARKET_BRIEFING_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeMarketBriefingDisplayCount <= HOME_MARKET_BRIEFING_DISPLAY_MIN || pressed) && {
+                            opacity: 0.55,
+                          },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('settingsHomeMarketBriefingDisplayValue', {
+                          count: String(homeMarketBriefingDisplayCount),
+                        })}>
+                        <Text style={styles.homeCountBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeMarketBriefingDisplayCount(1)}
+                        disabled={homeMarketBriefingDisplayCount >= HOME_MARKET_BRIEFING_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.homeCountBtn,
+                          (homeMarketBriefingDisplayCount >= HOME_MARKET_BRIEFING_DISPLAY_MAX || pressed) && {
+                            opacity: 0.55,
+                          },
                         ]}
                         accessibilityRole="button">
                         <Text style={styles.homeCountBtnText}>+</Text>

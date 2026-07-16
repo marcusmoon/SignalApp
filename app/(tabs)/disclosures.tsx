@@ -41,7 +41,6 @@ import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import {
   disclosureMeaningLabelId,
   isImportantDisclosure,
-  isImportantDisclosureDigest,
   resolveDisclosureTypeCategory,
 } from '@/domain/disclosures';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
@@ -58,17 +57,11 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
 type FilterKey = 'us' | 'kr';
-type FocusKey = 'all' | 'important';
 
 type ListQuery = {
   filter: FilterKey;
   symbolFilter: string;
 };
-
-const FOCUS_FILTERS: { key: FocusKey; label: MessageId }[] = [
-  { key: 'all', label: 'disclosuresFocusAll' },
-  { key: 'important', label: 'disclosuresFocusImportant' },
-];
 
 const FILTER_ORDER: FilterKey[] = ['us', 'kr'];
 
@@ -124,7 +117,6 @@ export default function DisclosuresScreen() {
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('disclosures');
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
-  const [focus, setFocus] = useState<FocusKey>('all');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -168,7 +160,7 @@ export default function DisclosuresScreen() {
     [clearFilterNewContent],
   );
 
-  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([filter, focus, symbolFilter], {
+  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([filter, symbolFilter], {
     resyncDeps: [items, digestItems],
   });
   const goToDisclosureList = useCallback(() => {
@@ -183,17 +175,7 @@ export default function DisclosuresScreen() {
       params: { date, market },
     } as Href);
   }, [filter, ipadNav, router]);
-  const listScrollResetKey = `${filter}:${focus}:${symbolFilter ?? ''}`;
-
-  const visibleItems = useMemo(() => {
-    if (focus !== 'important') return items;
-    return items.filter((item) => isImportantDisclosure(item));
-  }, [focus, items]);
-
-  const visibleDigestItems = useMemo(() => {
-    if (focus !== 'important') return digestItems;
-    return digestItems.filter((item) => isImportantDisclosureDigest(item));
-  }, [digestItems, focus]);
+  const listScrollResetKey = `${filter}:${symbolFilter ?? ''}`;
 
   const currentQuery = useMemo<ListQuery>(
     () => ({ filter, symbolFilter }),
@@ -318,14 +300,14 @@ export default function DisclosuresScreen() {
 
   useEffect(() => {
     if (!useTwoPane) return;
-    if (!visibleItems.length) {
+    if (!items.length) {
       setSelectedDisclosureId(null);
       return;
     }
-    if (!selectedDisclosureId || !visibleItems.some((item) => item.id === selectedDisclosureId)) {
-      setSelectedDisclosureId(visibleItems[0].id);
+    if (!selectedDisclosureId || !items.some((item) => item.id === selectedDisclosureId)) {
+      setSelectedDisclosureId(items[0].id);
     }
-  }, [visibleItems, selectedDisclosureId, useTwoPane]);
+  }, [items, selectedDisclosureId, useTwoPane]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
@@ -364,10 +346,6 @@ export default function DisclosuresScreen() {
     },
     [filter, setActiveSubTabKey, setRouteParams, useTwoPane],
   );
-
-  const onPickFocus = useCallback((key: FocusKey) => {
-    setFocus(key);
-  }, []);
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
 
@@ -414,11 +392,11 @@ export default function DisclosuresScreen() {
     setRouteParams({ symbol: undefined });
   }, [setRouteParams]);
 
-  const emptyText = focus === 'important' ? t('disclosuresEmptyImportant') : t('disclosuresEmpty');
+  const emptyText = t('disclosuresEmpty');
 
   const selectedDisclosure = useMemo(
-    () => visibleItems.find((item) => item.id === selectedDisclosureId) ?? null,
-    [visibleItems, selectedDisclosureId],
+    () => items.find((item) => item.id === selectedDisclosureId) ?? null,
+    [items, selectedDisclosureId],
   );
 
   const bottomPad = stackChrome
@@ -595,26 +573,11 @@ export default function DisclosuresScreen() {
                   );
                 })}
               </View>
-              <View style={styles.focusSegment}>
-                {FOCUS_FILTERS.map((f) => {
-                  const selected = focus === f.key;
-                  return (
-                    <Pressable
-                      key={f.key}
-                      onPress={() => onPickFocus(f.key)}
-                      style={[styles.focusBtn, selected && styles.focusBtnActive]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}>
-                      <Text style={[styles.focusText, selected && styles.focusTextActive]}>{t(f.label)}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
             </View>
             {showDigest ? (
               <View style={styles.topFixedDigest}>
                 <DisclosureDigestSection
-                  items={visibleDigestItems}
+                  items={digestItems}
                   loading={digestLoading && digestItems.length === 0}
                   onRefresh={() => void onRefresh()}
                   refreshing={refreshing}
@@ -635,25 +598,8 @@ export default function DisclosuresScreen() {
               {showDigest && useTwoPane ? (
                 <View style={[styles.topFixedStack, styles.topFixedStackWide, styles.listColumnDigestStrip]}>
                   <View style={[styles.topFixedDigest, styles.topFixedDigestWide]}>
-                    <View style={styles.focusSegmentWide}>
-                      {FOCUS_FILTERS.map((f) => {
-                        const selected = focus === f.key;
-                        return (
-                          <Pressable
-                            key={f.key}
-                            onPress={() => onPickFocus(f.key)}
-                            style={[styles.focusBtn, selected && styles.focusBtnActive]}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected }}>
-                            <Text style={[styles.focusText, selected && styles.focusTextActive]}>
-                              {t(f.label)}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
                     <DisclosureDigestSection
-                      items={visibleDigestItems}
+                      items={digestItems}
                       loading={digestLoading && digestItems.length === 0}
                       columns={2}
                       onRefresh={() => void onRefresh()}
@@ -675,7 +621,7 @@ export default function DisclosuresScreen() {
               <WebWheelFlatList
                 scrollResetKey={listScrollResetKey}
                 ref={listRef as never}
-                data={visibleItems}
+                data={items}
                 keyExtractor={(item) => item.id}
                 style={[styles.list, useTwoPane && styles.wideList]}
                 contentContainerStyle={[
@@ -760,39 +706,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    focusSegment: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 10,
-    },
-    focusSegmentWide: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingBottom: 8,
-    },
-    focusBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 7,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-    },
-    focusBtnActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    focusText: {
-      fontSize: sf(12),
-      fontWeight: '600',
-      color: theme.textMuted,
-    },
-    focusTextActive: {
-      color: theme.green,
-    },
     symbolFilterRow: {
       flexDirection: 'row',
       alignItems: 'center',

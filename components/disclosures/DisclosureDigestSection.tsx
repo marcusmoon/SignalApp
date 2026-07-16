@@ -18,12 +18,18 @@ import {
   digestStripCardWidth,
   digestStripScrollPadding,
 } from '@/constants/digestStripLayout';
+import { FEED_SUMMARY_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  disclosureMeaningLabelIdsForForms,
+  isImportantDisclosureDigest,
+} from '@/domain/disclosures';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
 function disclosureSourceRows(item: SignalApiDisclosureDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
@@ -41,24 +47,10 @@ function marketChipLabel(market: string, locale: string): string {
   return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
 }
 
-function buildTopicChips(
-  item: SignalApiDisclosureDigestItem,
-  locale: string,
-  pairLayout: boolean,
-): string[] {
-  const maxTags = pairLayout ? DISCLOSURE_DIGEST_TAG_MAX_PAIR : DISCLOSURE_DIGEST_TAG_MAX_SINGLE;
-  const candidates = [
-    marketChipLabel(item.market, locale),
-    ...item.symbols,
-    ...item.forms,
-  ].filter(Boolean);
-  return [...new Set(candidates)].slice(0, maxTags);
-}
-
 type DigestCardProps = {
   item: SignalApiDisclosureDigestItem;
   onOpenSources: (item: SignalApiDisclosureDigestItem) => void;
-  styles: ReturnType<typeof makeDigestStripCardStyles>;
+  styles: ReturnType<typeof makeDigestStripCardStyles> & { summaryLine: object; importantChip: object };
   theme: AppTheme;
   pairLayout?: boolean;
 };
@@ -71,22 +63,50 @@ const DigestCard = memo(function DigestCard({
   pairLayout = false,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
-  const summaryText = t('disclosuresDigestSummary', {
+  const summaryBody = item.summary?.trim() || '';
+  const summaryMeta = t('disclosuresDigestSummary', {
     count: String(item.count),
     symbols: String(item.symbols.length),
   });
   const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
-  const topicChips = buildTopicChips(item, locale, pairLayout);
-  const showDetail = Boolean(item.title?.trim() || item.summary?.trim() || item.sourceRefs.length > 0);
+  const important = isImportantDisclosureDigest(item);
+  const meaningIds = disclosureMeaningLabelIdsForForms(
+    item.forms,
+    item.market,
+    pairLayout ? 1 : 2,
+  );
+  const maxTags = pairLayout ? DISCLOSURE_DIGEST_TAG_MAX_PAIR : DISCLOSURE_DIGEST_TAG_MAX_SINGLE;
+  const topicChips = useMemo(() => {
+    const chips: { key: string; label: string; important?: boolean }[] = [];
+    if (important) {
+      chips.push({ key: 'important', label: t('disclosuresImportantBadge'), important: true });
+    }
+    chips.push({ key: 'market', label: marketChipLabel(item.market, locale) });
+    for (const id of meaningIds) {
+      chips.push({ key: id, label: t(id) });
+    }
+    if (!pairLayout) {
+      for (const symbol of item.symbols) {
+        if (chips.length >= maxTags) break;
+        chips.push({ key: `sym-${symbol}`, label: symbol });
+      }
+    }
+    return chips.slice(0, maxTags);
+  }, [important, item.market, item.symbols, locale, maxTags, meaningIds, pairLayout, t]);
+
+  const showDetail = Boolean(item.title?.trim() || summaryBody || item.sourceRefs.length > 0);
   const showCountChip = topicChips.length === 0 && item.count > 0;
 
   return (
     <View style={styles.card}>
       <View style={styles.accentLine} />
       <View style={styles.badgeRow}>
-        {topicChips.map((chip, index) => (
-          <Text key={`${chip}-${index}`} style={styles.topicChip} numberOfLines={1}>
-            {chip}
+        {topicChips.map((chip) => (
+          <Text
+            key={chip.key}
+            style={[styles.topicChip, chip.important && styles.importantChip]}
+            numberOfLines={1}>
+            {chip.label}
           </Text>
         ))}
         {showCountChip ? (
@@ -97,14 +117,19 @@ const DigestCard = memo(function DigestCard({
       </View>
 
       <View style={styles.titleBody}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={styles.title} numberOfLines={summaryBody ? 1 : 2}>
           {item.title}
         </Text>
+        {summaryBody ? (
+          <Text style={styles.summaryLine} numberOfLines={1}>
+            {summaryBody}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.footerRow}>
         <Text style={styles.footer} numberOfLines={1}>
-          {summaryText}
+          {summaryMeta}
           {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
         {showDetail ? (
@@ -162,6 +187,7 @@ export function DisclosureDigestSection({
         pairLayout,
         accentColor: resolvedAccent || theme.warning,
       }),
+      ...makeDisclosureCardExtras(theme, scaleFont, feedTypo),
     }),
     [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding, stripMinHeight],
   );
@@ -239,6 +265,27 @@ export function DisclosureDigestSection({
       />
     </View>
   );
+}
+
+function makeDisclosureCardExtras(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+) {
+  return StyleSheet.create({
+    summaryLine: {
+      marginTop: 2,
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
+    importantChip: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+      color: theme.green,
+    },
+  });
 }
 
 function makeStripStyles(

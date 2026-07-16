@@ -133,7 +133,10 @@ export function generateDisclosureDigestItems(db = {}, params = {}) {
   for (const [key, group] of groups.entries()) {
     const sorted = uniqueDisclosures([...group].sort((a, b) => itemMs(b) - itemMs(a)));
     if (sorted.length === 0) continue;
-    const primary = sorted[0];
+    // 대표 공시: 중요도 우선, 동률이면 최신
+    const primary = [...sorted].sort(
+      (a, b) => formImportance(b) - formImportance(a) || itemMs(b) - itemMs(a),
+    )[0];
     const market = marketOf(primary);
 
     const symbols = [...new Set(sorted.map(symbol).filter(Boolean))].slice(0, 6);
@@ -148,20 +151,23 @@ export function generateDisclosureDigestItems(db = {}, params = {}) {
     const recencyBonus = Math.max(0, 50 - Math.floor(ageHours * 3));
     const score = importanceBonus + volumeBonus + recencyBonus;
 
-    // 제목: 가장 중요한 공시 회사명 + 유형
     const primaryForm = formType(primary);
     const primaryCompany = companyName(primary) || symbols[0] || '—';
-    const title = primaryForm
-      ? `${primaryCompany} · ${primaryForm}`
-      : primaryCompany;
+    const primaryTitle = itemTitle(primary);
+    const title =
+      primaryTitle ||
+      (primaryForm ? `${primaryCompany} · ${primaryForm}` : primaryCompany);
 
-    const summary = [
+    // 본문: 대표 공시 summary 우선. 없으면 건수·출처 메타로 폴백
+    const primarySummary = itemSummary(primary);
+    const metaSummary = [
       sorted.length > 1 ? `${sorted.length}건` : null,
-      providers.map((p) => p.toUpperCase()).join('/'),
+      providers.map((p) => p.toUpperCase()).join('/') || null,
       forms.filter((f) => f !== primaryForm).slice(0, 2).join(', ') || null,
     ]
       .filter(Boolean)
       .join(' · ');
+    const summary = primarySummary || metaSummary;
 
     const digestId = `disclosure-digest:${generatedDate}:${hash(key)}`;
     const digestItem = {
@@ -173,6 +179,7 @@ export function generateDisclosureDigestItems(db = {}, params = {}) {
       companies,
       forms,
       count: sorted.length,
+      importance: maxImportance,
       score,
       generatedDate,
       generatedAt,

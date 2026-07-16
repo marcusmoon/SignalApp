@@ -10,6 +10,11 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  disclosureMeaningLabelId,
+  isImportantDisclosure,
+  resolveDisclosureTypeCategory,
+} from '@/domain/disclosures';
 import { fetchSignalDisclosure } from '@/integrations/signal-api/disclosures';
 import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -86,6 +91,18 @@ export default function DisclosureDetailScreen() {
               <View style={styles.hero}>
                 <View style={styles.badges}>
                   <Text style={styles.badge}>{providerLabel(item)}</Text>
+                  {isImportantDisclosure(item) ? (
+                    <Text style={styles.badge}>{t('disclosuresImportantBadge')}</Text>
+                  ) : null}
+                  {(() => {
+                    const typeCategory = resolveDisclosureTypeCategory(item);
+                    if (typeCategory === 'other') return null;
+                    return (
+                      <Text style={styles.badgeMuted} numberOfLines={1}>
+                        {t(disclosureMeaningLabelId(typeCategory))}
+                      </Text>
+                    );
+                  })()}
                   {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
                 </View>
                 <Text style={styles.heroTitle}>{item.title}</Text>

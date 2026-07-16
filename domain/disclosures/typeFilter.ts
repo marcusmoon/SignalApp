@@ -11,9 +11,11 @@ export const SEC_TYPE_FILTERS = ['sec:8-K', 'sec:10-Q', 'sec:10-K', 'sec:6-K', '
 export type DisclosureTypeScope = 'us' | 'kr' | 'symbol';
 
 export const DISCLOSURE_TYPE_LABEL: Record<string, MessageId> = {
+  'dart:A': 'disclosuresTypeDartA',
   'dart:B': 'disclosuresTypeDartB',
   'dart:C': 'disclosuresTypeDartC',
   'dart:D': 'disclosuresTypeDartD',
+  'dart:E': 'disclosuresTypeDartE',
   'dart:I': 'disclosuresTypeDartI',
   'sec:8-K': 'disclosuresTypeSec8K',
   'sec:10-Q': 'disclosuresTypeSec10Q',

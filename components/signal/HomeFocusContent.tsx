@@ -59,6 +59,10 @@ import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import {
+  disclosureMeaningLabelIdsForForms,
+  isImportantDisclosureDigest,
+} from '@/domain/disclosures';
 import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
@@ -853,11 +857,16 @@ export function HomeFocusContent({
               <View style={styles.issueRowTop}>
                 <View style={styles.disclosurePillRow}>
                   <Text style={styles.disclosureMarketPill}>{disclosureMarketLabel(row.market, locale)}</Text>
-                  {row.forms[0] ? (
+                  {isImportantDisclosureDigest(row) ? (
                     <Text style={styles.disclosureFormPill} numberOfLines={1}>
-                      {row.forms[0]}
+                      {t('disclosuresImportantBadge')}
                     </Text>
                   ) : null}
+                  {disclosureMeaningLabelIdsForForms(row.forms, row.market, 1).map((labelId) => (
+                    <Text key={`${row.id}-${labelId}`} style={styles.disclosureFormPill} numberOfLines={1}>
+                      {t(labelId)}
+                    </Text>
+                  ))}
                   {row.symbols.length > 0 ? (
                     <Text style={styles.issueInlineMetaText} numberOfLines={1}>
                       {row.symbols.slice(0, 3).join(' · ')}

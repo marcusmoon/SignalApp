@@ -34,8 +34,8 @@ type TabDef = {
   icon:
     | 'newspaper'
     | 'file-alt'
-    | 'chart-area'
-    | 'chart-line'
+    | 'landmark'
+    | 'list-ul'
     | 'youtube'
     | 'comments'
     | 'user-circle';
@@ -44,8 +44,8 @@ type TabDef = {
 
 const SIDEBAR_TABS: TabDef[] = [
   { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
-  { name: 'signal', route: '/(tabs)/signal', icon: 'chart-area', labelId: 'tabSignal' },
-  { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
+  { name: 'signal', route: '/(tabs)/signal', icon: 'landmark', labelId: 'tabSignal' },
+  { name: 'quotes', route: '/(tabs)/quotes', icon: 'list-ul', labelId: 'tabQuotes' },
   { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt', labelId: 'tabDisclosures' },
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
   { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },

@@ -9,12 +9,34 @@ function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
 }
 
+function isKrxCode(symbol) {
+  return /^\d{6}$/.test(normalizeSymbol(symbol));
+}
+
 function defaultYahooSymbol(symbol) {
   const normalized = normalizeSymbol(symbol);
   if (!normalized) return '';
   if (normalized.includes('.')) return normalized;
-  if (/^\d{6}$/.test(normalized)) return `${normalized}.KS`;
+  if (isKrxCode(normalized)) return `${normalized}.KS`;
   return normalized;
+}
+
+/** KRX 6자리: preferred → .KS → .KQ 순으로 Yahoo 심볼 후보 */
+export function yahooSymbolCandidatesForInstrument(instrument = {}) {
+  const symbol = normalizeSymbol(instrument.symbol || instrument.krxSymbol || instrument.code);
+  const preferred = String(instrument.yahooSymbol || instrument.yahooTicker || '').trim().toUpperCase();
+  const candidates = [];
+  if (preferred) candidates.push(preferred);
+  if (isKrxCode(symbol)) {
+    for (const suffix of ['.KS', '.KQ']) {
+      const yahooSymbol = `${symbol}${suffix}`;
+      if (!candidates.includes(yahooSymbol)) candidates.push(yahooSymbol);
+    }
+  } else {
+    const fallback = defaultYahooSymbol(symbol);
+    if (fallback && !candidates.includes(fallback)) candidates.push(fallback);
+  }
+  return candidates;
 }
 
 function normalizeInstrument(input = {}) {
@@ -22,12 +44,14 @@ function normalizeInstrument(input = {}) {
   const name = String(input.name || input.displayName || symbol || '').trim();
   const displaySymbol = String(input.displaySymbol || input.englishName || '').trim();
   const rank = Number(input.rank);
-  const currency = String(input.currency || (/^\d{6}$/.test(symbol) ? 'KRW' : 'USD')).trim().toUpperCase();
+  const currency = String(input.currency || (isKrxCode(symbol) ? 'KRW' : 'USD')).trim().toUpperCase();
+  const candidates = yahooSymbolCandidatesForInstrument({ ...input, symbol });
   return {
     symbol,
     displaySymbol: displaySymbol || symbol,
     name: name || symbol,
-    yahooSymbol: String(input.yahooSymbol || input.yahooTicker || defaultYahooSymbol(symbol)).trim().toUpperCase(),
+    yahooSymbol: candidates[0] || defaultYahooSymbol(symbol),
+    yahooCandidates: candidates,
     currency,
     rank: Number.isFinite(rank) && rank > 0 ? Math.round(rank) : null,
   };
@@ -88,14 +112,30 @@ async function fetchYahooDailyBars(yahooSymbol, { range = '1y', interval = '1d' 
   return barsFromChart(json);
 }
 
-function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
+async function fetchYahooDailyBarsWithResolve(instrument, { range = '1y' } = {}) {
+  const candidates = Array.isArray(instrument.yahooCandidates) && instrument.yahooCandidates.length > 0
+    ? instrument.yahooCandidates
+    : yahooSymbolCandidatesForInstrument(instrument);
+  for (const yahooSymbol of candidates) {
+    try {
+      const bars = await fetchYahooDailyBars(yahooSymbol, { range });
+      if (bars.length > 0) return { yahooSymbol, bars };
+    } catch {
+      /* try next exchange suffix */
+    }
+  }
+  return null;
+}
+
+function buildSeriesRow({ instrument, bars, range, fetchedAt, yahooSymbol }) {
   const trimmed = bars.length > 600 ? bars.slice(bars.length - 600) : bars;
   return {
     id: instrument.symbol,
     symbol: instrument.symbol,
     displaySymbol: instrument.displaySymbol,
     name: instrument.name,
-    yahooSymbol: instrument.yahooSymbol,
+    yahooSymbol: yahooSymbol || instrument.yahooSymbol,
+    krxSymbol: isKrxCode(instrument.symbol) ? instrument.symbol : null,
     rank: instrument.rank,
     currency: instrument.currency || 'USD',
     range,
@@ -109,10 +149,29 @@ function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
   };
 }
 
+function barsToCandlePayload(bars, { from, to } = {}) {
+  const fromMs = Number(from) * 1000;
+  const toMs = Number(to) * 1000;
+  const filtered = bars.filter((bar) => {
+    const t = Date.parse(`${bar.date}T00:00:00.000Z`);
+    if (!Number.isFinite(t)) return false;
+    return (!Number.isFinite(fromMs) || t >= fromMs) && (!Number.isFinite(toMs) || t <= toMs);
+  });
+  if (filtered.length === 0) return null;
+  return {
+    s: 'ok',
+    t: filtered.map((bar) => Math.floor(Date.parse(`${bar.date}T00:00:00.000Z`) / 1000)),
+    o: filtered.map((bar) => Number(bar.open ?? bar.close)),
+    h: filtered.map((bar) => Number(bar.high ?? bar.close)),
+    l: filtered.map((bar) => Number(bar.low ?? bar.close)),
+    c: filtered.map((bar) => Number(bar.close)),
+    v: filtered.map((bar) => Number(bar.volume) || 0),
+  };
+}
+
 /**
- * Fetches daily OHLCV history for the given instruments. KRX symbols default to
- * `{code}.KS`; US symbols use the ticker as-is. The result is one persisted row
- * per symbol holding the full bar series for symbol detail charts.
+ * Fetches daily OHLCV history for the given instruments. KRX symbols try
+ * preferred Yahoo ticker then `.KS` / `.KQ`. US symbols use the ticker as-is.
  */
 export async function fetchYahooDailyPriceSeries(params = {}) {
   const range = String(params.range || '1y').trim() || '1y';
@@ -127,9 +186,17 @@ export async function fetchYahooDailyPriceSeries(params = {}) {
   for (let i = 0; i < instruments.length; i += 1) {
     const instrument = instruments[i];
     try {
-      const bars = await fetchYahooDailyBars(instrument.yahooSymbol, { range });
-      if (bars.length > 0) {
-        rows.push(buildSeriesRow({ instrument, bars, range, fetchedAt }));
+      const resolved = await fetchYahooDailyBarsWithResolve(instrument, { range });
+      if (resolved?.bars?.length > 0) {
+        rows.push(
+          buildSeriesRow({
+            instrument,
+            bars: resolved.bars,
+            range,
+            fetchedAt,
+            yahooSymbol: resolved.yahooSymbol,
+          }),
+        );
       }
     } catch {
       // Keep the batch resilient; a single failing symbol should not abort ingestion.
@@ -139,4 +206,22 @@ export async function fetchYahooDailyPriceSeries(params = {}) {
     }
   }
   return rows;
+}
+
+/**
+ * Live KRX daily candles for `/v1/stock-candles` when price_series has no row yet.
+ * Returns Finnhub-shaped `{ s,t,o,h,l,c,v }` or null.
+ */
+export async function fetchYahooKrxDailyCandles(symbol, { from, to, preferredYahooSymbol = null, range = '1y' } = {}) {
+  const code = normalizeSymbol(symbol);
+  if (!isKrxCode(code)) return null;
+  const resolved = await fetchYahooDailyBarsWithResolve(
+    {
+      symbol: code,
+      yahooSymbol: preferredYahooSymbol,
+    },
+    { range },
+  );
+  if (!resolved?.bars?.length) return null;
+  return barsToCandlePayload(resolved.bars, { from, to });
 }

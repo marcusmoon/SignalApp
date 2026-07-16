@@ -84,22 +84,35 @@ function dailyBarInstruments(db, params = {}) {
     ...(Array.isArray(params.symbols) ? params.symbols : []),
     ...listKeys.flatMap((key) => marketListSymbols(db, key)),
   ];
+  const preferredYahoo = preferredYahooByKrxSymbols(db, symbols);
   const bySymbol = new Map();
   for (const symbol of symbols) {
     const normalized = String(symbol || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!normalized || bySymbol.has(normalized)) continue;
+    const isKr = /^\d{6}$/.test(normalized);
     bySymbol.set(normalized, {
       symbol: normalized,
       displaySymbol: normalized,
       name: normalized,
-      currency: /^\d{6}$/.test(normalized) ? 'KRW' : 'USD',
+      currency: isKr ? 'KRW' : 'USD',
+      // 시세 Job이 풀어둔 .KS/.KQ를 재사용해 KOSDAQ 일봉 누락을 줄인다.
+      ...(isKr && preferredYahoo[normalized] ? { yahooSymbol: preferredYahoo[normalized] } : {}),
     });
   }
   const explicit = Array.isArray(params.instruments) ? params.instruments : [];
   for (const item of explicit) {
     const symbol = String(item?.symbol || item?.krxSymbol || item?.code || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!symbol) continue;
-    bySymbol.set(symbol, item);
+    const previous = bySymbol.get(symbol) || {};
+    bySymbol.set(symbol, {
+      ...previous,
+      ...item,
+      symbol,
+      yahooSymbol:
+        String(item?.yahooSymbol || item?.yahooTicker || previous.yahooSymbol || preferredYahoo[symbol] || '')
+          .trim()
+          .toUpperCase() || undefined,
+    });
   }
   return [...bySymbol.values()];
 }
@@ -155,7 +168,7 @@ async function readJobContext(job) {
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
   }
-  if (provider === 'yahoo' && handler === 'market_quotes_kr') {
+  if (provider === 'yahoo' && (handler === 'market_quotes_kr' || handler === 'daily_bars')) {
     context.marketQuotes = await listCollectionPayloads('marketQuotes');
   }
   if (provider === 'youtube') {

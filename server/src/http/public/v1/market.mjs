@@ -6,6 +6,7 @@ import {
   readPublicMarketLists,
 } from '../../../db.mjs';
 import { publicMarketList } from '../../../marketLists.mjs';
+import { fetchYahooKrxDailyCandles } from '../../../providers/market/yahooDailyBars.mjs';
 import { fetchStockCandles, fetchStockProfile } from '../../../providers/market/index.mjs';
 import { json } from '../../shared.mjs';
 
@@ -24,9 +25,13 @@ function isKrxSymbol(symbol) {
   return /^\d{6}$/.test(String(symbol || '').trim());
 }
 
-async function localKrxStockProfile(symbol) {
+async function localKrxMarketQuote(symbol) {
   const quotePage = await queryPublicMarketQuotes({ symbols: symbol, limit: '1', offset: '0' });
-  const quote = Array.isArray(quotePage?.rows) ? quotePage.rows[0] : null;
+  return Array.isArray(quotePage?.rows) ? quotePage.rows[0] || null : null;
+}
+
+async function localKrxStockProfile(symbol) {
+  const quote = await localKrxMarketQuote(symbol);
   if (!quote) return null;
   return publicStockProfile(
     {
@@ -36,6 +41,10 @@ async function localKrxStockProfile(symbol) {
     },
     symbol,
   );
+}
+
+function preferredYahooFromQuote(quote) {
+  return String(quote?.regularSession?.yahooSymbol || quote?.yahooSymbol || '').trim().toUpperCase() || null;
 }
 
 export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
@@ -80,21 +89,39 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       return true;
     }
     try {
+      const fromSec = Math.floor(from);
+      const toSec = Math.floor(to);
       if (resolution === 'D') {
         const localCandles = await queryPublicPriceSeriesCandles({
           symbol,
-          from: Math.floor(from),
-          to: Math.floor(to),
+          from: fromSec,
+          to: toSec,
         });
         if (localCandles?.s === 'ok') {
           json(res, 200, { data: localCandles });
           return true;
         }
+        // KRX: Finnhub candle는 6자리 코드를 못 주므로 Yahoo로 live 폴백
+        if (isKrxSymbol(symbol)) {
+          const quote = await localKrxMarketQuote(symbol);
+          const yahooCandles = await fetchYahooKrxDailyCandles(symbol, {
+            from: fromSec,
+            to: toSec,
+            preferredYahooSymbol: preferredYahooFromQuote(quote),
+            range: '3mo',
+          });
+          if (yahooCandles?.s === 'ok') {
+            json(res, 200, { data: yahooCandles });
+            return true;
+          }
+          json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
+          return true;
+        }
       }
       const data = await fetchStockCandles(symbol, {
         resolution,
-        from: Math.floor(from),
-        to: Math.floor(to),
+        from: fromSec,
+        to: toSec,
       });
       if (!data) {
         json(res, 502, { error: 'CANDLES_UNAVAILABLE' });

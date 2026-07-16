@@ -1,47 +1,60 @@
 /**
- * 인-화면 세그먼트 탭 (실시간 시세: 관심/인기순/…, 설정 하위 탭, 시장 세션 등)
- * 레이아웃 여백(marginBottom 등)은 화면마다 다를 수 있으나, pill·색상은 여기 기준으로 통일한다.
+ * 인-화면 세그먼트 탭 (시세·설정·시장 세션·뉴스 등)
+ * Underline: 트랙/채움 pill 없이 활성만 하단 green 라인 + 텍스트 강조.
  */
+import { StyleSheet } from 'react-native';
+
 import type { AppTheme } from '@/constants/theme';
-import {
-  UI_RADIUS_SEGMENT_BTN,
-  UI_RADIUS_SEGMENT_OUTER,
-} from '@/constants/uiCornerRadius';
 
-export const SEGMENT_TAB_OUTER_RADIUS = UI_RADIUS_SEGMENT_OUTER;
-export const SEGMENT_TAB_PADDING = 4;
-export const SEGMENT_TAB_GAP = 4;
+export const SEGMENT_TAB_OUTER_RADIUS = 0;
+export const SEGMENT_TAB_PADDING = 0;
+export const SEGMENT_TAB_GAP = 0;
 
-export const SEGMENT_TAB_BTN_RADIUS = UI_RADIUS_SEGMENT_BTN;
+export const SEGMENT_TAB_BTN_RADIUS = 0;
 export const SEGMENT_TAB_BTN_PADDING_V = 10;
+/** 활성 하단 인디케이터 */
+export const SEGMENT_TAB_UNDERLINE_WIDTH = 2;
 
 /** 라벨 — 시세 화면 세그먼트와 동일 */
 export const SEGMENT_TAB_FONT_SIZE = 13;
 export const SEGMENT_TAB_LINE_HEIGHT = 17;
-export const SEGMENT_TAB_FONT_WEIGHT = '700' as const;
+export const SEGMENT_TAB_FONT_WEIGHT = '600' as const;
+export const SEGMENT_TAB_FONT_WEIGHT_ACTIVE = '700' as const;
 
+/**
+ * @deprecated underline 스타일에서는 활성 텍스트가 `theme.text`.
+ * 과거 filled-pill 호환용으로만 남겨 둔다.
+ */
 export const SEGMENT_TAB_ACTIVE_TEXT = '#FFFFFF';
 
-/** iPhone 탭 화면 상단 세그먼트 pill 바 — 모든 탭 화면이 동일한 모양·색상을 쓴다. */
+/** iPhone 탭 화면 상단 세그먼트 — 모든 탭 화면이 동일한 모양·색상을 쓴다. */
 export function getSegmentTabBarStyles(theme: AppTheme, sf: (n: number) => number) {
+  const hairline = StyleSheet.hairlineWidth;
   return {
     segment: {
       flexDirection: 'row' as const,
-      backgroundColor: theme.bgElevated,
+      backgroundColor: 'transparent',
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
+      borderWidth: 0,
+      borderBottomWidth: hairline,
+      borderBottomColor: theme.border,
+      borderColor: 'transparent',
       padding: SEGMENT_TAB_PADDING,
       marginBottom: 0,
       gap: SEGMENT_TAB_GAP,
+      alignItems: 'stretch' as const,
     },
     segBtn: {
       flex: 1,
       paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      paddingHorizontal: 8,
+      paddingHorizontal: 6,
       borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
+      backgroundColor: 'transparent',
+      borderBottomWidth: SEGMENT_TAB_UNDERLINE_WIDTH,
+      borderBottomColor: 'transparent',
+      marginBottom: -hairline,
     },
     segBtnCompact: {
       flex: 0.86,
@@ -50,15 +63,16 @@ export function getSegmentTabBarStyles(theme: AppTheme, sf: (n: number) => numbe
       flex: 0.86,
     },
     segmentDivider: {
-      width: 1,
-      height: 18,
+      width: hairline,
+      height: 14,
       alignSelf: 'center' as const,
       marginHorizontal: 2,
       borderRadius: 999,
       backgroundColor: theme.border,
     },
     segBtnActive: {
-      backgroundColor: theme.green,
+      backgroundColor: 'transparent',
+      borderBottomColor: theme.green,
     },
     segBtnDisabled: {
       opacity: 0.38,
@@ -70,7 +84,8 @@ export function getSegmentTabBarStyles(theme: AppTheme, sf: (n: number) => numbe
       color: theme.textDim,
     },
     segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
+      color: theme.text,
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT_ACTIVE,
     },
     segTextDisabled: {
       color: theme.textDim,

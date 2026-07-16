@@ -47,6 +47,8 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import {
   formatQuoteDpPct,
+  formatKrw,
+  formatKrwChange,
   formatUsd,
   formatUsdChange,
   isKoreaStockQuote,
@@ -298,26 +300,6 @@ export default function QuotesScreen() {
       return false;
     }
     const sym = raw.toUpperCase().replace(/\s+/g, '');
-    if (!hasSignalApi()) {
-      setError(t('errorSignalApiShort'));
-      return false;
-    }
-    try {
-      const rows = await fetchSignalMarketQuotes(
-        { symbols: [sym], limit: 1, refresh: true },
-        { cacheMode: 'bypass' },
-      );
-      if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
-        Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
-        return false;
-      }
-    } catch (e) {
-      Alert.alert(
-        t('alertTitleFormatError'),
-        formatSignalApiError(e, t, 'quotesErrorLookup'),
-      );
-      return false;
-    }
     const current = await loadWatchlistSymbols();
     if (current.includes(sym)) {
       Alert.alert(t('commonNotice'), t('quotesAlertDupWatchlist'));
@@ -327,7 +309,7 @@ export default function QuotesScreen() {
     setDraftTicker('');
     await load();
     return true;
-  }, [draftTicker, load, t]);
+  }, [draftTicker, load]);
 
   const onAddWatchFromSheet = useCallback(async () => {
     if (addingWatch) return;
@@ -499,7 +481,9 @@ export default function QuotesScreen() {
                 {r.quote ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
-                    {formatUsd(Number(r.quote.previousClose))}
+                    {isKoreaStockQuote(r)
+                      ? formatKrw(r.quote.previousClose)
+                      : formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
                 {segment === 'coin' && r.name ? (
@@ -513,7 +497,9 @@ export default function QuotesScreen() {
               <View style={styles.priceRow}>
                 {r.quote ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {formatUsd(Number(r.quote.currentPrice))}
+                    {isKoreaStockQuote(r)
+                      ? formatKrw(r.quote.currentPrice)
+                      : formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
                   <Text style={styles.na}>—</Text>
@@ -534,7 +520,10 @@ export default function QuotesScreen() {
                   style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
+                  {isKoreaStockQuote(r)
+                    ? formatKrwChange(Number(r.quote.change ?? 0))
+                    : formatUsdChange(Number(r.quote.change ?? 0))}{' '}
+                  ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
             </View>

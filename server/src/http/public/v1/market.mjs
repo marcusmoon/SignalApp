@@ -2,13 +2,11 @@ import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
   queryPublicPriceSeriesCandles,
-  readAppSettings,
   readPublicMarketList,
   readPublicMarketLists,
-  upsertMarketQuotes,
 } from '../../../db.mjs';
 import { publicMarketList } from '../../../marketLists.mjs';
-import { fetchMarketQuotes, fetchStockCandles, fetchStockProfile } from '../../../providers/market/index.mjs';
+import { fetchStockCandles, fetchStockProfile } from '../../../providers/market/index.mjs';
 import { json } from '../../shared.mjs';
 
 function publicStockProfile(data, fallbackSymbol) {
@@ -110,66 +108,8 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/market-quotes') {
-    // Explicit refresh is intentionally opt-in. The watchlist calls this endpoint
-    // often, so automatic provider refresh would make the tab latency scale with
-    // the number of watch symbols.
-    const symbolsParam = url.searchParams.get('symbols');
-    const shouldRefreshProvider = url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true';
-    if (symbolsParam && shouldRefreshProvider) {
-      const requested = [...new Set(symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))];
-      if (requested.length > 0) {
-        const existingPage = await queryPublicMarketQuotes({
-          segment: url.searchParams.get('segment') || '',
-          symbols: symbolsParam,
-          q: url.searchParams.get('q') || '',
-          limit: String(Math.max(100, requested.length)),
-          offset: '0',
-        });
-        const existing = existingPage.rows || [];
-        const quoteKeys = (row) =>
-          [
-            row.symbol,
-            row.displaySymbol,
-            row.krxSymbol,
-            row.providerItemId,
-            row.regularSession?.yahooSymbol,
-          ]
-            .map((value) => String(value || '').trim().toUpperCase())
-            .filter(Boolean);
-        const have = new Set(existing.flatMap(quoteKeys));
-        const missing = requested.filter((sym) => !have.has(sym));
-        const appSettings = await readAppSettings();
-        const maxAgeSec = Math.max(0, Number(appSettings?.marketQuotesMaxAgeSec ?? 10) || 10);
-        const stale = [];
-        if (maxAgeSec > 0) {
-          const staleBefore = Date.now() - maxAgeSec * 1000;
-          const bySymbol = new Map();
-          for (const row of existing) {
-            for (const key of quoteKeys(row)) bySymbol.set(key, row);
-          }
-          for (const sym of requested) {
-            const row = bySymbol.get(sym);
-            if (!row?.fetchedAt) continue;
-            const t = new Date(row.fetchedAt).getTime();
-            if (!Number.isFinite(t) || t < staleBefore) stale.push(sym);
-          }
-        }
-
-        const needFetch = [...new Set([...missing, ...stale])].filter((sym) => !/^\d{6}$/.test(sym));
-        if (needFetch.length > 0) {
-          try {
-            const seg = url.searchParams.get('segment') || 'watch';
-            const fetched = await fetchMarketQuotes({ symbols: needFetch, segment: seg });
-            if (fetched.length > 0) {
-              await upsertMarketQuotes(fetched);
-            }
-          } catch {
-            // If the upstream provider is unavailable, keep the response DB-only.
-          }
-        }
-      }
-    }
-
+    // DB-only. Provider ingest is Job-driven (Finnhub US / Yahoo KRX). Do not
+    // fetch upstream on read — watchlist latency must not scale with symbol count.
     const page = await queryPublicMarketQuotes({
       segment: url.searchParams.get('segment') || '',
       symbols: url.searchParams.get('symbols') || '',

@@ -16,7 +16,6 @@ export async function fetchSignalMarketQuotes(
     symbols?: readonly string[];
     limit?: number;
     offset?: number;
-    refresh?: boolean;
   } = {},
   options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalApiMarketQuote[]> {
@@ -33,9 +32,8 @@ export async function fetchSignalMarketQuotes(
       symbols: params.symbols?.join(','),
       limit: params.limit ?? 100,
       offset: params.offset ?? 0,
-      refresh: params.refresh ? '1' : undefined,
     },
-    { timeoutMs: params.refresh ? 8000 : 5000, attempts: 1 },
+    { timeoutMs: 5000, attempts: 1 },
   );
   const rows = json.data;
   if (cacheMode !== 'bypass') storeSignalMarketQuotesCache(cacheKey, rows);

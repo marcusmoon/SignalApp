@@ -65,6 +65,13 @@ export function formatKrw(value: unknown): string {
   return `₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
 }
 
+export function formatKrwChange(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return '₩0';
+  const sign = n > 0 ? '+' : '-';
+  return `${sign}₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
+}
+
 export function formatQuoteDpPct(dp: unknown): string {
   if (!Number.isFinite(dp)) return '—';
   const p = dp as number;

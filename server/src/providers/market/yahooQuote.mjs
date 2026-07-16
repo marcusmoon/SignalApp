@@ -14,9 +14,9 @@ function finiteNumber(value) {
 
 /**
  * Fetches a real-time quote for a single Yahoo Finance symbol.
- * Returns { price, changePercent, previousClose, currency } or null on failure.
+ * Returns { price, changePercent, previousClose, currency, name } or null on failure.
  */
-async function fetchYahooQuote(yahooSymbol) {
+export async function fetchYahooQuote(yahooSymbol) {
   const symbol = String(yahooSymbol || '').trim();
   if (!symbol) return null;
 
@@ -58,11 +58,14 @@ async function fetchYahooQuote(yahooSymbol) {
     changePercent = (price - previousClose) / previousClose * 100;
   }
 
+  const name = String(meta.shortName || meta.longName || '').trim() || null;
+
   return {
     price,
     changePercent: changePercent != null ? parseFloat(changePercent.toFixed(2)) : null,
     previousClose,
     currency: String(meta.currency || '').trim() || null,
+    name,
   };
 }
 

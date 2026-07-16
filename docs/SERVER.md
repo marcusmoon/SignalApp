@@ -123,6 +123,11 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)
 - YouTube (`youtube_economy_latest` sync)
 - 시세·일봉·코인
+  - US: `market_quotes_popular` / `market_quotes_watchlist` / `market_quotes_mcap*` (Finnhub)
+  - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve)
+  - 코인: `market_coins_top` (CoinGecko)
+  - 일봉: `market_price_series_daily` (Yahoo)
+- `/v1/market-quotes`는 **DB 조회만** 한다. `refresh=1` provider 호출은 제거했다. 관심 추가도 시세 live lookup 없이 심볼 포맷만 검증한다. 국내 가격은 Job이 `market_quotes`에 채운 뒤 앱이 읽는다.
 
 ## 배포
 

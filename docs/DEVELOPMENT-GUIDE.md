@@ -196,7 +196,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
-| 시세 | `app/(tabs)/quotes.tsx` |
+| 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
 | 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` |
 | 설정 | `app/settings.tsx` |

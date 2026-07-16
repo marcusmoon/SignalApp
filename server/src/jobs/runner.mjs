@@ -20,6 +20,7 @@ import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhubMarketHolidays } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
+import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
@@ -57,6 +58,24 @@ function translationId(newsItemId, locale) {
 
 function marketListSymbols(db, key) {
   return (db.marketLists || []).find((list) => list.key === key)?.symbols || [];
+}
+
+function preferredYahooByKrxSymbols(db, symbols) {
+  const wanted = new Set(
+    (Array.isArray(symbols) ? symbols : [])
+      .map((value) => String(value || '').trim().toUpperCase())
+      .filter((value) => /^\d{6}$/.test(value)),
+  );
+  const map = {};
+  for (const row of db.marketQuotes || []) {
+    const krx = String(row.krxSymbol || (/^\d{6}$/.test(String(row.symbol || '')) ? row.symbol : ''))
+      .trim()
+      .toUpperCase();
+    const yahoo = String(row.regularSession?.yahooSymbol || row.yahooSymbol || '').trim().toUpperCase();
+    if (!krx || !wanted.has(krx) || !yahoo) continue;
+    if (!map[krx]) map[krx] = yahoo;
+  }
+  return map;
 }
 
 function dailyBarInstruments(db, params = {}) {
@@ -291,6 +310,21 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         ? params.symbols
         : [];
     return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(params || {}), symbols }) };
+  }
+  if (effective.provider === 'yahoo' && effective.handler === 'market_quotes_kr') {
+    const listKey = params?.listKey || 'korea_watchlist';
+    const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0
+      ? params.symbols
+      : marketListSymbols(dbBefore, listKey);
+    const segment = String(params?.segment || 'korea').trim() || 'korea';
+    return {
+      kind: 'marketQuotes',
+      rows: await fetchYahooKrxMarketQuotes({
+        symbols,
+        segment,
+        preferredYahooBySymbol: preferredYahooByKrxSymbols(dbBefore, symbols),
+      }),
+    };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'market_quotes_mcap') {
     const configuredSymbols = marketListSymbols(dbBefore, params?.listKey || 'mcap_top_symbols');

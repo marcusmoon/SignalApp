@@ -3,3 +3,4 @@ export * from './changeColorConvention';
 export * from './listLimits';
 export * from './segmentOrder';
 export * from './ticker';
+export * from './tintSignedChangeInText';

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
@@ -136,7 +137,7 @@ function CompanyHighlightRow({
           </View>
         ) : null}
       </View>
-      <Text style={styles.companySummary}>{item.summary}</Text>
+      <ChangeTintedText style={styles.companySummary}>{item.summary}</ChangeTintedText>
     </View>
   );
 }
@@ -200,7 +201,7 @@ function SectorRow({
       <Text style={styles.sectorName} numberOfLines={1}>
         {item.name}
       </Text>
-      <Text style={styles.sectorSummary}>{item.summary}</Text>
+      <ChangeTintedText style={styles.sectorSummary}>{item.summary}</ChangeTintedText>
     </View>
   );
 }
@@ -222,7 +223,7 @@ export function MarketBriefingBlock({
     <View style={styles.block}>
       {hasLead ? (
         <View style={styles.leadPanel}>
-          {briefing.summary ? <Text style={styles.summary}>{briefing.summary}</Text> : null}
+          {briefing.summary ? <ChangeTintedText style={styles.summary}>{briefing.summary}</ChangeTintedText> : null}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
@@ -232,7 +233,7 @@ export function MarketBriefingBlock({
                 {briefing.overview.map((line, index) => (
                   <View key={`overview-${index}`} style={styles.overviewRow}>
                     <View style={styles.overviewDot} />
-                    <Text style={styles.overviewText}>{line}</Text>
+                    <ChangeTintedText style={styles.overviewText}>{line}</ChangeTintedText>
                   </View>
                 ))}
               </View>

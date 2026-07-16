@@ -1,6 +1,6 @@
 # 화면 레이아웃 기준
 
-앱 화면의 Safe Area, 헤더, 여백, 스크롤 하단 패딩은 **`constants/screenLayout.ts`** 와 이 문서를 기준으로 맞춘다. UI 원칙·테마·컴포넌트 개요는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md)를 본다.
+앱 화면의 Safe Area, 헤더, 여백, 스크롤 하단 패딩은 **`constants/screenLayout.ts`** 와 이 문서를 기준으로 맞춘다. UI 원칙·테마·컴포넌트 개요는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 다른 앱에 같은 기준을 쓸 때는 [APP-UI-PLAYBOOK.md](./APP-UI-PLAYBOOK.md)를 본다.
 
 구현 상수·헬퍼는 코드가 단일 출처(source of truth)이며, 이 문서는 규칙과 패턴을 설명한다.
 
@@ -69,6 +69,19 @@ SafeAreaView edges={['top']}
 
 다이제스트가 없는 세그먼트(뉴스 관심·영상, 공시 종목 필터 등)는 `SCREEN_LIST_CONTENT_PADDING_TOP`(12)을 쓴다.
 
+### 레이어 구조 (iPhone 탭 — 날짜+세그먼트 리스트: 시장·뉴스/공시 플로우)
+
+```
+SafeAreaView edges={['top']}
+  SignalHeader compact
+  [OtaUpdateBanner]
+  topFixed                         ← getScreenFixedHeaderStyles / FIXED_HEADER_*
+    SignalDateNavigator            ← 날짜 먼저 (C1 단일 셸)
+    Segment control                ← 그다음 세그먼트
+  FlatList / ScrollView            ← SCREEN_LIST_CONTENT_PADDING_TOP
+  SignalFloatingTabBar (layout)
+```
+
 ### 레이어 구조 (iPhone 탭 — 일반)
 
 ```
@@ -76,7 +89,7 @@ SafeAreaView edges={['top']}
   SignalHeader compact
   [OtaUpdateBanner]
   topFixed | dateNavigatorWrap     ← SCREEN_HEADER_CONTENT_GAP / FIXED_HEADER_*
-    세그먼트 · 날짜 바 · 배너
+    날짜 바 · 세그먼트 · 배너       ← 날짜가 있으면 날짜가 세그먼트보다 위
   ScrollView / FlatList            ← SCREEN_LIST_CONTENT_PADDING_TOP
   SignalFloatingTabBar (layout)
 ```

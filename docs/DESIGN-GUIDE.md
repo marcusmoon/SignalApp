@@ -2,6 +2,8 @@
 
 앱 UI·UX의 현재 기준이다. **코드 상수가 단일 출처**이고, 이 문서는 의도와 사용 규칙을 설명한다.
 
+**다른 앱에 같은 기준을 이식할 때**는 [APP-UI-PLAYBOOK.md](./APP-UI-PLAYBOOK.md)를 먼저 본다. 이 문서는 SIGNAL 구현 상세다.
+
 ## 목표
 
 - 시장 정보를 **빠르게 스캔**할 수 있는 밀도와 계층
@@ -120,6 +122,23 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 활성: `theme.green` 배경 + 흰 텍스트
 - iPhone 탭 상단·설정/계정 서브탭·시장 세션 등 **동일 스타일**
 
+### 날짜 바 (`SignalDateNavigator`)
+
+- **C1**: 바깥 셸 1개만(보더·`bgElevated`). 안쪽 화살표/날짜/오늘은 보더·배경 없이 Ionicons + 텍스트
+- 날짜가 있는 리스트형 화면(시장·뉴스/공시 플로우 등): `topFixed` 안에서 **날짜 → 세그먼트** 순서
+
+### 탭 · 사이드바 아이콘
+
+- 비선택: Ionicons `*-outline` / 선택: 동일 계열 filled
+- iPhone 탭바(`app/(tabs)/_layout.tsx`)와 wide 사이드바 **같은 매핑**
+
+## 홈 · 시황 브리핑 밀도
+
+- 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
+- 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 전문은 시장 브리핑 상세
+- 홈 노출 개수: 설정 → 표시 (`homeMarketBriefingDisplayPreference`, 기본 2 · 최대 4)
+- 상세(`MarketBriefingBlock` 등): 섹터·매크로·출처 본문은 말줄임 없이 전체 표시
+
 ## 피드·리스트·다이제스트
 
 상호작용(PTR, chip, 폴링)은 [FEED-INTERACTION.md](./FEED-INTERACTION.md). 여기서는 **시각 구조**만 정리한다.
@@ -185,15 +204,22 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | `WebWheelFlatList` / `WebWheelScrollView` | 웹 스크롤 |
 | `FloatingGlassFab` | FAB (시세 관심·뉴스 번역 등) |
 
+## 웹 스크롤바
+
+앱 스크롤 뷰포트(`data-signal-scroll-viewport` 등)의 세로 스크롤바는 숨긴다. 휠·트랙패드로만 스크롤. 구현: `app/+html.tsx` 글로벌 CSS.
+
 ## 새 화면 체크리스트
+
+교차 앱 공통 항목은 [APP-UI-PLAYBOOK.md §11](./APP-UI-PLAYBOOK.md#11-새-앱--새-화면-체크리스트). SIGNAL 화면 단위:
 
 1. `useResponsiveLayout()` → `useTwoPane` 분기
 2. Safe Area `edges` — [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)
-3. 고정 UI → `getScreenFixedHeaderStyles()` + `topFixed`
+3. 고정 UI → `getScreenFixedHeaderStyles()` + `topFixed` (날짜 있으면 날짜 → 세그먼트)
 4. 여백·하단 패딩 → `screenLayout` 헬퍼만
 5. 색·radius·gap → `theme` / `uiCornerRadius` / `comfortDensity`
-6. 피드 화면이면 → [FEED-INTERACTION.md 체크리스트](./FEED-INTERACTION.md#9-새-피드-화면-체크리스트)
-7. 외부 URL 열기 → `openConfiguredExternalLink` ([DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md))
+6. wide 탭·플로우 루트 → `wideContentFill` (불필요한 1120 캡 금지)
+7. 피드 화면이면 → [FEED-INTERACTION.md 체크리스트](./FEED-INTERACTION.md#9-새-피드-화면-체크리스트)
+8. 외부 URL 열기 → `openConfiguredExternalLink` ([DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md))
 
 ## Admin UI
 
@@ -203,6 +229,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 | 문서 | 내용 |
 |---|---|
+| [APP-UI-PLAYBOOK.md](./APP-UI-PLAYBOOK.md) | **다른 앱 이식용** UI 운영 표준 |
 | [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md) | Safe Area·여백·2-pane 상세 |
 | [FEED-INTERACTION.md](./FEED-INTERACTION.md) | PTR·chip·digest·폴링 |
 | [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) | 구현·API·외부 링크 |

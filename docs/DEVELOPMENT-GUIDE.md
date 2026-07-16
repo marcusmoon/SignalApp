@@ -1,6 +1,6 @@
 # SIGNAL 개발 가이드
 
-앱·연동 코드 작성의 현재 기준이다. 에이전트 온보딩 요약은 [AGENTS.md](./AGENTS.md)를, UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md)를 함께 본다.
+앱·연동 코드 작성의 현재 기준이다. 에이전트 온보딩 요약은 [AGENTS.md](./AGENTS.md)를, UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md)·교차 앱 표준은 [APP-UI-PLAYBOOK.md](./APP-UI-PLAYBOOK.md)를 함께 본다.
 
 ## 실행·품질
 
@@ -220,6 +220,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 
 | 문서 | 내용 |
 |---|---|
+| [APP-UI-PLAYBOOK.md](./APP-UI-PLAYBOOK.md) | 다른 앱 이식용 UI 표준 |
 | [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) | UI·테마·레이아웃 |
 | [AGENTS.md](./AGENTS.md) | 에이전트 온보딩·캐시 표 |
 | [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md) | 여백·Safe Area 상세 |

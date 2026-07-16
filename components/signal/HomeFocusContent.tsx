@@ -1019,7 +1019,6 @@ export function HomeFocusContent({
               <View style={styles.heroBlock}>
                 <HomeSectionHeader
                   title={t('ipadHomeTitle')}
-                  subtitle={t('ipadHomeTodayBriefingSubtitle')}
                   badge={<AiBadge />}
                   onPress={openTodayBriefing}
                   accessibilityLabel={t('commonViewAll')}
@@ -1031,7 +1030,6 @@ export function HomeFocusContent({
             <View style={[styles.heroBlock, styles.heroBlockCompact]}>
               <HomeSectionHeader
                 title={t('newsIssuesTitle')}
-                subtitle={t('ipadHomeIssuesSubtitle')}
                 badge={<AiBadge />}
                 onPress={() => openIssue()}
                 accessibilityLabel={t('commonViewAll')}
@@ -1049,7 +1047,6 @@ export function HomeFocusContent({
           <View style={[styles.section, styles.heroBlockCompact]}>
             <HomeSectionHeader
               title={t('ipadHomeSignalTitle')}
-              subtitle={t('ipadHomeSignalSubtitle')}
               badge={<AiBadge />}
               onPress={homeBriefings.length > 0 ? openSignal : undefined}
               accessibilityLabel={homeBriefings.length > 0 ? t('commonViewAll') : undefined}
@@ -1068,7 +1065,6 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('disclosureFlowTitle')}
-              subtitle={t('disclosureFlowSubtitle')}
               badge={<AiBadge />}
               onPress={() => openDisclosureFlow()}
               accessibilityLabel={t('commonViewAll')}
@@ -1086,7 +1082,6 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}
-                subtitle={t('homeFocusBoardSubtitle')}
                 onPress={openBoard}
                 accessibilityLabel={t('commonViewAll')}
               />
@@ -1138,7 +1133,6 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('ipadHomeCalendarTitle')}
-              subtitle={t('ipadHomeCalendarSubtitle')}
               onPress={openCalendar}
               accessibilityLabel={t('commonViewAll')}
             />

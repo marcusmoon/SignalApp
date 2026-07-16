@@ -53,7 +53,7 @@
 | `UI_RADIUS_GROUPED_FEED` | 16 | 뉴스·공시 그룹 카드 |
 | `UI_RADIUS_CARD` | 10 | 일반 카드·타일 |
 | `UI_RADIUS_CARD_LG` | 12 | 히어로·큰 카드 |
-| `UI_RADIUS_SEGMENT_OUTER` / `BTN` | 8 / 6 | 세그먼트 pill |
+| `UI_RADIUS_SEGMENT_OUTER` / `BTN` | 8 / 6 | (레거시 상수 · underline 세그먼트는 0) |
 | `UI_RADIUS_SHEET` | 14 | 바텀 시트 |
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 

@@ -819,6 +819,8 @@ export const ja = {
   quotesAlertDupWatchlist: 'すでにウォッチにあります。',
   quotesAlertTickerFormatBody: '米国ティッカーまたは韓国株の6桁コードを入力してください。',
   quotesDataUnavailable: 'データなし',
+  quotesPending: '相場を準備中',
+  quotesPendingHint: 'しばらくしてから更新してください',
   quotesEmptyWatch: 'ウォッチがありません。+ ボタンでティッカーを追加してください。',
   quotesEmptyGeneric: '表示する相場がありません。',
 

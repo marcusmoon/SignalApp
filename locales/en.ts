@@ -822,6 +822,8 @@ export const en = {
   quotesAlertDupWatchlist: 'Already in your watchlist.',
   quotesAlertTickerFormatBody: 'Enter a US ticker or a 6-digit Korean stock code.',
   quotesDataUnavailable: 'No data',
+  quotesPending: 'Getting quote',
+  quotesPendingHint: 'Pull to refresh in a moment',
   quotesEmptyWatch: 'No watchlist tickers. Tap + to add a ticker.',
   quotesEmptyGeneric: 'No quotes to show.',
 

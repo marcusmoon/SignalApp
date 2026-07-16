@@ -502,7 +502,7 @@ export default function QuotesScreen() {
                       : formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
-                  <Text style={styles.na}>—</Text>
+                  <Text style={styles.naMuted}>{t('quotesPending')}</Text>
                 )}
                 {watchRemoveIcon ? (
                   <Pressable
@@ -529,12 +529,17 @@ export default function QuotesScreen() {
             </View>
           </View>
           {!r.quote ? (
-            <Text style={styles.fail}>
+            <Text
+              style={
+                r.error === 'UNKNOWN_SYMBOL' || r.error === 'QUOTE_FETCH_FAILED'
+                  ? styles.fail
+                  : styles.pendingHint
+              }>
               {r.error === 'UNKNOWN_SYMBOL'
                 ? t('quotesErrorNoPrice')
                 : r.error === 'QUOTE_FETCH_FAILED'
                   ? t('quotesErrorLookup')
-                  : (r.error ?? t('quotesDataUnavailable'))}
+                  : t('quotesPendingHint')}
             </Text>
           ) : null}
         </>

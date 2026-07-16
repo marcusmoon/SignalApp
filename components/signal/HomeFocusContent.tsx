@@ -1102,7 +1102,9 @@ export function HomeFocusContent({
                   ) : (
                     quotes.slice(0, watchlistDisplayCount).map((row, index) => {
                       const pct = row.quote?.changePercent;
-                      const up = typeof pct === 'number' && pct >= 0;
+                      const hasPct = typeof pct === 'number' && Number.isFinite(pct);
+                      const up = hasPct && pct >= 0;
+                      const hasQuote = Boolean(row.quote);
                       return (
                         <Pressable
                           key={`${row.symbol}-${index}`}
@@ -1118,12 +1120,24 @@ export function HomeFocusContent({
                               </Text>
                             </View>
                             <View style={styles.quoteTileFooter}>
-                              <Text style={styles.priceText} numberOfLines={1}>
-                                {formatPrice(row)}
-                              </Text>
-                              <Text style={[styles.changeText, { color: up ? quoteChange.colors.up : quoteChange.colors.down }]}>
-                                {formatQuoteDpPct(pct)}
-                              </Text>
+                              {hasQuote ? (
+                                <>
+                                  <Text style={styles.priceText} numberOfLines={1}>
+                                    {formatPrice(row)}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.changeText,
+                                      { color: up ? quoteChange.colors.up : quoteChange.colors.down },
+                                    ]}>
+                                    {formatQuoteDpPct(pct)}
+                                  </Text>
+                                </>
+                              ) : (
+                                <Text style={styles.quotePendingText} numberOfLines={2}>
+                                  {t('quotesPending')}
+                                </Text>
+                              )}
                             </View>
                           </View>
                         </Pressable>
@@ -1420,16 +1434,22 @@ function makeStyles(
       alignItems: 'flex-end',
     },
     priceText: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(17),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
     },
     changeText: {
       marginTop: 2,
-      fontSize: ft.ff(13),
-      lineHeight: sf(17),
+      fontSize: ft.ff(16),
+      lineHeight: sf(20),
       fontWeight: ft.emphasisWeight,
+    },
+    quotePendingText: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
     },
     disclosurePillRow: {
       minWidth: 0,

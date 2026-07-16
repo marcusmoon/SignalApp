@@ -645,7 +645,7 @@ export const en = {
   feedSegmentGlobal: 'Global',
   feedSegmentKorea: 'Korea',
   feedSegmentCrypto: 'Crypto',
-  feedSegmentVideo: 'Video',
+  feedSegmentVideo: 'YouTube',
   feedEmptyWatch: 'No watchlist news.',
   feedEmptyVideo: 'No videos to show.',
   feedVideoOpenAll: 'Open full YouTube',

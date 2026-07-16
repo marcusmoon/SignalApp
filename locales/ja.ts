@@ -643,7 +643,7 @@ export const ja = {
   feedSegmentGlobal: 'グローバル',
   feedSegmentKorea: '国内',
   feedSegmentCrypto: 'コイン',
-  feedSegmentVideo: '動画',
+  feedSegmentVideo: 'YouTube',
   feedEmptyWatch: 'ウォッチニュースはありません。',
   feedEmptyVideo: '表示する動画はありません。',
   feedVideoOpenAll: 'YouTube 全体を見る',

@@ -148,6 +148,12 @@ export function makeQuotesStyles(
       color: theme.text,
     },
     na: { fontSize: sf(16), color: theme.textDim },
+    naMuted: {
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
     removeBtn: { padding: 2 },
     chg: {
       maxWidth: '100%',
@@ -160,6 +166,7 @@ export function makeQuotesStyles(
     chgUp: { color: changeColors.up },
     chgDn: { color: changeColors.down },
     fail: { fontSize: sf(12), color: theme.danger },
+    pendingHint: { fontSize: sf(12), color: theme.textMuted, marginTop: 2 },
     yahooInline: {
       flexDirection: 'row',
       alignItems: 'center',

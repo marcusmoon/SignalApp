@@ -84,7 +84,7 @@ export function getSegmentTabBarStyles(theme: AppTheme, sf: (n: number) => numbe
       color: theme.textDim,
     },
     segTextActive: {
-      color: theme.text,
+      color: theme.green,
       fontWeight: SEGMENT_TAB_FONT_WEIGHT_ACTIVE,
     },
     segTextDisabled: {

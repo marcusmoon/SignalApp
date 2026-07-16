@@ -817,6 +817,9 @@ export const ko = {
   quotesAlertDupWatchlist: '이미 관심 목록에 있습니다.',
   quotesAlertTickerFormatBody: '미국 티커 또는 국내 6자리 종목코드를 입력해 주세요.',
   quotesDataUnavailable: '데이터 없음',
+  /** 서버 시세 행이 아직 없을 때 (관심·홈) */
+  quotesPending: '시세 준비 중',
+  quotesPendingHint: '잠시 후 새로고침해 주세요',
   quotesEmptyWatch: '관심 종목이 없습니다. + 버튼으로 티커를 추가해 주세요.',
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
 

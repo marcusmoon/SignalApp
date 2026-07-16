@@ -21,7 +21,7 @@
 | 탭 | 화면 | 역할 |
 |---|---|---|
 | 홈 | `app/(tabs)/home.tsx` | 오늘의 브리핑·홈 다이제스트 |
-| 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·와치·영상 피드 |
+| 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·와치·YouTube 피드 (`YoutubeFeedPanel` 공유) |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |

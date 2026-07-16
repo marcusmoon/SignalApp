@@ -67,7 +67,7 @@ SafeAreaView edges={['top']}
   SignalFloatingTabBar
 ```
 
-다이제스트가 없는 세그먼트(뉴스 관심·영상, 공시 종목 필터 등)는 `SCREEN_LIST_CONTENT_PADDING_TOP`(12)을 쓴다.
+다이제스트가 없는 세그먼트(뉴스 관심·YouTube, 공시 종목 필터 등)는 `SCREEN_LIST_CONTENT_PADDING_TOP`(12)을 쓴다. 뉴스 YouTube 세그먼트는 유튜브 탭과 동일한 `YoutubeFeedPanel`(채널 필터 포함)을 쓴다.
 
 ### 레이어 구조 (iPhone 탭 — 날짜+세그먼트 리스트: 시장·뉴스/공시 플로우)
 

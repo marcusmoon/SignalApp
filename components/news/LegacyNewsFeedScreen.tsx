@@ -11,8 +11,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-
 import {
   fabStackBottom,
   SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
@@ -31,7 +29,6 @@ import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { DigestPager } from '@/components/news/DigestPager';
 import { NewsCard } from '@/components/signal/NewsCard';
-import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
@@ -40,6 +37,10 @@ import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import {
+  YoutubeFeedPanel,
+  type YoutubeFeedPanelHandle,
+} from '@/components/youtube/YoutubeFeedPanel';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
@@ -52,7 +53,6 @@ import {
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
   FEED_PAGE_KOREA,
-  FEED_PAGE_VIDEO,
   FEED_PAGE_WATCH,
   NEWS_SEGMENT_LABEL,
   type NewsDigestItem,
@@ -91,16 +91,14 @@ import {
   fetchSignalNewsDigests,
   fetchSignalYoutube,
   signalNewsToNewsItem,
-  signalYoutubeToYoutubeItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { toYmd } from '@/utils/date';
-import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo, SignalNewsListMeta } from '@/integrations/signal-api/types';
-import type { NewsItem, YoutubeItem } from '@/types/signal';
+import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
+import type { NewsItem } from '@/types/signal';
 
 type FeedRow =
   | { kind: 'news'; news: NewsItem }
-  | { kind: 'video'; video: YoutubeItem }
   | { kind: 'ad'; key: string };
 type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video' };
 
@@ -172,11 +170,10 @@ export function LegacyNewsFeedScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NewsItem[]>([]);
-  const [videoItems, setVideoItems] = useState<YoutubeItem[]>([]);
   const [serverRows, setServerRows] = useState<SignalApiNewsItem[]>([]);
   const [serverDigestRows, setServerDigestRows] = useState<SignalApiNewsDigestItem[]>([]);
-  const [youtubeRows, setYoutubeRows] = useState<SignalApiYoutubeVideo[]>([]);
   const [hasMore, setHasMore] = useState(false);
+  const youtubePanelRef = useRef<YoutubeFeedPanelHandle>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
@@ -195,15 +192,11 @@ export function LegacyNewsFeedScreen() {
   loadingRef.current = loading;
   const serverRowsRef = useRef(serverRows);
   const digestLookupRowsRef = useRef<SignalApiNewsItem[]>([]);
-  const youtubeRowsRef = useRef(youtubeRows);
   const itemsRef = useRef(items);
-  const videoItemsRef = useRef(videoItems);
   const feedFilterKeyRef = useRef(`${segment}|${activeTag ?? ''}|${locale}`);
   const feedReloadNonceRef = useRef(0);
   serverRowsRef.current = serverRows;
   itemsRef.current = items;
-  videoItemsRef.current = videoItems;
-  youtubeRowsRef.current = youtubeRows;
   const feedMetaRef = useRef<SignalNewsListMeta | null>(null);
   const loadMoreInFlightRef = useRef(false);
   const loadSeqRef = useRef(0);
@@ -240,7 +233,7 @@ export function LegacyNewsFeedScreen() {
   );
 
   const { ref: feedListRef, scrollToTop: scrollFeedToTop } = useScrollToTopOnChange([segment, activeTag], {
-    resyncDeps: [items, videoItems],
+    resyncDeps: [items],
   });
   const goToFeedList = useCallback(() => {
     const date = toYmd(new Date());
@@ -374,43 +367,24 @@ export function LegacyNewsFeedScreen() {
       try {
       if (!hasSignalApi()) {
         setItems([]);
-        setVideoItems([]);
         setServerRows([]);
         setServerDigestRows([]);
-        setYoutubeRows([]);
         setError(t('errorSignalApiShort'));
         return { itemIds: [], kind: 'news' };
       }
 
       const cacheMode = signalCacheMode(forceRefresh === true);
 
+      /** YouTube 세그먼트는 `YoutubeFeedPanel`이 목록·새로고침을 담당한다. */
       if (segment === 'video') {
-        if (!isRefresh) {
-          setItems([]);
-          setServerRows([]);
-          setServerDigestRows([]);
-        }
-        const { items: rows, meta } = await fetchSignalYoutube(
-          {
-            sort: 'latest',
-            limit: FEED_PAGE_VIDEO,
-            offset: 0,
-          },
-          { cacheMode },
-        );
-        setYoutubeRows(rows);
-        feedMetaRef.current = meta;
-        hasMoreRef.current = meta.hasMore;
-        setHasMore(meta.hasMore);
-        const mapped = rows.map((item) => signalYoutubeToYoutubeItem(item, locale));
-        setVideoItems(mapped);
-        syncSegmentLatestSeen('video', rows[0]?.id);
-        return { itemIds: mapped.map((item) => item.id), kind: 'video' };
-      }
-
-      if (!isRefresh) {
-        setVideoItems([]);
-        setYoutubeRows([]);
+        setItems([]);
+        setServerRows([]);
+        setServerDigestRows([]);
+        setHasMore(false);
+        feedMetaRef.current = null;
+        hasMoreRef.current = false;
+        setLoading(false);
+        return { itemIds: [], kind: 'video' };
       }
 
       if (segment === 'watch') {
@@ -559,47 +533,6 @@ export function LegacyNewsFeedScreen() {
 
     try {
       if (segment === 'video') {
-        let requestOffset = feedMetaRef.current?.nextOffset ?? youtubeRowsRef.current.length;
-        let totalAdded = 0;
-        let lastMeta: SignalNewsListMeta | null = feedMetaRef.current;
-        for (let skipPages = 0; skipPages < MAX_SKIP_PAGES; skipPages += 1) {
-          const page = await fetchSignalYoutube(
-            {
-              sort: 'latest',
-              limit: FEED_PAGE_VIDEO,
-              offset: requestOffset,
-            },
-            { cacheMode: signalCacheMode() },
-          );
-          feedMetaRef.current = page.meta;
-          lastMeta = page.meta;
-          if (page.items.length === 0) {
-            hasMoreRef.current = false;
-            break;
-          }
-          const prev = youtubeRowsRef.current;
-          const seen = new Set(prev.map((row) => row.id));
-          const added: SignalApiYoutubeVideo[] = [];
-          for (const row of page.items) {
-            if (!seen.has(row.id)) {
-              seen.add(row.id);
-              added.push(row);
-            }
-          }
-          totalAdded += added.length;
-          const merged = [...prev, ...added];
-          youtubeRowsRef.current = merged;
-          setYoutubeRows(merged);
-          setVideoItems(merged.map((item) => signalYoutubeToYoutubeItem(item, locale)));
-          if (added.length > 0 || !page.meta.hasMore) {
-            break;
-          }
-          if (page.meta.nextOffset == null || page.meta.nextOffset === requestOffset) {
-            break;
-          }
-          requestOffset = page.meta.nextOffset;
-        }
-        commitPaginationMeta(lastMeta);
         return;
       }
 
@@ -718,17 +651,13 @@ export function LegacyNewsFeedScreen() {
     const reloadBumped = feedReloadNonceRef.current !== feedReloadNonce;
     feedReloadNonceRef.current = feedReloadNonce;
     const hasExisting =
-      !filterChanged &&
-      !reloadBumped &&
-      (segment === 'video' ? videoItemsRef.current.length > 0 : itemsRef.current.length > 0);
+      !filterChanged && !reloadBumped && segment !== 'video' && itemsRef.current.length > 0;
 
-    setLoading(!hasExisting);
+    setLoading(segment === 'video' ? false : !hasExisting);
     if (!hasExisting) {
       setItems([]);
-      setVideoItems([]);
       setServerRows([]);
       setServerDigestRows([]);
-      setYoutubeRows([]);
       setHasMore(false);
       setError(null);
     } else {
@@ -756,8 +685,7 @@ export function LegacyNewsFeedScreen() {
     };
   }, [activeTag, feedReloadNonce, isFocused, load, locale, segment, t]);
 
-  const recoveryItems = segment === 'video' ? videoItems : items;
-  useTabScreenLoadingRecovery<NewsItem | YoutubeItem>(recoveryItems, setLoading);
+  useTabScreenLoadingRecovery(items, setLoading);
 
   const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
     if (!options?.force && segment === key) {
@@ -891,11 +819,8 @@ export function LegacyNewsFeedScreen() {
   }, [segment, serverDigestRows]);
 
   const listData: FeedRow[] = useMemo(() => {
+    if (segment === 'video') return [];
     const out: FeedRow[] = [];
-    if (segment === 'video') {
-      videoItems.forEach((video) => out.push({ kind: 'video', video }));
-      return out;
-    }
     items.forEach((news, i) => {
       out.push({ kind: 'news', news });
       if (adsEnabled && (i + 1) % 5 === 0) {
@@ -903,13 +828,11 @@ export function LegacyNewsFeedScreen() {
       }
     });
     return out;
-  }, [adsEnabled, items, segment, videoItems]);
+  }, [adsEnabled, items, segment]);
 
   const emptyMessage =
     !loading && listData.length === 0 && !error
-      ? segment === 'video'
-        ? t('feedEmptyVideo')
-        : segment === 'watch'
+      ? segment === 'watch'
         ? t('feedEmptyWatch')
         : t('feedEmpty')
       : null;
@@ -926,10 +849,7 @@ export function LegacyNewsFeedScreen() {
 
   const listHeaderEl = useMemo(() => {
     const hasContent =
-      Boolean(activeTag) ||
-      Boolean(error) ||
-      segment === 'video' ||
-      (loading && listData.length === 0);
+      Boolean(activeTag) || Boolean(error) || (loading && listData.length === 0);
     if (!hasContent) return null;
     return (
       <View style={styles.listHeader}>
@@ -954,20 +874,6 @@ export function LegacyNewsFeedScreen() {
           </View>
         ) : null}
 
-        {segment === 'video' ? (
-          <Pressable
-            onPress={() => router.push('/youtube')}
-            style={({ pressed }) => [styles.videoOpenAll, pressed && styles.videoOpenAllPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('feedVideoOpenAll')}>
-            <View style={styles.videoOpenAllIcon}>
-              <FontAwesome name="youtube-play" size={15} color={theme.green} />
-            </View>
-            <Text style={styles.videoOpenAllTitle}>{t('feedVideoOpenAll')}</Text>
-            <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
-          </Pressable>
-        ) : null}
-
         {loading && listData.length === 0 ? (
           <View style={styles.skeletonBlock}>
             <SkeletonFeed />
@@ -977,23 +883,20 @@ export function LegacyNewsFeedScreen() {
         ) : null}
       </View>
     );
-  }, [
-      activeTag,
-      error,
-      listData.length,
-      loading,
-      segment,
-      styles,
-      t,
-      theme.green,
-      theme.textDim,
-      router,
-    ],
+  }, [activeTag, error, listData.length, loading, styles, t],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {!useTwoPane ? (
+        <SignalHeader
+          compact
+          onBrandPress={() => {
+            if (segment === 'video') youtubePanelRef.current?.refresh();
+            else void onRefresh();
+          }}
+        />
+      ) : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane ? (
@@ -1049,106 +952,107 @@ export function LegacyNewsFeedScreen() {
               </View>
             </View>
           ) : null}
-          {isFocused ? (
-            <FeedNewContentChip
-              visible={newContentAvailable}
-              refreshing={refreshing}
-              message={t('feedNewContentAvailable')}
-              onPress={() => void onRefresh()}
+          {segment === 'video' ? (
+            <YoutubeFeedPanel
+              ref={youtubePanelRef}
+              embedded
+              contentBottomPadding={bottomPad}
+              registerWebHeaderRefresh={false}
             />
-          ) : null}
-          <WebWheelFlatList
-          scrollResetKey={feedScrollResetKey}
-          ref={feedListRef as never}
-          data={loading && listData.length === 0 ? [] : listData}
-          extraData={`${listData.length}:${newsTitleShowAlternate ? 'alt' : 'loc'}`}
-          keyExtractor={(row) =>
-            row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id
-          }
-          renderItem={({ item, index }) => {
-            if (item.kind === 'ad') {
-              return (
-                <View style={styles.adBetweenGroups}>
-                  <AdPlaceholder />
-                </View>
-              );
-            }
-            if (item.kind === 'video') {
-              const edges = groupedFeedRowEdges(listData, index, 'video');
-              return (
-                <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
-                  <YoutubeCard layout="grouped" item={item.video} />
-                </View>
-              );
-            }
-            const edges = groupedFeedRowEdges(listData, index, 'news');
-            return (
-              <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
-                <NewsCard
-                  layout="grouped"
-                  item={item.news}
-                  compactMeta
-                  titleToggle={segment === 'global' || segment === 'crypto'}
-                  titleShowAlternate={useNewsTitleListMode ? newsTitleShowAlternate : undefined}
-                  maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
-                  onTagPress={(label) => {
-                    const next = label.trim();
-                    if (next) setActiveTag(next);
-                  }}
+          ) : (
+            <>
+              {isFocused ? (
+                <FeedNewContentChip
+                  visible={newContentAvailable}
+                  refreshing={refreshing}
+                  message={t('feedNewContentAvailable')}
+                  onPress={() => void onRefresh()}
                 />
-              </View>
-            );
-          }}
-          ListHeaderComponent={listHeaderEl}
-          ListEmptyComponent={
-            emptyMessage ? (
-              <Text style={[styles.empty, { paddingHorizontal: 16 }]}>{emptyMessage}</Text>
-            ) : null
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.footerLoading}>
-                <ActivityIndicator color={theme.green} />
-                <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
-              </View>
-            ) : Platform.OS === 'web' && hasMore ? (
-              <View style={styles.footerLoading}>
-                <Pressable
-                  onPress={() => void loadMore()}
-                  style={styles.footerLoadMoreButton}
-                  accessibilityRole="button">
-                  <Text style={styles.footerLoadMoreText}>{t('feedDigestExpand')}</Text>
-                </Pressable>
-              </View>
-            ) : null
-          }
-          onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.55}
-          onScroll={webFeedLoadMore.onScroll}
-          scrollEventThrottle={350}
-          onLayout={webFeedLoadMore.onLayout}
-          onContentSizeChange={webFeedLoadMore.onContentSizeChange}
-          style={styles.list}
-          contentContainerStyle={[
-            styles.listContent,
-            {
-              paddingTop: showDigest
-                ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
-                : SCREEN_LIST_CONTENT_PADDING_TOP,
-              paddingBottom: bottomPad,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            loading && listData.length === 0 ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
-          }
-          removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}
-          windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
-          maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 12}
-          />
+              ) : null}
+              <WebWheelFlatList
+                scrollResetKey={feedScrollResetKey}
+                ref={feedListRef as never}
+                data={loading && listData.length === 0 ? [] : listData}
+                extraData={`${listData.length}:${newsTitleShowAlternate ? 'alt' : 'loc'}`}
+                keyExtractor={(row) => (row.kind === 'ad' ? row.key : row.news.id)}
+                renderItem={({ item, index }) => {
+                  if (item.kind === 'ad') {
+                    return (
+                      <View style={styles.adBetweenGroups}>
+                        <AdPlaceholder />
+                      </View>
+                    );
+                  }
+                  const edges = groupedFeedRowEdges(listData, index, 'news');
+                  return (
+                    <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
+                      <NewsCard
+                        layout="grouped"
+                        item={item.news}
+                        compactMeta
+                        titleToggle={segment === 'global' || segment === 'crypto'}
+                        titleShowAlternate={useNewsTitleListMode ? newsTitleShowAlternate : undefined}
+                        maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
+                        onTagPress={(label) => {
+                          const next = label.trim();
+                          if (next) setActiveTag(next);
+                        }}
+                      />
+                    </View>
+                  );
+                }}
+                ListHeaderComponent={listHeaderEl}
+                ListEmptyComponent={
+                  emptyMessage ? (
+                    <Text style={[styles.empty, { paddingHorizontal: 16 }]}>{emptyMessage}</Text>
+                  ) : null
+                }
+                ListFooterComponent={
+                  loadingMore ? (
+                    <View style={styles.footerLoading}>
+                      <ActivityIndicator color={theme.green} />
+                      <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+                    </View>
+                  ) : Platform.OS === 'web' && hasMore ? (
+                    <View style={styles.footerLoading}>
+                      <Pressable
+                        onPress={() => void loadMore()}
+                        style={styles.footerLoadMoreButton}
+                        accessibilityRole="button">
+                        <Text style={styles.footerLoadMoreText}>{t('feedDigestExpand')}</Text>
+                      </Pressable>
+                    </View>
+                  ) : null
+                }
+                onEndReached={() => void loadMore()}
+                onEndReachedThreshold={0.55}
+                onScroll={webFeedLoadMore.onScroll}
+                scrollEventThrottle={350}
+                onLayout={webFeedLoadMore.onLayout}
+                onContentSizeChange={webFeedLoadMore.onContentSizeChange}
+                style={styles.list}
+                contentContainerStyle={[
+                  styles.listContent,
+                  {
+                    paddingTop: showDigest
+                      ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
+                      : SCREEN_LIST_CONTENT_PADDING_TOP,
+                    paddingBottom: bottomPad,
+                  },
+                ]}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  loading && listData.length === 0 ? undefined : (
+                    <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                  )
+                }
+                removeClippedSubviews={Platform.OS === 'android'}
+                initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}
+                windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
+                maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 12}
+              />
+            </>
+          )}
         </View>
       </View>
 

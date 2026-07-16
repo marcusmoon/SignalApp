@@ -640,7 +640,7 @@ export const ko = {
   feedSegmentGlobal: '글로벌',
   feedSegmentKorea: '한국',
   feedSegmentCrypto: '코인',
-  feedSegmentVideo: '영상',
+  feedSegmentVideo: 'YouTube',
   feedEmptyWatch: '관심종목 뉴스가 없습니다.',
   feedEmptyVideo: '표시할 영상이 없습니다.',
   feedVideoOpenAll: '유튜브 전체보기',

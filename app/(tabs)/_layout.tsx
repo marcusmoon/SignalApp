@@ -49,7 +49,15 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'chart-area' | 'youtube' | 'th-large' | 'comments';
+type TabBarIconName =
+  | 'home'
+  | 'newspaper'
+  | 'file-alt'
+  | 'landmark'
+  | 'list-ul'
+  | 'youtube'
+  | 'ellipsis-h'
+  | 'comments';
 
 function TabBarIcon({
   name,
@@ -64,7 +72,7 @@ function TabBarIcon({
 }) {
   return (
     <View style={tabIconWrap}>
-      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid />
+      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid={focused} />
       {showDot ? <View style={tabIconDot} /> : null}
     </View>
   );
@@ -78,7 +86,7 @@ function NewsTabBarIcon({ color, focused }: { color: ColorValue; focused: boolea
 
 function SignalTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { signalTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="chart-area" color={color} focused={focused} showDot={signalTabBadge} />;
+  return <TabBarIcon name="landmark" color={color} focused={focused} showDot={signalTabBadge} />;
 }
 
 function DisclosureTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
@@ -88,7 +96,7 @@ function DisclosureTabBarIcon({ color, focused }: { color: ColorValue; focused: 
 
 function MoreTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { moreTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="th-large" color={color} focused={focused} showDot={moreTabBadge} />;
+  return <TabBarIcon name="ellipsis-h" color={color} focused={focused} showDot={moreTabBadge} />;
 }
 
 const tabIconWrap = {
@@ -315,7 +323,7 @@ export default function TabLayout() {
         name="quotes"
         options={{
           title: t('tabQuotes'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="chart-line" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="list-ul" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

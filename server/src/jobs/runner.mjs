@@ -151,9 +151,12 @@ async function readJobContext(job) {
     provider === 'dart' ||
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
-    (provider === 'yahoo' && handler === 'daily_bars')
+    (provider === 'yahoo' && (handler === 'daily_bars' || handler === 'market_quotes_kr'))
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
+  }
+  if (provider === 'yahoo' && handler === 'market_quotes_kr') {
+    context.marketQuotes = await listCollectionPayloads('marketQuotes');
   }
   if (provider === 'youtube') {
     const [appSettings, youtubeVideos] = await Promise.all([

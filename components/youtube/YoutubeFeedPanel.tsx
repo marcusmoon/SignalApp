@@ -79,12 +79,18 @@ export type YoutubeFeedPanelProps = {
   /**
    * 뉴스 세그먼트 등 부모 크롬 안 — maxWidth 컬럼 없이 flex fill만.
    * 단독 탭은 false(기본)로 중앙 maxWidth 컬럼을 쓴다.
+   * embedded이면 채널 필터 스트립도 숨긴다(세그먼트 바와 이중 헤더 방지).
    */
   embedded?: boolean;
   /** 미지정 시 탭바/스택 크롬 기준 */
   contentBottomPadding?: number;
   /** 웹 헤더 새로고침 (기본 true) */
   registerWebHeaderRefresh?: boolean;
+  /**
+   * 채널 필터 칩·시트. 기본은 `!embedded`.
+   * 뉴스 YouTube 세그먼트는 세그먼트 바와 겹치지 않게 끈다.
+   */
+  showChannelFilter?: boolean;
 };
 
 export type YoutubeFeedPanelHandle = {
@@ -100,9 +106,11 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
       embedded = false,
       contentBottomPadding,
       registerWebHeaderRefresh = true,
+      showChannelFilter: showChannelFilterProp,
     },
     ref,
   ) {
+  const showChannelFilter = showChannelFilterProp ?? !embedded;
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -203,10 +211,43 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
     }) => {
       setError(null);
       setIsQuotaError(false);
+      const errKey = opts?.errorFallback ?? 'youtubeErrorLoad';
+
+      /** 뉴스 embedded 등 필터 UI 없을 때: 카탈로그만 기다린 뒤 전체 채널 최신순. */
+      if (!showChannelFilter) {
+        if (selectedHandles === null) return;
+        if (!hasSignalApi()) {
+          setItems([]);
+          setYoutubeMeta(null);
+          setError(t('errorSignalApiShort'));
+          setLoading(false);
+          return;
+        }
+        const hadItems = itemsRef.current.length > 0;
+        if (!hadItems) setLoading(true);
+        const isRefresh = opts?.forceRefresh === true;
+        youtubeReplacingRef.current = true;
+        if (!isRefresh) setYoutubeMeta(null);
+        try {
+          const page = await fetchSignalYoutube(
+            { offset: 0, limit: YOUTUBE_PAGE_SIZE, sort: 'latest' },
+            { cacheMode: signalCacheMode(opts?.forceRefresh) },
+          );
+          setYoutubeMeta(page.meta);
+          setItems(page.items.map((item) => signalYoutubeToYoutubeItem(item, locale)));
+        } catch (e) {
+          applyLoadError(e, errKey);
+          setItems([]);
+          setYoutubeMeta(null);
+        } finally {
+          setLoading(false);
+          youtubeReplacingRef.current = false;
+        }
+        return;
+      }
+
       const handles = opts?.channelHandles ?? selectedHandles;
       if (handles === null) return;
-
-      const errKey = opts?.errorFallback ?? 'youtubeErrorLoad';
 
       if (!hasSignalApi()) {
         setItems([]);
@@ -254,7 +295,7 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
         youtubeReplacingRef.current = false;
       }
     },
-    [selectedHandles, curationHandles, locale, t, applyLoadError],
+    [selectedHandles, curationHandles, locale, t, applyLoadError, showChannelFilter],
   );
 
   const loadMore = useCallback(async () => {
@@ -274,7 +315,10 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
           limit: YOUTUBE_PAGE_SIZE,
           sort: 'latest',
           channelHandles:
-            selectedHandles && curationHandles && selectedHandles.length !== curationHandles.length
+            showChannelFilter &&
+            selectedHandles &&
+            curationHandles &&
+            selectedHandles.length !== curationHandles.length
               ? selectedHandles
               : undefined,
         },
@@ -306,7 +350,7 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [selectedHandles, curationHandles, locale, applyLoadError]);
+  }, [selectedHandles, curationHandles, locale, applyLoadError, showChannelFilter]);
 
   const onRefreshBase = useCallback(async () => {
     if (selectedHandles === null) return;
@@ -416,10 +460,10 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
   }, [quotaResetMs, t]);
 
   const emptyFeedMessage = useMemo(() => {
-    if (selectedHandles?.length === 0) return t('youtubeErrorSelectChannel');
-    if (channelFilterActive) return t('youtubeEmptyChannelFilter');
+    if (showChannelFilter && selectedHandles?.length === 0) return t('youtubeErrorSelectChannel');
+    if (showChannelFilter && channelFilterActive) return t('youtubeEmptyChannelFilter');
     return t('youtubeEmptyFeed');
-  }, [channelFilterActive, selectedHandles, t]);
+  }, [channelFilterActive, selectedHandles, showChannelFilter, t]);
 
   const showScrollLoading =
     selectedHandles === null
@@ -445,26 +489,31 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
           embedded ? styles.embeddedRoot : styles.mainColumn,
           !embedded && useTwoPane && styles.mainColumnWide,
         ]}>
-        <View style={[styles.topFixed, (useTwoPane || embedded) && styles.topFixedWide]}>
-          <View style={styles.channelFilterRow}>
-            <Pressable
-              onPress={openChannelFilter}
-              disabled={!selectedHandles || !curationHandles}
-              style={[
-                styles.channelFilterChip,
-                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
-                channelFilterActive && styles.channelFilterChipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={channelFilterLabel}
-              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
-              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
-                {channelFilterLabel}
-              </Text>
-            </Pressable>
+        {showChannelFilter ? (
+          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+            <View style={styles.channelFilterRow}>
+              <Pressable
+                onPress={openChannelFilter}
+                disabled={!selectedHandles || !curationHandles}
+                style={[
+                  styles.channelFilterChip,
+                  !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                  channelFilterActive && styles.channelFilterChipActive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={channelFilterLabel}
+                accessibilityState={{
+                  selected: channelFilterActive,
+                  disabled: !selectedHandles || !curationHandles,
+                }}>
+                <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+                <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+                  {channelFilterLabel}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {error ? (
           <View style={styles.errBox}>
@@ -543,47 +592,49 @@ export const YoutubeFeedPanel = forwardRef<YoutubeFeedPanelHandle, YoutubeFeedPa
         )}
       </View>
 
-      <SelectionFilterSheet
-        visible={channelModalVisible}
-        title={t('youtubeModalTitle')}
-        hint={t('youtubeFooterSub')}
-        onDone={() => void commitChannelFilter()}
-        bottomInset={insets.bottom}
-        toolbar={{
-          sectionLabel: t('youtubeFooterIncluded'),
-          countLabel: t('filterSheetSelectedCount', {
-            selected: filterDraftHandles?.length ?? 0,
-            total: curationHandles?.length ?? 0,
-          }),
-          selectAllLabel: t('youtubeFooterSelectAll'),
-          clearAllLabel: t('youtubeFooterClearAll'),
-          onSelectAll: selectAllChannels,
-          onClearAll: clearAllChannels,
-        }}>
-        {filterDraftHandles &&
-          curationHandles &&
-          curationHandles.map((handle) => {
-            const on = filterDraftHandles.includes(handle);
-            return (
-              <Pressable
-                key={handle}
-                onPress={() => toggleChannel(handle)}
-                style={[channelRowStyles.row, on && channelRowStyles.rowOn]}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: on }}>
-                <FontAwesome
-                  name={on ? 'check-square' : 'square-o'}
-                  size={18}
-                  color={on ? theme.green : theme.textDim}
-                  style={channelRowStyles.checkIcon}
-                />
-                <Text style={[channelRowStyles.name, !on && channelRowStyles.nameOff]} numberOfLines={2}>
-                  {titleForHandle(handle)}
-                </Text>
-              </Pressable>
-            );
-          })}
-      </SelectionFilterSheet>
+      {showChannelFilter ? (
+        <SelectionFilterSheet
+          visible={channelModalVisible}
+          title={t('youtubeModalTitle')}
+          hint={t('youtubeFooterSub')}
+          onDone={() => void commitChannelFilter()}
+          bottomInset={insets.bottom}
+          toolbar={{
+            sectionLabel: t('youtubeFooterIncluded'),
+            countLabel: t('filterSheetSelectedCount', {
+              selected: filterDraftHandles?.length ?? 0,
+              total: curationHandles?.length ?? 0,
+            }),
+            selectAllLabel: t('youtubeFooterSelectAll'),
+            clearAllLabel: t('youtubeFooterClearAll'),
+            onSelectAll: selectAllChannels,
+            onClearAll: clearAllChannels,
+          }}>
+          {filterDraftHandles &&
+            curationHandles &&
+            curationHandles.map((handle) => {
+              const on = filterDraftHandles.includes(handle);
+              return (
+                <Pressable
+                  key={handle}
+                  onPress={() => toggleChannel(handle)}
+                  style={[channelRowStyles.row, on && channelRowStyles.rowOn]}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}>
+                  <FontAwesome
+                    name={on ? 'check-square' : 'square-o'}
+                    size={18}
+                    color={on ? theme.green : theme.textDim}
+                    style={channelRowStyles.checkIcon}
+                  />
+                  <Text style={[channelRowStyles.name, !on && channelRowStyles.nameOff]} numberOfLines={2}>
+                    {titleForHandle(handle)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+        </SelectionFilterSheet>
+      ) : null}
     </>
   );
   },

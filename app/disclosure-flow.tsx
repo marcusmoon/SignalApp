@@ -14,7 +14,6 @@ import {
   FEED_BADGE_PX,
   FEED_BODY_PX,
   FEED_DETAIL_TITLE_PX,
-  FEED_META_TIME_PX,
   FEED_PREVIEW_BODY_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';

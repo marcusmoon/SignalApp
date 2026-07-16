@@ -21,14 +21,16 @@ import {
 import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
 import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-  SCREEN_HEADER_CONTENT_GAP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
 } from '@/constants/screenLayout';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -239,52 +241,53 @@ export function NewsIssuesContent({
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <WebWheelScrollView
-        ref={scrollRef as never}
-        scrollResetKey={scrollResetKey}
-        contentRevision={items}
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        <View style={[styles.inner, isWide && styles.innerWide]}>
-          {onBack ? (
-            <WideSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} />
-          ) : null}
-          <View style={styles.header}>
-            <View style={styles.categoryTabs}>
-              {NEWS_ISSUES_CATEGORY_ORDER.map((key) => {
-                const active = category === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => onPickCategory(key)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    style={[styles.categoryTab, active && styles.categoryTabActive]}>
-                    <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
-                      {key === 'all' ? t('newsIssuesCategoryAll') : t(NEWS_SEGMENT_LABEL[key])}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
+      <View style={[styles.pageColumn, isWide && styles.pageColumnWide]}>
+        {onBack ? <WideSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} /> : null}
+        <View style={[styles.topFixed, isWide && styles.topFixedWide]}>
           <SignalDateNavigator
             label={formatDateLabel(selectedYmd, locale)}
-            previousA11y={t('calendarDayPrevA11y')}
-            nextA11y={t('calendarDayNextA11y')}
+            previousA11y={t('insightDatePrevious')}
+            nextA11y={t('insightDateNext')}
             labelA11y={t('insightOpenCalendar')}
-            todayLabel={t('commonToday')}
+            todayLabel={t('insightCalendarToday')}
             onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
             onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
             onPressLabel={openDatePicker}
             onToday={() => onPickDate(todayYmd)}
             showToday={selectedYmd !== todayYmd}
             nextDisabled={selectedYmd >= todayYmd}
-            style={styles.dateNav}
+            style={styles.dateNavigator}
           />
+          <View style={styles.segment}>
+            {NEWS_ISSUES_CATEGORY_ORDER.map((key) => {
+              const active = category === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => onPickCategory(key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.segBtn, active && styles.segBtnActive]}>
+                  <Text style={[styles.segText, active && styles.segTextActive]}>
+                    {key === 'all' ? t('newsIssuesCategoryAll') : t(NEWS_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
+        <WebWheelScrollView
+          ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={items}
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            isWide && styles.contentWide,
+            { paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE },
+          ]}
+          showsVerticalScrollIndicator={false}>
           {error ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -384,8 +387,8 @@ export function NewsIssuesContent({
               })}
             </View>
           )}
-        </View>
-      </WebWheelScrollView>
+        </WebWheelScrollView>
+      </View>
     </SafeAreaView>
   );
 
@@ -442,55 +445,39 @@ export default function NewsIssuesScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
-    scroll: { flex: 1, minHeight: 0 },
-    scrollContent: { flexGrow: 1, paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE },
-    inner: {
+    safe: { ...webFlexFill, minHeight: 0, backgroundColor: webShellBackground(theme.bg) },
+    pageColumn: {
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      gap: 20,
     },
-    innerWide: {
+    pageColumnWide: {
       ...wideContentFill,
-      paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },
-    header: { gap: 20 },
-    title: {
-      fontSize: sf(22),
-      lineHeight: sf(28),
-      fontWeight: '700',
-      color: theme.text,
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
+    dateNavigator: {
+      width: '100%',
     },
-    categoryTabs: {
-      flexDirection: 'row',
-      gap: 6,
-      padding: 4,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
+    scroll: { ...webScrollViewportStyle },
+    content: {
+      width: '100%',
+      paddingHorizontal: 16,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      flexGrow: 1,
     },
-    categoryTab: {
-      flex: 1,
-      minHeight: 34,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
+    contentWide: {
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
-    categoryTabActive: { backgroundColor: theme.green },
-    categoryTabText: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '600',
-      color: theme.textDim,
-    },
-    categoryTabTextActive: { color: '#FFFFFF' },
-    dateNav: { marginTop: 2 },
     loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
     listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
@@ -499,6 +486,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: theme.border,
+      marginBottom: 12,
     },
     errorText: {
       fontSize: sf(12),
@@ -558,7 +546,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
-    footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 2 },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 2,
+    },
     meta: {
       flex: 1,
       minWidth: 0,
@@ -578,6 +572,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
+    pressed: { opacity: 0.75 },
     detailSection: {
       gap: COMFORT_GAP_SM,
       marginTop: COMFORT_GAP_SM,
@@ -597,6 +592,5 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sourceList: {
       gap: 0,
     },
-    pressed: { opacity: 0.75 },
   });
 }

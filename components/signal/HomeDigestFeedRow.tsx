@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
 import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import {
@@ -101,13 +102,13 @@ export function HomeDigestFeedRow({
         onPress && pressed && styles.rowPressed,
       ]}>
       {badges ? <View style={styles.badgeRow}>{badges}</View> : null}
-      <Text style={styles.title} numberOfLines={resolvedTitleLines}>
+      <ChangeTintedText style={styles.title} numberOfLines={resolvedTitleLines}>
         {title}
-      </Text>
+      </ChangeTintedText>
       {trimmedSummary && (resolvedSummaryLines == null || resolvedSummaryLines > 0) ? (
-        <Text style={styles.summary} numberOfLines={resolvedSummaryLines}>
+        <ChangeTintedText style={styles.summary} numberOfLines={resolvedSummaryLines}>
           {trimmedSummary}
-        </Text>
+        </ChangeTintedText>
       ) : null}
       {footer}
     </Pressable>

@@ -38,6 +38,7 @@ import {
 } from '@/components/signal/SourceIconStack';
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
@@ -722,21 +723,24 @@ export function HomeFocusContent({
           <View style={styles.issueGroupList}>
             <View style={styles.issueGroupItem}>
               {leadText ? (
-                <Text style={styles.issueGroupTitle} numberOfLines={showIssueSummary ? 3 : 2}>
+                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={showIssueSummary ? 3 : 2}>
                   {leadText}
-                </Text>
+                </ChangeTintedText>
               ) : null}
               {previewText ? (
-                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
+                <ChangeTintedText style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
                   {previewText}
-                </Text>
+                </ChangeTintedText>
               ) : null}
               {item.keyPoints.length > 0 ? (
                 <View style={styles.overviewMiniList}>
                   {item.keyPoints.slice(0, 2).map((point, index) => (
-                    <Text key={`${item.id}-point-${index}`} style={styles.issueGroupSummary} numberOfLines={1}>
+                    <ChangeTintedText
+                      key={`${item.id}-point-${index}`}
+                      style={styles.issueGroupSummary}
+                      numberOfLines={1}>
                       {point}
-                    </Text>
+                    </ChangeTintedText>
                   ))}
                 </View>
               ) : null}
@@ -864,13 +868,13 @@ export function HomeFocusContent({
                   {formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
                 </Text>
               </View>
-              <Text style={styles.issueGroupTitle} numberOfLines={2}>
+              <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.title}
-              </Text>
+              </ChangeTintedText>
               {showIssueSummary && row.summary ? (
-                <Text style={styles.issueGroupSummary} numberOfLines={1}>
+                <ChangeTintedText style={styles.issueGroupSummary} numberOfLines={1}>
                   {row.summary}
-                </Text>
+                </ChangeTintedText>
               ) : null}
             </Pressable>
           ))}
@@ -1423,8 +1427,8 @@ function makeStyles(
     },
     changeText: {
       marginTop: 2,
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
+      fontSize: ft.ff(13),
+      lineHeight: sf(17),
       fontWeight: ft.emphasisWeight,
     },
     disclosurePillRow: {

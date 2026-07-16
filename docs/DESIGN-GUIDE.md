@@ -28,7 +28,7 @@
 
 - 화면마다 hex를 직접 쓰지 않고 `useSignalTheme()`의 `theme`만 사용한다.
 - 다크 모드에서도 `card`·`bg` 계층을 유지한다 (순백 카드 금지).
-- 강조는 `theme.green` 하나로 통일한다. 세그먼트 활성 텍스트만 `#FFFFFF` 고정 (`segmentTabBar.ts`).
+- 강조는 `theme.green` 하나로 통일한다. 세그먼트 활성은 하단 green underline + `theme.text` (`segmentTabBar.ts`).
 
 ## 타이포그래피
 
@@ -114,12 +114,13 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 적용 화면: 뉴스·공시·시세·유튜브·게시판·홈·시장·알림함·설정 등.
 
-### 세그먼트 pill
+### 세그먼트 (underline)
 
 `getSegmentTabBarStyles(theme, scaleFont)` — `constants/segmentTabBar.ts`
 
-- 트랙: `bgElevated` + border
-- 활성: `theme.green` 배경 + 흰 텍스트
+- 트랙/채움 pill 없음. 행 하단 hairline만
+- 활성: 하단 **green 2px** 라인 + 텍스트 `theme.text` / semibold
+- 비활성: `theme.textDim`
 - iPhone 탭 상단·설정/계정 서브탭·시장 세션 등 **동일 스타일**
 
 ### 날짜 바 (`SignalDateNavigator`)

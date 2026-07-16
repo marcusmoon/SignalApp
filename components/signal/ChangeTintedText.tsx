@@ -13,7 +13,8 @@ type Props = {
 } & Omit<ComponentProps<typeof Text>, 'children' | 'style' | 'numberOfLines'>;
 
 /**
- * 본문 뷰잉 시 `+1.2%` / `-0.5%` 등 부호 있는 변동률만 설정 규칙(한/미) 색으로 칠한다.
+ * 본문 뷰잉 시 변동률(`+1.2%`, `-0.5%`, `2.78% 상승`, 근처 방향 힌트가 있는 `2.78%` 등)을
+ * 설정 규칙(한/미) 색으로 칠한다.
  */
 export function ChangeTintedText({
   children,

@@ -215,9 +215,9 @@ export function SignalSidebarTabBar({
             <View style={styles.iconWrap}>
               <FontAwesome5
                 name="home"
-                size={18}
+                size={17}
                 color={homeActive ? theme.green : theme.textMuted}
-                solid
+                solid={false}
               />
             </View>
             <Text style={[styles.tabLabel, homeActive && styles.tabLabelActive]} numberOfLines={1}>
@@ -246,9 +246,9 @@ export function SignalSidebarTabBar({
                   <View style={styles.iconWrap}>
                     <FontAwesome5
                       name={tab.icon}
-                      size={18}
+                      size={17}
                       color={isActive ? theme.green : theme.textMuted}
-                      solid
+                      solid={false}
                     />
                     {hasDot ? <View style={styles.dot} /> : null}
                   </View>

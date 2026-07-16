@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, StyleSheet, View, type ColorValue } from 'react-native';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from "expo-router/js-tabs";
 import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { Tabs } from 'expo-router';
@@ -49,31 +49,45 @@ import {
 
 const TAB_ICON_SIZE = 22;
 
-type TabBarIconName =
+type TabBarIconKey =
   | 'home'
-  | 'newspaper'
-  | 'file-alt'
-  | 'landmark'
-  | 'list-ul'
+  | 'news'
+  | 'signal'
+  | 'quotes'
+  | 'more'
+  | 'disclosures'
   | 'youtube'
-  | 'ellipsis-h'
-  | 'comments';
+  | 'board';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICON_PAIR: Record<TabBarIconKey, { outline: IoniconName; filled: IoniconName }> = {
+  home: { outline: 'home-outline', filled: 'home' },
+  news: { outline: 'newspaper-outline', filled: 'newspaper' },
+  signal: { outline: 'pulse-outline', filled: 'pulse' },
+  quotes: { outline: 'stats-chart-outline', filled: 'stats-chart' },
+  more: { outline: 'ellipsis-horizontal', filled: 'ellipsis-horizontal' },
+  disclosures: { outline: 'document-text-outline', filled: 'document-text' },
+  youtube: { outline: 'logo-youtube', filled: 'logo-youtube' },
+  board: { outline: 'chatbubbles-outline', filled: 'chatbubbles' },
+};
 
 function TabBarIcon({
-  name,
+  icon,
   color,
-  focused: _focused = false,
+  focused = false,
   showDot,
 }: {
-  name: TabBarIconName;
+  icon: TabBarIconKey;
   color: ColorValue;
   focused?: boolean;
   showDot?: boolean;
 }) {
+  const pair = TAB_ICON_PAIR[icon];
+  const name = focused ? pair.filled : pair.outline;
   return (
     <View style={tabIconWrap}>
-      {/* Always outline — solid glyphs read too heavy on the floating tab bar. */}
-      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid={false} />
+      <Ionicons name={name} size={TAB_ICON_SIZE} color={color} />
       {showDot ? <View style={tabIconDot} /> : null}
     </View>
   );
@@ -82,22 +96,22 @@ function TabBarIcon({
 /** Badge subscription stays in this leaf so tab layout does not re-render on poll. */
 function NewsTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { newsTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsTabBadge} />;
+  return <TabBarIcon icon="news" color={color} focused={focused} showDot={newsTabBadge} />;
 }
 
 function SignalTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { signalTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="landmark" color={color} focused={focused} showDot={signalTabBadge} />;
+  return <TabBarIcon icon="signal" color={color} focused={focused} showDot={signalTabBadge} />;
 }
 
 function DisclosureTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { disclosureTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureTabBadge} />;
+  return <TabBarIcon icon="disclosures" color={color} focused={focused} showDot={disclosureTabBadge} />;
 }
 
 function MoreTabBarIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
   const { moreTabBadge } = useFeedUnreadBadges();
-  return <TabBarIcon name="ellipsis-h" color={color} focused={focused} showDot={moreTabBadge} />;
+  return <TabBarIcon icon="more" color={color} focused={focused} showDot={moreTabBadge} />;
 }
 
 const tabIconWrap = {
@@ -295,7 +309,7 @@ export default function TabLayout() {
         name="home"
         options={{
           title: t('tabHome'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -324,7 +338,7 @@ export default function TabLayout() {
         name="quotes"
         options={{
           title: t('tabQuotes'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="list-ul" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="quotes" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -339,7 +353,7 @@ export default function TabLayout() {
         options={{
           title: t('tabYoutube'),
           href: null,
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="youtube" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -347,7 +361,7 @@ export default function TabLayout() {
         options={{
           title: t('screenBoard'),
           href: null,
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="comments" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="board" color={color} focused={focused} />,
         }}
       />
     </Tabs>

@@ -5,8 +5,8 @@
  * - 퀵 링크는 하단 슬림 도크
  */
 import { usePathname, useRouter } from 'expo-router';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,28 +28,66 @@ import {
   subscribeMoreReferenceLinksVisibilityChanged,
 } from '@/services/moreReferenceLinksPreference';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 type TabDef = {
   name: string;
   route: string;
-  icon:
-    | 'newspaper'
-    | 'file-alt'
-    | 'landmark'
-    | 'list-ul'
-    | 'youtube'
-    | 'comments'
-    | 'user-circle';
+  iconOutline: IoniconName;
+  iconFilled: IoniconName;
   labelId: MessageId;
 };
 
 const SIDEBAR_TABS: TabDef[] = [
-  { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
-  { name: 'signal', route: '/(tabs)/signal', icon: 'landmark', labelId: 'tabSignal' },
-  { name: 'quotes', route: '/(tabs)/quotes', icon: 'list-ul', labelId: 'tabQuotes' },
-  { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt', labelId: 'tabDisclosures' },
-  { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
-  { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },
-  { name: 'account', route: '/account', icon: 'user-circle', labelId: 'screenAccount' },
+  {
+    name: 'news',
+    route: '/(tabs)/news',
+    iconOutline: 'newspaper-outline',
+    iconFilled: 'newspaper',
+    labelId: 'tabNews',
+  },
+  {
+    name: 'signal',
+    route: '/(tabs)/signal',
+    iconOutline: 'pulse-outline',
+    iconFilled: 'pulse',
+    labelId: 'tabSignal',
+  },
+  {
+    name: 'quotes',
+    route: '/(tabs)/quotes',
+    iconOutline: 'stats-chart-outline',
+    iconFilled: 'stats-chart',
+    labelId: 'tabQuotes',
+  },
+  {
+    name: 'disclosures',
+    route: '/(tabs)/disclosures',
+    iconOutline: 'document-text-outline',
+    iconFilled: 'document-text',
+    labelId: 'tabDisclosures',
+  },
+  {
+    name: 'youtube',
+    route: '/(tabs)/youtube',
+    iconOutline: 'logo-youtube',
+    iconFilled: 'logo-youtube',
+    labelId: 'tabYoutube',
+  },
+  {
+    name: 'board',
+    route: '/(tabs)/board',
+    iconOutline: 'chatbubbles-outline',
+    iconFilled: 'chatbubbles',
+    labelId: 'screenBoard',
+  },
+  {
+    name: 'account',
+    route: '/account',
+    iconOutline: 'person-circle-outline',
+    iconFilled: 'person-circle',
+    labelId: 'screenAccount',
+  },
 ];
 
 /** 내 정보에서 진입하는 보조 화면 — 사이드바에서는 내 정보 활성으로 표시 */
@@ -213,11 +251,10 @@ export function SignalSidebarTabBar({
             accessibilityRole="button"
             accessibilityState={{ selected: homeActive }}>
             <View style={styles.iconWrap}>
-              <FontAwesome5
-                name="home"
-                size={17}
+              <Ionicons
+                name={homeActive ? 'home' : 'home-outline'}
+                size={18}
                 color={homeActive ? theme.green : theme.textMuted}
-                solid={false}
               />
             </View>
             <Text style={[styles.tabLabel, homeActive && styles.tabLabelActive]} numberOfLines={1}>
@@ -244,11 +281,10 @@ export function SignalSidebarTabBar({
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}>
                   <View style={styles.iconWrap}>
-                    <FontAwesome5
-                      name={tab.icon}
-                      size={17}
+                    <Ionicons
+                      name={isActive ? tab.iconFilled : tab.iconOutline}
+                      size={18}
                       color={isActive ? theme.green : theme.textMuted}
-                      solid={false}
                     />
                     {hasDot ? <View style={styles.dot} /> : null}
                   </View>

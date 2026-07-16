@@ -14,17 +14,17 @@ import {
   FEED_BADGE_PX,
   FEED_BODY_PX,
   FEED_DETAIL_TITLE_PX,
-  FEED_META_TIME_PX,
   FEED_PREVIEW_BODY_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-  SCREEN_HEADER_CONTENT_GAP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
 } from '@/constants/screenLayout';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -41,6 +41,7 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import type { MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 
 const MARKET_LABEL: Record<DisclosureFlowMarket, MessageId> = {
   all: 'disclosuresFilterAll',
@@ -236,53 +237,55 @@ export function DisclosureFlowContent({
   return (
     <>
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <WebWheelScrollView
-        ref={scrollRef as never}
-        scrollResetKey={scrollResetKey}
-        contentRevision={items}
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        <View style={[styles.inner, isWide && styles.innerWide]}>
-          {onBack ? (
-            <WideSubpaneHeader title={t('disclosureFlowTitle')} onBack={onBack} />
-          ) : null}
-
-          <View style={styles.header}>
-            <View style={styles.categoryTabs}>
-              {DISCLOSURE_FLOW_MARKET_ORDER.map((key) => {
-                const active = market === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => onPickMarket(key)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    style={[styles.categoryTab, active && styles.categoryTabActive]}>
-                    <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
-                      {t(MARKET_LABEL[key])}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
+      <View style={[styles.pageColumn, isWide && styles.pageColumnWide]}>
+        {onBack ? (
+          <WideSubpaneHeader title={t('disclosureFlowTitle')} onBack={onBack} />
+        ) : null}
+        <View style={[styles.topFixed, isWide && styles.topFixedWide]}>
           <SignalDateNavigator
             label={formatDateLabel(selectedYmd, locale)}
-            previousA11y={t('calendarDayPrevA11y')}
-            nextA11y={t('calendarDayNextA11y')}
+            previousA11y={t('insightDatePrevious')}
+            nextA11y={t('insightDateNext')}
             labelA11y={t('insightOpenCalendar')}
-            todayLabel={t('commonToday')}
+            todayLabel={t('insightCalendarToday')}
             onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
             onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
             onPressLabel={openDatePicker}
             onToday={() => onPickDate(todayYmd)}
             showToday={selectedYmd !== todayYmd}
             nextDisabled={selectedYmd >= todayYmd}
-            style={styles.dateNav}
+            style={styles.dateNavigator}
           />
+          <View style={styles.segment}>
+            {DISCLOSURE_FLOW_MARKET_ORDER.map((key) => {
+              const active = market === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => onPickMarket(key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.segBtn, active && styles.segBtnActive]}>
+                  <Text style={[styles.segText, active && styles.segTextActive]}>
+                    {t(MARKET_LABEL[key])}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
+        <WebWheelScrollView
+          ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={items}
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            isWide && styles.contentWide,
+            { paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE },
+          ]}
+          showsVerticalScrollIndicator={false}>
           {error ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -341,8 +344,8 @@ export function DisclosureFlowContent({
               })}
             </View>
           )}
-        </View>
-      </WebWheelScrollView>
+        </WebWheelScrollView>
+      </View>
     </SafeAreaView>
     {datePickerSheet}
     </>
@@ -388,49 +391,39 @@ export default function DisclosureFlowScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
-    scroll: { flex: 1, minHeight: 0 },
-    scrollContent: { flexGrow: 1, paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE },
-    inner: {
+    safe: { ...webFlexFill, minHeight: 0, backgroundColor: webShellBackground(theme.bg) },
+    pageColumn: {
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      gap: 20,
     },
-    innerWide: {
+    pageColumnWide: {
       ...wideContentFill,
-      paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },
-    header: { gap: 20 },
-    categoryTabs: {
-      flexDirection: 'row',
-      gap: 6,
-      padding: 4,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
+    dateNavigator: {
+      width: '100%',
     },
-    categoryTab: {
-      flex: 1,
-      minHeight: 34,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
+    scroll: { ...webScrollViewportStyle },
+    content: {
+      width: '100%',
+      paddingHorizontal: 16,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      flexGrow: 1,
     },
-    categoryTabActive: { backgroundColor: theme.green },
-    categoryTabText: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '600',
-      color: theme.textDim,
+    contentWide: {
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
-    categoryTabTextActive: { color: '#FFFFFF' },
-    dateNav: { marginTop: 2 },
     loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
     listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
@@ -439,6 +432,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: theme.border,
+      marginBottom: 12,
     },
     errorText: {
       fontSize: sf(12),

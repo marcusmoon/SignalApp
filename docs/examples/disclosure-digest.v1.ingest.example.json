@@ -1,0 +1,57 @@
+{
+  "notifyInbox": true,
+  "sendPush": true,
+  "items": [
+    {
+      "id": "disclosure-digest:2026-07-16:us:aapl",
+      "market": "us",
+      "title": "Apple: Results of Operations",
+      "summary": "Apple 8-K 공시. Item 2.02 Results of Operations. 보고 기간: 2026-06-30.",
+      "symbols": ["AAPL"],
+      "companies": ["Apple Inc."],
+      "forms": ["8-K", "10-Q"],
+      "count": 2,
+      "importance": 2,
+      "generatedDate": "2026-07-16",
+      "generatedAt": "2026-07-16T21:00:00Z",
+      "primaryDisclosureId": "sec-edgar-AAPL-0000320193-26-000001",
+      "groupKey": "us:sym:AAPL",
+      "sourceRefs": [
+        {
+          "type": "disclosure",
+          "id": "sec-edgar-AAPL-0000320193-26-000001",
+          "relation": "primary"
+        },
+        {
+          "type": "disclosure",
+          "id": "sec-edgar-AAPL-0000320193-26-000002",
+          "relation": "supporting"
+        }
+      ],
+      "pushTitle": "Apple 주요 공시",
+      "pushBody": "실적 관련 8-K가 접수됐습니다."
+    },
+    {
+      "id": "disclosure-digest:2026-07-16:kr:005930",
+      "market": "kr",
+      "title": "삼성전자: 주요사항보고서(유상증자결정)",
+      "summary": "삼성전자 DART 공시. 주요사항보고서(유상증자결정). 접수일: 20260716.",
+      "symbols": ["005930"],
+      "companies": ["삼성전자"],
+      "forms": ["주요사항보고서(유상증자결정)"],
+      "count": 1,
+      "importance": 2,
+      "generatedDate": "2026-07-16",
+      "generatedAt": "2026-07-16T21:00:00Z",
+      "primaryDisclosureId": "dart-005930-20260716000123",
+      "groupKey": "kr:sym:005930",
+      "sourceRefs": [
+        {
+          "type": "disclosure",
+          "id": "dart-005930-20260716000123",
+          "relation": "primary"
+        }
+      ]
+    }
+  ]
+}

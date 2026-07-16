@@ -191,6 +191,8 @@ export type SignalApiDisclosureDigestItem = {
   companies: string[];
   forms: string[];
   count: number;
+  /** 0 일반 · 1 정기/중간 · 2 중요 이벤트 */
+  importance?: number;
   generatedDate: string | null;
   generatedAt: string | null;
   primaryDisclosureId: string | null;

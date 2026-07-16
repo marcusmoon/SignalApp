@@ -31,6 +31,10 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
+import {
+  disclosureMeaningLabelIdsForForms,
+  isImportantDisclosureDigest,
+} from '@/domain/disclosures';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -317,12 +321,17 @@ export function DisclosureFlowContent({
                     <HomeSectionAccentLine section="disclosure" style={styles.cardAccent} />
                     <View style={styles.badgeRow}>
                       <Text style={styles.marketChip}>{disclosureMarketLabel(item.market, locale)}</Text>
-                      {item.forms.slice(0, 2).map((form) => (
-                        <Text key={`${item.id}-${form}`} style={styles.formChip} numberOfLines={1}>
-                          {form}
+                      {isImportantDisclosureDigest(item) ? (
+                        <Text style={[styles.formChip, styles.importantChip]} numberOfLines={1}>
+                          {t('disclosuresImportantBadge')}
+                        </Text>
+                      ) : null}
+                      {disclosureMeaningLabelIdsForForms(item.forms, item.market, 2).map((labelId) => (
+                        <Text key={`${item.id}-${labelId}`} style={styles.formChip} numberOfLines={1}>
+                          {t(labelId)}
                         </Text>
                       ))}
-                      {item.symbols.slice(0, 3).map((symbol) => (
+                      {item.symbols.slice(0, 2).map((symbol) => (
                         <Text key={`${item.id}-${symbol}`} style={[styles.formChip, styles.symbolChip]} numberOfLines={1}>
                           {symbol}
                         </Text>
@@ -504,6 +513,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
     },
     symbolChip: {
+      color: theme.green,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    importantChip: {
       color: theme.green,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

@@ -119,7 +119,7 @@ compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED
 
 **다이제스트↔리스트 여백**: `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`(12) = `COMFORT_TOP_FIXED_GAP`. 다이제스트 슬롯 하단 패딩(`SCREEN_FIXED_DIGEST_PADDING_BOTTOM`)은 0. `ListHeaderComponent`에 표시할 내용이 없으면 `null`을 반환한다.
 
-**공시 다이제스트** (`DisclosureDigestSection`): 카드·스트립 **높이 고정**, 태그(칩)는 `DISCLOSURE_DIGEST_TAG_MAX_SINGLE`(3) / `DISCLOSURE_DIGEST_TAG_MAX_PAIR`(1, iPad·웹 2열)로 한 줄만 표시한다. 공시 탭 상단은 **미국 SEC / 한국 DART** 세그먼트로 시장을 구분한다(유형 칩 필터는 없음).
+**공시 다이제스트** (`DisclosureDigestSection`): 카드·스트립 **높이 고정**, 태그(칩)는 `DISCLOSURE_DIGEST_TAG_MAX_SINGLE`(3) / `DISCLOSURE_DIGEST_TAG_MAX_PAIR`(1, iPad·웹 2열)로 한 줄만 표시한다. 칩은 시장·**의미 라벨**(주요사항/분기보고 등)·중요 뱃지를 쓰고, 카드 본문은 ingest된 `summary`를 한 줄 노출한다. 다이제스트 본문은 Admin Job이 아니라 **외부 에이전트 ingest**([DISCLOSURE-DIGEST-AUTOMATION.md](./DISCLOSURE-DIGEST-AUTOMATION.md)). 공시 탭 상단은 **미국 SEC / 한국 DART** 세그먼트와 **전체/중요** 포커스 토글을 둔다(유형 칩 필터는 없음).
 
 #### 스트립 끝 refresh
 

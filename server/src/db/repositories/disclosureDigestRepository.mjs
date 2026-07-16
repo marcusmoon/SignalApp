@@ -9,6 +9,10 @@ import {
 } from './publicHelpers.mjs';
 
 function publicDisclosureDigest(item) {
+  const importanceRaw = Number(item.importance);
+  const importance = Number.isFinite(importanceRaw)
+    ? Math.max(0, Math.min(2, Math.round(importanceRaw)))
+    : null;
   return {
     id: item.id,
     market: item.market || 'us',
@@ -18,6 +22,7 @@ function publicDisclosureDigest(item) {
     companies: Array.isArray(item.companies) ? item.companies : [],
     forms: Array.isArray(item.forms) ? item.forms : [],
     count: Number(item.count) || 0,
+    ...(importance != null ? { importance } : {}),
     generatedDate: item.generatedDate || null,
     generatedAt: item.generatedAt || null,
     primaryDisclosureId: item.primaryDisclosureId || null,

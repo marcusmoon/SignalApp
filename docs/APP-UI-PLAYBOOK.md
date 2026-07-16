@@ -71,7 +71,7 @@ topFixed
 
 ### 세그먼트
 
-- `getSegmentTabBarStyles(theme, scaleFont)` — 트랙 elevated, 활성 = brand green + 흰 글자
+- `getSegmentTabBarStyles(theme, scaleFont)` — underline: 활성 하단 green 라인 + `theme.text`
 - phone 상단 pill · 설정 서브탭 · 시장 세션 등 **동일 스타일**
 - wide에서는 동일 필터를 사이드바 서브탭으로도 노출 가능 (`SidebarSubTabsContext` + URL 쿼리 동기화)
 

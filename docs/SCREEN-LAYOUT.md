@@ -59,7 +59,7 @@ SafeAreaView edges={['top']}
   [OtaUpdateBanner]
   topFixedStack (gap: COMFORT_TOP_FIXED_GAP = 12)
     topFixedSubmenu (submenuStrip — theme.card + 하단 구분선)
-      세그먼트 pill
+      세그먼트 underline
     topFixedDigest (digestSlot — 배경 없음)
       DigestPager / DisclosureDigestSection
   [FeedNewContentChip]
@@ -225,7 +225,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 - `constants/screenFixedHeader.ts` — 상단 고정 스트립 스타일 (`getScreenFixedHeaderStyles`)
 - `constants/screenLayout.ts` — 여백 상수·헬퍼
 - `constants/responsiveLayout.ts` — 폭·breakpoint
-- `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export
+- `constants/segmentTabBar.ts` — 세그먼트 underline 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export
 - `constants/webLayout.ts` — 웹 flex/scroll
 - `constants/tabBar.ts` — 탭바 치수·inset
 - `docs/FEED-INTERACTION.md` — PTR·chip·폴링·캐시 상호작용

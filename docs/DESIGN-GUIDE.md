@@ -18,7 +18,7 @@
 |---|---|
 | `green` | 브랜드 액센트 (`#3182F6`, 링크·활성·강조) |
 | `greenDim` | 액센트 배경(칩 pressed, 선택 배경) |
-| `bg` / `bgElevated` | 화면 배경 / 세그먼트·입력 트랙 배경 |
+| `bg` / `bgElevated` | 화면 배경 / 입력·칩 트랙 배경 |
 | `card` | 카드·고정 헤더 스트립·모달 본문 |
 | `border` | 구분선·테두리 |
 | `text` / `textMuted` / `textDim` | 본문 / 보조 / 캡션 |

@@ -51,7 +51,7 @@ GET /v1/disclosures?market=kr&limit=120&offset=0
 |---|---|
 | `symbols`, `companies`, `forms` | 칩·필터용 |
 | `count` | 묶인 공시 수 |
-| `importance` | `0` 일반 · `1` 정기/중간 · `2` 중요 이벤트. 앱 **중요** 필터·뱃지에 사용 |
+| `importance` | `0` 일반 · `1` 정기/중간 · `2` 중요 이벤트. 앱 **중요** 뱃지에 사용 |
 | `primaryDisclosureId` | 대표 공시 id (상세 진입) |
 | `groupKey` | 재생성 안정 키 |
 | `pushTitle`, `pushBody` | 알림 문구 |

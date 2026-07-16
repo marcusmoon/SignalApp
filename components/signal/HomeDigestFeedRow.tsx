@@ -26,8 +26,8 @@ type Props = {
   timeLabel?: string | null;
   trailText?: string | null;
   summary?: string | null;
-  /** 기본 1줄. 목록 상세 화면 등에서 늘릴 때 사용 */
-  summaryLines?: number;
+  /** 기본 1줄. `null`이면 전체 표시. `0`이면 숨김 */
+  summaryLines?: number | null;
   sourceEntries?: SourceIconEntry[];
   badges?: ReactNode;
   bordered?: boolean;
@@ -61,6 +61,7 @@ export function HomeDigestFeedRow({
   );
   const resolvedTitleLines =
     titleLines === null ? undefined : titleLines != null ? titleLines : variant === 'signal' ? undefined : 2;
+  const resolvedSummaryLines = summaryLines === null ? undefined : summaryLines;
   const hasFooter =
     Boolean(footerLead) ||
     sourceEntries.length > 0 ||
@@ -103,8 +104,8 @@ export function HomeDigestFeedRow({
       <Text style={styles.title} numberOfLines={resolvedTitleLines}>
         {title}
       </Text>
-      {trimmedSummary && summaryLines > 0 ? (
-        <Text style={styles.summary} numberOfLines={summaryLines}>
+      {trimmedSummary && (resolvedSummaryLines == null || resolvedSummaryLines > 0) ? (
+        <Text style={styles.summary} numberOfLines={resolvedSummaryLines}>
           {trimmedSummary}
         </Text>
       ) : null}

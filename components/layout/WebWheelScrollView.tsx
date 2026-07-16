@@ -39,6 +39,9 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
   if (Platform.OS === 'web') {
     const flatStyle = StyleSheet.flatten([{ backgroundColor: WEB_THEME_BG }, style]);
     const backgroundColor = flatStyle?.backgroundColor ?? WEB_THEME_BG;
+    const webViewportProps = webScrollViewportDataSet
+      ? ({ dataSet: webScrollViewportDataSet } as unknown as Record<string, unknown>)
+      : undefined;
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
       const api = createLazyWebScrollApi(
@@ -57,7 +60,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
       <View
         key={webScrollKey}
         {...(rest as object)}
-        dataSet={webScrollViewportDataSet}
+        {...webViewportProps}
         ref={setWebRef}
         style={[webViewportStyle, { backgroundColor }, style]}>
         <View

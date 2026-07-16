@@ -383,6 +383,9 @@ function WebWheelFlatListInner<T>(
 
   if (Platform.OS === 'web') {
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
+    const webViewportProps = webScrollViewportDataSet
+      ? ({ dataSet: webScrollViewportDataSet } as unknown as Record<string, unknown>)
+      : undefined;
     const emitFromWebEvent = (event: unknown) => {
       const node = getWebNode(event);
       if (!node) return;
@@ -465,7 +468,7 @@ function WebWheelFlatListInner<T>(
     return (
       <View
         ref={setWebRef}
-        dataSet={webScrollViewportDataSet}
+        {...webViewportProps}
         style={[webListViewportStyle, style] as never}
         {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>

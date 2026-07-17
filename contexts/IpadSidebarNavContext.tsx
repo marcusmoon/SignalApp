@@ -76,6 +76,7 @@ type IpadSidebarNavState = {
   symbolTicker: string | null;
   calendarFromAccount: boolean;
   alertsFromAccount: boolean;
+  settingsFromAccount: boolean;
   termsType: 'service' | 'privacy';
   termsFromHistory: boolean;
 };
@@ -86,6 +87,7 @@ type IpadSidebarNavActions = {
   showAccount: () => void;
   showTabs: () => void;
   showSettings: (tab?: SettingsTab, options?: WidePaneDrillOptions) => void;
+  switchSettingsTab: (tab: SettingsTab) => void;
   showNewsIssues: (params: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => void;
   showDisclosureFlow: (params: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => void;
   showTodayBriefing: (date: string, options?: WidePaneDrillOptions) => void;
@@ -132,6 +134,7 @@ const defaultState: IpadSidebarNavState = {
   symbolTicker: null,
   calendarFromAccount: false,
   alertsFromAccount: false,
+  settingsFromAccount: false,
   termsType: 'service',
   termsFromHistory: false,
 };
@@ -142,6 +145,7 @@ const defaultActions: IpadSidebarNavActions = {
   showAccount: () => {},
   showTabs: () => {},
   showSettings: () => {},
+  switchSettingsTab: () => {},
   showNewsIssues: () => {},
   showDisclosureFlow: () => {},
   showTodayBriefing: () => {},
@@ -234,6 +238,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
   const [alertsFromAccount, setAlertsFromAccount] = useState(false);
+  const [settingsFromAccount, setSettingsFromAccount] = useState(false);
   const [termsType, setTermsType] = useState<'service' | 'privacy'>('service');
   const [termsFromHistory, setTermsFromHistory] = useState(false);
   const [wideBackStack, setWideBackStack] = useState<WidePaneDrillFrom[]>([]);
@@ -303,12 +308,14 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       if (kind === 'settings') {
         const tab = firstParam(p.tab);
         if (isSettingsTab(tab)) setSettingsTab(tab);
+        setSettingsFromAccount(p.from === 'account');
         return;
       }
 
       if (kind === 'account') {
         setCalendarFromAccount(false);
         setAlertsFromAccount(false);
+        setSettingsFromAccount(false);
         return;
       }
 
@@ -515,15 +522,46 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showSettings = useCallback(
     (tab: SettingsTab = 'display', options?: WidePaneDrillOptions) => {
+      const fromAccount = options?.from === 'account' || options?.drillFrom === 'account';
       setSettingsTab(tab);
+      setSettingsFromAccount(fromAccount);
       if (useTwoPane) {
-        beginWideOverlay('settings', { tab, from: 'account' }, options?.drillFrom);
+        beginWideOverlay(
+          'settings',
+          fromAccount ? { tab, from: 'account' } : { tab },
+          options?.drillFrom,
+        );
         return;
       }
       setContentPane('settings');
-      router.navigate({ pathname: '/settings', params: { tab, from: 'account' } } as never);
+      router.navigate({
+        pathname: '/settings',
+        params: fromAccount ? { tab, from: 'account' } : { tab },
+      } as never);
     },
     [beginWideOverlay, router, useTwoPane],
+  );
+
+  const settingsFromAccountRef = useRef(settingsFromAccount);
+  settingsFromAccountRef.current = settingsFromAccount;
+
+  const switchSettingsTab = useCallback(
+    (tab: SettingsTab) => {
+      setSettingsTab(tab);
+      if (!useTwoPane || contentPaneRef.current !== 'settings') return;
+      const fromAccount = settingsFromAccountRef.current;
+      programmaticOverlayRef.current = true;
+      router.navigate({
+        pathname: WIDE_HOME_ROUTE,
+        params: {
+          ...WIDE_OVERLAY_CLEAR_PARAMS,
+          overlay: 'settings',
+          tab,
+          ...(fromAccount ? { from: 'account' } : {}),
+        },
+      } as never);
+    },
+    [router, useTwoPane],
   );
 
   const showNewsIssues = useCallback(
@@ -884,6 +922,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       symbolTicker,
       calendarFromAccount,
       alertsFromAccount,
+      settingsFromAccount,
       termsType,
       termsFromHistory,
     }),
@@ -902,6 +941,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       symbolTicker,
       calendarFromAccount,
       alertsFromAccount,
+      settingsFromAccount,
       termsType,
       termsFromHistory,
     ],
@@ -914,6 +954,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showAccount,
       showTabs,
       showSettings,
+      switchSettingsTab,
       showNewsIssues,
       showDisclosureFlow,
       showTodayBriefing,
@@ -939,6 +980,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showHome,
       showAccount,
       showSettings,
+      switchSettingsTab,
       showTabs,
       showNewsIssues,
       showDisclosureFlow,

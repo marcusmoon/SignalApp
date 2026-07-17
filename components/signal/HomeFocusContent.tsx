@@ -59,6 +59,9 @@ import { marketBriefingAccent, newsSegmentAccent } from '@/constants/segmentAcce
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
+import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
+import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import {
   disclosureDigestSourceIconEntries,
@@ -95,7 +98,7 @@ import type {
   SignalApiNewsDigestItem,
   SignalApiTodayBriefing,
 } from '@/integrations/signal-api/types';
-import type { MessageId } from '@/locales/messages';
+import type { AppLocale, MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import {
   defaultHomeBoardDisplayCounts,
@@ -308,6 +311,9 @@ export function HomeFocusContent({
   showIssueSummary = false,
   onPullRefreshReady,
 }: HomeFocusContentProps) {
+  type HomeDigestSheetState =
+    | { kind: 'news'; row: IssueRow }
+    | { kind: 'disclosure'; row: SignalApiDisclosureDigestItem };
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
@@ -340,6 +346,7 @@ export function HomeFocusContent({
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
     [calendarEvents],
@@ -599,6 +606,10 @@ export function HomeFocusContent({
     [ipadNav, router, selectedYmd],
   );
 
+  const openIssueSheet = useCallback((row: IssueRow) => {
+    setDigestSheet({ kind: 'news', row });
+  }, []);
+
   const openSignal = useCallback(
     (row?: SignalApiMarketBriefing) => {
       const session = signalSessionKeyForBriefing(row);
@@ -669,6 +680,33 @@ export function HomeFocusContent({
     },
     [ipadNav, router, selectedYmd],
   );
+
+  const openDisclosureSheet = useCallback((row: SignalApiDisclosureDigestItem) => {
+    setDigestSheet({ kind: 'disclosure', row });
+  }, []);
+
+  const closeDigestSheet = useCallback(() => {
+    setDigestSheet(null);
+  }, []);
+
+  const digestSheetTitle = useMemo(() => {
+    if (!digestSheet) return '';
+    return digestSheet.kind === 'news' ? digestSheet.row.item.title : digestSheet.row.title;
+  }, [digestSheet]);
+
+  const digestSheetSummary = useMemo(() => {
+    if (!digestSheet) return undefined;
+    const summary = digestSheet.kind === 'news' ? digestSheet.row.item.summary?.trim() : digestSheet.row.summary?.trim();
+    return summary || undefined;
+  }, [digestSheet]);
+
+  const digestSheetRows = useMemo(() => {
+    if (!digestSheet) return [];
+    if (digestSheet.kind === 'news') {
+      return newsDigestSourceSheetRows(digestSheet.row.item, locale as AppLocale);
+    }
+    return disclosureDigestSourceSheetRows(digestSheet.row, locale as AppLocale);
+  }, [digestSheet, locale]);
 
   const openCalendar = useCallback(() => {
     if (ipadNav.isAvailable) {
@@ -751,7 +789,7 @@ export function HomeFocusContent({
                 summary={null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
-                onPress={() => openIssue(row)}
+                onPress={() => openIssueSheet(row)}
                 footerLead={
                   <View
                     accessible
@@ -770,7 +808,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, locale, t, theme],
+    [openIssueSheet, showIssueSummary, styles, locale, t, theme],
   );
 
   const renderSignalCard = useCallback(
@@ -835,7 +873,7 @@ export function HomeFocusContent({
                 trailText={trailText || null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
-                onPress={() => openDisclosureFlow(row)}
+                onPress={() => openDisclosureSheet(row)}
                 footerLead={
                   <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
                     <CommunitySourceMark
@@ -851,7 +889,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [locale, openDisclosureFlow, showIssueSummary, styles, theme],
+    [locale, openDisclosureSheet, showIssueSummary, styles, theme],
   );
 
   const renderCalendarCard = useCallback(
@@ -947,23 +985,23 @@ export function HomeFocusContent({
 
   return (
     <>
-    <View style={styles.root}>
-      <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-        {headerAccessory}
-        <SignalDateNavigator
-          label={selectedDateLabel}
-          previousA11y={t('insightDatePrevious')}
-          nextA11y={t('insightDateNext')}
-          labelA11y={t('insightOpenCalendar')}
-          todayLabel={t('insightCalendarToday')}
-          onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
-          onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
-          onPressLabel={openDatePicker}
-          onToday={() => changeSelectedYmd(todayYmd)}
-          showToday={!selectedIsToday}
-          nextDisabled={selectedIsToday}
-        />
-      </View>
+      <View style={styles.root}>
+        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+          {headerAccessory}
+          <SignalDateNavigator
+            label={selectedDateLabel}
+            previousA11y={t('insightDatePrevious')}
+            nextA11y={t('insightDateNext')}
+            labelA11y={t('insightOpenCalendar')}
+            todayLabel={t('insightCalendarToday')}
+            onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
+            onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
+            onPressLabel={openDatePicker}
+            onToday={() => changeSelectedYmd(todayYmd)}
+            showToday={!selectedIsToday}
+            nextDisabled={selectedIsToday}
+          />
+        </View>
 
       <WebWheelScrollView
         ref={scrollRef as never}
@@ -1148,9 +1186,16 @@ export function HomeFocusContent({
           </View>
         </>
       )}
-      </WebWheelScrollView>
-    </View>
-    {datePickerSheet}
+        </WebWheelScrollView>
+      </View>
+      {datePickerSheet}
+      <DigestSourcesSheet
+        visible={digestSheet != null}
+        digestTitle={digestSheetTitle}
+        digestSummary={digestSheetSummary}
+        rows={digestSheetRows}
+        onClose={closeDigestSheet}
+      />
     </>
   );
 }

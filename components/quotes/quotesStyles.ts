@@ -81,7 +81,7 @@ export function makeQuotesStyles(
     },
     swipeDeleteBtn: {
       flex: 1,
-      backgroundColor: '#7A2E2E',
+      backgroundColor: theme.danger,
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 8,

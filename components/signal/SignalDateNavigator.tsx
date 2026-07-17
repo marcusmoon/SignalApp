@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_SEGMENT_OUTER } from '@/constants/uiCornerRadius';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type SignalDateNavigatorProps = {
@@ -111,7 +112,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 4,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_SEGMENT_OUTER,
       backgroundColor: theme.bgElevated,
       flexDirection: 'row',
       alignItems: 'center',

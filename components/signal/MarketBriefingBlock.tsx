@@ -7,7 +7,6 @@ import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { AppLocale } from '@/locales/messages';
@@ -53,23 +52,14 @@ function BriefingSection({
   title,
   children,
   styles,
-  accent = 'green',
 }: {
   title: string;
   children: ReactNode;
   styles: ReturnType<typeof makeStyles>;
-  accent?: 'green' | 'orange' | 'muted';
 }) {
   return (
     <View style={styles.sectionWrap}>
       <View style={styles.sectionHead}>
-        <View
-          style={[
-            styles.sectionAccent,
-            accent === 'orange' && styles.sectionAccentOrange,
-            accent === 'muted' && styles.sectionAccentMuted,
-          ]}
-        />
         <Text style={styles.sectionTitle} numberOfLines={1}>
           {title}
         </Text>
@@ -243,10 +233,7 @@ export function MarketBriefingBlock({
       ) : null}
 
       {briefing.sectors && briefing.sectors.length > 0 ? (
-        <BriefingSection
-          title={t('briefingDetailSectors')}
-          styles={styles}
-          accent="green">
+        <BriefingSection title={t('briefingDetailSectors')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {briefing.sectors.map((item, index) => (
               <SectorRow
@@ -262,10 +249,7 @@ export function MarketBriefingBlock({
       ) : null}
 
       {briefing.companies.length > 0 ? (
-        <BriefingSection
-          title={t('briefingDetailCompanies')}
-          styles={styles}
-          accent="green">
+        <BriefingSection title={t('briefingDetailCompanies')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {briefing.companies.map((item, index) => (
               <CompanyHighlightRow
@@ -283,10 +267,7 @@ export function MarketBriefingBlock({
       ) : null}
 
       {briefing.macro.length > 0 ? (
-        <BriefingSection
-          title={t('briefingDetailMacro')}
-          styles={styles}
-          accent="orange">
+        <BriefingSection title={t('briefingDetailMacro')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {briefing.macro.map((item, index) => (
               <MacroHighlightRow
@@ -301,10 +282,7 @@ export function MarketBriefingBlock({
       ) : null}
 
       {briefing.sourceRefs.length > 0 ? (
-        <BriefingSection
-          title={t('briefingDetailSources')}
-          styles={styles}
-          accent="muted">
+        <BriefingSection title={t('briefingDetailSources')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {briefing.sourceRefs.map((item, index) => (
               <HomeDigestFeedRow
@@ -376,19 +354,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'center',
       gap: 10,
       minWidth: 0,
-    },
-    sectionAccent: {
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      height: 20,
-      borderRadius: 2,
-      backgroundColor: theme.green,
-      flexShrink: 0,
-    },
-    sectionAccentOrange: {
-      backgroundColor: theme.accentOrange,
-    },
-    sectionAccentMuted: {
-      backgroundColor: theme.textMuted,
     },
     sectionTitle: {
       flex: 1,

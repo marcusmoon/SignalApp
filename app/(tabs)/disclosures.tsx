@@ -8,6 +8,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
+import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -29,6 +30,7 @@ import {
   getSegmentTabBarStyles,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
@@ -429,59 +431,65 @@ export default function DisclosuresScreen() {
   }, [clearSymbolFilter, error, styles, symbolFilter, t]);
 
   const renderDisclosureCard = useCallback(
-    ({ item }: { item: SignalApiDisclosure }) => {
+    ({ item, index }: { item: SignalApiDisclosure; index: number }) => {
       const selected = useTwoPane && selectedDisclosureId === item.id;
       const typeCategory = resolveDisclosureTypeCategory(item);
       const meaningId = disclosureMeaningLabelId(typeCategory);
       const important = isImportantDisclosure(item);
       return (
-        <Pressable
-          style={({ pressed }) => [
-            styles.card,
-            selected && styles.cardSelected,
-            pressed && styles.cardPressed,
-          ]}
-          onPress={() => {
-            if (useTwoPane) {
-              setSelectedDisclosureId(item.id);
-              return;
-            }
-            router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href);
-          }}>
-          <View style={styles.cardTop}>
-            <View style={styles.badges}>
-              <Text style={styles.badge}>{providerLabel(item)}</Text>
-              {important ? <Text style={styles.badge}>{t('disclosuresImportantBadge')}</Text> : null}
-              {typeCategory !== 'other' ? (
-                <Text style={styles.badgeMuted} numberOfLines={1}>
-                  {t(meaningId)}
-                </Text>
+        <View
+          style={groupedFeedRowShell(theme, {
+            isFirst: index === 0,
+            isLast: index === items.length - 1,
+          })}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.card,
+              selected && styles.cardSelected,
+              pressed && styles.cardPressed,
+            ]}
+            onPress={() => {
+              if (useTwoPane) {
+                setSelectedDisclosureId(item.id);
+                return;
+              }
+              router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href);
+            }}>
+            <View style={styles.cardTop}>
+              <View style={styles.badges}>
+                <Text style={styles.badge}>{providerLabel(item)}</Text>
+                {important ? <Text style={styles.badge}>{t('disclosuresImportantBadge')}</Text> : null}
+                {typeCategory !== 'other' ? (
+                  <Text style={styles.badgeMuted} numberOfLines={1}>
+                    {t(meaningId)}
+                  </Text>
+                ) : null}
+              </View>
+              <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
+            </View>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            {item.summary ? (
+              <Text style={styles.summary} numberOfLines={useTwoPane ? 2 : 3}>
+                {item.summary}
+              </Text>
+            ) : null}
+            <View style={styles.cardBottom}>
+              <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
+              {item.url ? (
+                <Pressable
+                  onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
+                  hitSlop={10}
+                  style={styles.openBtn}>
+                  <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
+                  <FontAwesome name="external-link" size={12} color={theme.green} />
+                </Pressable>
               ) : null}
             </View>
-            <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
-          </View>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          {item.summary ? (
-            <Text style={styles.summary} numberOfLines={useTwoPane ? 2 : 3}>
-              {item.summary}
-            </Text>
-          ) : null}
-          <View style={styles.cardBottom}>
-            <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
-            {item.url ? (
-              <Pressable
-                onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
-                hitSlop={10}
-                style={styles.openBtn}>
-                <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
-                <FontAwesome name="external-link" size={12} color={theme.green} />
-              </Pressable>
-            ) : null}
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
       );
     },
-    [locale, router, selectedDisclosureId, styles, t, theme.green, useTwoPane],
+    [items.length, locale, router, selectedDisclosureId, styles, t, theme, useTwoPane],
   );
 
   const detailPaneEl = useTwoPane ? (
@@ -714,7 +722,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginBottom: 14,
       paddingVertical: 10,
       paddingHorizontal: 10,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -735,7 +743,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     error: {
       marginBottom: 16,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
@@ -743,7 +751,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       color: theme.textMuted,
@@ -753,18 +761,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       textAlign: 'center',
     },
     card: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
       padding: ft.pad(14),
-      marginBottom: 14,
     },
     cardSelected: {
-      borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    cardPressed: { backgroundColor: theme.bgElevated, borderColor: theme.greenBorder },
+    cardPressed: { backgroundColor: theme.bgElevated },
     cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 },
     badges: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
     badge: {
@@ -810,7 +812,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     detailPane: {
       flex: 0.55,
       minWidth: 0,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -839,7 +841,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '600',
     },
     detailCard: {
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -878,7 +880,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     detailOpenBtn: {
       minHeight: 44,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -318,7 +317,6 @@ export function DisclosureFlowContent({
                       highlighted && styles.cardHighlighted,
                       pressed && detailId && styles.pressed,
                     ]}>
-                    <HomeSectionAccentLine section="disclosure" style={styles.cardAccent} />
                     <View style={styles.badgeRow}>
                       <Text style={styles.marketChip}>{disclosureMarketLabel(item.market, locale)}</Text>
                       {isImportantDisclosureDigest(item) ? (
@@ -469,7 +467,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingLeft: 18,
+      paddingLeft: ft.pad(14),
       paddingRight: ft.pad(14),
       paddingVertical: ft.pad(14),
       gap: 16,
@@ -477,10 +475,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     cardHighlighted: {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
-    },
-    cardAccent: {
-      borderTopLeftRadius: 16,
-      borderBottomLeftRadius: 16,
     },
     badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     marketChip: {

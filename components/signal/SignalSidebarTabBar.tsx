@@ -387,7 +387,7 @@ function makeStyles(
       width: 7,
       height: 7,
       borderRadius: 3.5,
-      backgroundColor: '#F04452',
+      backgroundColor: theme.danger,
     },
     tabLabel: {
       flex: 1,

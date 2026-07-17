@@ -9,7 +9,6 @@ import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
-import { homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import {
   DIGEST_CARD_GAP,
   DISCLOSURE_DIGEST_TAG_MAX_PAIR,
@@ -99,7 +98,6 @@ const DigestCard = memo(function DigestCard({
 
   return (
     <View style={styles.card}>
-      <View style={styles.accentLine} />
       <View style={styles.badgeRow}>
         {topicChips.map((chip) => (
           <Text
@@ -149,8 +147,6 @@ const DigestCard = memo(function DigestCard({
 type Props = {
   items: SignalApiDisclosureDigestItem[];
   loading?: boolean;
-  accentColor?: string;
-  accentSection?: HomeAccentSection;
   /** iPad·wide 웹 등 넓은 화면에서 한 줄에 2장씩 표시 */
   columns?: 1 | 2;
   onRefresh?: () => void;
@@ -162,8 +158,6 @@ type Props = {
 export function DisclosureDigestSection({
   items,
   loading,
-  accentColor,
-  accentSection,
   columns = 1,
   onRefresh,
   refreshing,
@@ -178,18 +172,16 @@ export function DisclosureDigestSection({
   const [sourcesItem, setSourcesItem] = useState<SignalApiDisclosureDigestItem | null>(null);
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, items.length);
   const scrollPadding = digestStripScrollPadding(pairLayout, items.length);
-  const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
   const stripMinHeight = digestStripCardMinHeight(pairLayout, feedTypo);
   const styles = useMemo(
     () => ({
       ...makeStripStyles(scrollPadding, stripMinHeight),
       ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
         pairLayout,
-        accentColor: resolvedAccent || theme.warning,
       }),
       ...makeDisclosureCardExtras(theme, scaleFont, feedTypo),
     }),
-    [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding, stripMinHeight],
+    [theme, scaleFont, feedTypo, pairLayout, scrollPadding, stripMinHeight],
   );
 
   const openSources = useCallback((item: SignalApiDisclosureDigestItem) => {

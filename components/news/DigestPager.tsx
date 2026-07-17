@@ -37,7 +37,10 @@ function digestSourceIconEntry(
   return [{ sourceName: name, url }];
 }
 
-function digestSourceRows(digest: NewsDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
+export function newsDigestSourceSheetRows(
+  digest: Pick<NewsDigestItem, 'id' | 'sourceRefs' | 'sources'>,
+  locale: AppLocale,
+): DigestSourceSheetRow[] {
   if (digest.sourceRefs.length > 0) {
     return digest.sourceRefs.map((ref, index) => ({
       key: ref.id || `${digest.id}-ref-${index}`,
@@ -96,7 +99,6 @@ const DigestCard = memo(function DigestCard({
 
   return (
     <View style={styles.card}>
-      <View style={styles.accentLine} />
       <View style={styles.badgeRow}>
         {digest.aiGenerated ? <AiBadge /> : null}
         {topicChips.map((topic) => (
@@ -165,7 +167,6 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
       ...makeStripStyles(scrollPadding, stripMinHeight),
       ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
         pairLayout,
-        accentColor: theme.green,
       }),
     }),
     [theme, scaleFont, feedTypo, pairLayout, scrollPadding, stripMinHeight],
@@ -196,7 +197,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   }, [onRefresh]);
 
   const sourceRows = useMemo(
-    () => (sourcesDigest ? digestSourceRows(sourcesDigest, locale as AppLocale) : []),
+    () => (sourcesDigest ? newsDigestSourceSheetRows(sourcesDigest, locale as AppLocale) : []),
     [locale, sourcesDigest],
   );
 

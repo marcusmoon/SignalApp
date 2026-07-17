@@ -31,7 +31,10 @@ import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
-function disclosureSourceRows(item: SignalApiDisclosureDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
+export function disclosureDigestSourceSheetRows(
+  item: SignalApiDisclosureDigestItem,
+  locale: AppLocale,
+): DigestSourceSheetRow[] {
   return item.sourceRefs.map((ref) => ({
     key: ref.id,
     title: ref.title || ref.companyName,
@@ -209,7 +212,7 @@ export function DisclosureDigestSection({
   }, [onRefresh]);
 
   const sourceRows = useMemo(
-    () => (sourcesItem ? disclosureSourceRows(sourcesItem, locale as AppLocale) : []),
+    () => (sourcesItem ? disclosureDigestSourceSheetRows(sourcesItem, locale as AppLocale) : []),
     [locale, sourcesItem],
   );
 

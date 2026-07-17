@@ -6,16 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import {
+  disclosureDigestSourceSheetRows,
+} from '@/components/disclosures/DisclosureDigestSection';
+import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { DISCLOSURE_FLOW_MARKET_ORDER, type DisclosureFlowMarket } from '@/constants/ipadHomeNav';
 import {
   FEED_BADGE_PX,
   FEED_BODY_PX,
-  FEED_DETAIL_TITLE_PX,
-  FEED_PREVIEW_BODY_PX,
-  FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
+import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
@@ -25,6 +29,7 @@ import {
 } from '@/constants/screenLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -41,7 +46,7 @@ import { hasSignalApi } from '@/services/env';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import type { MessageId } from '@/locales/messages';
+import type { AppLocale, MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
@@ -111,6 +116,17 @@ function disclosureMarketLabel(market: string, locale: 'ko' | 'en' | 'ja'): stri
   return key ? key.toUpperCase() : 'SIGNAL';
 }
 
+function disclosureFlowSourceIconEntries(item: SignalApiDisclosureDigestItem) {
+  const provider = String(item.market || '').toLowerCase() === 'kr' ? 'DART' : 'SEC';
+  return digestSourceIconEntries(
+    item.sourceRefs.map((ref) => ({
+      sourceName: ref.symbol || ref.companyName || provider,
+      url: ref.url,
+    })),
+    [provider],
+  );
+}
+
 type DisclosureFlowContentProps = {
   embedded?: boolean;
   initialDate?: string;
@@ -139,7 +155,7 @@ export function DisclosureFlowContent({
   const [items, setItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const itemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   itemsRef.current = items;
-  const [highlightId, setHighlightId] = useState<string | null>(initialDigestId);
+  const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { ref: scrollRef } = useScrollToTopOnChange([market, selectedYmd], {
@@ -156,21 +172,21 @@ export function DisclosureFlowContent({
   }, [initialMarket]);
 
   useEffect(() => {
-    setHighlightId(initialDigestId);
+    setSourcesDigestId(initialDigestId);
   }, [initialDigestId]);
 
   const syncRoute = useCallback(
     (next: { market?: DisclosureFlowMarket; date?: string; digestId?: string | null }) => {
       const nextMarket = next.market ?? market;
       const nextDate = next.date ?? selectedYmd;
-      const nextDigestId = next.digestId === undefined ? highlightId : next.digestId;
+      const nextDigestId = next.digestId === undefined ? sourcesDigestId : next.digestId;
       setRouteParams({
         market: nextMarket === 'all' ? undefined : nextMarket,
         date: nextDate,
         digestId: nextDigestId || undefined,
       });
     },
-    [highlightId, market, selectedYmd, setRouteParams],
+    [market, selectedYmd, setRouteParams, sourcesDigestId],
   );
 
   const onPickMarket = useCallback(
@@ -189,6 +205,29 @@ export function DisclosureFlowContent({
       syncRoute({ date: ymd });
     },
     [selectedYmd, syncRoute],
+  );
+
+  const openSources = useCallback(
+    (id: string) => {
+      setSourcesDigestId(id);
+      syncRoute({ digestId: id });
+    },
+    [syncRoute],
+  );
+
+  const closeSources = useCallback(() => {
+    setSourcesDigestId(null);
+    syncRoute({ digestId: null });
+  }, [syncRoute]);
+
+  const sourcesDigest = useMemo(
+    () => (sourcesDigestId ? items.find((item) => item.id === sourcesDigestId) ?? null : null),
+    [items, sourcesDigestId],
+  );
+
+  const sourceRows = useMemo(
+    () => (sourcesDigest ? disclosureDigestSourceSheetRows(sourcesDigest, locale as AppLocale) : []),
+    [locale, sourcesDigest],
   );
 
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
@@ -237,8 +276,7 @@ export function DisclosureFlowContent({
     void load();
   }, [load]);
 
-  return (
-    <>
+  const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
       <View style={[styles.pageColumn, isWide && styles.pageColumnWide]}>
         {onBack ? (
@@ -304,49 +342,58 @@ export function DisclosureFlowContent({
           ) : (
             <View style={styles.issueList}>
               {items.map((item) => {
-                const highlighted = highlightId === item.id;
                 const detailId = resolveDisclosureDetailId(item);
+                const sourceEntries = disclosureFlowSourceIconEntries(item);
+                const trailText = item.symbols.slice(0, 2).join(' · ');
                 return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => openDetail(item)}
-                    disabled={!detailId}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [
-                      styles.card,
-                      highlighted && styles.cardHighlighted,
-                      pressed && detailId && styles.pressed,
-                    ]}>
-                    <View style={styles.badgeRow}>
-                      <Text style={styles.marketChip}>{disclosureMarketLabel(item.market, locale)}</Text>
-                      {isImportantDisclosureDigest(item) ? (
-                        <Text style={[styles.formChip, styles.importantChip]} numberOfLines={1}>
-                          {t('disclosuresImportantBadge')}
-                        </Text>
-                      ) : null}
-                      {disclosureMeaningLabelIdsForForms(item.forms, item.market, 2).map((labelId) => (
-                        <Text key={`${item.id}-${labelId}`} style={styles.formChip} numberOfLines={1}>
-                          {t(labelId)}
-                        </Text>
-                      ))}
-                      {item.symbols.slice(0, 2).map((symbol) => (
-                        <Text key={`${item.id}-${symbol}`} style={[styles.formChip, styles.symbolChip]} numberOfLines={1}>
-                          {symbol}
-                        </Text>
-                      ))}
+                  <View key={item.id} style={styles.card}>
+                    <HomeDigestFeedRow
+                      title={item.title}
+                      titleLines={2}
+                      timeLabel={formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale)}
+                      trailText={trailText || null}
+                      summary={item.summary}
+                      summaryLines={3}
+                      sourceEntries={sourceEntries}
+                      onPress={detailId ? () => openDetail(item) : undefined}
+                      badges={
+                        <>
+                          <View style={styles.categoryMark}>
+                            <Text style={styles.categoryText}>{disclosureMarketLabel(item.market, locale)}</Text>
+                          </View>
+                          {isImportantDisclosureDigest(item) ? (
+                            <View style={[styles.categoryMark, styles.importantMark]}>
+                              <Text style={[styles.categoryText, styles.importantMarkText]}>
+                                {t('disclosuresImportantBadge')}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {disclosureMeaningLabelIdsForForms(item.forms, item.market, 2).map((labelId) => (
+                            <View key={`${item.id}-${labelId}`} style={styles.categoryMark}>
+                              <Text style={styles.categoryText} numberOfLines={1}>
+                                {t(labelId)}
+                              </Text>
+                            </View>
+                          ))}
+                        </>
+                      }
+                    />
+                    <View style={styles.footerRow}>
+                      <Text style={styles.meta} numberOfLines={1}>
+                        {t('disclosuresDigestSummary', {
+                          count: String(item.count),
+                          symbols: String(item.symbols.length),
+                        })}
+                      </Text>
+                      <Pressable
+                        onPress={() => openSources(item.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('feedDigestSourcesButton')}
+                        style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
+                        <Text style={styles.sourceToggleText}>{t('feedDigestSourcesButton')}</Text>
+                      </Pressable>
                     </View>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.createdAt}>
-                      {formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale)}
-                    </Text>
-                    {item.summary ? <Text style={styles.summary}>{item.summary}</Text> : null}
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {t('disclosuresDigestSummary', {
-                        count: String(item.count),
-                        symbols: String(item.symbols.length),
-                      })}
-                    </Text>
-                  </Pressable>
+                  </View>
                 );
               })}
             </View>
@@ -354,7 +401,19 @@ export function DisclosureFlowContent({
         </WebWheelScrollView>
       </View>
     </SafeAreaView>
-    {datePickerSheet}
+  );
+
+  return (
+    <>
+      {body}
+      {datePickerSheet}
+      <DigestSourcesSheet
+        visible={sourcesDigestId != null}
+        digestTitle={sourcesDigest?.title ?? ''}
+        digestSummary={sourcesDigest?.summary?.trim() || undefined}
+        rows={sourceRows}
+        onClose={closeSources}
+      />
     </>
   );
 }
@@ -432,10 +491,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
-    listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
       padding: 12,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: theme.border,
@@ -449,7 +507,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -463,81 +521,67 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     card: {
       position: 'relative',
       overflow: 'hidden',
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingLeft: ft.pad(14),
       paddingRight: ft.pad(14),
       paddingVertical: ft.pad(14),
-      gap: 16,
+      gap: COMFORT_GAP_SM,
     },
-    cardHighlighted: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    marketChip: {
-      overflow: 'hidden',
-      minHeight: 20,
+    categoryMark: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minWidth: 0,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
+      borderRadius: 999,
       paddingHorizontal: 6,
       paddingVertical: 1,
-      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+    },
+    categoryText: {
       color: theme.textMuted,
       fontSize: ft.ff(FEED_BADGE_PX),
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
-    formChip: {
-      overflow: 'hidden',
-      maxWidth: 120,
-      minHeight: 20,
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    symbolChip: {
-      color: theme.green,
-      borderColor: theme.greenBorder,
+    importantMark: {
       backgroundColor: theme.greenDim,
-    },
-    importantChip: {
-      color: theme.green,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
     },
-    cardTitle: {
-      color: theme.text,
-      fontSize: ft.ff(FEED_DETAIL_TITLE_PX),
-      lineHeight: sf(24),
-      fontWeight: ft.titleWeight,
+    importantMarkText: {
+      color: theme.green,
     },
-    createdAt: {
-      color: theme.textDim,
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-    },
-    summary: {
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
-      lineHeight: sf(20),
-      fontWeight: ft.bodyWeight,
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 2,
     },
     meta: {
+      flex: 1,
+      minWidth: 0,
       color: theme.textDim,
       fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.metaWeight,
+    },
+    sourceToggle: {
+      paddingVertical: 5,
+      paddingHorizontal: 9,
+      borderRadius: 999,
+      backgroundColor: theme.greenDim,
+    },
+    sourceToggleText: {
+      color: theme.green,
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
     },
     pressed: { opacity: 0.75 },
   });

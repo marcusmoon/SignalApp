@@ -442,7 +442,7 @@ export const baseJa = {
   rssSourceFieldSource: '出処名',
   rssSourceFieldSourceHelp: 'アプリのニュースカードに表示される出処名です。',
   rssSourceFeedUrlHelp: '実際に取得する RSS または Atom XML の URL です。',
-  rssSourceCategoryHelp: 'アプリのニュース分類です。earnings/filings は保存時に global ニュースへまとめます。',
+  rssSourceCategoryHelp: 'アプリのニュース分類です。it = ITニュースメニュー。earnings/filings は保存時に global ニュースへまとめます。',
   rssSourceDefaultLimit: '既定取得件数',
   rssSourceDefaultLimitHelp: 'Job に limit がない場合、この件数で取得します。',
   rssSourceDaysBack: '対象期間(日)',

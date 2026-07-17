@@ -52,6 +52,11 @@ const HUB_META: Record<
     icon: 'youtube-play',
     titleId: 'tabYoutube',
   },
+  itNews: {
+    href: '/more-it-news' as Href,
+    icon: 'laptop',
+    titleId: 'tabItNews',
+  },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
 
@@ -190,6 +195,13 @@ export default function MoreHubScreen() {
         router.push('/(tabs)/youtube' as never);
         return;
       }
+      if (item === 'itNews') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showTabs();
+        }
+        router.push('/(tabs)/it-news' as never);
+        return;
+      }
       if (item === 'account') {
         if (ipadNav.isAvailable) {
           ipadNav.showAccount();
@@ -219,7 +231,8 @@ export default function MoreHubScreen() {
               item !== 'account' &&
               item !== 'youtube' &&
               item !== 'board' &&
-              item !== 'disclosures',
+              item !== 'disclosures' &&
+              item !== 'itNews',
           )
         : order,
     [order, useTwoPane],

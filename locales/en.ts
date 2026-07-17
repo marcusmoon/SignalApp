@@ -38,6 +38,7 @@ export const en = {
   tabCalls: 'Calls',
   tabMore: 'More',
   tabDisclosures: 'Filings',
+  tabItNews: 'IT News',
   screenBoard: 'Board',
   communitySourceAll: 'All',
   communitySourceNaverLikeusstock: 'LikeUSStock',

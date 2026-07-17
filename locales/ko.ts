@@ -36,6 +36,7 @@ export const ko = {
   tabCalls: '어닝',
   tabMore: '더보기',
   tabDisclosures: '공시',
+  tabItNews: 'IT 뉴스',
   screenBoard: '게시판',
   communitySourceAll: '전체',
   communitySourceNaverLikeusstock: '미주미',

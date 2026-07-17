@@ -551,7 +551,7 @@ export async function loadProviderSettingsView(ctx) {
                       <label>
                         <span>${esc(textFor('colCategory'))}</span>
                         <select data-rss-source-category="${esc(source.id)}">
-                          ${['global', 'korea', 'crypto', 'earnings', 'filings']
+                          ${['global', 'korea', 'crypto', 'it', 'earnings', 'filings']
                             .map((category) => `<option value="${esc(category)}" ${source.category === category ? 'selected' : ''}>${esc(category)}</option>`)
                             .join('')}
                         </select>

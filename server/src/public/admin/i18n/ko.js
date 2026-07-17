@@ -442,7 +442,7 @@ export const baseKo = {
   rssSourceFieldSource: '출처명',
   rssSourceFieldSourceHelp: '앱 뉴스 카드의 출처명으로 보이는 값입니다.',
   rssSourceFeedUrlHelp: '실제로 읽어올 RSS 또는 Atom XML 주소입니다.',
-  rssSourceCategoryHelp: '앱 뉴스 탭 분류입니다. earnings/filings는 저장 시 global 뉴스로 묶입니다.',
+  rssSourceCategoryHelp: '앱 뉴스 분류입니다. it = IT 뉴스 메뉴. earnings/filings는 저장 시 global 뉴스로 묶입니다.',
   rssSourceDefaultLimit: '기본 수집 개수',
   rssSourceDefaultLimitHelp: 'Job에 limit이 없을 때 이 개수만큼 가져옵니다.',
   rssSourceDaysBack: '조회 기간(일)',

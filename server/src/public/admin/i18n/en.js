@@ -442,7 +442,7 @@ export const baseEn = {
   rssSourceFieldSource: 'Source name',
   rssSourceFieldSourceHelp: 'Source label shown on app news cards.',
   rssSourceFeedUrlHelp: 'RSS or Atom XML URL to fetch.',
-  rssSourceCategoryHelp: 'App news category. earnings/filings are saved into the global news bucket.',
+  rssSourceCategoryHelp: 'App news category. it = IT/tech menu. earnings/filings are saved into the global news bucket.',
   rssSourceDefaultLimit: 'Default item count',
   rssSourceDefaultLimitHelp: 'Used when the Job does not provide limit.',
   rssSourceDaysBack: 'Date window (days)',

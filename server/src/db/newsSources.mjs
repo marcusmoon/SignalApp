@@ -20,6 +20,7 @@ function normalizeNewsCategory(raw) {
   const c = String(raw || '').trim().toLowerCase();
   if (c === 'crypto') return 'crypto';
   if (c === 'korea') return 'korea';
+  if (c === 'it') return 'it';
   // Treat unknown/legacy as global for app UX.
   return 'global';
 }

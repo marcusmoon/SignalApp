@@ -86,7 +86,7 @@ type IpadSidebarNavActions = {
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
-  showSettings: (tab?: SettingsTab, options?: WidePaneDrillOptions) => void;
+  showSettings: (tab?: SettingsTab, options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   switchSettingsTab: (tab: SettingsTab) => void;
   showNewsIssues: (params: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => void;
   showDisclosureFlow: (params: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => void;
@@ -521,7 +521,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   }, [clearWideBackStack, params.overlay, pathname, useTwoPane]);
 
   const showSettings = useCallback(
-    (tab: SettingsTab = 'display', options?: WidePaneDrillOptions) => {
+    (tab: SettingsTab = 'display', options?: { from?: 'account' } & WidePaneDrillOptions) => {
       const fromAccount = options?.from === 'account' || options?.drillFrom === 'account';
       setSettingsTab(tab);
       setSettingsFromAccount(fromAccount);

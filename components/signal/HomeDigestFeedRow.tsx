@@ -6,6 +6,7 @@ import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
 import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import {
+  FEED_DIGEST_TITLE_LINE_PX,
   FEED_DIGEST_TITLE_PX,
   FEED_META_TIME_PX,
   FEED_SIGNAL_PREVIEW_PX,

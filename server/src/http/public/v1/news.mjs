@@ -77,7 +77,7 @@ function normalizeTranslationIngestItem(raw, now) {
 
 function normalizeNewsIngestItem(raw, index, now) {
   const category = cleanText(raw?.category).toLowerCase() || 'global';
-  if (!['global', 'crypto', 'korea'].includes(category)) return null;
+  if (!['global', 'crypto', 'korea', 'it'].includes(category)) return null;
   const titleOriginal = cleanText(raw?.titleOriginal || raw?.originalTitle || raw?.title);
   const summaryOriginal = cleanText(raw?.summaryOriginal || raw?.originalSummary || raw?.summary);
   const contentOriginal = cleanText(raw?.contentOriginal || raw?.originalContent || raw?.content || summaryOriginal);

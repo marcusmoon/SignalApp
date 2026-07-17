@@ -57,7 +57,8 @@ type TabBarIconKey =
   | 'more'
   | 'disclosures'
   | 'youtube'
-  | 'board';
+  | 'board'
+  | 'it-news';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -70,6 +71,7 @@ const TAB_ICON_PAIR: Record<TabBarIconKey, { outline: IoniconName; filled: Ionic
   disclosures: { outline: 'document-text-outline', filled: 'document-text' },
   youtube: { outline: 'logo-youtube', filled: 'logo-youtube' },
   board: { outline: 'chatbubbles-outline', filled: 'chatbubbles' },
+  'it-news': { outline: 'hardware-chip-outline', filled: 'hardware-chip' },
 };
 
 function TabBarIcon({
@@ -364,6 +366,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon="board" color={color} focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="it-news"
+        options={{
+          title: t('tabItNews'),
+          href: null,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="it-news" color={color} focused={focused} />,
+        }}
+      />
     </Tabs>
       <AppQuickActions />
     </>
@@ -517,6 +527,7 @@ function IpadWideTabLayout({
             <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
             <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
             <Tabs.Screen name="board" options={{ href: null, title: t('screenBoard') }} />
+            <Tabs.Screen name="it-news" options={{ href: null, title: t('tabItNews') }} />
           </Tabs>
         </View>
       </View>

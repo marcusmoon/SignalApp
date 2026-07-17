@@ -14,7 +14,6 @@ import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { DISCLOSURE_FLOW_MARKET_ORDER, type DisclosureFlowMarket } from '@/constants/ipadHomeNav';
 import {
   FEED_BADGE_PX,
@@ -37,6 +36,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import {
+  disclosureDigestSourceIconEntries,
   disclosureMeaningLabelIdsForForms,
   isImportantDisclosureDigest,
 } from '@/domain/disclosures';
@@ -108,17 +108,6 @@ function disclosureMarketLabel(market: string, locale: 'ko' | 'en' | 'ja'): stri
   if (key === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
   if (key === 'us') return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
   return key ? key.toUpperCase() : 'SIGNAL';
-}
-
-function disclosureFlowSourceIconEntries(item: SignalApiDisclosureDigestItem) {
-  const provider = String(item.market || '').toLowerCase() === 'kr' ? 'DART' : 'SEC';
-  return digestSourceIconEntries(
-    item.sourceRefs.map((ref) => ({
-      sourceName: ref.symbol || ref.companyName || provider,
-      url: ref.url,
-    })),
-    [provider],
-  );
 }
 
 type DisclosureFlowContentProps = {
@@ -326,7 +315,7 @@ export function DisclosureFlowContent({
           ) : (
             <View style={styles.issueList}>
               {items.map((item) => {
-                const sourceEntries = disclosureFlowSourceIconEntries(item);
+                const sourceEntries = disclosureDigestSourceIconEntries(item);
                 const trailText = item.symbols.slice(0, 2).join(' · ');
                 const canOpenDetail =
                   Boolean(item.title?.trim()) ||
@@ -564,7 +553,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       height: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,

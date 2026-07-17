@@ -47,7 +47,6 @@ export function IpadHomeScreen() {
       todayYmd={todayYmd}
       onSelectedYmdChange={onSelectedYmdChange}
       scrollContentPaddingBottom={SCREEN_WIDE_SCROLL_BOTTOM_BASE}
-      showIssueSummary
     />
   );
 }

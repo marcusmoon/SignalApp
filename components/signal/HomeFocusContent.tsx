@@ -61,8 +61,7 @@ import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayou
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import {
-  disclosureMeaningLabelIdsForForms,
-  isImportantDisclosureDigest,
+  disclosureDigestSourceIconEntries,
 } from '@/domain/disclosures';
 import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
@@ -671,20 +670,6 @@ export function HomeFocusContent({
     [ipadNav, router, selectedYmd],
   );
 
-  const openDisclosureDetail = useCallback(
-    (row: SignalApiDisclosureDigestItem) => {
-      const primary = String(row.primaryDisclosureId || '').trim();
-      const refId = row.sourceRefs.find((ref) => String(ref.id || '').trim())?.id;
-      const id = primary || (refId ? String(refId).trim() : '');
-      if (!id) {
-        openDisclosureFlow(row);
-        return;
-      }
-      router.push(`/disclosures/${encodeURIComponent(id)}` as Href);
-    },
-    [openDisclosureFlow, router],
-  );
-
   const openCalendar = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showCalendar({ drillFrom: 'home' });
@@ -763,7 +748,7 @@ export function HomeFocusContent({
                 titleLines={2}
                 timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
                 trailText={trailText || null}
-                summary={showIssueSummary ? row.item.summary : null}
+                summary={null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
                 onPress={() => openIssue(row)}
@@ -835,55 +820,38 @@ export function HomeFocusContent({
 
   const renderDisclosureCard = useCallback(
     (rows: SignalApiDisclosureDigestItem[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
         <View style={styles.issueGroupList}>
-          {rows.map((row, index) => (
-            <Pressable
-              key={row.id}
-              onPress={() => openDisclosureDetail(row)}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.issueGroupItem,
-                index < rows.length - 1 && styles.issueGroupItemBorder,
-                pressed && styles.pressed,
-              ]}>
-              <View style={styles.issueRowTop}>
-                <View style={styles.disclosurePillRow}>
-                  <Text style={styles.disclosureMarketPill}>{disclosureMarketLabel(row.market, locale)}</Text>
-                  {isImportantDisclosureDigest(row) ? (
-                    <Text style={styles.disclosureFormPill} numberOfLines={1}>
-                      {t('disclosuresImportantBadge')}
-                    </Text>
-                  ) : null}
-                  {disclosureMeaningLabelIdsForForms(row.forms, row.market, 1).map((labelId) => (
-                    <Text key={`${row.id}-${labelId}`} style={styles.disclosureFormPill} numberOfLines={1}>
-                      {t(labelId)}
-                    </Text>
-                  ))}
-                  {row.symbols.length > 0 ? (
-                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
-                      {row.symbols.slice(0, 3).join(' · ')}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
-                </Text>
-              </View>
-              <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
-                {row.title}
-              </ChangeTintedText>
-              {showIssueSummary && row.summary ? (
-                <ChangeTintedText style={styles.issueGroupSummary} numberOfLines={1}>
-                  {row.summary}
-                </ChangeTintedText>
-              ) : null}
-            </Pressable>
-          ))}
+          {rows.map((row, index) => {
+            const sourceEntries = disclosureDigestSourceIconEntries(row);
+            const trailText = row.symbols.slice(0, 2).join(' · ');
+            const marketA11y = disclosureMarketLabel(row.market, locale);
+            return (
+              <HomeDigestFeedRow
+                key={row.id}
+                title={row.title}
+                titleLines={2}
+                timeLabel={formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
+                trailText={trailText || null}
+                sourceEntries={sourceEntries}
+                bordered={index < rows.length - 1}
+                onPress={() => openDisclosureFlow(row)}
+                footerLead={
+                  <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
+                    <CommunitySourceMark
+                      accent={marketBriefingAccent(row.market, theme)}
+                      size={18}
+                      style={styles.boardSourceMark}
+                    />
+                  </View>
+                }
+              />
+            );
+          })}
         </View>
       </View>
     ),
-    [locale, openDisclosureDetail, showIssueSummary, styles, t],
+    [locale, openDisclosureFlow, showIssueSummary, styles, theme],
   );
 
   const renderCalendarCard = useCallback(

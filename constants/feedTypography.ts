@@ -2,6 +2,8 @@
 export const FEED_DIGEST_TITLE_PX = 14;
 /** 기사·포스트·DigestPager 1열 제목 */
 export const FEED_ARTICLE_TITLE_PX = 15;
+/** `FEED_ARTICLE_TITLE_PX` line-height — NewsCard·YoutubeCard 등 리스트 제목 공통 */
+export const FEED_ARTICLE_TITLE_LINE_PX = 22;
 /** 공시 플로우 등 확장 카드 제목 */
 export const FEED_DETAIL_TITLE_PX = 17;
 /** 홈 마켓 브리핑 미리보기 본문 */

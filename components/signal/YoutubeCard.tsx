@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import {
+  FEED_ARTICLE_TITLE_LINE_PX,
   FEED_ARTICLE_TITLE_PX,
   FEED_BODY_PX,
   FEED_CHIP_PX,
@@ -166,7 +167,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: sf(21),
+      lineHeight: ft.ff(FEED_ARTICLE_TITLE_LINE_PX),
       marginBottom: 4,
     },
     channel: {

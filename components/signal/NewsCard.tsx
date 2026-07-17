@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import {
+  FEED_ARTICLE_TITLE_LINE_PX,
   FEED_ARTICLE_TITLE_PX,
   FEED_BODY_PX,
   FEED_CHIP_PX,

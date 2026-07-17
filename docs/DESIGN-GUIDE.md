@@ -34,7 +34,7 @@
 
 | 계층 | 상수·패턴 | 용도 |
 |---|---|---|
-| 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) | 뉴스·공시 리스트 |
+| 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) · line `FEED_ARTICLE_TITLE_LINE_PX` (22) | 뉴스·공시·유튜브·게시판 리스트 |
 | 다이제스트 제목 | `FEED_DIGEST_TITLE_PX` (14) | 홈·이슈·DigestPager |
 | 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드 |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |

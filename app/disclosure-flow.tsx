@@ -1,4 +1,5 @@
-import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -102,13 +103,6 @@ function sortDigests(rows: SignalApiDisclosureDigestItem[]): SignalApiDisclosure
   );
 }
 
-export function resolveDisclosureDetailId(item: SignalApiDisclosureDigestItem): string | null {
-  const primary = String(item.primaryDisclosureId || '').trim();
-  if (primary) return primary;
-  const refId = item.sourceRefs.find((ref) => String(ref.id || '').trim())?.id;
-  return refId ? String(refId).trim() : null;
-}
-
 function disclosureMarketLabel(market: string, locale: 'ko' | 'en' | 'ja'): string {
   const key = String(market || '').trim().toLowerCase();
   if (key === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
@@ -142,7 +136,6 @@ export function DisclosureFlowContent({
   initialDigestId = null,
   onBack,
 }: DisclosureFlowContentProps) {
-  const router = useRouter();
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -235,15 +228,6 @@ export function DisclosureFlowContent({
     todayYmd,
     onSelectYmd: onPickDate,
   });
-
-  const openDetail = useCallback(
-    (item: SignalApiDisclosureDigestItem) => {
-      const id = resolveDisclosureDetailId(item);
-      if (!id) return;
-      router.push(`/disclosures/${encodeURIComponent(id)}` as Href);
-    },
-    [router],
-  );
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -342,9 +326,12 @@ export function DisclosureFlowContent({
           ) : (
             <View style={styles.issueList}>
               {items.map((item) => {
-                const detailId = resolveDisclosureDetailId(item);
                 const sourceEntries = disclosureFlowSourceIconEntries(item);
                 const trailText = item.symbols.slice(0, 2).join(' · ');
+                const canOpenDetail =
+                  Boolean(item.title?.trim()) ||
+                  Boolean(item.summary?.trim()) ||
+                  item.sourceRefs.length > 0;
                 return (
                   <View key={item.id} style={styles.card}>
                     <HomeDigestFeedRow
@@ -355,7 +342,6 @@ export function DisclosureFlowContent({
                       summary={item.summary}
                       summaryLines={3}
                       sourceEntries={sourceEntries}
-                      onPress={detailId ? () => openDetail(item) : undefined}
                       badges={
                         <>
                           <View style={styles.categoryMark}>
@@ -385,13 +371,15 @@ export function DisclosureFlowContent({
                           symbols: String(item.symbols.length),
                         })}
                       </Text>
-                      <Pressable
-                        onPress={() => openSources(item.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('feedDigestSourcesButton')}
-                        style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
-                        <Text style={styles.sourceToggleText}>{t('feedDigestSourcesButton')}</Text>
-                      </Pressable>
+                      {canOpenDetail ? (
+                        <Pressable
+                          onPress={() => openSources(item.id)}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('feedDigestDetailA11y')}
+                          style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}>
+                          <FontAwesome name="info-circle" size={14} color={theme.green} />
+                        </Pressable>
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -571,18 +559,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.metaWeight,
     },
-    sourceToggle: {
-      paddingVertical: 5,
-      paddingHorizontal: 9,
-      borderRadius: 999,
+    detailBtn: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      flexShrink: 0,
     },
-    sourceToggleText: {
-      color: theme.green,
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
+    detailBtnPressed: {
+      opacity: 0.88,
     },
-    pressed: { opacity: 0.75 },
   });
 }

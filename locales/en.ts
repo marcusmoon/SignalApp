@@ -403,6 +403,7 @@ export const en = {
   a11ySettings: 'Settings',
   a11yQuickSettings: 'Language and appearance',
   quickSettingsTitle: 'Quick settings',
+  quickSettingsDisplayLink: 'More display options',
   a11yNewsFilter: 'Open news source filter',
   a11yCallsFilter: 'Open conference call watchlist filter',
 

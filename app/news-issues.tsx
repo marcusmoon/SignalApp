@@ -356,9 +356,9 @@ export function NewsIssuesContent({
                       <Pressable
                         onPress={() => openSources(item.id)}
                         accessibilityRole="button"
-                        accessibilityLabel={t('feedDigestSourcesButton')}
-                        style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
-                        <Text style={styles.sourceToggleText}>{t('feedDigestSourcesButton')}</Text>
+                        accessibilityLabel={t('feedDigestDetailA11y')}
+                        style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}>
+                        <FontAwesome name="info-circle" size={14} color={theme.green} />
                       </Pressable>
                     </View>
                   </View>
@@ -539,18 +539,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.metaWeight,
     },
-    sourceToggle: {
-      paddingVertical: 5,
-      paddingHorizontal: 9,
-      borderRadius: 999,
+    detailBtn: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      flexShrink: 0,
     },
-    sourceToggleText: {
-      color: theme.green,
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
+    detailBtnPressed: {
+      opacity: 0.88,
     },
-    pressed: { opacity: 0.75 },
   });
 }

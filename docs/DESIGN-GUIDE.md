@@ -58,7 +58,7 @@
 
 ### 바텀 시트 (`constants/bottomSheetLayout.ts`)
 
-slide-up Modal 시트(홈 다이제스트 상세·마켓 브리핑·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 50%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
+slide-up Modal 시트(홈 다이제스트 상세·마켓 브리핑·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 70%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
 
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 

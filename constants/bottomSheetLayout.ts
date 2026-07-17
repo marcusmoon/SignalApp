@@ -3,8 +3,8 @@
  * See docs/DESIGN-GUIDE.md (bottom sheet).
  */
 
-/** Sheet shell max height — do not exceed half the viewport. */
-export const BOTTOM_SHEET_MAX_HEIGHT = '50%' as const;
+/** Sheet shell max height — cap at 70% of the viewport (home digest, briefing, filters). */
+export const BOTTOM_SHEET_MAX_HEIGHT = '70%' as const;
 
 export const BOTTOM_SHEET_BACKDROP_COLOR = 'rgba(0,0,0,0.55)' as const;
 

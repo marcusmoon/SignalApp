@@ -24,6 +24,7 @@ import {
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import {
   UI_FONT_WEIGHT_EMPHASIS,
   UI_FONT_WEIGHT_SECTION,
@@ -731,26 +732,14 @@ export function HomeFocusContent({
           <View style={styles.issueGroupList}>
             <View style={styles.issueGroupItem}>
               {leadText ? (
-                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={showIssueSummary ? 3 : 2}>
+                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
                   {leadText}
                 </ChangeTintedText>
               ) : null}
               {previewText ? (
-                <ChangeTintedText style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
+                <ChangeTintedText style={styles.signalText} numberOfLines={2}>
                   {previewText}
                 </ChangeTintedText>
-              ) : null}
-              {item.keyPoints.length > 0 ? (
-                <View style={styles.overviewMiniList}>
-                  {item.keyPoints.slice(0, 2).map((point, index) => (
-                    <ChangeTintedText
-                      key={`${item.id}-point-${index}`}
-                      style={styles.issueGroupSummary}
-                      numberOfLines={1}>
-                      {point}
-                    </ChangeTintedText>
-                  ))}
-                </View>
               ) : null}
             </View>
           </View>
@@ -1219,7 +1208,7 @@ function makeStyles(
     },
     content: {
       flexGrow: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: APP_CONTENT_SIDE_PADDING,
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       gap: COMFORT_GAP_PAGE,
     },

@@ -454,7 +454,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#FFD6DA',
+      borderColor: theme.danger,
       backgroundColor: theme.dangerDim,
     },
     resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
@@ -1778,8 +1778,8 @@ clearCalendarCache();
                       await saveNotificationPrefs({ pushEnabled: v });
                       if (v) void registerPushDeviceIfPossible();
                     }}
-                    trackColor={{ false: '#333', true: theme.green + '88' }}
-                    thumbColor={pushEnabled ? theme.green : '#888'}
+                    trackColor={{ false: theme.border, true: theme.green + '88' }}
+                    thumbColor={pushEnabled ? theme.green : theme.textDim}
                   />
                 </View>
                 <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
@@ -1795,8 +1795,8 @@ clearCalendarCache();
                       setBriefingPushEnabled(v);
                       await saveNotificationPrefs({ briefingPushEnabled: v });
                     }}
-                    trackColor={{ false: '#333', true: theme.green + '88' }}
-                    thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
+                    trackColor={{ false: theme.border, true: theme.green + '88' }}
+                    thumbColor={briefingPushEnabled && pushEnabled ? theme.green : theme.textDim}
                   />
                 </View>
 
@@ -1823,8 +1823,8 @@ clearCalendarCache();
                       await saveNotificationPrefs(next);
                       await syncLocalCalendarNotifications(next);
                     }}
-                    trackColor={{ false: '#333', true: theme.green + '88' }}
-                    thumbColor={localMacroCalendar ? theme.green : '#888'}
+                    trackColor={{ false: theme.border, true: theme.green + '88' }}
+                    thumbColor={localMacroCalendar ? theme.green : theme.textDim}
                   />
                 </View>
               </View>
@@ -2174,8 +2174,8 @@ clearCalendarCache();
                       setMoreRefLinksVisible(v);
                       void saveMoreReferenceLinksVisible(v);
                     }}
-                    trackColor={{ false: '#333', true: theme.green + '88' }}
-                    thumbColor={moreRefLinksVisible ? theme.green : '#888'}
+                    trackColor={{ false: theme.border, true: theme.green + '88' }}
+                    thumbColor={moreRefLinksVisible ? theme.green : theme.textDim}
                   />
                 </View>
               )}

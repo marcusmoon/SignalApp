@@ -66,7 +66,7 @@ const TAB_ICON_PAIR: Record<TabBarIconKey, { outline: IoniconName; filled: Ionic
   news: { outline: 'newspaper-outline', filled: 'newspaper' },
   signal: { outline: 'pulse-outline', filled: 'pulse' },
   quotes: { outline: 'stats-chart-outline', filled: 'stats-chart' },
-  more: { outline: 'ellipsis-horizontal', filled: 'ellipsis-horizontal' },
+  more: { outline: 'ellipsis-horizontal-outline', filled: 'ellipsis-horizontal' },
   disclosures: { outline: 'document-text-outline', filled: 'document-text' },
   youtube: { outline: 'logo-youtube', filled: 'logo-youtube' },
   board: { outline: 'chatbubbles-outline', filled: 'chatbubbles' },
@@ -83,12 +83,13 @@ function TabBarIcon({
   focused?: boolean;
   showDot?: boolean;
 }) {
+  const { theme } = useSignalTheme();
   const pair = TAB_ICON_PAIR[icon];
   const name = focused ? pair.filled : pair.outline;
   return (
     <View style={tabIconWrap}>
       <Ionicons name={name} size={TAB_ICON_SIZE} color={color} />
-      {showDot ? <View style={tabIconDot} /> : null}
+      {showDot ? <View style={[tabIconDot, { backgroundColor: theme.danger }]} /> : null}
     </View>
   );
 }
@@ -127,7 +128,6 @@ const tabIconDot = {
   width: 7,
   height: 7,
   borderRadius: 3.5,
-  backgroundColor: '#F04452',
 };
 
 export default function TabLayout() {

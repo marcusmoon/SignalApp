@@ -10,6 +10,7 @@ import {
   FEED_CHIP_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -106,17 +107,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     thumb: {
       width: thumbW,
       height: thumbH,
-      borderRadius: 8,
-      backgroundColor: '#1A1A24',
+      borderRadius: UI_RADIUS_CARD,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
-      borderColor: '#2A2A35',
+      borderColor: theme.border,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
     },
     thumbImg: {
       ...StyleSheet.absoluteFill,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
     },
     duration: {
       position: 'absolute',

@@ -1,16 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
+import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
-import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
@@ -18,7 +18,7 @@ import {
   FEED_BADGE_PX,
   FEED_BODY_PX,
 } from '@/constants/feedTypography';
-import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
+import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -29,7 +29,7 @@ import {
 } from '@/constants/screenLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
@@ -126,7 +126,7 @@ export function NewsIssuesContent({
   const [items, setItems] = useState<SignalApiNewsDigestItem[]>([]);
   const itemsRef = useRef<SignalApiNewsDigestItem[]>([]);
   itemsRef.current = items;
-  const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
+  const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
@@ -143,21 +143,21 @@ export function NewsIssuesContent({
   }, [initialDate]);
 
   useEffect(() => {
-    setExpandedId(initialDigestId);
+    setSourcesDigestId(initialDigestId);
   }, [initialDigestId]);
 
   const syncRoute = useCallback(
     (next: { category?: NewsIssuesCategory; date?: string; digestId?: string | null }) => {
       const nextCategory = next.category ?? category;
       const nextDate = next.date ?? selectedYmd;
-      const nextDigestId = next.digestId === undefined ? expandedId : next.digestId;
+      const nextDigestId = next.digestId === undefined ? sourcesDigestId : next.digestId;
       setRouteParams({
         category: nextCategory === 'all' ? undefined : nextCategory,
         date: nextDate,
         digestId: nextDigestId || undefined,
       });
     },
-    [category, expandedId, selectedYmd, setRouteParams],
+    [category, sourcesDigestId, selectedYmd, setRouteParams],
   );
 
   const onPickCategory = useCallback(
@@ -178,13 +178,27 @@ export function NewsIssuesContent({
     [selectedYmd, syncRoute],
   );
 
-  const onToggleExpand = useCallback(
+  const openSources = useCallback(
     (id: string) => {
-      const next = expandedId === id ? null : id;
-      setExpandedId(next);
-      syncRoute({ digestId: next });
+      setSourcesDigestId(id);
+      syncRoute({ digestId: id });
     },
-    [expandedId, syncRoute],
+    [syncRoute],
+  );
+
+  const closeSources = useCallback(() => {
+    setSourcesDigestId(null);
+    syncRoute({ digestId: null });
+  }, [syncRoute]);
+
+  const sourcesDigest = useMemo(
+    () => (sourcesDigestId ? items.find((item) => item.id === sourcesDigestId) ?? null : null),
+    [items, sourcesDigestId],
+  );
+
+  const sourceRows = useMemo(
+    () => (sourcesDigest ? newsDigestSourceSheetRows(sourcesDigest, locale) : []),
+    [locale, sourcesDigest],
   );
 
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
@@ -303,15 +317,11 @@ export function NewsIssuesContent({
           ) : (
             <View style={styles.issueList}>
               {items.map((item) => {
-                const expanded = expandedId === item.id;
                 const itemCat = digestCategory(item);
                 const sourceEntries = digestSourceIconEntries(item.sourceRefs, item.sources);
                 const trailText = [item.topics[0], item.symbols[0]].filter(Boolean).join(' · ');
                 return (
-                  <View
-                    key={item.id}
-                    style={[styles.card, expanded && styles.cardExpanded]}>
-                    <HomeSectionAccentLine section="issues" style={styles.cardAccent} />
+                  <View key={item.id} style={styles.card}>
                     <HomeDigestFeedRow
                       title={item.title}
                       titleLines={2}
@@ -344,44 +354,13 @@ export function NewsIssuesContent({
                         })}
                       </Text>
                       <Pressable
-                        onPress={() => onToggleExpand(item.id)}
+                        onPress={() => openSources(item.id)}
                         accessibilityRole="button"
-                        accessibilityState={{ expanded }}
+                        accessibilityLabel={t('feedDigestSourcesButton')}
                         style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
-                        <Text style={styles.sourceToggleText}>
-                          {t(expanded ? 'feedDigestCollapse' : 'feedDigestExpand')}
-                        </Text>
+                        <Text style={styles.sourceToggleText}>{t('feedDigestSourcesButton')}</Text>
                       </Pressable>
                     </View>
-                    {expanded ? (
-                      <View style={styles.detailSection}>
-                        <HomeSectionHeader title={t('feedDigestSourcesTitle')} showChevron={false} />
-                        <View style={[styles.feedCard, styles.feedCardCompact]}>
-                          <View style={styles.sourceList}>
-                            {(item.sourceRefs || []).slice(0, 8).map((ref, index, rows) => (
-                              <HomeDigestFeedRow
-                                key={`${item.id}-${index}`}
-                                title={ref.title || ref.sourceName || ref.url || ''}
-                                titleLines={3}
-                                trailText={ref.sourceName?.trim() || null}
-                                sourceEntries={digestSourceIconEntries([ref])}
-                                timeLabel={
-                                  ref.publishedAt
-                                    ? formatFeedItemTimeLabel(ref.publishedAt, locale)
-                                    : null
-                                }
-                                bordered={index < rows.length - 1}
-                                onPress={
-                                  ref.url
-                                    ? () => void Linking.openURL(ref.url!).catch(() => null)
-                                    : undefined
-                                }
-                              />
-                            ))}
-                          </View>
-                        </View>
-                      </View>
-                    ) : null}
                   </View>
                 );
               })}
@@ -396,6 +375,13 @@ export function NewsIssuesContent({
     <>
       {body}
       {datePickerSheet}
+      <DigestSourcesSheet
+        visible={sourcesDigestId != null}
+        digestTitle={sourcesDigest?.title ?? ''}
+        digestSummary={sourcesDigest?.summary?.trim() || undefined}
+        rows={sourceRows}
+        onClose={closeSources}
+      />
     </>
   );
 }
@@ -514,17 +500,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingLeft: 18,
+      paddingLeft: ft.pad(14),
       paddingRight: ft.pad(14),
       paddingVertical: ft.pad(14),
       gap: COMFORT_GAP_SM,
-    },
-    cardExpanded: {
-      borderColor: theme.greenBorder,
-    },
-    cardAccent: {
-      borderTopLeftRadius: UI_RADIUS_CARD_LG,
-      borderBottomLeftRadius: UI_RADIUS_CARD_LG,
     },
     categoryMark: {
       flexDirection: 'row',
@@ -573,24 +552,5 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
     },
     pressed: { opacity: 0.75 },
-    detailSection: {
-      gap: COMFORT_GAP_SM,
-      marginTop: COMFORT_GAP_SM,
-    },
-    feedCard: {
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
-      paddingHorizontal: 10,
-      paddingVertical: COMFORT_PADDING_ROW_V,
-      overflow: 'hidden',
-    },
-    feedCardCompact: {
-      paddingVertical: 8,
-    },
-    sourceList: {
-      gap: 0,
-    },
   });
 }

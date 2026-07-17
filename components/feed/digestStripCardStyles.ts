@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import {
   FEED_ARTICLE_TITLE_PX,
@@ -24,27 +23,27 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 
 type DigestStripCardStyleOptions = {
   pairLayout: boolean;
-  accentColor: string;
 };
 
 export function makeDigestStripCardStyles(
   theme: AppTheme,
   sf: (n: number) => number,
   ft: FeedContentTypography,
-  { pairLayout, accentColor }: DigestStripCardStyleOptions,
+  { pairLayout }: DigestStripCardStyleOptions,
 ) {
   const titleSize = pairLayout ? ft.ff(FEED_DIGEST_TITLE_PX) : ft.ff(FEED_ARTICLE_TITLE_PX);
   const titleLine = pairLayout ? sf(19) : sf(21);
   const badgeHeight = pairLayout ? DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR : DIGEST_STRIP_BADGE_ROW_HEIGHT;
   const cardMinHeight = digestStripCardMinHeight(pairLayout, ft);
   const sectionGap = pairLayout ? 6 : 7;
+  const cardPadH = pairLayout ? ft.pad(11) : ft.pad(13);
 
   return StyleSheet.create({
     card: {
       flex: 1,
       minHeight: cardMinHeight,
-      paddingLeft: pairLayout ? 14 : 18,
-      paddingRight: pairLayout ? ft.pad(11) : ft.pad(13),
+      paddingLeft: cardPadH,
+      paddingRight: cardPadH,
       paddingVertical: pairLayout ? ft.pad(10) : ft.pad(11),
       borderRadius: pairLayout ? UI_RADIUS_DIGEST_PAIR : UI_RADIUS_DIGEST_SINGLE,
       borderWidth: 1,
@@ -61,15 +60,6 @@ export function makeDigestStripCardStyles(
             shadowOffset: { width: 0, height: 5 },
             elevation: 1,
           }),
-    },
-    accentLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      backgroundColor: accentColor,
-      opacity: pairLayout ? 0.45 : 1,
     },
     badgeRow: {
       flexDirection: 'row',

@@ -7,11 +7,9 @@ import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
@@ -145,7 +143,6 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
           {item ? (
             <>
               <View style={styles.heroCard}>
-                <HomeSectionAccentLine section="todayBriefing" />
                 {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
                 {bodyText && bodyText !== leadText ? <Text style={styles.summary}>{bodyText}</Text> : null}
               </View>
@@ -153,7 +150,6 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
               {item.keyPoints.length > 0 ? (
                 <View style={styles.sectionWrap}>
                   <View style={styles.sectionHead}>
-                    <View style={styles.sectionAccent} />
                     <Text style={styles.sectionHeading}>{t('todayBriefingKeyPoints')}</Text>
                   </View>
                   <View style={styles.sectionFeedCard}>
@@ -161,7 +157,7 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
                       <HomeDigestFeedRow
                         key={`${item.id}-point-${index}`}
                         title={point}
-                        titleLines={4}
+                        titleLines={null}
                         bordered={index < item.keyPoints.length - 1}
                       />
                     ))}
@@ -172,7 +168,6 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
               {item.sourceRefs.length > 0 ? (
                 <View style={styles.sectionWrap}>
                   <View style={styles.sectionHead}>
-                    <View style={[styles.sectionAccent, styles.sectionAccentMuted]} />
                     <Text style={styles.sectionHeading}>{t('todayBriefingSources')}</Text>
                   </View>
                   <View style={styles.sectionFeedCard}>
@@ -180,7 +175,7 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
                       <HomeDigestFeedRow
                         key={`${item.id}-source-${index}`}
                         title={ref.title || ref.sourceName || ref.url || ''}
-                        titleLines={3}
+                        titleLines={null}
                         trailText={ref.sourceName?.trim() || null}
                         timeLabel={formatFeedItemTimeLabel(ref.publishedAt, locale)}
                         sourceEntries={briefingSourceIconEntries([ref])}
@@ -315,16 +310,6 @@ function makeStyles(
       alignItems: 'center',
       gap: 10,
       minWidth: 0,
-    },
-    sectionAccent: {
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      height: 20,
-      borderRadius: 2,
-      backgroundColor: theme.green,
-      flexShrink: 0,
-    },
-    sectionAccentMuted: {
-      backgroundColor: theme.textMuted,
     },
     sectionHeading: {
       flex: 1,

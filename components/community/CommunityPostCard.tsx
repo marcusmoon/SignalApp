@@ -7,10 +7,10 @@ import {
   FEED_META_TIME_PX,
   FEED_PREVIEW_BODY_PX,
 } from '@/constants/feedTypography';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -40,7 +40,7 @@ export function CommunityPostCard({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, accent), [theme, scaleFont, feedTypo, accent]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const timeLabel = formatFeedItemTimeLabel(item.publishedAt, locale);
 
   return (
@@ -54,7 +54,6 @@ export function CommunityPostCard({
       }}
       accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-      <View pointerEvents="none" style={styles.accentBar} />
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
@@ -97,30 +96,20 @@ function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
   ft: FeedContentTypography,
-  accent: ReturnType<typeof communitySourceAccent>,
 ) {
   return StyleSheet.create({
     card: {
       position: 'relative',
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingLeft: ft.pad(14) + CONTENT_ACCENT_LINE_WIDTH + 6,
+      paddingLeft: ft.pad(14),
       paddingRight: ft.pad(14),
       paddingTop: ft.pad(12),
       paddingBottom: ft.pad(12),
       gap: 8,
       overflow: 'hidden',
-    },
-    accentBar: {
-      position: 'absolute',
-      left: 0,
-      top: ft.pad(10),
-      bottom: ft.pad(10),
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      borderRadius: 999,
-      backgroundColor: accent.accent,
     },
     pressed: { opacity: 0.88 },
     footer: {

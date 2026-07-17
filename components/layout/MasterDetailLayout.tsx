@@ -18,6 +18,7 @@ import {
   MASTER_PANEL_MIN_WIDTH,
   MASTER_PANEL_WIDTH_RATIO,
 } from '@/constants/responsiveLayout';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type Props = {
   /** iPad wide 모드 여부 */
@@ -42,9 +43,12 @@ export function MasterDetailLayout({
   masterMinWidth = MASTER_PANEL_MIN_WIDTH,
   masterPanel,
   detailPanel,
-  dividerColor = '#2A2E3A',
+  dividerColor,
   style,
 }: Props) {
+  const { theme } = useSignalTheme();
+  const resolvedDividerColor = dividerColor ?? theme.border;
+
   if (!useTwoPane) {
     return <View style={[styles.single, style]}>{masterPanel}</View>;
   }
@@ -58,7 +62,7 @@ export function MasterDetailLayout({
           {
             flexBasis: `${Math.round(masterWidthRatio * 100)}%`,
             minWidth: masterMinWidth,
-            borderRightColor: dividerColor,
+            borderRightColor: resolvedDividerColor,
           },
         ]}>
         {masterPanel}

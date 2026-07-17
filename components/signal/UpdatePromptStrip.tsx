@@ -3,13 +3,15 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
+import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { isWeb, WEB_SIGNAL_CSS } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 const stripStyles = StyleSheet.create({
   strip: {
     width: '100%',
-    paddingHorizontal: 16,
+    paddingHorizontal: APP_CONTENT_SIDE_PADDING,
     paddingTop: 8,
     paddingBottom: 8,
   },
@@ -102,7 +104,7 @@ function makeCardStyles(theme: AppTheme) {
       width: '100%',
       paddingVertical: 12,
       paddingHorizontal: 14,
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 2,
       borderColor: cardBorder,
       backgroundColor: cardBg,

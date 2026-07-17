@@ -403,7 +403,7 @@ export const ja = {
   a11ySettings: '設定',
   a11yQuickSettings: '言語と画面モード',
   quickSettingsTitle: 'クイック設定',
-  quickSettingsDisplayLink: '表示設定をもっと見る',
+  quickSettingsDisplayLink: '設定をもっと見る',
   a11yNewsFilter: 'ニュース提供元フィルタを開く',
   a11yCallsFilter: 'カンファレンス・コールのウォッチリストフィルタを開く',
 

@@ -12,6 +12,7 @@ import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { SETTINGS_TAB_ORDER, type SettingsTab } from '@/constants/settingsTabs';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -145,6 +146,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const showPaneTitleInContent = embedded || useIpadSidebar;
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
+  /** AsyncStorage 세션 로드 전 — 로그인 폼 깜빡임 방지 */
+  const [sessionHydrated, setSessionHydrated] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -417,18 +420,26 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   );
 
   const reload = useCallback(async () => {
-    const saved = await loadAppAuthSession();
-    setSession(saved);
-    const access = getSessionAccessToken(saved);
-    if (!access || !hasSignalApi()) return;
     try {
-      const fresh = await fetchSignalMe(access);
-      const next = { ...saved!, user: fresh } as StoredAppAuthSession;
-      await saveAppAuthSession(next);
-      setSession(next);
-    } catch {
-      await clearAppAuthSession();
-      setSession(null);
+      const saved = await loadAppAuthSession();
+      setSession(saved);
+      setSessionHydrated(true);
+      const access = getSessionAccessToken(saved);
+      if (!access || !hasSignalApi()) return;
+      try {
+        const fresh = await fetchSignalMe(access);
+        const next = { ...saved!, user: fresh } as StoredAppAuthSession;
+        await saveAppAuthSession(next);
+        setSession(next);
+      } catch (e) {
+        // 네트워크/일시 오류로 로그인 화면이 깜빡이지 않게 — 인증 만료(401)만 로그아웃
+        const unauthorized = e instanceof SignalApiError && e.status === 401;
+        if (!unauthorized) return;
+        await clearAppAuthSession();
+        setSession(null);
+      }
+    } finally {
+      setSessionHydrated(true);
     }
   }, []);
 
@@ -929,11 +940,17 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         contentContainerStyle={[
           styles.content,
           (embedded || useTwoPane) && styles.contentEmbedded,
-          !user && styles.contentAuth,
+          sessionHydrated && !user && styles.contentAuth,
           user && accountPane !== 'hub' && ((embedded || useTwoPane) ? styles.contentSubPaneWide : styles.contentSubPane),
           { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>
-        {!user ? (
+        {!sessionHydrated ? (
+          <View style={styles.sessionLoadingWrap}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : null}
+
+        {sessionHydrated && !user ? (
           <View style={styles.hero}>
             <View style={styles.heroLogoRow}>
               <View style={styles.signalBars} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -954,7 +971,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
           </View>
         ) : null}
 
-        {user ? (
+        {sessionHydrated && user ? (
           <>
             {showPaneTitleInContent && accountPane !== 'hub' ? (
               <WideSubpaneHeader title={accountHeaderTitle} onBack={returnToAccountHub} />
@@ -1221,7 +1238,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             ) : null}
 
           </>
-        ) : (
+        ) : sessionHydrated ? (
           <>
             {isRegister && registerStep === 'terms' ? (
               <View style={styles.card}>
@@ -1541,7 +1558,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
               </View>
             </View>
           </>
-        )}
+        ) : null}
       </WebWheelScrollView>
     </SafeAreaView>
   );

@@ -43,6 +43,12 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: 4,
       gap: 8,
     },
+    sessionLoadingWrap: {
+      minHeight: 220,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 40,
+    },
     contentAuth: {
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
     },

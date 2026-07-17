@@ -262,6 +262,17 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
   mono: 'settingsAppIconMono',
 };
 
+type SettingsCountPicker =
+  | { kind: 'quotes'; field: 'popular' | 'mcap' | 'coin' }
+  | { kind: 'home'; field: 'newsFlow' | 'marketBriefing' | 'watchlist' }
+  | { kind: 'homeBoard'; source: CommunitySourceKey };
+
+function settingsCountChoices(min: number, max: number): number[] {
+  const out: number[] = [];
+  for (let n = min; n <= max; n += 1) out.push(n);
+  return out;
+}
+
 const APP_ICON_PREVIEW_IMAGE: Record<AppIconVariant, number> = {
   blue: require('@/assets/images/app-icon-blue.png'),
   green: require('@/assets/images/app-icon-green.png'),
@@ -751,30 +762,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     limitRowLast: {
       marginBottom: 0,
     },
-    homeCountControls: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      flexShrink: 0,
-    },
-    homeCountValue: {
-      minWidth: 28,
-      textAlign: 'right',
-      fontSize: sf(14),
-      fontWeight: '700',
-      color: theme.text,
-      fontVariant: ['tabular-nums'],
-    },
-    homeCountBtn: {
-      minWidth: 36,
-      minHeight: 32,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.green,
-    },
-    homeCountBtnText: { fontSize: sf(15), fontWeight: '700', color: '#FFFFFF', lineHeight: sf(18) },
     quotesSegmentOrderListWrap: {
       marginBottom: 2,
     },
@@ -1048,7 +1035,7 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
   const [quotesChangeColorConvention, setQuotesChangeColorConvention] =
     useState<QuotesChangeColorConvention>('korea');
   const [quotesChangeColorReady, setQuotesChangeColorReady] = useState(false);
-  const [quotesLimitPicker, setQuotesLimitPicker] = useState<'popular' | 'mcap' | 'coin' | null>(null);
+  const [countPicker, setCountPicker] = useState<SettingsCountPicker | null>(null);
 
   const [newsSegmentOrder, setNewsSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [newsSegmentOrderReady, setNewsSegmentOrderReady] = useState(false);
@@ -1110,10 +1097,91 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
 
   const accentSwatchPalette = useMemo(() => buildRainbowKoreanAccentPalette(), []);
 
-  const quotesPickerOptions = useMemo(() => {
-    if (!quotesLimitPicker) return [];
-    return quotesListCountChoicesForField(quotesLimitPicker);
-  }, [quotesLimitPicker]);
+  const countPickerOptions = useMemo(() => {
+    if (!countPicker) return [];
+    if (countPicker.kind === 'quotes') {
+      return quotesListCountChoicesForField(countPicker.field);
+    }
+    if (countPicker.kind === 'homeBoard') {
+      return settingsCountChoices(HOME_BOARD_DISPLAY_MIN, HOME_BOARD_DISPLAY_MAX);
+    }
+    if (countPicker.field === 'newsFlow') {
+      return settingsCountChoices(HOME_NEWS_FLOW_DISPLAY_MIN, HOME_NEWS_FLOW_DISPLAY_MAX);
+    }
+    if (countPicker.field === 'marketBriefing') {
+      return settingsCountChoices(HOME_MARKET_BRIEFING_DISPLAY_MIN, HOME_MARKET_BRIEFING_DISPLAY_MAX);
+    }
+    return settingsCountChoices(HOME_WATCHLIST_DISPLAY_MIN, HOME_WATCHLIST_DISPLAY_MAX);
+  }, [countPicker]);
+
+  const countPickerTitle = useMemo(() => {
+    if (!countPicker) return '';
+    if (countPicker.kind === 'quotes') {
+      if (countPicker.field === 'popular') return t('settingsQuotesPopularCountLabel');
+      if (countPicker.field === 'mcap') return t('settingsQuotesMcapCountLabel');
+      return t('settingsQuotesCoinCountLabel');
+    }
+    if (countPicker.kind === 'homeBoard') {
+      return t(communitySourceLabelId(countPicker.source));
+    }
+    if (countPicker.field === 'newsFlow') return t('settingsHomeNewsFlowDisplaySection');
+    if (countPicker.field === 'marketBriefing') return t('settingsHomeMarketBriefingDisplaySection');
+    return t('settingsHomeWatchlistDisplaySection');
+  }, [countPicker, t]);
+
+  const countPickerSelected = useMemo(() => {
+    if (!countPicker) return null;
+    if (countPicker.kind === 'quotes') {
+      if (countPicker.field === 'popular') return quotesListLimits.popularMax;
+      if (countPicker.field === 'mcap') return quotesListLimits.mcapMax;
+      return quotesListLimits.coinMax;
+    }
+    if (countPicker.kind === 'homeBoard') {
+      return homeBoardDisplayCounts[countPicker.source];
+    }
+    if (countPicker.field === 'newsFlow') return homeNewsFlowDisplayCount;
+    if (countPicker.field === 'marketBriefing') return homeMarketBriefingDisplayCount;
+    return homeWatchlistDisplayCount;
+  }, [
+    countPicker,
+    quotesListLimits,
+    homeBoardDisplayCounts,
+    homeNewsFlowDisplayCount,
+    homeMarketBriefingDisplayCount,
+    homeWatchlistDisplayCount,
+  ]);
+
+  const applyCountPickerValue = useCallback(
+    (n: number) => {
+      if (!countPicker) return;
+      if (countPicker.kind === 'quotes') {
+        setQuotesListLimits((prev) => {
+          const patch =
+            countPicker.field === 'popular'
+              ? { popularMax: n }
+              : countPicker.field === 'mcap'
+                ? { mcapMax: n }
+                : { coinMax: n };
+          const next = normalizeQuotesListLimits({ ...prev, ...patch });
+          void saveQuotesListLimits(next);
+          return next;
+        });
+      } else if (countPicker.kind === 'homeBoard') {
+        void saveHomeBoardDisplayCountForSource(countPicker.source, n).then(setHomeBoardDisplayCounts);
+      } else if (countPicker.field === 'newsFlow') {
+        setHomeNewsFlowDisplayCount(n);
+        void saveHomeNewsFlowDisplayCount(n);
+      } else if (countPicker.field === 'marketBriefing') {
+        setHomeMarketBriefingDisplayCount(n);
+        void saveHomeMarketBriefingDisplayCount(n);
+      } else {
+        setHomeWatchlistDisplayCount(n);
+        void saveHomeWatchlistDisplayCount(n);
+      }
+      setCountPicker(null);
+    },
+    [countPicker],
+  );
 
   const quotesChangeColorPreview = useMemo(
     () => getQuoteChangeColors(quotesChangeColorConvention, effectiveColorScheme),
@@ -1255,30 +1323,10 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     setHomeNewsFlowDisplayReady(true);
   }, []);
 
-  const bumpHomeNewsFlowDisplayCount = useCallback(async (delta: number) => {
-    const v = await loadHomeNewsFlowDisplayCount();
-    const next = Math.min(
-      HOME_NEWS_FLOW_DISPLAY_MAX,
-      Math.max(HOME_NEWS_FLOW_DISPLAY_MIN, v + delta),
-    );
-    await saveHomeNewsFlowDisplayCount(next);
-    setHomeNewsFlowDisplayCount(next);
-  }, []);
-
   const reloadHomeWatchlistDisplayPref = useCallback(async () => {
     const v = await loadHomeWatchlistDisplayCount();
     setHomeWatchlistDisplayCount(v);
     setHomeWatchlistDisplayReady(true);
-  }, []);
-
-  const bumpHomeWatchlistDisplayCount = useCallback(async (delta: number) => {
-    const v = await loadHomeWatchlistDisplayCount();
-    const next = Math.min(
-      HOME_WATCHLIST_DISPLAY_MAX,
-      Math.max(HOME_WATCHLIST_DISPLAY_MIN, v + delta),
-    );
-    await saveHomeWatchlistDisplayCount(next);
-    setHomeWatchlistDisplayCount(next);
   }, []);
 
   const reloadHomeBoardDisplayPref = useCallback(async () => {
@@ -1287,33 +1335,10 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     setHomeBoardDisplayReady(true);
   }, []);
 
-  const bumpHomeBoardDisplayCountForSource = useCallback(
-    async (source: CommunitySourceKey, delta: number) => {
-      const current = await loadHomeBoardDisplayCounts();
-      const nextValue = Math.min(
-        HOME_BOARD_DISPLAY_MAX,
-        Math.max(HOME_BOARD_DISPLAY_MIN, current[source] + delta),
-      );
-      const next = await saveHomeBoardDisplayCountForSource(source, nextValue);
-      setHomeBoardDisplayCounts(next);
-    },
-    [],
-  );
-
   const reloadHomeMarketBriefingDisplayPref = useCallback(async () => {
     const v = await loadHomeMarketBriefingDisplayCount();
     setHomeMarketBriefingDisplayCount(v);
     setHomeMarketBriefingDisplayReady(true);
-  }, []);
-
-  const bumpHomeMarketBriefingDisplayCount = useCallback(async (delta: number) => {
-    const v = await loadHomeMarketBriefingDisplayCount();
-    const next = Math.min(
-      HOME_MARKET_BRIEFING_DISPLAY_MAX,
-      Math.max(HOME_MARKET_BRIEFING_DISPLAY_MIN, v + delta),
-    );
-    await saveHomeMarketBriefingDisplayCount(next);
-    setHomeMarketBriefingDisplayCount(next);
   }, []);
 
   const reloadAppIconPref = useCallback(async () => {
@@ -1500,7 +1525,7 @@ clearCalendarCache();
                   <View style={[styles.limitRow, { marginTop: 8 }]}>
                     <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
                     <Pressable
-                      onPress={() => setQuotesLimitPicker('popular')}
+                      onPress={() => setCountPicker({ kind: 'quotes', field: 'popular' })}
                       style={styles.limitPickerTrigger}
                       accessibilityRole="button"
                       accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
@@ -1511,7 +1536,7 @@ clearCalendarCache();
                   <View style={styles.limitRow}>
                     <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
                     <Pressable
-                      onPress={() => setQuotesLimitPicker('mcap')}
+                      onPress={() => setCountPicker({ kind: 'quotes', field: 'mcap' })}
                       style={styles.limitPickerTrigger}
                       accessibilityRole="button"
                       accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
@@ -1522,7 +1547,7 @@ clearCalendarCache();
                   <View style={[styles.limitRow, styles.limitRowLast]}>
                     <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
                     <Pressable
-                      onPress={() => setQuotesLimitPicker('coin')}
+                      onPress={() => setCountPicker({ kind: 'quotes', field: 'coin' })}
                       style={styles.limitPickerTrigger}
                       accessibilityRole="button"
                       accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
@@ -2062,96 +2087,44 @@ clearCalendarCache();
                 <>
                   <View style={[styles.limitRow, { marginTop: 8 }]}>
                     <Text style={styles.prefLabel}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
-                    <View style={styles.homeCountControls}>
-                      <Text style={styles.homeCountValue}>{homeNewsFlowDisplayCount}</Text>
-                      <Pressable
-                        onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
-                        disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('settingsHomeNewsFlowDisplayValue', {
-                          count: String(homeNewsFlowDisplayCount),
-                        })}>
-                        <Text style={styles.homeCountBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeNewsFlowDisplayCount(1)}
-                        disabled={homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.homeCountBtnText}>+</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable
+                      onPress={() => setCountPicker({ kind: 'home', field: 'newsFlow' })}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsHomeNewsFlowDisplayValue', {
+                        count: String(homeNewsFlowDisplayCount),
+                      })}>
+                      <Text style={styles.limitPickerTriggerText}>{homeNewsFlowDisplayCount}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
                   </View>
 
                   <View style={styles.limitRow}>
                     <Text style={styles.prefLabel}>{t('settingsHomeMarketBriefingDisplaySection')}</Text>
-                    <View style={styles.homeCountControls}>
-                      <Text style={styles.homeCountValue}>{homeMarketBriefingDisplayCount}</Text>
-                      <Pressable
-                        onPress={() => void bumpHomeMarketBriefingDisplayCount(-1)}
-                        disabled={homeMarketBriefingDisplayCount <= HOME_MARKET_BRIEFING_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeMarketBriefingDisplayCount <= HOME_MARKET_BRIEFING_DISPLAY_MIN || pressed) && {
-                            opacity: 0.55,
-                          },
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('settingsHomeMarketBriefingDisplayValue', {
-                          count: String(homeMarketBriefingDisplayCount),
-                        })}>
-                        <Text style={styles.homeCountBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeMarketBriefingDisplayCount(1)}
-                        disabled={homeMarketBriefingDisplayCount >= HOME_MARKET_BRIEFING_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeMarketBriefingDisplayCount >= HOME_MARKET_BRIEFING_DISPLAY_MAX || pressed) && {
-                            opacity: 0.55,
-                          },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.homeCountBtnText}>+</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable
+                      onPress={() => setCountPicker({ kind: 'home', field: 'marketBriefing' })}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsHomeMarketBriefingDisplayValue', {
+                        count: String(homeMarketBriefingDisplayCount),
+                      })}>
+                      <Text style={styles.limitPickerTriggerText}>{homeMarketBriefingDisplayCount}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
                   </View>
 
                   <View style={styles.limitRow}>
                     <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
-                    <View style={styles.homeCountControls}>
-                      <Text style={styles.homeCountValue}>{homeWatchlistDisplayCount}</Text>
-                      <Pressable
-                        onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
-                        disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('settingsHomeWatchlistDisplayValue', {
-                          count: String(homeWatchlistDisplayCount),
-                        })}>
-                        <Text style={styles.homeCountBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeWatchlistDisplayCount(1)}
-                        disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.homeCountBtnText}>+</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable
+                      onPress={() => setCountPicker({ kind: 'home', field: 'watchlist' })}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsHomeWatchlistDisplayValue', {
+                        count: String(homeWatchlistDisplayCount),
+                      })}>
+                      <Text style={styles.limitPickerTriggerText}>{homeWatchlistDisplayCount}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
                   </View>
 
                   <Text style={[styles.prefLabel, { marginTop: 4 }]}>
@@ -2168,33 +2141,17 @@ clearCalendarCache();
                           <Text style={[styles.prefLabel, styles.boardSubLabel]}>
                             {t(communitySourceLabelId(source))}
                           </Text>
-                          <View style={styles.homeCountControls}>
-                            <Text style={styles.homeCountValue}>{count}</Text>
-                            <Pressable
-                              onPress={() => void bumpHomeBoardDisplayCountForSource(source, -1)}
-                              disabled={count <= HOME_BOARD_DISPLAY_MIN}
-                              style={({ pressed }) => [
-                                styles.homeCountBtn,
-                                (count <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                              ]}
-                              accessibilityRole="button"
-                              accessibilityLabel={t('settingsHomeBoardDisplaySourceValue', {
-                                board: t(communitySourceLabelId(source)),
-                                count: String(count),
-                              })}>
-                              <Text style={styles.homeCountBtnText}>−</Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => void bumpHomeBoardDisplayCountForSource(source, 1)}
-                              disabled={count >= HOME_BOARD_DISPLAY_MAX}
-                              style={({ pressed }) => [
-                                styles.homeCountBtn,
-                                (count >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                              ]}
-                              accessibilityRole="button">
-                              <Text style={styles.homeCountBtnText}>+</Text>
-                            </Pressable>
-                          </View>
+                          <Pressable
+                            onPress={() => setCountPicker({ kind: 'homeBoard', source })}
+                            style={styles.limitPickerTrigger}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('settingsHomeBoardDisplaySourceValue', {
+                              board: t(communitySourceLabelId(source)),
+                              count: String(count),
+                            })}>
+                            <Text style={styles.limitPickerTriggerText}>{count}</Text>
+                            <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                          </Pressable>
                         </View>
                       );
                     })}
@@ -2247,50 +2204,24 @@ clearCalendarCache();
 
       </WebWheelScrollView>
       <Modal
-        visible={quotesLimitPicker != null}
+        visible={countPicker != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setQuotesLimitPicker(null)}>
+        onRequestClose={() => setCountPicker(null)}>
         <View style={styles.limitPickerBackdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setQuotesLimitPicker(null)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCountPicker(null)} />
           <View style={styles.limitPickerSheet}>
-            <Text style={styles.limitPickerTitle}>
-              {quotesLimitPicker === 'popular'
-                ? t('settingsQuotesPopularCountLabel')
-                : quotesLimitPicker === 'mcap'
-                  ? t('settingsQuotesMcapCountLabel')
-                  : quotesLimitPicker === 'coin'
-                    ? t('settingsQuotesCoinCountLabel')
-                    : ''}
-            </Text>
+            <Text style={styles.limitPickerTitle}>{countPickerTitle}</Text>
             <ScrollView
               style={styles.limitPickerScroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator>
-              {quotesPickerOptions.map((n) => {
-                const sel =
-                  quotesLimitPicker === 'popular'
-                    ? quotesListLimits.popularMax === n
-                    : quotesLimitPicker === 'mcap'
-                      ? quotesListLimits.mcapMax === n
-                      : quotesListLimits.coinMax === n;
+              {countPickerOptions.map((n) => {
+                const sel = countPickerSelected === n;
                 return (
                   <Pressable
                     key={n}
-                    onPress={() => {
-                      setQuotesListLimits((prev) => {
-                        const patch =
-                          quotesLimitPicker === 'popular'
-                            ? { popularMax: n }
-                            : quotesLimitPicker === 'mcap'
-                              ? { mcapMax: n }
-                              : { coinMax: n };
-                        const next = normalizeQuotesListLimits({ ...prev, ...patch });
-                        void saveQuotesListLimits(next);
-                        return next;
-                      });
-                      setQuotesLimitPicker(null);
-                    }}
+                    onPress={() => applyCountPickerValue(n)}
                     style={[styles.limitPickerOption, sel && styles.limitPickerOptionActive]}>
                     <Text style={[styles.limitPickerOptionText, sel && styles.limitPickerOptionTextActive]}>{n}</Text>
                   </Pressable>

@@ -98,9 +98,10 @@ import type {
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import {
-  HOME_BOARD_DISPLAY_DEFAULT,
-  loadHomeBoardDisplayCount,
+  defaultHomeBoardDisplayCounts,
+  loadHomeBoardDisplayCounts,
   subscribeHomeBoardDisplayCountChanged,
+  type HomeBoardDisplayCounts,
 } from '@/services/homeBoardDisplayPreference';
 import {
   HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
@@ -325,7 +326,9 @@ export function HomeFocusContent({
   const [error, setError] = useState<string | null>(null);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
-  const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [boardDisplayCounts, setBoardDisplayCounts] = useState<HomeBoardDisplayCounts>(
+    defaultHomeBoardDisplayCounts,
+  );
   const [marketBriefingDisplayCount, setMarketBriefingDisplayCount] = useState(
     HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
   );
@@ -409,9 +412,10 @@ export function HomeFocusContent({
         selectedYmd === todayYmd
           ? Promise.all(
               COMMUNITY_SOURCES.map((source) =>
-                fetchSignalCommunity({ source, limit: boardDisplayCount }, { cacheMode }).catch(
-                  () => ({ items: [] as SignalApiCommunityPost[] }),
-                ),
+                fetchSignalCommunity(
+                  { source, limit: boardDisplayCounts[source] },
+                  { cacheMode },
+                ).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
               ),
             ).then((pages) => ({
               items: sortBoardPostsByNewest(
@@ -495,7 +499,7 @@ export function HomeFocusContent({
       if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCounts]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -538,12 +542,12 @@ export function HomeFocusContent({
     const [newsFlow, watchlist, board, marketBriefing] = await Promise.all([
       loadHomeNewsFlowDisplayCount(),
       loadHomeWatchlistDisplayCount(),
-      loadHomeBoardDisplayCount(),
+      loadHomeBoardDisplayCounts(),
       loadHomeMarketBriefingDisplayCount(),
     ]);
     setNewsFlowDisplayCount(newsFlow);
     setWatchlistDisplayCount(watchlist);
-    setBoardDisplayCount(board);
+    setBoardDisplayCounts(board);
     setMarketBriefingDisplayCount(marketBriefing);
     setHomeDisplayPrefsReady(true);
   }, []);

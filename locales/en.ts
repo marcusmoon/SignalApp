@@ -401,6 +401,8 @@ export const en = {
   a11yAlertsUnread: 'Notifications, new items',
   a11yCalendar: 'Invest calendar',
   a11ySettings: 'Settings',
+  a11yQuickSettings: 'Language and appearance',
+  quickSettingsTitle: 'Quick settings',
   a11yNewsFilter: 'Open news source filter',
   a11yCallsFilter: 'Open conference call watchlist filter',
 

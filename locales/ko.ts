@@ -402,7 +402,7 @@ export const ko = {
   a11ySettings: '설정',
   a11yQuickSettings: '언어와 화면 모드',
   quickSettingsTitle: '빠른 설정',
-  quickSettingsDisplayLink: '표시 설정 더 보기',
+  quickSettingsDisplayLink: '설정 더 보기',
   a11yNewsFilter: '뉴스 제공사 필터 열기',
   a11yCallsFilter: '어닝 관심종목 필터 열기',
 

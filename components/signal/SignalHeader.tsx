@@ -110,11 +110,10 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
             </Pressable>
             <Pressable
               onPress={openQuickSettings}
-              style={({ pressed }) => [styles.quickSettingsBtn, pressed && styles.quickSettingsBtnPressed]}
-              hitSlop={6}
+              style={styles.iconBtn}
               accessibilityRole="button"
               accessibilityLabel={t('a11yQuickSettings')}>
-              <Ionicons name="options-outline" size={17} color={theme.textDim} />
+              <Ionicons name="options-outline" size={18} color={theme.textMuted} />
             </Pressable>
           </View>
         </View>
@@ -148,7 +147,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       alignItems: 'center',
       flexShrink: 0,
       marginRight: -2,
-      gap: 6,
+      gap: 8,
     },
     iconBtn: {
       width: 36,
@@ -157,16 +156,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bgElevated,
-    },
-    quickSettingsBtn: {
-      width: 32,
-      height: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: 2,
-    },
-    quickSettingsBtnPressed: {
-      opacity: 0.72,
     },
     iconBtnInner: {
       width: 18,

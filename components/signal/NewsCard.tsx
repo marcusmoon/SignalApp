@@ -436,7 +436,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       fontWeight: ft.titleWeight,
       marginBottom: 0,
-      lineHeight: ft.ff(22),
+      lineHeight: ft.ff(FEED_ARTICLE_TITLE_LINE_PX),
     },
     titleLast: {
       marginBottom: ft.pad(6),

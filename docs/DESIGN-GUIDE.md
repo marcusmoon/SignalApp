@@ -34,8 +34,8 @@
 
 | 계층 | 상수·패턴 | 용도 |
 |---|---|---|
-| 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) · line `FEED_ARTICLE_TITLE_LINE_PX` (22) | 뉴스·공시·유튜브·게시판 리스트 |
-| 다이제스트 제목 | `FEED_DIGEST_TITLE_PX` (14) | 홈·이슈·DigestPager |
+| 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) · line `FEED_ARTICLE_TITLE_LINE_PX` (22) | 뉴스·공시·게시판 리스트 |
+| 다이제스트·유튜브 제목 | `FEED_DIGEST_TITLE_PX` (14) · line `FEED_DIGEST_TITLE_LINE_PX` (20) | 홈·이슈·**유튜브**(썸네일 행) |
 | 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드 |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처·칩 |

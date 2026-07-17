@@ -137,7 +137,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 - 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 전문은 시장 브리핑 상세
-- 홈 노출 개수: 설정 → 표시 (`homeMarketBriefingDisplayPreference`, 기본 2 · 최대 4)
+- 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
 - 상세(`MarketBriefingBlock` 등): 섹터·매크로·출처 본문은 말줄임 없이 전체 표시
 
 ## 피드·리스트·다이제스트

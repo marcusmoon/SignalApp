@@ -29,7 +29,7 @@ import {
 } from '@/constants/screenLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
@@ -544,7 +544,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       height: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 8,
+      borderRadius: UI_RADIUS_CARD,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,

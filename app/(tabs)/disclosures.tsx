@@ -12,6 +12,7 @@ import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { DisclosureCard } from '@/components/disclosures/DisclosureCard';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -42,6 +43,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import {
   disclosureMeaningLabelId,
+  disclosureProviderLabel,
   isImportantDisclosure,
   resolveDisclosureTypeCategory,
 } from '@/domain/disclosures';
@@ -53,7 +55,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatFeedItemTimeLabel, toYmd } from '@/utils/date';
+import { toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { firstRouteParam } from '@/utils/routeSearchParams';
@@ -76,10 +78,6 @@ function parseDisclosureMarketParam(raw: string | string[] | undefined): FilterK
   return firstRouteParam(raw) === 'kr' ? 'kr' : 'us';
 }
 
-function disclosureTime(item: SignalApiDisclosure, locale: string): string {
-  return formatFeedItemTimeLabel(item.filedAt, locale as AppLocale);
-}
-
 function disclosureDate(value: string | null | undefined, locale: string): string {
   if (!value) return '—';
   const date = new Date(value);
@@ -89,12 +87,6 @@ function disclosureDate(value: string | null | undefined, locale: string): strin
     month: 'short',
     day: 'numeric',
   }).format(date);
-}
-
-function providerLabel(item: SignalApiDisclosure): string {
-  if (item.provider === 'sec') return 'SEC';
-  if (item.provider === 'dart') return 'DART';
-  return String(item.provider || '—').toUpperCase();
 }
 
 export default function DisclosuresScreen() {
@@ -433,63 +425,29 @@ export default function DisclosuresScreen() {
   const renderDisclosureCard = useCallback(
     ({ item, index }: { item: SignalApiDisclosure; index: number }) => {
       const selected = useTwoPane && selectedDisclosureId === item.id;
-      const typeCategory = resolveDisclosureTypeCategory(item);
-      const meaningId = disclosureMeaningLabelId(typeCategory);
-      const important = isImportantDisclosure(item);
       return (
         <View
           style={groupedFeedRowShell(theme, {
             isFirst: index === 0,
             isLast: index === items.length - 1,
           })}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.card,
-              selected && styles.cardSelected,
-              pressed && styles.cardPressed,
-            ]}
+          <DisclosureCard
+            layout="grouped"
+            compactMeta
+            item={item}
+            selected={selected}
             onPress={() => {
               if (useTwoPane) {
                 setSelectedDisclosureId(item.id);
                 return;
               }
               router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href);
-            }}>
-            <View style={styles.cardTop}>
-              <View style={styles.badges}>
-                <Text style={styles.badge}>{providerLabel(item)}</Text>
-                {important ? <Text style={styles.badge}>{t('disclosuresImportantBadge')}</Text> : null}
-                {typeCategory !== 'other' ? (
-                  <Text style={styles.badgeMuted} numberOfLines={1}>
-                    {t(meaningId)}
-                  </Text>
-                ) : null}
-              </View>
-              <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
-            </View>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            {item.summary ? (
-              <Text style={styles.summary} numberOfLines={useTwoPane ? 2 : 3}>
-                {item.summary}
-              </Text>
-            ) : null}
-            <View style={styles.cardBottom}>
-              <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
-              {item.url ? (
-                <Pressable
-                  onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
-                  hitSlop={10}
-                  style={styles.openBtn}>
-                  <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
-                  <FontAwesome name="external-link" size={12} color={theme.green} />
-                </Pressable>
-              ) : null}
-            </View>
-          </Pressable>
+            }}
+          />
         </View>
       );
     },
-    [items.length, locale, router, selectedDisclosureId, styles, t, theme, useTwoPane],
+    [items.length, router, selectedDisclosureId, theme, useTwoPane],
   );
 
   const detailPaneEl = useTwoPane ? (
@@ -498,7 +456,7 @@ export default function DisclosuresScreen() {
         <WebWheelScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
           <View style={styles.detailHero}>
             <View style={styles.badges}>
-              <Text style={styles.badge}>{providerLabel(selectedDisclosure)}</Text>
+              <Text style={styles.badge}>{disclosureProviderLabel(selectedDisclosure.provider)}</Text>
               {isImportantDisclosure(selectedDisclosure) ? (
                 <Text style={styles.badge}>{t('disclosuresImportantBadge')}</Text>
               ) : null}
@@ -533,7 +491,7 @@ export default function DisclosuresScreen() {
             </View>
             <View style={styles.detailFactRow}>
               <Text style={styles.detailFactLabel}>{t('disclosuresProvider')}</Text>
-              <Text style={styles.detailFactValue}>{providerLabel(selectedDisclosure)}</Text>
+              <Text style={styles.detailFactValue}>{disclosureProviderLabel(selectedDisclosure.provider)}</Text>
             </View>
           </View>
           {selectedDisclosure.summary ? (
@@ -760,14 +718,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '600',
       textAlign: 'center',
     },
-    card: {
-      padding: ft.pad(14),
-    },
-    cardSelected: {
-      backgroundColor: theme.greenDim,
-    },
-    cardPressed: { backgroundColor: theme.bgElevated },
-    cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 },
     badges: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
     badge: {
       color: theme.green,
@@ -791,24 +741,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
       overflow: 'hidden',
     },
-    time: { color: theme.textDim, fontSize: ft.ff(11), fontWeight: ft.metaWeight },
-    cardTitle: {
-      color: theme.text,
-      fontSize: ft.ff(15),
-      lineHeight: ft.ff(21),
-      fontWeight: ft.titleWeight,
-    },
-    summary: {
-      marginTop: 7,
-      color: theme.textMuted,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(19),
-      fontWeight: ft.bodyWeight,
-    },
-    cardBottom: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-    symbol: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
-    openBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    openText: { color: theme.green, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
     detailPane: {
       flex: 0.55,
       minWidth: 0,

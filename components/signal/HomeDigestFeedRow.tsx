@@ -141,7 +141,7 @@ function makeStyles(
     },
     title: {
       fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: isSignal ? sf(22) : sf(20),
+      lineHeight: isSignal ? sf(22) : ft.ff(FEED_DIGEST_TITLE_LINE_PX),
       fontWeight: isSignal ? ft.signalTitleWeight : ft.titleWeight,
       color: theme.text,
     },

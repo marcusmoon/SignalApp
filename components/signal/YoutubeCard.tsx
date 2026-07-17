@@ -5,10 +5,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import {
-  FEED_ARTICLE_TITLE_LINE_PX,
-  FEED_ARTICLE_TITLE_PX,
   FEED_BODY_PX,
   FEED_CHIP_PX,
+  FEED_DIGEST_TITLE_LINE_PX,
+  FEED_DIGEST_TITLE_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
@@ -164,10 +164,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       overflow: 'hidden',
     },
     title: {
-      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
+      fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: ft.ff(FEED_ARTICLE_TITLE_LINE_PX),
+      lineHeight: ft.ff(FEED_DIGEST_TITLE_LINE_PX),
       marginBottom: 4,
     },
     channel: {

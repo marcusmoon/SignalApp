@@ -12,6 +12,11 @@ import {
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
 import type { AppTheme } from '@/constants/theme';
+import {
+  BOTTOM_SHEET_BACKDROP_COLOR,
+  BOTTOM_SHEET_MAX_HEIGHT,
+  BOTTOM_SHEET_SCROLL_STYLE,
+} from '@/constants/bottomSheetLayout';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG, UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -126,7 +131,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: BOTTOM_SHEET_BACKDROP_COLOR,
       justifyContent: 'flex-end',
     },
     sheet: {
@@ -137,7 +142,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderBottomWidth: 0,
       borderColor: theme.border,
       paddingHorizontal: 16,
-      maxHeight: '78%',
+      maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     },
     grab: {
       alignSelf: 'center',
@@ -177,8 +182,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       opacity: 0.85,
     },
     scroll: {
-      flexGrow: 0,
-      maxHeight: 480,
+      ...BOTTOM_SHEET_SCROLL_STYLE,
     },
     scrollContent: {
       paddingBottom: 8,

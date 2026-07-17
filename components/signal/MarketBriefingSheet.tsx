@@ -7,6 +7,11 @@ import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { COMFORT_GAP_LG, COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import type { AppTheme } from '@/constants/theme';
+import {
+  BOTTOM_SHEET_BACKDROP_COLOR,
+  BOTTOM_SHEET_MAX_HEIGHT,
+  BOTTOM_SHEET_SCROLL_STYLE,
+} from '@/constants/bottomSheetLayout';
 import { UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -86,7 +91,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: BOTTOM_SHEET_BACKDROP_COLOR,
       justifyContent: 'flex-end',
     },
     sheet: {
@@ -97,7 +102,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomWidth: 0,
       borderColor: theme.border,
       paddingHorizontal: 16,
-      maxHeight: '88%',
+      maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     },
     grab: {
       alignSelf: 'center',
@@ -137,7 +142,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       opacity: 0.85,
     },
     scroll: {
-      flexGrow: 0,
+      ...BOTTOM_SHEET_SCROLL_STYLE,
     },
     scrollContent: {
       paddingBottom: 8,

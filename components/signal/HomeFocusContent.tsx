@@ -410,8 +410,11 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
+      const isDateChange = loadedYmdRef.current !== selectedYmd;
       // Clear below-fold sections so prior-date data does not linger during wave 2.
-      setBriefings([]);
+      if (isDateChange) {
+        setBriefings([]);
+      }
       setDisclosures([]);
       setCalendarEvents([]);
       setBoardPosts([]);
@@ -431,8 +434,8 @@ export function HomeFocusContent({
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
 
-      /** Wave 1 — above-the-fold: briefing, issues, watchlist quotes. */
-      const [todayBriefing, nextIssues, quoteRows] = await Promise.all([
+      /** Wave 1 — above-the-fold: briefing, issues, market briefings, watchlist quotes. */
+      const [todayBriefing, nextIssues, quoteRows, briefingRows] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -440,6 +443,10 @@ export function HomeFocusContent({
               () => [] as SignalApiMarketQuote[],
             )
           : Promise.resolve([] as SignalApiMarketQuote[]),
+        fetchSignalMarketBriefings(
+          { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
+          { cacheMode },
+        ).catch(() => [] as SignalApiMarketBriefing[]),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -456,14 +463,15 @@ export function HomeFocusContent({
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
       );
+      setBriefings(
+        uniqueVisibleBriefings(
+          [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
+        ).slice(0, HOME_MARKET_BRIEFING_DISPLAY_MAX),
+      );
 
       /** Wave 2 — below-fold; runs after first paint (load returns after wave 1). */
       void (async () => {
-        const [briefings, disclosurePage, calendarRows, boardPage] = await Promise.all([
-          fetchSignalMarketBriefings(
-            { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
-            { cacheMode },
-          ).catch(() => []),
+        const [disclosurePage, calendarRows, boardPage] = await Promise.all([
           fetchSignalDisclosureDigests(
             { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
             { cacheMode },
@@ -480,11 +488,6 @@ export function HomeFocusContent({
         ]);
 
         if (generation !== loadGenerationRef.current) return;
-        setBriefings(
-          uniqueVisibleBriefings(
-            [...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
-          ).slice(0, HOME_MARKET_BRIEFING_DISPLAY_MAX),
-        );
         setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
         setCalendarEvents(
           filterHomeCalendarEvents(

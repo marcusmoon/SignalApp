@@ -1,7 +1,9 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { QuickSettingsSheet } from '@/components/signal/QuickSettingsSheet';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -27,6 +29,15 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
   const styles = useMemo(() => makeStyles(theme, scaleFont, compact, fullWidth), [compact, fullWidth, theme, scaleFont]);
   const brandAccent = theme.green;
   const { alerts: alertsHasUnread } = useFeedUnreadBadges();
+  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
+
+  const openQuickSettings = useCallback(() => {
+    setQuickSettingsOpen(true);
+  }, []);
+
+  const closeQuickSettings = useCallback(() => {
+    setQuickSettingsOpen(false);
+  }, []);
 
   const openAlerts = () => {
     if (ipadNav.isAvailable) {
@@ -64,40 +75,50 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
   );
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.topRow}>
-        {onBrandPress ? (
-          <Pressable
-            onPress={onBrandPress}
-            style={({ pressed }) => [styles.logoRow, pressed && styles.logoRowPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('fabRefreshA11y')}>
-            {logo}
-          </Pressable>
-        ) : (
-          <View style={styles.logoRow}>{logo}</View>
-        )}
-        <View style={styles.headerActions}>
-          <Pressable
-            onPress={openAlerts}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
-            <View style={styles.iconBtnInner}>
-              <FontAwesome name="bell" size={18} color={theme.textMuted} />
-              {alertsHasUnread ? <View style={styles.alertDot} /> : null}
-            </View>
-          </Pressable>
-          <Pressable
-            onPress={openCalendar}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('a11yCalendar')}>
-            <FontAwesome name="calendar" size={18} color={theme.textMuted} />
-          </Pressable>
+    <>
+      <View style={styles.wrap}>
+        <View style={styles.topRow}>
+          {onBrandPress ? (
+            <Pressable
+              onPress={onBrandPress}
+              style={({ pressed }) => [styles.logoRow, pressed && styles.logoRowPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('fabRefreshA11y')}>
+              {logo}
+            </Pressable>
+          ) : (
+            <View style={styles.logoRow}>{logo}</View>
+          )}
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={openQuickSettings}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11yQuickSettings')}>
+              <FontAwesome name="sliders" size={18} color={theme.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={openAlerts}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
+              <View style={styles.iconBtnInner}>
+                <FontAwesome name="bell" size={18} color={theme.textMuted} />
+                {alertsHasUnread ? <View style={styles.alertDot} /> : null}
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={openCalendar}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11yCalendar')}>
+              <FontAwesome name="calendar" size={18} color={theme.textMuted} />
+            </Pressable>
+          </View>
         </View>
       </View>
-    </View>
+      <QuickSettingsSheet visible={quickSettingsOpen} onClose={closeQuickSettings} />
+    </>
   );
 }
 

@@ -400,6 +400,8 @@ export const ko = {
   a11yAlertsUnread: '알림, 새 알림 있음',
   a11yCalendar: '투자 캘린더',
   a11ySettings: '설정',
+  a11yQuickSettings: '언어와 화면 모드',
+  quickSettingsTitle: '빠른 설정',
   a11yNewsFilter: '뉴스 제공사 필터 열기',
   a11yCallsFilter: '어닝 관심종목 필터 열기',
 

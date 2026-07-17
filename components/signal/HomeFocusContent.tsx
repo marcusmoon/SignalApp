@@ -62,6 +62,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
+import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import {
   disclosureDigestSourceIconEntries,
@@ -347,6 +348,7 @@ export function HomeFocusContent({
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
+  const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
     [calendarEvents],
@@ -629,6 +631,28 @@ export function HomeFocusContent({
     [ipadNav, router, selectedYmd],
   );
 
+  const openSignalSheet = useCallback((row: SignalApiMarketBriefing) => {
+    setBriefingSheet(row);
+  }, []);
+
+  const closeBriefingSheet = useCallback(() => {
+    setBriefingSheet(null);
+  }, []);
+
+  const briefingSheetTitle = useMemo(
+    () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
+    [briefingSheet],
+  );
+
+  const briefingSheetSessionLabel = useMemo(() => {
+    if (!briefingSheet) return undefined;
+    const session = HOME_SIGNAL_SESSIONS.find(
+      (candidate) =>
+        candidate.market === briefingSheet.market && candidate.session === briefingSheet.session,
+    );
+    return session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle');
+  }, [briefingSheet, t]);
+
   const openQuotes = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showTabs();
@@ -840,7 +864,7 @@ export function HomeFocusContent({
                 trailText={sessionLabel}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
-                onPress={() => openSignal(row)}
+                onPress={() => openSignalSheet(row)}
                 footerLead={
                   <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
                     <CommunitySourceMark
@@ -856,7 +880,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [locale, openSignal, showIssueSummary, styles, t, theme],
+    [locale, openSignalSheet, showIssueSummary, styles, t, theme],
   );
 
   const renderDisclosureCard = useCallback(
@@ -1198,6 +1222,13 @@ export function HomeFocusContent({
         digestSummary={digestSheetSummary}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
+      />
+      <MarketBriefingSheet
+        visible={briefingSheet != null}
+        briefing={briefingSheet}
+        title={briefingSheetTitle}
+        sessionLabel={briefingSheetSessionLabel}
+        onClose={closeBriefingSheet}
       />
     </>
   );

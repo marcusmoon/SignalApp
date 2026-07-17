@@ -1,9 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
+import {
+  BOTTOM_SHEET_BACKDROP_COLOR,
+  BOTTOM_SHEET_MAX_HEIGHT,
+} from '@/constants/bottomSheetLayout';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -56,22 +61,28 @@ export function SignalDatePickerSheet({
               <Text style={styles.modalClose}>{t('calendarFilterClose')}</Text>
             </Pressable>
           </View>
-          <InvestMonthCalendar
-            year={calendarMonth.year}
-            month={calendarMonth.month}
-            selectedYmd={selectedYmd}
-            eventDates={eventDates}
-            onSelectYmd={onSelectYmd}
-            onPrevMonth={onPrevMonth}
-            onNextMonth={onNextMonth}
-            monthPrevA11y={t('calendarMonthPrevA11y')}
-            monthNextA11y={t('calendarMonthNextA11y')}
-            todayYmd={todayYmd}
-            maxYmd={maxYmd}
-            theme={theme}
-            locale={locale}
-            compact
-          />
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <InvestMonthCalendar
+              year={calendarMonth.year}
+              month={calendarMonth.month}
+              selectedYmd={selectedYmd}
+              eventDates={eventDates}
+              onSelectYmd={onSelectYmd}
+              onPrevMonth={onPrevMonth}
+              onNextMonth={onNextMonth}
+              monthPrevA11y={t('calendarMonthPrevA11y')}
+              monthNextA11y={t('calendarMonthNextA11y')}
+              todayYmd={todayYmd}
+              maxYmd={maxYmd}
+              theme={theme}
+              locale={locale}
+              compact
+            />
+          </ScrollView>
           <View style={styles.modalFoot}>
             <Pressable
               onPress={onGoToday}
@@ -91,18 +102,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     modalBackdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.58)',
+      backgroundColor: BOTTOM_SHEET_BACKDROP_COLOR,
       justifyContent: 'flex-end',
     },
     modalSheet: {
       backgroundColor: theme.bg,
-      borderTopLeftRadius: 18,
-      borderTopRightRadius: 18,
+      borderTopLeftRadius: UI_RADIUS_SHEET,
+      borderTopRightRadius: UI_RADIUS_SHEET,
       borderWidth: 1,
       borderBottomWidth: 0,
       borderColor: theme.border,
       paddingHorizontal: 16,
       paddingBottom: 16,
+      maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     },
     modalGrab: {
       alignSelf: 'center',
@@ -128,6 +140,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.green,
       fontSize: sf(14),
       fontWeight: '700',
+    },
+    modalBody: {
+      flexGrow: 0,
+      flexShrink: 1,
+      minHeight: 0,
+    },
+    modalBodyContent: {
+      paddingBottom: 4,
     },
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {

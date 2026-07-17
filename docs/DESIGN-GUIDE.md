@@ -55,6 +55,11 @@
 | `UI_RADIUS_CARD_LG` | 12 | 히어로·큰 카드 |
 | `UI_RADIUS_SEGMENT_OUTER` / `BTN` | 8 / 6 | (레거시 상수 · underline 세그먼트는 0) |
 | `UI_RADIUS_SHEET` | 14 | 바텀 시트 |
+
+### 바텀 시트 (`constants/bottomSheetLayout.ts`)
+
+slide-up Modal 시트(홈 다이제스트 상세·마켓 브리핑·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 70%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
+
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 
 pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.

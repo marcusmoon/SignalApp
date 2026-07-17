@@ -3,6 +3,12 @@ import { useMemo, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import {
+  BOTTOM_SHEET_BACKDROP_COLOR,
+  BOTTOM_SHEET_MAX_HEIGHT,
+  BOTTOM_SHEET_SCROLL_STYLE,
+} from '@/constants/bottomSheetLayout';
+import { UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -152,18 +158,18 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: BOTTOM_SHEET_BACKDROP_COLOR,
       justifyContent: 'flex-end',
     },
     sheet: {
       backgroundColor: theme.bg,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
+      borderTopLeftRadius: UI_RADIUS_SHEET,
+      borderTopRightRadius: UI_RADIUS_SHEET,
       borderWidth: 1,
       borderBottomWidth: 0,
       borderColor: theme.border,
       paddingHorizontal: 16,
-      maxHeight: '82%',
+      maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     },
     grab: {
       alignSelf: 'center',
@@ -208,8 +214,7 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 14,
     },
     scroll: {
-      flexGrow: 0,
-      maxHeight: 390,
+      ...BOTTOM_SHEET_SCROLL_STYLE,
     },
     scrollContent: {
       paddingBottom: 8,

@@ -957,11 +957,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 type SettingsScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
   embedded?: boolean;
+  /** My info 허브에서 진입 — iPhone pill 탭·iPad 서브탭 헤더만 표시 */
+  fromAccount?: boolean;
   /** Wide drill-in back — only set when opened from another right-pane screen. */
   onBack?: () => void;
 };
 
-export default function SettingsScreen({ embedded = false, onBack }: SettingsScreenProps) {
+export default function SettingsScreen({
+  embedded = false,
+  fromAccount: fromAccountProp,
+  onBack,
+}: SettingsScreenProps) {
   const {
     theme,
     effectiveColorScheme,
@@ -986,12 +992,15 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
   const router = useRouter();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const fromAccount = params.from === 'account';
+  const fromAccount =
+    fromAccountProp ??
+    (Array.isArray(params.from) ? params.from[0] : params.from) === 'account';
+  const showSettingsTabs = !fromAccount && (!useTwoPane || embedded);
   const settingsScrollTopPad =
     embedded || useTwoPane ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
-  const showAccountSubpaneChrome = Boolean(onBack);
+  const showAccountSubpaneChrome = Boolean(onBack) && fromAccount;
   const settingsTitle = t(
     SETTINGS_TABS.find((item) => item.key === selectedTab)?.labelId ?? 'screenSettings',
   );
@@ -1006,6 +1015,17 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     }
     router.replace('/account' as never);
   }, [ipadNav, onBack, router]);
+
+  const selectSettingsTab = useCallback(
+    (key: SettingsTab) => {
+      if (embedded && ipadNav.isAvailable) {
+        ipadNav.switchSettingsTab(key);
+        return;
+      }
+      setTab(key);
+    },
+    [embedded, ipadNav],
+  );
   const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
   const scrollResetKey = selectedTab;
 
@@ -1422,15 +1442,18 @@ clearCalendarCache();
     /** 상단 edge 없음 — 스택 헤더가 이미 안전 영역을 처리해 `edges.top`을 쓰면 헤더 아래 빈 여백이 커짐 */
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      {!embedded && !useTwoPane && !fromAccount ? (
+      {showSettingsTabs ? (
         <View style={styles.topFixed}>
+          {embedded && onBack ? (
+            <WideSubpaneHeader title={t('screenSettings')} onBack={returnToAccountHub} />
+          ) : null}
           <View style={styles.tabBar}>
           {SETTINGS_TABS.map((item) => {
             const selected = selectedTab === item.key;
             return (
               <Pressable
                 key={item.key}
-                onPress={() => setTab(item.key)}
+                onPress={() => selectSettingsTab(item.key)}
                 style={[styles.tabBtn, selected && styles.tabBtnActive]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}>

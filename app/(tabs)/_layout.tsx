@@ -422,6 +422,7 @@ function IpadWideTabLayout({
     symbolTicker,
     calendarFromAccount,
     alertsFromAccount,
+    settingsFromAccount,
     termsType,
     termsFromHistory: _termsFromHistory,
     widePaneCanGoBack,
@@ -456,7 +457,7 @@ function IpadWideTabLayout({
             ) : contentPane === 'account' ? (
               <AccountScreen embedded />
             ) : contentPane === 'settings' ? (
-              <SettingsScreen embedded onBack={subpaneBack} />
+              <SettingsScreen embedded fromAccount={settingsFromAccount} onBack={subpaneBack} />
             ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
               <TodayBriefingContent embedded date={todayBriefingDate} onBack={subpaneBack} />
             ) : contentPane === 'marketBriefing' ? (

@@ -104,12 +104,6 @@ import {
   type AppIconVariant,
 } from '@/services/appIconPreference';
 import {
-  loadMainEntry,
-  MAIN_ENTRY_DISPLAY_ORDER,
-  saveMainEntry,
-  type MainEntryKey,
-} from '@/services/mainEntryPreference';
-import {
   HOME_NEWS_FLOW_DISPLAY_MAX,
   HOME_NEWS_FLOW_DISPLAY_MIN,
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
@@ -126,10 +120,13 @@ import {
 import {
   HOME_BOARD_DISPLAY_MAX,
   HOME_BOARD_DISPLAY_MIN,
-  HOME_BOARD_DISPLAY_DEFAULT,
-  loadHomeBoardDisplayCount,
-  saveHomeBoardDisplayCount,
+  defaultHomeBoardDisplayCounts,
+  loadHomeBoardDisplayCounts,
+  saveHomeBoardDisplayCountForSource,
+  type HomeBoardDisplayCounts,
 } from '@/services/homeBoardDisplayPreference';
+import { COMMUNITY_SOURCES, type CommunitySourceKey } from '@/constants/communitySources';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
   HOME_MARKET_BRIEFING_DISPLAY_MAX,
   HOME_MARKET_BRIEFING_DISPLAY_MIN,
@@ -256,14 +253,6 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
   system: 'settingsAppearanceSystem',
   light: 'settingsAppearanceLight',
   dark: 'settingsAppearanceDark',
-};
-
-const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
-  home: 'settingsEntryHome',
-  news: 'settingsEntryNews',
-  signal: 'settingsEntrySignal',
-  quotes: 'settingsEntryQuotes',
-  more: 'settingsEntryMore',
 };
 
 const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
@@ -932,23 +921,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     appIconGrid: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: 10,
-      columnGap: 10,
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+      gap: 8,
       marginTop: 2,
     },
     appIconOption: {
-      width: '47%',
-      maxWidth: '47%',
-      flexGrow: 0,
-      flexShrink: 0,
+      flex: 1,
+      minWidth: 0,
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      padding: 12,
-      gap: 16,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     appIconOptionActive: {
       borderColor: theme.green,
@@ -956,8 +944,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
         theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
     },
     appIconPreview: {
-      width: 46,
-      height: 46,
+      width: 36,
+      height: 36,
       borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
@@ -969,11 +957,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       height: '100%',
     },
-    appIconLabel: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '700',
-      color: theme.text,
+    boardSubRows: {
+      marginTop: 4,
+      gap: 0,
+    },
+    boardSubLabel: {
+      paddingLeft: 10,
     },
   });
 }
@@ -1072,13 +1061,13 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
 
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
-  const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
-  const [mainEntryReady, setMainEntryReady] = useState(false);
   const [homeNewsFlowDisplayCount, setHomeNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
-  const [homeBoardDisplayCount, setHomeBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [homeBoardDisplayCounts, setHomeBoardDisplayCounts] = useState<HomeBoardDisplayCounts>(
+    defaultHomeBoardDisplayCounts,
+  );
   const [homeBoardDisplayReady, setHomeBoardDisplayReady] = useState(false);
   const [homeMarketBriefingDisplayCount, setHomeMarketBriefingDisplayCount] = useState(
     HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
@@ -1260,12 +1249,6 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     setMoreRefLinksReady(true);
   }, []);
 
-  const reloadMainEntryPref = useCallback(async () => {
-    const v = await loadMainEntry();
-    setMainEntry(v);
-    setMainEntryReady(true);
-  }, []);
-
   const reloadHomeNewsFlowDisplayPref = useCallback(async () => {
     const v = await loadHomeNewsFlowDisplayCount();
     setHomeNewsFlowDisplayCount(v);
@@ -1299,20 +1282,23 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
   }, []);
 
   const reloadHomeBoardDisplayPref = useCallback(async () => {
-    const v = await loadHomeBoardDisplayCount();
-    setHomeBoardDisplayCount(v);
+    const v = await loadHomeBoardDisplayCounts();
+    setHomeBoardDisplayCounts(v);
     setHomeBoardDisplayReady(true);
   }, []);
 
-  const bumpHomeBoardDisplayCount = useCallback(async (delta: number) => {
-    const v = await loadHomeBoardDisplayCount();
-    const next = Math.min(
-      HOME_BOARD_DISPLAY_MAX,
-      Math.max(HOME_BOARD_DISPLAY_MIN, v + delta),
-    );
-    await saveHomeBoardDisplayCount(next);
-    setHomeBoardDisplayCount(next);
-  }, []);
+  const bumpHomeBoardDisplayCountForSource = useCallback(
+    async (source: CommunitySourceKey, delta: number) => {
+      const current = await loadHomeBoardDisplayCounts();
+      const nextValue = Math.min(
+        HOME_BOARD_DISPLAY_MAX,
+        Math.max(HOME_BOARD_DISPLAY_MIN, current[source] + delta),
+      );
+      const next = await saveHomeBoardDisplayCountForSource(source, nextValue);
+      setHomeBoardDisplayCounts(next);
+    },
+    [],
+  );
 
   const reloadHomeMarketBriefingDisplayPref = useCallback(async () => {
     const v = await loadHomeMarketBriefingDisplayCount();
@@ -1351,7 +1337,6 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     void reloadNewsHashtagDisplayMax();
     void reloadSignalServerPrefs();
     void reloadMoreReferenceLinksPref();
-    void reloadMainEntryPref();
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
     void reloadHomeBoardDisplayPref();
@@ -1367,7 +1352,6 @@ export default function SettingsScreen({ embedded = false, onBack }: SettingsScr
     reloadNewsHashtagDisplayMax,
     reloadSignalServerPrefs,
     reloadMoreReferenceLinksPref,
-    reloadMainEntryPref,
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
     reloadHomeBoardDisplayPref,
@@ -1946,44 +1930,37 @@ clearCalendarCache();
               </View>
 
               <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>{t('settingsAppIconSection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsAppIconHint')}</Text>
               {!appIconReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <>
-                  <View style={[styles.appIconGrid, { marginTop: 8 }]}>
-                    {APP_ICON_VARIANTS.map((variant) => (
-                      <Pressable
-                        key={variant.id}
-                        onPress={() => {
-                          setAppIconVariant(variant.id);
-                          void saveAppIconVariant(variant.id);
-                        }}
+                <View style={[styles.appIconGrid, { marginTop: 8 }]}>
+                  {APP_ICON_VARIANTS.map((variant) => (
+                    <Pressable
+                      key={variant.id}
+                      onPress={() => {
+                        setAppIconVariant(variant.id);
+                        void saveAppIconVariant(variant.id);
+                      }}
+                      style={[
+                        styles.appIconOption,
+                        appIconVariant === variant.id && styles.appIconOptionActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: appIconVariant === variant.id }}
+                      accessibilityLabel={t(APP_ICON_LABEL[variant.id])}>
+                      <View
                         style={[
-                          styles.appIconOption,
-                          appIconVariant === variant.id && styles.appIconOptionActive,
-                        ]}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: appIconVariant === variant.id }}
-                        accessibilityLabel={t(APP_ICON_LABEL[variant.id])}>
-                        <View
-                          style={[
-                            styles.appIconPreview,
-                            { backgroundColor: variant.background },
-                          ]}>
-                          <Image
-                            source={APP_ICON_PREVIEW_IMAGE[variant.id]}
-                            style={styles.appIconPreviewImage}
-                          />
-                        </View>
-                        <Text style={styles.appIconLabel}>{t(APP_ICON_LABEL[variant.id])}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <Text style={[styles.prefHint, { marginTop: 16 }]}>
-                    {t('settingsAppIconNativeNote')}
-                  </Text>
-                </>
+                          styles.appIconPreview,
+                          { backgroundColor: variant.background },
+                        ]}>
+                        <Image
+                          source={APP_ICON_PREVIEW_IMAGE[variant.id]}
+                          style={styles.appIconPreviewImage}
+                        />
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
               )}
 
               <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
@@ -2071,37 +2048,6 @@ clearCalendarCache();
                   </Pressable>
                 ))}
               </View>
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
-              {!mainEntryReady ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
-                  {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
-                    <Pressable
-                      key={entry}
-                      onPress={() => {
-                        setMainEntry(entry);
-                        void saveMainEntry(entry);
-                      }}
-                      style={[styles.langSegment, mainEntry === entry && styles.langSegmentActive]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: mainEntry === entry }}
-                      accessibilityLabel={t(MAIN_ENTRY_LABEL[entry])}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          mainEntry === entry && styles.langSegmentTextActive,
-                        ]}>
-                        {t(MAIN_ENTRY_LABEL[entry])}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
             </View>
 
             <View style={styles.displayCard}>
@@ -2208,34 +2154,50 @@ clearCalendarCache();
                     </View>
                   </View>
 
-                  <View style={[styles.limitRow, styles.limitRowLast]}>
-                    <Text style={styles.prefLabel}>{t('settingsHomeBoardDisplaySection')}</Text>
-                    <View style={styles.homeCountControls}>
-                      <Text style={styles.homeCountValue}>{homeBoardDisplayCount}</Text>
-                      <Pressable
-                        onPress={() => void bumpHomeBoardDisplayCount(-1)}
-                        disabled={homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('settingsHomeBoardDisplayValue', {
-                          count: String(homeBoardDisplayCount),
-                        })}>
-                        <Text style={styles.homeCountBtnText}>−</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void bumpHomeBoardDisplayCount(1)}
-                        disabled={homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX}
-                        style={({ pressed }) => [
-                          styles.homeCountBtn,
-                          (homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                        ]}
-                        accessibilityRole="button">
-                        <Text style={styles.homeCountBtnText}>+</Text>
-                      </Pressable>
-                    </View>
+                  <Text style={[styles.prefLabel, { marginTop: 4 }]}>
+                    {t('settingsHomeBoardDisplaySection')}
+                  </Text>
+                  <View style={styles.boardSubRows}>
+                    {COMMUNITY_SOURCES.map((source, index) => {
+                      const count = homeBoardDisplayCounts[source];
+                      const isLast = index === COMMUNITY_SOURCES.length - 1;
+                      return (
+                        <View
+                          key={source}
+                          style={[styles.limitRow, isLast && styles.limitRowLast]}>
+                          <Text style={[styles.prefLabel, styles.boardSubLabel]}>
+                            {t(communitySourceLabelId(source))}
+                          </Text>
+                          <View style={styles.homeCountControls}>
+                            <Text style={styles.homeCountValue}>{count}</Text>
+                            <Pressable
+                              onPress={() => void bumpHomeBoardDisplayCountForSource(source, -1)}
+                              disabled={count <= HOME_BOARD_DISPLAY_MIN}
+                              style={({ pressed }) => [
+                                styles.homeCountBtn,
+                                (count <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                              ]}
+                              accessibilityRole="button"
+                              accessibilityLabel={t('settingsHomeBoardDisplaySourceValue', {
+                                board: t(communitySourceLabelId(source)),
+                                count: String(count),
+                              })}>
+                              <Text style={styles.homeCountBtnText}>−</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => void bumpHomeBoardDisplayCountForSource(source, 1)}
+                              disabled={count >= HOME_BOARD_DISPLAY_MAX}
+                              style={({ pressed }) => [
+                                styles.homeCountBtn,
+                                (count >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                              ]}
+                              accessibilityRole="button">
+                              <Text style={styles.homeCountBtnText}>+</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 </>
               )}

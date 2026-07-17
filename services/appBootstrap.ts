@@ -8,7 +8,6 @@ import {
 import { loadFeedContentWeight } from '@/services/feedContentWeightPreference';
 import { loadFontSizePreset } from '@/services/fontSizePreference';
 import { loadLocale } from '@/services/localePreference';
-import { loadMainEntry } from '@/services/mainEntryPreference';
 import { hydrateSignalServerEndpoint } from '@/services/signalServerEndpoint';
 import { loadThemeAppearanceMode } from '@/services/themeAppearancePreference';
 
@@ -30,7 +29,6 @@ async function preloadUserPreferences(): Promise<void> {
 export async function runAppBootstrap(): Promise<void> {
   await Promise.all([
     hydrateSignalServerEndpoint(),
-    loadMainEntry(),
     ensureStoredSessionFresh(),
     syncStoredAppIconVariant(),
     preloadUserPreferences(),

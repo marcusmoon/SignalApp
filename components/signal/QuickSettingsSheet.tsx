@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import { useCallback, useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +13,7 @@ import {
   BOTTOM_SHEET_SCROLL_STYLE,
 } from '@/constants/bottomSheetLayout';
 import { UI_RADIUS_CARD_LG, UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { AppLocale, MessageId } from '@/locales/messages';
@@ -38,10 +40,21 @@ type Props = {
 
 /** 헤더 퀵 설정 — 언어·화면 모드 (표시 설정과 동일 저장소). */
 export function QuickSettingsSheet({ visible, onClose }: Props) {
+  const router = useRouter();
+  const ipadNav = useIpadSidebarNavActions();
   const { theme, scaleFont, appearanceMode, setAppearanceMode } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+
+  const openDisplaySettings = useCallback(() => {
+    onClose();
+    if (ipadNav.isAvailable) {
+      ipadNav.showSettings('display', { drillFrom: 'home' });
+      return;
+    }
+    router.push({ pathname: '/settings', params: { tab: 'display' } } as never);
+  }, [ipadNav, onClose, router]);
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -112,6 +125,15 @@ export function QuickSettingsSheet({ visible, onClose }: Props) {
                 </View>
               </View>
             </View>
+
+            <Pressable
+              onPress={openDisplaySettings}
+              style={({ pressed }) => [styles.displayLink, pressed && styles.displayLinkPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('quickSettingsDisplayLink')}>
+              <Text style={styles.displayLinkText}>{t('quickSettingsDisplayLink')}</Text>
+              <FontAwesome name="chevron-right" size={10} color={theme.textDim} />
+            </Pressable>
           </ScrollView>
         </View>
       </View>
@@ -219,6 +241,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     segmentTextActive: {
       color: '#FFFFFF',
+    },
+    displayLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      alignSelf: 'center',
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    displayLinkPressed: {
+      opacity: 0.72,
+    },
+    displayLinkText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '500',
+      color: theme.textDim,
     },
   });
 }

@@ -117,6 +117,7 @@ npx tsc --noEmit
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
 | 알림함 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` |
+| 뉴스·공시 다이제스트 상세 | `app/news-digest.tsx` · `app/disclosure-digest.tsx` |
 | 설정 | `app/settings.tsx`, `constants/settingsTabs.ts` |
 | 계정 | `app/account.tsx`, `services/appAuthSession.ts` |
 | 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |

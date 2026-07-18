@@ -24,6 +24,7 @@ type AlertIpadNav = {
     params: { category: NewsIssuesCategory; date: string; digestId?: string | null },
     options?: AlertDrillOptions,
   ) => void;
+  showNewsDigest: (id: string, options?: AlertDrillOptions) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
   showMarketBriefing: (
     session?: SignalSessionKey,
@@ -39,6 +40,7 @@ type AlertIpadNav = {
     },
     options?: AlertDrillOptions,
   ) => void;
+  showDisclosureDigest: (id: string, options?: AlertDrillOptions) => void;
   showCalendar: (options?: { from?: 'account' } & AlertDrillOptions) => void;
   showSettings: (
     tab?: 'display' | 'notifications' | 'news' | 'quotes' | 'server',
@@ -134,12 +136,39 @@ function payloadDate(payload: Record<string, unknown>, receivedAt: string): stri
   return utcYmdFromIso(receivedAt);
 }
 
-function enrichNewsIssuesTarget(
+function resolveDigestId(
+  params: Record<string, string>,
+  item: StoredNotification,
+): string {
+  return (
+    cleanText(params.id) ||
+    cleanText(params.digestId) ||
+    cleanText(notificationPayload(item).digestId) ||
+    cleanText(item.sourceId)
+  );
+}
+
+/** 알림 → 단건 상세. 목록(`digestId` 시트)과 분리. */
+function enrichNewsDigestTarget(
+  target: AlertNavigationTarget,
+  item: StoredNotification,
+): AlertNavigationTarget {
+  const params = { ...(target.params || {}) };
+  const digestId = resolveDigestId(params, item);
+  if (!digestId) {
+    return enrichNewsIssuesListTarget(target, item);
+  }
+  return { pathname: '/news-digest', params: { id: digestId } };
+}
+
+function enrichNewsIssuesListTarget(
   target: AlertNavigationTarget,
   item: StoredNotification,
 ): AlertNavigationTarget {
   const payload = notificationPayload(item);
   const params = { ...(target.params || {}) };
+  delete params.digestId;
+  delete params.id;
   if (!isYmd(params.date || '')) {
     const date = payloadDate(payload, item.receivedAt);
     if (date) params.date = date;
@@ -147,29 +176,35 @@ function enrichNewsIssuesTarget(
   if (!cleanText(params.category)) {
     params.category = cleanText(payload.category) || 'global';
   }
-  if (!cleanText(params.digestId)) {
-    const digestId = cleanText(payload.digestId) || cleanText(item.sourceId);
-    if (digestId) params.digestId = digestId;
-  }
   return { pathname: '/news-issues', params };
 }
 
-function enrichDisclosureFlowTarget(
+function enrichDisclosureDigestTarget(
+  target: AlertNavigationTarget,
+  item: StoredNotification,
+): AlertNavigationTarget {
+  const params = { ...(target.params || {}) };
+  const digestId = resolveDigestId(params, item);
+  if (!digestId) {
+    return enrichDisclosureFlowListTarget(target, item);
+  }
+  return { pathname: '/disclosure-digest', params: { id: digestId } };
+}
+
+function enrichDisclosureFlowListTarget(
   target: AlertNavigationTarget,
   item: StoredNotification,
 ): AlertNavigationTarget {
   const payload = notificationPayload(item);
   const params = { ...(target.params || {}) };
+  delete params.digestId;
+  delete params.id;
   if (!isYmd(params.date || '')) {
     const date = payloadDate(payload, item.receivedAt);
     if (date) params.date = date;
   }
   if (!cleanText(params.market)) {
     params.market = cleanText(payload.market) || 'us';
-  }
-  if (!cleanText(params.digestId)) {
-    const digestId = cleanText(payload.digestId) || cleanText(item.sourceId);
-    if (digestId) params.digestId = digestId;
   }
   return { pathname: '/disclosure-flow', params };
 }
@@ -213,8 +248,14 @@ function enrichTarget(item: StoredNotification, target: AlertNavigationTarget): 
   if (pathname === '/home' || pathname === '/(tabs)' || pathname === '/(tabs)/index') {
     return enrichTodayBriefingTarget({ pathname: '/today-briefing' }, item);
   }
-  if (pathname === '/news-issues') return enrichNewsIssuesTarget({ ...target, pathname }, item);
-  if (pathname === '/disclosure-flow') return enrichDisclosureFlowTarget({ ...target, pathname }, item);
+  if (pathname === '/news-digest') return enrichNewsDigestTarget({ ...target, pathname }, item);
+  if (pathname === '/news-issues') return enrichNewsDigestTarget({ ...target, pathname }, item);
+  if (pathname === '/disclosure-digest') {
+    return enrichDisclosureDigestTarget({ ...target, pathname }, item);
+  }
+  if (pathname === '/disclosure-flow') {
+    return enrichDisclosureDigestTarget({ ...target, pathname }, item);
+  }
   if (pathname === '/today-briefing') return enrichTodayBriefingTarget({ ...target, pathname }, item);
   if (pathname === '/signal' || pathname === '/(tabs)/signal') return enrichSignalTarget(target, item);
   return target;
@@ -228,10 +269,10 @@ function fallbackTargetFromNotification(item: StoredNotification): AlertNavigati
     return enrichTodayBriefingTarget({ pathname: '/today-briefing' }, item);
   }
   if (type === 'news_digest' || source === 'news_digest') {
-    return enrichNewsIssuesTarget({ pathname: '/news-issues' }, item);
+    return enrichNewsDigestTarget({ pathname: '/news-digest' }, item);
   }
   if (type === 'disclosure_digest' || source === 'disclosure_digest') {
-    return enrichDisclosureFlowTarget({ pathname: '/disclosure-flow' }, item);
+    return enrichDisclosureDigestTarget({ pathname: '/disclosure-digest' }, item);
   }
   if (
     type === 'market_briefing' ||
@@ -275,17 +316,30 @@ export function navigateToAlert(
 
   const params = target.params ?? {};
 
+  if (target.pathname === '/news-digest') {
+    const digestId = cleanText(params.id) || cleanText(params.digestId);
+    if (!digestId) return;
+    if (ipadNav.isAvailable) {
+      ipadNav.showNewsDigest(digestId, { drillFrom: 'alerts' });
+      return;
+    }
+    router.push({
+      pathname: '/news-digest',
+      params: { id: digestId },
+    } as Href);
+    return;
+  }
+
   if (target.pathname === '/news-issues') {
     const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
     const category = (cleanText(params.category) || 'global') as NewsIssuesCategory;
-    const digestId = cleanText(params.digestId) || null;
     if (ipadNav.isAvailable) {
-      ipadNav.showNewsIssues({ category, date, digestId }, { drillFrom: 'alerts' });
+      ipadNav.showNewsIssues({ category, date, digestId: null }, { drillFrom: 'alerts' });
       return;
     }
     router.push({
       pathname: '/news-issues',
-      params: { category, date, ...(digestId ? { digestId } : {}) },
+      params: { category, date },
     } as Href);
     return;
   }
@@ -317,18 +371,31 @@ export function navigateToAlert(
     return;
   }
 
+  if (target.pathname === '/disclosure-digest') {
+    const digestId = cleanText(params.id) || cleanText(params.digestId);
+    if (!digestId) return;
+    if (ipadNav.isAvailable) {
+      ipadNav.showDisclosureDigest(digestId, { drillFrom: 'alerts' });
+      return;
+    }
+    router.push({
+      pathname: '/disclosure-digest',
+      params: { id: digestId },
+    } as Href);
+    return;
+  }
+
   if (target.pathname === '/disclosure-flow') {
     const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
     const marketRaw = cleanText(params.market);
     const market = marketRaw === 'us' || marketRaw === 'kr' || marketRaw === 'all' ? marketRaw : undefined;
-    const digestId = cleanText(params.digestId) || null;
     if (ipadNav.isAvailable) {
-      ipadNav.showDisclosureFlow({ date, market, digestId }, { drillFrom: 'alerts' });
+      ipadNav.showDisclosureFlow({ date, market, digestId: null }, { drillFrom: 'alerts' });
       return;
     }
     router.push({
       pathname: '/disclosure-flow',
-      params: { date, ...(market ? { market } : {}), ...(digestId ? { digestId } : {}) },
+      params: { date, ...(market ? { market } : {}) },
     } as Href);
     return;
   }

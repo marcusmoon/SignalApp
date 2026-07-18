@@ -26,7 +26,9 @@ export type IpadContentPane =
   | 'account'
   | 'settings'
   | 'newsIssues'
+  | 'newsDigest'
   | 'disclosureFlow'
+  | 'disclosureDigest'
   | 'todayBriefing'
   | 'marketBriefing'
   | 'etfInsights'
@@ -83,7 +85,9 @@ type IpadSidebarNavState = {
   widePaneCanGoBack: boolean;
   settingsTab: SettingsTab;
   newsIssuesParams: IpadNewsIssuesPaneParams | null;
+  newsDigestId: string | null;
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
+  disclosureDigestId: string | null;
   todayBriefingDate: string | null;
   marketBriefingParams: IpadMarketBriefingPaneParams | null;
   etfInsightId: string | null;
@@ -105,7 +109,9 @@ type IpadSidebarNavActions = {
   showSettings: (tab?: SettingsTab, options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   switchSettingsTab: (tab: SettingsTab) => void;
   showNewsIssues: (params: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => void;
+  showNewsDigest: (id: string, options?: WidePaneDrillOptions) => void;
   showDisclosureFlow: (params: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => void;
+  showDisclosureDigest: (id: string, options?: WidePaneDrillOptions) => void;
   showTodayBriefing: (date: string, options?: WidePaneDrillOptions) => void;
   showMarketBriefing: (
     session?: SignalSessionKey,
@@ -146,7 +152,9 @@ const defaultState: IpadSidebarNavState = {
   widePaneCanGoBack: false,
   settingsTab: 'display',
   newsIssuesParams: null,
+  newsDigestId: null,
   disclosureFlowParams: null,
+  disclosureDigestId: null,
   todayBriefingDate: null,
   marketBriefingParams: null,
   etfInsightId: null,
@@ -168,7 +176,9 @@ const defaultActions: IpadSidebarNavActions = {
   showSettings: () => {},
   switchSettingsTab: () => {},
   showNewsIssues: () => {},
+  showNewsDigest: () => {},
   showDisclosureFlow: () => {},
+  showDisclosureDigest: () => {},
   showTodayBriefing: () => {},
   showMarketBriefing: () => {},
   showEtfInsights: () => {},
@@ -255,7 +265,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     return isSettingsTab(tab) ? tab : 'display';
   });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
+  const [newsDigestId, setNewsDigestId] = useState<string | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
+  const [disclosureDigestId, setDisclosureDigestId] = useState<string | null>(null);
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
   const [etfInsightId, setEtfInsightId] = useState<string | null>(null);
   const [etfInsightDate, setEtfInsightDate] = useState<string | null>(null);
@@ -297,6 +309,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (kind === 'news-digest') {
+        setNewsDigestId(firstParam(p.id) || firstParam(p.digestId) || null);
+        return;
+      }
+
       if (kind === 'disclosure-flow') {
         const date = parseDateParam(p.date);
         if (date) {
@@ -306,6 +323,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
             digestId: p.digestId ?? null,
           });
         }
+        return;
+      }
+
+      if (kind === 'disclosure-digest') {
+        setDisclosureDigestId(firstParam(p.id) || firstParam(p.digestId) || null);
         return;
       }
 
@@ -491,6 +513,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    if (pane === 'newsDigest') {
+      setNewsDigestId(firstParam(params.id) || firstParam(params.digestId) || null);
+    }
+
     if (pane === 'disclosureFlow') {
       const date = parseDateParam(firstParam(params.date));
       if (date) {
@@ -500,6 +526,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           digestId: firstParam(params.digestId) ?? null,
         });
       }
+    }
+
+    if (pane === 'disclosureDigest') {
+      setDisclosureDigestId(firstParam(params.id) || firstParam(params.digestId) || null);
     }
   }, [
     applyOverlayKind,
@@ -639,6 +669,23 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [beginWideOverlay, router, useTwoPane],
   );
 
+  const showNewsDigest = useCallback(
+    (id: string, options?: WidePaneDrillOptions) => {
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+      setNewsDigestId(cleanId);
+      if (useTwoPane) {
+        beginWideOverlay('news-digest', { id: cleanId }, options?.drillFrom);
+        return;
+      }
+      router.push({
+        pathname: '/news-digest',
+        params: { id: cleanId },
+      } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
   const showDisclosureFlow = useCallback(
     (next: IpadDisclosureFlowPaneParams, options?: WidePaneDrillOptions) => {
       setDisclosureFlowParams(next);
@@ -662,6 +709,23 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           ...(next.market ? { market: next.market } : null),
           ...(next.digestId ? { digestId: next.digestId } : null),
         },
+      } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showDisclosureDigest = useCallback(
+    (id: string, options?: WidePaneDrillOptions) => {
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+      setDisclosureDigestId(cleanId);
+      if (useTwoPane) {
+        beginWideOverlay('disclosure-digest', { id: cleanId }, options?.drillFrom);
+        return;
+      }
+      router.push({
+        pathname: '/disclosure-digest',
+        params: { id: cleanId },
       } as never);
     },
     [beginWideOverlay, router, useTwoPane],
@@ -995,7 +1059,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const isHomePaneActive =
     contentPane === 'home' ||
     contentPane === 'newsIssues' ||
+    contentPane === 'newsDigest' ||
     contentPane === 'disclosureFlow' ||
+    contentPane === 'disclosureDigest' ||
     contentPane === 'todayBriefing' ||
     contentPane === 'marketBriefing' ||
     contentPane === 'watchlist' ||
@@ -1023,7 +1089,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       widePaneCanGoBack: wideBackStack.length > 0,
       settingsTab,
       newsIssuesParams,
+      newsDigestId,
       disclosureFlowParams,
+      disclosureDigestId,
       todayBriefingDate,
       marketBriefingParams,
       etfInsightId,
@@ -1044,7 +1112,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       wideBackStack.length,
       settingsTab,
       newsIssuesParams,
+      newsDigestId,
       disclosureFlowParams,
+      disclosureDigestId,
       todayBriefingDate,
       marketBriefingParams,
       etfInsightId,
@@ -1068,7 +1138,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showSettings,
       switchSettingsTab,
       showNewsIssues,
+      showNewsDigest,
       showDisclosureFlow,
+      showDisclosureDigest,
       showTodayBriefing,
       showMarketBriefing,
       showEtfInsights,
@@ -1098,7 +1170,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       switchSettingsTab,
       showTabs,
       showNewsIssues,
+      showNewsDigest,
       showDisclosureFlow,
+      showDisclosureDigest,
       showTodayBriefing,
       showMarketBriefing,
       showEtfInsights,

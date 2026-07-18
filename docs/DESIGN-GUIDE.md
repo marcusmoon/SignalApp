@@ -60,6 +60,16 @@
 
 slide-up Modal 시트(홈 다이제스트 상세·마켓 브리핑·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 70%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
 
+### 시트 vs 상세 화면
+
+| 진입 | UI | 이유 |
+|---|---|---|
+| 홈 카드 탭 (뉴스·공시 다이제스트 · 장중·오늘 브리핑 · ETF) | 바텀 시트 | 홈에 머문 채 훑기 |
+| 섹션 `>` / 목록 행 | 목록·플로우 화면 (+ 행 탭 시 시트) | 날짜·카테고리 탐색 |
+| 알림함·푸시 | **상세 화면** (`/today-briefing` · `/market-briefing` · `/news-digest` · `/disclosure-digest` · `/etf-insight`) | 알림을 떠나 단건을 읽기 — 목록+시트 중첩 금지 |
+
+레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 rewrite한다.
+
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 
 pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.

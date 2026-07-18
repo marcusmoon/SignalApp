@@ -64,9 +64,11 @@ async function publishDigestNotification(item, queuePush) {
     cleanText(item?.generatedDate).slice(0, 10) ||
     utcDateKeyFromInstant(item?.generatedAt);
   const digestId = cleanText(item?.id);
-  const params = new URLSearchParams({ market });
-  if (date) params.set('date', date);
-  if (digestId) params.set('digestId', digestId);
+  const deepLink = digestId
+    ? `/disclosure-digest?id=${encodeURIComponent(digestId)}`
+    : date
+      ? `/disclosure-flow?market=${encodeURIComponent(market)}&date=${encodeURIComponent(date)}`
+      : `/disclosure-flow?market=${encodeURIComponent(market)}`;
   const notification = buildPublishedNotification(
     {
       id: `notification:push:disclosure_digest:${item.id}`,
@@ -78,7 +80,7 @@ async function publishDigestNotification(item, queuePush) {
       targetType: 'all',
       sourceType: 'disclosure_digest',
       sourceId: item.id,
-      deepLink: `/disclosure-flow?${params.toString()}`,
+      deepLink,
       reason: `disclosure digest updated: ${market}`,
       scheduledAt: item.generatedAt,
       sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 4 }),

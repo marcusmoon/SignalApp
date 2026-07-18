@@ -276,7 +276,7 @@ export function DisclosureFlowContent({
     void load();
   }, [load]);
 
-  /** 알림 deepLink `digestId` — 당일 목록에 없으면 id로 가져와 상세 시트에 쓴다 */
+  /** 목록 URL `digestId` — 당일 목록에 없으면 id로 가져와 시트에 쓴다 (알림은 `/disclosure-digest` 상세) */
   useEffect(() => {
     const pendingId = String(sourcesDigestId || '').trim();
     if (!pendingId || loading) return;

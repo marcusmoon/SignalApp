@@ -148,15 +148,15 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 히어로(마감 종합) | **오늘 정리** | `today_briefings` |
   | 히어로·시장 탭(회차) | **장중 브리핑** | `market_briefings` |
   | ETF 보조 | **섹터 흐름** | `etf_insights` |
-  | 뉴스 이슈 | **뉴스** | news digests |
+  | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **관심 종목** | quotes watchlist |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
 - **홈 섹션 순서**
-  - **오늘**: 히어로 1장 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름 → 뉴스
-  - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 · 관심 종목·게시판 숨김
+  - **오늘**: 히어로 1장 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름 → 뉴스 흐름
+  - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 흐름 · 관심 종목·게시판 숨김
   - **관심 종목 `>`**: `/watchlist` 드릴 — 관심 세그먼트만 + 상단 백 (시세 탭 전체로 가지 않음)
-- **장중 브리핑·뉴스 `>`** (홈): `from=home` — 홈 선택일 고정, **날짜피커 숨김** (회차/카테고리 세그먼트는 유지). 알림·뉴스 탭 진입은 날짜피커 유지
+- **장중 브리핑·뉴스 흐름 `>`** (홈): `from=home` — 홈 선택일 고정, **날짜피커 숨김** (회차/카테고리 세그먼트는 유지). 알림·뉴스 탭 진입은 날짜피커 유지
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 섹션 `>` → 시장 탭 해당 회차 · 오늘 정리 카드 → `TodayBriefingSheet` · 섹션 `>` → `/today-briefing`
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)
@@ -182,7 +182,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
-- 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스** 조절. 히어로·일정은 자동 (장중 브리핑 목록·게시판 피커 없음)
+- 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스 흐름** 조절. 히어로·일정은 자동 (장중 브리핑 목록·게시판 피커 없음)
 - 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
 - 상세(`MarketBriefingBlock` 등): 섹터 why·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

@@ -123,7 +123,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
     () => parseEtfFlowHighlights(insight.flowHighlights, insight.id),
     [insight.flowHighlights, insight.id],
   );
-  /** 테마 본문 링크용 — 히트맵·테마 etfs에 등장한 티커 */
+  /** 테마 본문 링크용 — 히트맵·테마 `etfs` 티커만 (섹터명 오탐 방지) */
   const themeBodyLinkSymbols = useMemo(() => {
     const out: string[] = [];
     const seen = new Set<string>();
@@ -135,10 +135,6 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       seen.add(key);
       out.push(symbol);
     };
-    for (const cell of heatmapCells) {
-      const title = String(cell.title || '').trim();
-      if (title && title !== '—') add(title);
-    }
     const heatRaw = Array.isArray(insight.heatmap) ? insight.heatmap : [];
     for (const item of heatRaw) {
       if (!item || typeof item !== 'object') continue;
@@ -152,7 +148,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       for (const sym of etfs) add(sym);
     }
     return out;
-  }, [heatmapCells, insight.heatmap, themes]);
+  }, [insight.heatmap, themes]);
   const sources = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
   const rotation = insight.rotation && typeof insight.rotation === 'object' ? insight.rotation : null;
   const rotationFrom = String(rotation?.from ?? '').trim();

@@ -46,7 +46,6 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
-  type DisclosureFlowMarket,
   type HomeDigestCategory,
   type NewsIssuesCategory,
   type SignalSessionKey,
@@ -55,16 +54,12 @@ import { marketBriefingAccent, newsSegmentAccent } from '@/constants/segmentAcce
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
 import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
-import {
-  disclosureDigestSourceIconEntries,
-} from '@/domain/disclosures';
-import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
+import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -79,7 +74,6 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/screenLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -92,7 +86,6 @@ import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefin
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import type {
   SignalApiCommunityPost,
-  SignalApiDisclosureDigestItem,
   SignalApiEtfInsight,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
@@ -139,7 +132,6 @@ import {
 
 const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
-const DISCLOSURE_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
@@ -312,9 +304,7 @@ export function HomeFocusContent({
   showIssueSummary = false,
   onPullRefreshReady,
 }: HomeFocusContentProps) {
-  type HomeDigestSheetState =
-    | { kind: 'news'; row: IssueRow }
-    | { kind: 'disclosure'; row: SignalApiDisclosureDigestItem };
+  type HomeDigestSheetState = { kind: 'news'; row: IssueRow };
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
@@ -346,7 +336,6 @@ export function HomeFocusContent({
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
-  const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
@@ -368,7 +357,7 @@ export function HomeFocusContent({
     [briefings, marketBriefingDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
-    resyncDeps: [issues, briefings, todayBriefing, etfInsight, disclosures, calendarEvents, boardPosts, loading],
+    resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, boardPosts, loading],
   });
   const scrollResetKey = selectedYmd;
 
@@ -403,7 +392,6 @@ export function HomeFocusContent({
       setQuotes([]);
       setBriefings([]);
       setTodayBriefing(null);
-      setDisclosures([]);
       setCalendarEvents([]);
       setBoardPosts([]);
       setError(t('errorSignalApiShort'));
@@ -419,7 +407,6 @@ export function HomeFocusContent({
       if (isDateChange) {
         setBriefings([]);
       }
-      setDisclosures([]);
       setCalendarEvents([]);
       setBoardPosts([]);
       const fetchBoardPosts =
@@ -477,11 +464,7 @@ export function HomeFocusContent({
 
       /** Wave 2 — below-fold; runs after first paint (load returns after wave 1). */
       void (async () => {
-        const [disclosurePage, calendarRows, boardPage] = await Promise.all([
-          fetchSignalDisclosureDigests(
-            { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
-            { cacheMode },
-          ).catch(() => ({ items: [] })),
+        const [calendarRows, boardPage] = await Promise.all([
           fetchSignalCalendar(
             {
               from: shiftYmd(selectedYmd, -1),
@@ -494,7 +477,6 @@ export function HomeFocusContent({
         ]);
 
         if (generation !== loadGenerationRef.current) return;
-        setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
         setCalendarEvents(
           filterHomeCalendarEvents(
             calendarRows
@@ -702,58 +684,24 @@ export function HomeFocusContent({
     [ipadNav, router],
   );
 
-  const openDisclosureFlow = useCallback(
-    (row?: SignalApiDisclosureDigestItem) => {
-      const params: Record<string, string> = { date: selectedYmd };
-      const rowMarket = String(row?.market || '').trim().toLowerCase();
-      if (rowMarket === 'us' || rowMarket === 'kr') {
-        params.market = rowMarket;
-      }
-      if (row?.id) params.digestId = row.id;
-      if (ipadNav.isAvailable) {
-        ipadNav.showDisclosureFlow(
-          {
-            date: params.date,
-            market: (params.market as DisclosureFlowMarket | undefined) ?? 'all',
-            digestId: params.digestId ?? null,
-          },
-          { drillFrom: 'home' },
-        );
-        return;
-      }
-      router.push({
-        pathname: '/disclosure-flow',
-        params,
-      } as unknown as Href);
-    },
-    [ipadNav, router, selectedYmd],
-  );
-
-  const openDisclosureSheet = useCallback((row: SignalApiDisclosureDigestItem) => {
-    setDigestSheet({ kind: 'disclosure', row });
-  }, []);
-
   const closeDigestSheet = useCallback(() => {
     setDigestSheet(null);
   }, []);
 
   const digestSheetTitle = useMemo(() => {
     if (!digestSheet) return '';
-    return digestSheet.kind === 'news' ? digestSheet.row.item.title : digestSheet.row.title;
+    return digestSheet.row.item.title;
   }, [digestSheet]);
 
   const digestSheetSummary = useMemo(() => {
     if (!digestSheet) return undefined;
-    const summary = digestSheet.kind === 'news' ? digestSheet.row.item.summary?.trim() : digestSheet.row.summary?.trim();
+    const summary = digestSheet.row.item.summary?.trim();
     return summary || undefined;
   }, [digestSheet]);
 
   const digestSheetRows = useMemo(() => {
     if (!digestSheet) return [];
-    if (digestSheet.kind === 'news') {
-      return newsDigestSourceSheetRows(digestSheet.row.item, locale as AppLocale);
-    }
-    return disclosureDigestSourceSheetRows(digestSheet.row, locale as AppLocale);
+    return newsDigestSourceSheetRows(digestSheet.row.item, locale as AppLocale);
   }, [digestSheet, locale]);
 
   const openCalendar = useCallback(() => {
@@ -939,42 +887,6 @@ export function HomeFocusContent({
     [locale, openSignalSheet, showIssueSummary, styles, t, theme],
   );
 
-  const renderDisclosureCard = useCallback(
-    (rows: SignalApiDisclosureDigestItem[]) => (
-      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.issueGroupList}>
-          {rows.map((row, index) => {
-            const sourceEntries = disclosureDigestSourceIconEntries(row);
-            const trailText = row.symbols.slice(0, 2).join(' · ');
-            const marketA11y = disclosureMarketLabel(row.market, locale);
-            return (
-              <HomeDigestFeedRow
-                key={row.id}
-                title={row.title}
-                titleLines={2}
-                timeLabel={formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
-                trailText={trailText || null}
-                sourceEntries={sourceEntries}
-                bordered={index < rows.length - 1}
-                onPress={() => openDisclosureSheet(row)}
-                footerLead={
-                  <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
-                    <CommunitySourceMark
-                      accent={marketBriefingAccent(row.market, theme)}
-                      size={18}
-                      style={styles.boardSourceMark}
-                    />
-                  </View>
-                }
-              />
-            );
-          })}
-        </View>
-      </View>
-    ),
-    [locale, openDisclosureSheet, showIssueSummary, styles, theme],
-  );
-
   const renderCalendarCard = useCallback(
     (rows: CalendarEvent[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
@@ -1089,7 +1001,7 @@ export function HomeFocusContent({
       <WebWheelScrollView
         ref={scrollRef as never}
         scrollResetKey={scrollResetKey}
-        contentRevision={[issues, briefings, todayBriefing, etfInsight, disclosures, calendarEvents, boardPosts, loading]}
+        contentRevision={[issues, briefings, todayBriefing, etfInsight, calendarEvents, boardPosts, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -1164,22 +1076,6 @@ export function HomeFocusContent({
               {renderEtfInsightCard(etfInsight)}
             </View>
           ) : null}
-
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('disclosureFlowTitle')}
-              badge={<AiBadge />}
-              onPress={() => openDisclosureFlow()}
-              accessibilityLabel={t('commonViewAll')}
-            />
-            {disclosures.length > 0 ? (
-              renderDisclosureCard(disclosures)
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('disclosureFlowEmpty')}</Text>
-              </View>
-            )}
-          </View>
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
@@ -1552,39 +1448,6 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
-    },
-    disclosurePillRow: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexGrow: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: COMFORT_GAP_SM,
-    },
-    disclosureMarketPill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.warningDim,
-      color: theme.warning,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    disclosureFormPill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-      maxWidth: 120,
     },
     calendarPillRow: {
       minWidth: 0,

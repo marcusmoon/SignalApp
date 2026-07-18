@@ -180,11 +180,11 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **ETF themes**: 로고·하단 메타 티커 없음. 요약 본문은 `EntityLinkedTintedText` — ingest `entities`의 name이 본문과 정확히 일치할 때만 하이라이트·딥링크
   - **ETF 빈 섹션 금지**: heatmap·themes·flows·sources·rotation·insights·summary는 값이 있을 때만 렌더. 이름/요약 없는 theme·title 없는 source는 제외
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
-  - 수급·종목 identity 칩·본문 entity 탭 → 국내 Naver / 해외 Yahoo (`openEtfInsightSymbol`)
+  - 수급·종목 identity 칩·본문 entity 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - **본문 entity 링크** (장중·ETF·오늘 정리·뉴스/공시 다이제스트·홈 히어로 공통):
   - ingest 선택 필드 `entities: { name, symbol }[]`
-  - 도메인: `domain/entities/linkEntitiesInText.ts` (`splitTextWithEntityLinks`) · 딥링크 `openEtfInsightSymbol`
+  - 도메인: `domain/entities/linkEntitiesInText.ts` (`splitTextWithEntityLinks`) · 딥링크 `openFinanceSymbol`
   - UI: **`EntityLinkedTintedText`** — 변동률 틴트 + name 정확 매칭 링크. `entities` 없으면 틴트만 (`ChangeTintedText`는 이 컴포넌트 별칭)
   - 새 본문 렌더에는 이 경로를 쓰고, 데이터에 `entities`가 있으면 prop으로 넘긴다. 추측성 티커 스캔 금지
   - 심볼 Yahoo 형식(US 그대로, KR `.KS`/`.KQ`, 지수 `^`, 크립토 `BTC-USD`). KR → Naver, 그 외 → Yahoo

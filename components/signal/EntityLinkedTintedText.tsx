@@ -2,7 +2,7 @@ import { useMemo, type ComponentProps } from 'react';
 import { Text, type StyleProp, type TextStyle } from 'react-native';
 
 import { splitTextWithEntityLinks } from '@/domain/entities/linkEntitiesInText';
-import { openEtfInsightSymbol } from '@/domain/etfInsights/openSymbol';
+import { openFinanceSymbol } from '@/domain/quotes/openFinanceSymbol';
 import { splitTextWithSignedChangeTints } from '@/domain/quotes/tintSignedChangeInText';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -80,7 +80,7 @@ export function EntityLinkedTintedText({
           return (
             <Text
               key={part.key}
-              onPress={() => openEtfInsightSymbol(part.symbol)}
+              onPress={() => openFinanceSymbol(part.symbol)}
               accessibilityRole="link"
               style={{
                 color: theme.green,

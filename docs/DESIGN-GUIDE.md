@@ -160,7 +160,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 섹션 `>` → 시장 탭 해당 회차 · 오늘 정리 카드 → `TodayBriefingSheet` · 섹션 `>` → `/today-briefing`
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)
-- **일정 칩**: 히어로 바로 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
+- **일정 칩**: 뉴스 흐름 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
   - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`

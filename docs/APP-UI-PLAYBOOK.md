@@ -200,7 +200,7 @@ topFixed
 | 날짜 바 | `components/signal/SignalDateNavigator.tsx` |
 | wide 셸 | `components/signal/IpadSidebarScreen.tsx`, `WideWebShell` |
 | 탭 아이콘 | `app/(tabs)/_layout.tsx`, 사이드바 탭바 |
-| 홈 관심 종목·뉴스 개수 | `services/homeWatchlistDisplayPreference.ts`, `services/homeNewsFlowDisplayPreference.ts` |
+| 홈 관심 종목·뉴스 흐름 개수 | `services/homeWatchlistDisplayPreference.ts`, `services/homeNewsFlowDisplayPreference.ts` |
 | 웹 스크롤바 | `app/+html.tsx` + scroll viewport data attr |
 | 피드 chip | `components/signal/FeedNewContentChip.tsx` |
 

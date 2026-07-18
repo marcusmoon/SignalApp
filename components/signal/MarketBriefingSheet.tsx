@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { COMFORT_GAP_LG, COMFORT_GAP_SM } from '@/constants/comfortDensity';
@@ -23,16 +22,14 @@ type Props = {
   visible: boolean;
   briefing: SignalApiMarketBriefing | null;
   title: string;
-  sessionLabel?: string;
   onClose: () => void;
 };
 
-/** 홈 시장 브리핑 행 → 해당 회차 본문 (뉴스·공시 DigestSourcesSheet와 동일 셸). */
+/** 홈 시장 브리핑 → 해당 회차 본문 (뉴스·공시 DigestSourcesSheet와 동일 셸). */
 export function MarketBriefingSheet({
   visible,
   briefing,
   title,
-  sessionLabel,
   onClose,
 }: Props) {
   const { theme, scaleFont } = useSignalTheme();
@@ -40,7 +37,6 @@ export function MarketBriefingSheet({
   const insets = useSafeAreaInsets();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const subtitle = sessionLabel?.trim() || '';
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -70,7 +66,6 @@ export function MarketBriefingSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
-              {subtitle ? <BriefingMetaChip label={subtitle} /> : null}
               <HomeSectionHeader title={title} showChevron={false} />
             </View>
             {briefing ? (

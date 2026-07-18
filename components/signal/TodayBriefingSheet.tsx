@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { TodayBriefingBlock } from '@/components/signal/TodayBriefingBlock';
 import { COMFORT_GAP_LG, COMFORT_GAP_SM } from '@/constants/comfortDensity';
@@ -69,7 +68,6 @@ export function TodayBriefingSheet({ visible, briefing, onClose }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
-              <BriefingMetaChip label={t('todayBriefingDetailKicker')} />
               {title ? <HomeSectionHeader title={title} showChevron={false} /> : null}
             </View>
             {briefing ? (

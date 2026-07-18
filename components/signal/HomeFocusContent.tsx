@@ -21,7 +21,6 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
-import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import {
@@ -603,15 +602,6 @@ export function HomeFocusContent({
     [briefingSheet],
   );
 
-  const briefingSheetSessionLabel = useMemo(() => {
-    if (!briefingSheet) return undefined;
-    const session = HOME_SIGNAL_SESSIONS.find(
-      (candidate) =>
-        candidate.market === briefingSheet.market && candidate.session === briefingSheet.session,
-    );
-    return session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle');
-  }, [briefingSheet, t]);
-
   const openEtfInsightsList = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showEtfInsights({ drillFrom: 'home' });
@@ -715,13 +705,6 @@ export function HomeFocusContent({
     openSignal(homeHero.briefing);
   }, [homeHero, openSignal, openTodayBriefing]);
 
-  const heroMetaLabel = useMemo(() => {
-    if (!homeHero) return '';
-    if (homeHero.kind === 'today') return t('ipadHomeTitle');
-    const session = HOME_SIGNAL_SESSIONS.find((candidate) => candidate.key === homeHero.sessionKey);
-    return session ? t(session.labelId) : t('ipadHomeSignalTitle');
-  }, [homeHero, t]);
-
   const renderHeroCard = useCallback(() => {
     if (!homeHero) {
       return (
@@ -731,18 +714,16 @@ export function HomeFocusContent({
       );
     }
     const headline = homeHeroHeadline(homeHero);
-    const a11yLabel = [heroMetaLabel, headline || heroSectionTitle].filter(Boolean).join(', ');
     return (
       <Pressable
         onPress={openHero}
         accessibilityRole="button"
-        accessibilityLabel={a11yLabel}
+        accessibilityLabel={heroSectionTitle}
         style={({ pressed }) => [
           styles.heroCard,
           showIssueSummary && styles.heroCardSummary,
           pressed && styles.pressed,
         ]}>
-        {heroMetaLabel ? <BriefingMetaChip label={heroMetaLabel} /> : null}
         {headline ? (
           <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
             {headline}
@@ -750,7 +731,7 @@ export function HomeFocusContent({
         ) : null}
       </Pressable>
     );
-  }, [heroMetaLabel, heroSectionTitle, homeHero, openHero, showIssueSummary, styles, t]);
+  }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles, t]);
 
   const renderCalendarChips = useCallback(
     () => (
@@ -1056,7 +1037,6 @@ export function HomeFocusContent({
         visible={briefingSheet != null}
         briefing={briefingSheet}
         title={briefingSheetTitle}
-        sessionLabel={briefingSheetSessionLabel}
         onClose={closeBriefingSheet}
       />
       <TodayBriefingSheet

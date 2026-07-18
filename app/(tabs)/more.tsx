@@ -178,20 +178,6 @@ export default function MoreHubScreen() {
         router.push('/(tabs)/board' as never);
         return;
       }
-      if (item === 'youtube') {
-        if (ipadNav.isAvailable) {
-          ipadNav.showYoutubeTab();
-        }
-        router.push('/(tabs)/youtube' as never);
-        return;
-      }
-      if (item === 'itNews') {
-        if (ipadNav.isAvailable) {
-          ipadNav.showTabs();
-        }
-        router.push('/(tabs)/it-news' as never);
-        return;
-      }
       if (item === 'account') {
         if (ipadNav.isAvailable) {
           ipadNav.showAccount();
@@ -216,14 +202,7 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter(
-            (item) =>
-              item !== 'account' &&
-              item !== 'youtube' &&
-              item !== 'board' &&
-              item !== 'disclosures' &&
-              item !== 'itNews',
-          )
+        ? order.filter((item) => item !== 'account' && item !== 'board' && item !== 'disclosures')
         : order,
     [order, useTwoPane],
   );

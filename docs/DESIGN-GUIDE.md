@@ -149,12 +149,14 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 히트맵** | **heatmap → 히트맵** | `ChangeHeatmapGrid` |
-  | 내러티브 플로우 | **companies** (로고·호가·요약) | **themes** (ETF 칩·모멘텀·요약) | 동일 row 밀도 |
-  | 맥락 | macro | flows · sources | — |
-  - 섹터/히트맵 셀·테마 티커 탭 → 국내 Naver / 해외 Yahoo (`domain/etfInsights/openSymbol.ts`)
+  | 섹터/테마 내러티브 | 히트맵 아래 **섹터 요약 행**(trend·name·summary 유지) | **themes** (ETF 칩·모멘텀·요약) | row 밀도 맞춤 |
+  | 종목/수급 플로우 | **companies** (로고·호가·요약) | **flowHighlights** (로고·유입/유출·금액·시그널, 티커→Yahoo/Naver, url 있으면 출처) | 동일 row 밀도 |
+  | 맥락 | macro · sources | sources | — |
+  - 섹터/히트맵 셀·테마·수급 티커 탭 → 국내 Naver / 해외 Yahoo (`domain/etfInsights/openSymbol.ts`)
   - 섹터 `changePercent`·`symbol`이 없으면 summary에서 등락·티커를 파싱 (`domain/briefings/sectorHeatmap.ts`)
+  - 히트맵만으로 요약 문구를 대체하지 않는다 — 기존 summary는 섹터 내러티브 행으로 그대로 노출
 - 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
-- 상세(`MarketBriefingBlock` 등): 종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터는 히트맵 그리드
+- 상세(`MarketBriefingBlock` 등): 섹터 요약·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터는 히트맵 + 요약 행
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
 ## 피드·리스트·다이제스트

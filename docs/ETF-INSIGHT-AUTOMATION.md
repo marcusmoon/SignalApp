@@ -86,6 +86,8 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 
 `id`와 `title`은 필수. `period` 기본값은 `daily`. `insightDate`가 없으면 `publishedAt`의 UTC 날짜를 쓴다.
 
+앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·테마 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
+
 ## 저장
 
 - 테이블: `etf_insights` (migration `V20__etf_insights.sql`)

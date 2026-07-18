@@ -191,12 +191,8 @@ function SectorFlowRow({
   return (
     <View style={[styles.sectorFlowRow, bordered && styles.listRowBordered]}>
       <View style={[styles.sectorFlowTop, { backgroundColor: topFill }]}>
-        <Text style={styles.sectorName} numberOfLines={1}>
-          {cell.name}
-        </Text>
-        <Text style={[styles.sectorHeatPct, { color: pctColor }]} numberOfLines={1}>
-          {pctLabel}
-        </Text>
+        <Text style={styles.sectorName}>{cell.name}</Text>
+        <Text style={[styles.sectorHeatPct, { color: pctColor }]}>{pctLabel}</Text>
       </View>
       {why ? <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText> : null}
     </View>
@@ -411,7 +407,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sectorFlowTop: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 10,
       minWidth: 0,
@@ -420,6 +416,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: 7,
     },
     sectorName: {
+      flex: 1,
       fontSize: ft.ff(14),
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,

@@ -725,9 +725,7 @@ export function HomeFocusContent({
           pressed && styles.pressed,
         ]}>
         {headline ? (
-          <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
-            {headline}
-          </ChangeTintedText>
+          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
         ) : null}
       </Pressable>
     );

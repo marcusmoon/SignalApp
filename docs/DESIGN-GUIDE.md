@@ -184,7 +184,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스 흐름** 조절. 히어로·일정은 자동 (장중 브리핑 목록·게시판 피커 없음)
 - 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
-- 상세(`MarketBriefingBlock` 등): 섹터 why·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
+- 상세(`MarketBriefingBlock`·`TodayBriefingBlock`·시트·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
+- 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
 ## 피드·리스트·다이제스트

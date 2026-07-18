@@ -76,10 +76,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     titleLine: {
       minWidth: 0,
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
     },
     title: {
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
       fontSize: sf(16),
       lineHeight: sf(22),
       fontWeight: '700',

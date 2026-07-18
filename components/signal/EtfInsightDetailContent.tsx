@@ -5,10 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
-import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { EtfInsightBlock } from '@/components/signal/EtfInsightBlock';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
@@ -20,12 +18,6 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
-import {
-  etfInsightHeatmapLabel,
-  etfInsightLabeledRows,
-  etfInsightRotationLines,
-  etfInsightThemeLabel,
-} from '@/domain/etfInsights/display';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import {
   fetchSignalEtfInsightById,
@@ -35,8 +27,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiEtfInsight } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
-import { formatFeedItemTimeLabel, formatLocalYmdLabel } from '@/utils/date';
+import { formatLocalYmdLabel } from '@/utils/date';
 
 export type EtfInsightDetailContentProps = {
   id?: string | null;
@@ -115,21 +106,6 @@ export function EtfInsightDetailContent({
     });
   }, [date, item?.insightDate, locale]);
 
-  const themes = useMemo(
-    () => etfInsightLabeledRows(item?.themes || [], etfInsightThemeLabel),
-    [item],
-  );
-  const flows = useMemo(() => etfInsightLabeledRows(item?.flowHighlights || []), [item]);
-  const heatmap = useMemo(
-    () => etfInsightLabeledRows(item?.heatmap || [], etfInsightHeatmapLabel),
-    [item],
-  );
-  const rotationLines = useMemo(() => etfInsightRotationLines(item?.rotation), [item]);
-  const insights = item?.insights?.filter((line) => String(line || '').trim()) || [];
-  const sources = item?.sourceRefs || [];
-  const leadText = item?.title?.trim() || '';
-  const bodyText = item?.summary?.trim() || '';
-
   return (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
       {!embedded ? <Stack.Screen options={{ title: t('etfInsightDetailKicker') }} /> : null}
@@ -162,133 +138,8 @@ export function EtfInsightDetailContent({
 
           {item ? (
             <>
-              <View style={styles.heroCard}>
-                {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
-                {bodyText ? <Text style={styles.summary}>{bodyText}</Text> : null}
-                {rotationLines[0] ? (
-                  <Text style={styles.rotationLine} numberOfLines={2}>
-                    {rotationLines[0]}
-                  </Text>
-                ) : null}
-              </View>
-
-              {insights.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('etfInsightKeyPoints')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {insights.map((line, index) => (
-                      <HomeDigestFeedRow
-                        key={`${item.id}-insight-${index}`}
-                        title={line}
-                        titleLines={null}
-                        bordered={index < insights.length - 1}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {themes.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('etfInsightThemes')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {themes.map((row, index) => (
-                      <HomeDigestFeedRow
-                        key={`${item.id}-theme-${index}`}
-                        title={row.label}
-                        titleLines={null}
-                        trailText={row.trail}
-                        summary={row.summary}
-                        summaryLines={3}
-                        bordered={index < themes.length - 1}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {heatmap.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('etfInsightHeatmap')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {heatmap.map((row, index) => (
-                      <View
-                        key={`${item.id}-heat-${index}`}
-                        style={[
-                          styles.heatmapRow,
-                          index < heatmap.length - 1 && styles.heatmapRowBorder,
-                        ]}>
-                        <Text style={styles.heatmapLabel} numberOfLines={2}>
-                          {row.label}
-                        </Text>
-                        {row.trail ? (
-                          <ChangeTintedText style={styles.heatmapTrail}>{row.trail}</ChangeTintedText>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {flows.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('etfInsightFlows')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {flows.map((row, index) => (
-                      <HomeDigestFeedRow
-                        key={`${item.id}-flow-${index}`}
-                        title={row.label}
-                        titleLines={null}
-                        trailText={row.trail}
-                        bordered={index < flows.length - 1}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {sources.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('etfInsightSources')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {sources.map((ref, index) => {
-                      const title = String(ref.title || ref.sourceName || ref.url || '').trim();
-                      if (!title) return null;
-                      return (
-                        <HomeDigestFeedRow
-                          key={`${item.id}-src-${index}`}
-                          title={title}
-                          titleLines={null}
-                          trailText={ref.sourceName?.trim() || null}
-                          timeLabel={formatFeedItemTimeLabel(ref.publishedAt, locale)}
-                          sourceEntries={briefingSourceIconEntries([ref])}
-                          bordered={index < sources.length - 1}
-                          onPress={
-                            ref.url
-                              ? () => {
-                                  void openConfiguredExternalLink({
-                                    webUrl: ref.url!,
-                                    openInAppBrowser: true,
-                                  });
-                                }
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
+              <Text style={styles.headline}>{item.title}</Text>
+              <EtfInsightBlock insight={item} theme={theme} scaleFont={scaleFont} />
             </>
           ) : null}
         </WebWheelScrollView>
@@ -363,84 +214,11 @@ function makeStyles(
       textAlign: 'center',
       paddingVertical: 24,
     },
-    heroCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      gap: 10,
-    },
     headline: {
       fontSize: ft.ff(17),
       lineHeight: sf(25),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    summary: {
-      fontSize: ft.signalBodyFont(15),
-      lineHeight: sf(23),
-      fontWeight: ft.signalBodyWeight,
-      color: theme.textMuted,
-    },
-    rotationLine: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '600',
-      color: theme.green,
-    },
-    sectionWrap: {
-      gap: 12,
-    },
-    sectionHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      minWidth: 0,
-    },
-    sectionHeading: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.signalTitleFont(16),
-      fontWeight: ft.titleWeight,
-      letterSpacing: -0.15,
-      color: theme.text,
-    },
-    sectionFeedCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      overflow: 'hidden',
-    },
-    heatmapRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingVertical: 10,
-      paddingHorizontal: 4,
-    },
-    heatmapRowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    heatmapLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(14),
-      lineHeight: sf(20),
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
-    },
-    heatmapTrail: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '700',
-      color: theme.textMuted,
     },
   });
 }

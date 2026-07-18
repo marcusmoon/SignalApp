@@ -20,12 +20,12 @@
 
 | 탭 | 화면 | 역할 |
 |---|---|---|
-| 홈 | `app/(tabs)/home.tsx` | 마감 브리핑·뉴스 흐름·시장 브리핑·ETF 브리핑·공시 흐름·관심 종목 |
+| 홈 | `app/(tabs)/home.tsx` | 마감·뉴스·시장 브리핑·(7일 이내) ETF 브리핑·공시 흐름·관심 종목 |
 | 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·IT·YouTube 피드 (`YoutubeFeedPanel` 공유) |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
-| 더보기 | `app/(tabs)/more.tsx` | 게시판·공시·My info 숏컷 |
+| 더보기 | `app/(tabs)/more.tsx` | 내 정보·공시·ETF 브리핑·게시판 숏컷 |
 | My info | `app/account.tsx` | 환경 설정·내 활동·계정 |
 
 IT 뉴스와 YouTube는 뉴스 탭의 세그먼트(IT, Video)에서만 접근할 수 있다.

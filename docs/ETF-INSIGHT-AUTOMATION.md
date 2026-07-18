@@ -1,16 +1,20 @@
 # ETF 브리핑 자동화 연동
 
-앱 표시명은 **ETF 브리핑**. API·테이블 키는 `etf-insights` / `etf_insights`를 유지한다. 외부 에이전트가 Signal Server에 적재한 뒤, 앱 홈이 `GET /v1/etf-insights`로 읽어 노출한다.
+앱 표시명은 **ETF 브리핑**. API·테이블 키는 `etf-insights` / `etf_insights`를 유지한다. 외부 에이전트가 Signal Server에 적재한 뒤 앱이 `GET /v1/etf-insights`로 읽는다. **권장 발행 주기: 주 1회**(주간 리뷰). `period`는 `weekly` 권장(기존 `daily`도 허용).
 
-## 홈 노출
+## 앱 노출
 
-- 위치: **시장 브리핑 아래 · 공시 흐름 위**
-- 홈 카드: 날짜별 단일 카드 → **바텀시트** (`EtfInsightSheet` + `EtfInsightBlock`)
-- 섹션 헤더 `>`: 리스트(`/etf-insights`) → 행 탭 시 전체 상세(`/etf-insight`)
-- 본문: 시황 브리핑과 **보완** — lead · **히트맵**(브리핑 sectors와 동일 그리드) · **테마**(제목·요약·메타 티커) · 수급 · 출처
-- 역할 분담 표: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 시장 브리핑 ↔ ETF 브리핑 보완 모델
-- 홈 조회: 선택일 `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일`인 최신 1건
-- UTC 규칙은 [DATE-TIME.md](./DATE-TIME.md).
+| 경로 | 동작 |
+|---|---|
+| **더보기** (메인) | 허브 타일 → 리스트 `/etf-insights` |
+| **홈** (보조) | 선택일 기준 최신건이 **7일 이내**일 때만 카드. 빈 섹션·상시 고정 금지 |
+| 카드 탭 | 바텀시트 (`EtfInsightSheet`) |
+| 리스트 행 | 상세 `/etf-insight` |
+| 푸시·알림함 | ingest 시 발행 |
+
+본문 UI: 시황 브리핑과 **보완** — lead · 히트맵 · 테마(≈companies) · 수급 · 출처. 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
+
+홈 조회: `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일` 최신 1건 → 그다음 7일 freshness 게이트. UTC는 [DATE-TIME.md](./DATE-TIME.md).
 
 ## Ingest Endpoint
 
@@ -42,7 +46,7 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
   "notifyInbox": true,
   "sendPush": true,
   "id": "etf-insight:2026-07-18:daily",
-  "period": "daily",
+  "period": "weekly",
   "title": "반도체·AI ETF로 자금이 재집중됐습니다",
   "summary": "국내·미국 ETF 모두 AI·반도체 테마 유입이 두드러졌고, 방어·배당 쪽은 상대적으로 둔화됐습니다.",
   "insightDate": "2026-07-18",

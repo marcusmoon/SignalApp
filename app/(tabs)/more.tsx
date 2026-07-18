@@ -47,6 +47,11 @@ const HUB_META: Record<
     icon: 'file-text-o',
     titleId: 'tabDisclosures',
   },
+  etfBriefing: {
+    href: '/etf-insights' as Href,
+    icon: 'pie-chart',
+    titleId: 'homeEtfInsightTitle',
+  },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
 
@@ -178,6 +183,14 @@ export default function MoreHubScreen() {
         router.push('/(tabs)/board' as never);
         return;
       }
+      if (item === 'etfBriefing') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showEtfInsights({ drillFrom: 'home' });
+          return;
+        }
+        router.push('/etf-insights' as never);
+        return;
+      }
       if (item === 'account') {
         if (ipadNav.isAvailable) {
           ipadNav.showAccount();
@@ -202,7 +215,13 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter((item) => item !== 'account' && item !== 'board' && item !== 'disclosures')
+        ? order.filter(
+            (item) =>
+              item !== 'account' &&
+              item !== 'board' &&
+              item !== 'disclosures' &&
+              item !== 'etfBriefing',
+          )
         : order,
     [order, useTwoPane],
   );

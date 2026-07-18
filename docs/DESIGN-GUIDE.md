@@ -149,9 +149,13 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | AI 다이제스트 흐름 | 뉴스 흐름 · 공시 흐름 | `~ 흐름` |
   | 개인/도구 | 게시판 · 관심 종목 · 투자 일정 | 짧은 명사 |
   - AI 섹션만 `AiBadge`. 영어 혼용 제목(`인사이트` 등) 금지에 가깝게 통일
-- 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → ETF 브리핑 → 공시 흐름 → (오늘만) 게시판·관심 종목 → 투자 일정
+- 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → (조건부) ETF 브리핑 → 공시 흐름 → (오늘만) 게시판·관심 종목 → 투자 일정
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
-- ETF 브리핑: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → `EtfInsightSheet`, 섹션 헤더 `>` → 리스트. ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) (`etf-insights` API 키는 유지)
+- **ETF 브리핑 (주간) 노출**:
+  - **메인 진입**: 더보기 허브 타일 → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`
+  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 카드 1장 (`shouldShowEtfBriefingOnHome`). 카드 탭 → 시트, `>` → 리스트
+  - 발행 알림: ingest 푸시·알림함 (일상 발견 경로)
+  - ingest 계약: [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
 - **시장 브리핑 ↔ ETF 브리핑 보완 모델** (같은 시각 언어, 다른 레이어):
   | 역할 | 시장 브리핑 | ETF 브리핑 | 공유 UI |
   |---|---|---|---|
@@ -191,7 +195,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 · My info
 
-- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 게시판·공시·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
+- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 내 정보·공시·**ETF 브리핑**·게시판 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
 - **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 게시판 · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
 - **퀵 설정** (`QuickSettingsSheet`): 헤더 우측 options 아이콘. 언어·화면 모드. 푸터 **More settings** → 전체 설정(pill 탭 표시, iPhone·iPad 동일).

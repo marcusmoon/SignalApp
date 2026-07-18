@@ -162,7 +162,7 @@ export type SignalApiEtfInsightSourceRef = {
   publishedAt?: string | null;
 };
 
-/** ETF 브리핑 — 외부 ingest(`POST /v1/etf-insights/ingest`) 후 홈에 노출 */
+/** ETF 브리핑 — 외부 ingest 후 더보기·(신선할 때) 홈 노출 */
 export type SignalApiEtfInsight = {
   id: string;
   period: string;

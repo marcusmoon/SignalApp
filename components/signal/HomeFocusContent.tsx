@@ -83,6 +83,7 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility';
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
@@ -1152,21 +1153,17 @@ export function HomeFocusContent({
             )}
           </View>
 
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('homeEtfInsightTitle')}
-              badge={<AiBadge />}
-              onPress={openEtfInsightsList}
-              accessibilityLabel={t('commonViewAll')}
-            />
-            {etfInsight ? (
-              renderEtfInsightCard(etfInsight)
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('homeEtfInsightEmpty')}</Text>
-              </View>
-            )}
-          </View>
+          {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('homeEtfInsightTitle')}
+                badge={<AiBadge />}
+                onPress={openEtfInsightsList}
+                accessibilityLabel={t('commonViewAll')}
+              />
+              {renderEtfInsightCard(etfInsight)}
+            </View>
+          ) : null}
 
           <View style={styles.section}>
             <HomeSectionHeader

@@ -155,20 +155,25 @@ export function SignalSidebarTabBar({
     ACCOUNT_AUX_PATHS.some((path) => pathname.startsWith(path));
   const etfActive =
     ipadState.contentPane === 'etfInsights' || ipadState.contentPane === 'etfInsight';
-  const homeActive = ipadState.isHomePaneActive && !accountActive && !etfActive;
+  const boardActive =
+    ipadState.contentPane === 'board' || ipadState.contentPane === 'community';
+  const homeActive = ipadState.isHomePaneActive && !accountActive && !etfActive && !boardActive;
 
   const activeTabName = accountActive
     ? 'account'
     : etfActive
       ? 'etfBriefing'
-      : homeActive
-        ? null
-        : SIDEBAR_TABS.find(
-            (tab) =>
-              tab.name !== 'account' &&
-              tab.name !== 'etfBriefing' &&
-              (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
-          )?.name ?? 'news';
+      : boardActive
+        ? 'board'
+        : homeActive
+          ? null
+          : SIDEBAR_TABS.find(
+              (tab) =>
+                tab.name !== 'account' &&
+                tab.name !== 'etfBriefing' &&
+                tab.name !== 'board' &&
+                (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
+            )?.name ?? 'news';
 
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
@@ -185,10 +190,21 @@ export function SignalSidebarTabBar({
     if (tab.name === 'etfBriefing') {
       if (ipadState.contentPane === 'etfInsights') return;
       if (ipadNav.isAvailable) {
-        ipadNav.showEtfInsights({ drillFrom: 'tabs' });
+        // Top-level sidebar root — no drill back (same as account).
+        ipadNav.showEtfInsights();
         return;
       }
       router.navigate('/etf-insights' as never);
+      return;
+    }
+    if (tab.name === 'board') {
+      if (ipadState.contentPane === 'board') return;
+      if (ipadNav.isAvailable) {
+        // Overlay root so post → back returns to board list (not a stray tabs pane).
+        ipadNav.showBoard();
+        return;
+      }
+      router.navigate('/(tabs)/board' as never);
       return;
     }
     if (activeTabName === tab.name) {

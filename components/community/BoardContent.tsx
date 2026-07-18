@@ -202,16 +202,17 @@ export function BoardContent({
   const changeSource = useCallback(
     (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
       if (next === sourceRef.current) {
-        if (useTwoPane && !embedded) setActiveSubTabKey(next);
+        if (useTwoPane) setActiveSubTabKey(next);
         return;
       }
       sourceRef.current = next;
       setSource(next);
-      if (useTwoPane && !embedded) setActiveSubTabKey(next);
+      if (useTwoPane) setActiveSubTabKey(next);
       setError(null);
       setItems([]);
       setMeta(null);
       setLoading(true);
+      // Wide overlay board keeps source in memory; tab board syncs the URL.
       if (!options?.fromRoute && !embedded) {
         setRouteParams({ source: next });
       }
@@ -227,30 +228,24 @@ export function BoardContent({
   }, [changeSource, embedded, routeParams.source]);
 
   const registerBoardSubTabs = useCallback(() => {
-    if (!useTwoPane || embedded) return;
+    if (!useTwoPane) return;
     setActiveSubTabKey(source);
     setSubTabs(
       COMMUNITY_SOURCE_ORDER.map((key) => ({
         key,
         label: t(SOURCE_LABEL[key]),
-        href: '/(tabs)/board',
-        params: { source: key },
+        href: embedded ? undefined : '/(tabs)/board',
+        params: embedded ? undefined : { source: key },
         onPress: () => changeSource(key),
       })),
     );
   }, [changeSource, embedded, setActiveSubTabKey, setSubTabs, source, t, useTwoPane]);
 
   useEffect(() => {
-    if (!useTwoPane || !active || embedded) return;
-    registerBoardSubTabs();
-  }, [active, embedded, registerBoardSubTabs, useTwoPane]);
-
-  useEffect(() => {
-    if (!useTwoPane || embedded) return;
-    if (!active) return;
+    if (!useTwoPane || !active) return;
     registerBoardSubTabs();
     return () => clearSubTabs();
-  }, [active, clearSubTabs, embedded, registerBoardSubTabs, useTwoPane]);
+  }, [active, clearSubTabs, registerBoardSubTabs, useTwoPane]);
 
   const listBottomPad = embedded
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
@@ -261,11 +256,12 @@ export function BoardContent({
   const openPost = useCallback(
     (id: string) => {
       if (ipadNav.isAvailable) {
-        ipadNav.showCommunityPost(id, { drillFrom: embedded ? 'board' : 'tabs' });
+        // Wide board is an overlay root; always drill back to the board list.
+        ipadNav.showCommunityPost(id, { drillFrom: 'board' });
         return;
       }
     },
-    [embedded, ipadNav],
+    [ipadNav],
   );
 
   const renderItem = useCallback(
@@ -287,7 +283,8 @@ export function BoardContent({
 
   const showPhoneChrome = !useTwoPane && !embedded && !stackChrome;
   const showPhoneSegments = !useTwoPane && !embedded;
-  const showEmbeddedSegments = embedded;
+  /** Wide uses sidebar source chips; in-pane segments only for non-wide embedded. */
+  const showEmbeddedSegments = embedded && !useTwoPane;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane || embedded || stackChrome ? [] : ['top']}>

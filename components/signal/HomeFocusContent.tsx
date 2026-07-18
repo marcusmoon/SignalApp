@@ -866,20 +866,16 @@ export function HomeFocusContent({
             {renderHeroCard()}
           </View>
 
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('ipadHomeCalendarTitle')}
-              onPress={openCalendar}
-              accessibilityLabel={t('commonViewAll')}
-            />
-            {homeCalendarChips.length > 0 ? (
-              renderCalendarChips()
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('ipadHomeCalendarEmpty')}</Text>
-              </View>
-            )}
-          </View>
+          {homeCalendarChips.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('ipadHomeCalendarTitle')}
+                onPress={openCalendar}
+                accessibilityLabel={t('commonViewAll')}
+              />
+              {renderCalendarChips()}
+            </View>
+          ) : null}
 
           {selectedIsExactToday ? (
             <View style={styles.section}>

@@ -1,20 +1,20 @@
 # ETF 브리핑 자동화 연동
 
-앱 표시명은 **ETF 브리핑**. API·테이블 키는 `etf-insights` / `etf_insights`를 유지한다. 외부 에이전트가 Signal Server에 적재한 뒤 앱이 `GET /v1/etf-insights`로 읽는다. **권장 발행 주기: 주 1회**(주간 리뷰). `period`는 `weekly` 권장(기존 `daily`도 허용).
+앱 표시명은 **섹터 흐름**. API·테이블 키는 `etf-insights` / `etf_insights`를 유지한다. 외부 에이전트가 Signal Server에 적재한 뒤 앱이 `GET /v1/etf-insights`로 읽는다. **권장 발행 주기: 주 1회**(주간 리뷰). `period`는 `weekly` 권장(기존 `daily`도 허용).
 
 ## 앱 노출
 
 | 경로 | 동작 |
 |---|---|
-| **더보기** (메인) | 허브 타일 → 리스트 `/etf-insights` |
-| **홈** (보조) | 선택일 기준 최신건이 **7일 이내**일 때만 카드. 빈 섹션·상시 고정 금지 |
+| **더보기** (메인) | 허브 타일(짧은 라벨 ETF) → 리스트 `/etf-insights` |
+| **홈** (보조) | 선택일 기준 최신건이 **7일 이내**일 때만 「섹터 흐름」. 히트맵 미니뷰 우선. 빈 섹션·상시 고정 금지 |
 | 카드 탭 | 바텀시트 (`EtfInsightSheet`) |
 | 리스트 행 | 상세 `/etf-insight` |
 | 푸시·알림함 | ingest 시 발행 |
 
-본문 UI: 시황 브리핑과 **보완** — lead · 히트맵 · 테마 · 수급 · 출처. **서버에 없는 섹션·필드는 앱에서 숨긴다**(빈 배열·빈 문자열·빈 rotation 표시 금지). 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
+본문 UI: 장중 브리핑과 **보완** — lead · 히트맵 · 테마 · 수급 · 출처. **서버에 없는 섹션·필드는 앱에서 숨긴다**(빈 배열·빈 문자열·빈 rotation 표시 금지). 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
 
-Admin 데이터 초기화에 **ETF 브리핑**(`etfInsights`) 대상이 있다. 기존 적재분 정리: Flyway `V21__purge_etf_insights.sql` + 서버 `ensureSeeded` 1회 마커(`purge_etf_insights_v21`)로 `etf_insights`·관련 알림을 비운다.
+Admin 데이터 초기화에 **섹터 흐름 / ETF**(`etfInsights`) 대상이 있다. 기존 적재분 정리: Flyway `V21__purge_etf_insights.sql` + 서버 `ensureSeeded` 1회 마커(`purge_etf_insights_v21`)로 `etf_insights`·관련 알림을 비운다.
 
 홈 조회: `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일` 최신 1건 → 그다음 7일 freshness 게이트. UTC는 [DATE-TIME.md](./DATE-TIME.md).
 

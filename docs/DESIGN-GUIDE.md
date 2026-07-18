@@ -142,37 +142,45 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 - 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
 - 홈 섹션 **동일 래퍼** (`styles.section` + `COMFORT_GAP_PAGE` 사이 간격). heroStack으로 앞 섹션만 좁히지 않음
-- 홈 섹션 제목 네이밍 (2어절·역할 병행):
-  | 역할 | 제목 | 패턴 |
+- 홈 섹션 제목 네이밍 (표시 타이틀 · API 키 유지):
+  | 역할 | 제목 | API/데이터 |
   |---|---|---|
-  | AI 합성 브리핑 | 마감 브리핑 · 시장 브리핑 · **ETF 브리핑** | `~ 브리핑` |
-  | AI 다이제스트 흐름 | 뉴스 흐름 | `~ 흐름` |
-  | 개인/도구 | 게시판 · 관심 종목 · 투자 일정 | 짧은 명사 |
-  - AI 섹션만 `AiBadge`. 영어 혼용 제목(`인사이트` 등) 금지에 가깝게 통일
-- 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → (조건부) ETF 브리핑 → (오늘만) 게시판·관심 종목 → 투자 일정
+  | 히어로(마감 종합) | **오늘 정리** | `today_briefings` |
+  | 히어로·시장 탭(회차) | **장중 브리핑** | `market_briefings` |
+  | ETF 보조 | **섹터 흐름** | `etf_insights` |
+  | 뉴스 이슈 | **뉴스** | news digests |
+  | 캘린더 | **일정** | calendar |
+  | 워치리스트 | **관심 종목** | quotes watchlist |
+  - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
+- **홈 섹션 순서**
+  - **오늘**: 히어로 1장 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름 → 뉴스
+  - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 · 관심 종목·게시판 숨김
+- **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
+- **히어로 탭**: 장중 브리핑 → 시장 탭 해당 회차 · 오늘 정리 → `/today-briefing`
+- **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)
+- **일정 칩**: 히어로 바로 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
-- 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
-- **ETF 브리핑 (주간) 노출**:
-  - **메인 진입**: 더보기 허브 타일 → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`
-  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 카드 1장 (`shouldShowEtfBriefingOnHome`). 카드 탭 → 시트, `>` → 리스트
+- **섹터 흐름 (주간) 노출**:
+  - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`
+  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 히트맵 미니뷰 우선. 카드 탭 → 시트, `>` → 리스트
   - 발행 알림: ingest 푸시·알림함 (일상 발견 경로)
   - ingest 계약: [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
-- **시장 브리핑 ↔ ETF 브리핑 보완 모델** (같은 시각 언어, 다른 레이어):
-  | 역할 | 시장 브리핑 | ETF 브리핑 | 공유 UI |
+- **장중 브리핑 ↔ 섹터 흐름 보완 모델** (같은 시각 언어, 다른 레이어):
+  | 역할 | 장중 브리핑 | 섹터 흐름 | 공유 UI |
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 리스트** (첫 행만 히트맵 색) | **heatmap → 히트맵** | 등락색 `heatFillColor` / ETF는 `ChangeHeatmapGrid` |
-  | 섹터/테마 내러티브 | **섹터 흐름**: 섹터명 \| % (첫 행 heat) → why | **themes**: 테마명 \| 모멘텀 → 요약(본문 티커 탭) | 동일 row 밀도 |
+  | 섹터/테마 내러티브 | **섹터**(짧게): 섹터명 \| % (첫 행 heat) → why | **themes**: 테마명 \| 모멘텀 → 요약(본문 티커 탭) | 동일 row 밀도 |
   | 종목/수급 플로우 | **companies** | **flow** (`flowHighlights`) | `SymbolIdentityChip` · 본문 말줄임 없음 · 출처=`SourceIconStack`+외부 링크 |
   | 맥락 | macro · sources | sources | — |
   - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). 시장 companies·ETF 수급 등 브리핑 리스트에서 공통. 화면별 칩 스타일 금지
-  - **섹터 흐름**: 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
+  - **장중 브리핑 섹터 리스트**: 홈 「섹터 흐름」과 구분 — 본문 섹션 제목은 **섹터**. 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
   - **ETF themes**: 로고·하단 메타 티커 없음. `etfs`/히트맵 티커가 요약 본문에 있으면 `SymbolLinkedTintedText`로 탭 → 국내 Naver / 해외 Yahoo
   - **ETF 빈 섹션 금지**: heatmap·themes·flows·sources·rotation·insights·summary는 값이 있을 때만 렌더. 이름/요약 없는 theme·title 없는 source는 제외
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
-- 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
+- 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **뉴스**만 조절. 히어로·일정·섹터 흐름은 자동 (장중 브리핑 목록·게시판 피커 없음)
 - 상세(`MarketBriefingBlock` 등): 섹터 why·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
@@ -209,13 +217,13 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **Wide 우측 pane**: 좌측 사이드바·상단 `SignalHeader` 고정, 우측만 페이지 교체. 드릴인 시에만 `WideSubpaneHeader`. 상세는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#wide-우측-pane-내비-ipad--넓은-웹).
 - **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만, iPhone).
 
-### 마감 브리핑 상세
+### 오늘 정리 상세
 
-`app/today-briefing.tsx` — 홈 카드 「전체 보기」 진입.
+`app/today-briefing.tsx` — 홈 히어로(오늘 정리) · 푸시 딥링크.
 
-- Stack 헤더 제목: `todayBriefingDetailKicker` (마감 브리핑)
+- Stack 헤더 제목: `todayBriefingDetailKicker` (오늘 정리)
 - 날짜: 헤더 바로 아래 고정 `dateBar` (본문 kicker 중복 없음)
-- 본문: 히어로 카드 → 핵심 포인트 · 출처 (`HomeDigestFeedRow` 스타일)
+- 본문: 헤드라인 · 요약 · 핵심 포인트 · 출처
 
 ### 종목 상세 바로가기
 

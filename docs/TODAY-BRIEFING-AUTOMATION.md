@@ -1,6 +1,6 @@
 # 오늘의 브리핑 자동화 연동
 
-오늘의 브리핑은 홈 최상단에 노출하는 종합 요약이다. 뉴스 주요 이슈, 시장 브리핑, 시세를 원천으로 만들되 `market_briefings` 회차 데이터와 분리해 `today_briefings`에 저장한다.
+오늘의 브리핑(앱 표시명 **오늘 정리**)은 홈 히어로로 쓰는 종합 요약이다. API·테이블 키는 `today_briefings`를 유지한다. 뉴스 주요 이슈, 장중 브리핑, 시세를 원천으로 만들되 `market_briefings` 회차 데이터와 분리해 저장한다.
 
 ## 시간 기준
 
@@ -56,7 +56,7 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "generatedAt": "2026-07-03T14:00:00Z",
   "publishedAt": "2026-07-03T14:00:00Z",
   "status": "published",
-  "pushTitle": "마감 브리핑 도착",
+  "pushTitle": "오늘 정리 도착",
   "pushBody": "오늘 시장을 한눈에 정리했습니다."
 }
 ```
@@ -71,6 +71,6 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 
 ## 앱 UI
 
-- 홈 카드: `components/signal/HomeFocusContent.tsx`
-- 상세 화면: `app/today-briefing.tsx` — Stack 제목 「마감 브리핑」, 날짜는 헤더 아래 `dateBar`. 본문 섹션(핵심 포인트·출처)은 `HomeDigestFeedRow` 스타일.
+- 홈 히어로: KST 23:00 이후(및 과거일 우선)에 `today_briefings`를 「오늘 정리」로 노출. 그 전에는 장중 브리핑 회차가 히어로. 선택 로직은 `domain/home/selectHomeHeroBriefing.ts`.
+- 홈·상세: `components/signal/HomeFocusContent.tsx`, `app/today-briefing.tsx` — Stack 제목 「오늘 정리」, 날짜는 헤더 아래 `dateBar`.
 - 레이아웃·여백: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)

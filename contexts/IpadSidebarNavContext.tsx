@@ -29,6 +29,8 @@ export type IpadContentPane =
   | 'disclosureFlow'
   | 'todayBriefing'
   | 'marketBriefing'
+  | 'etfInsights'
+  | 'etfInsight'
   | 'calendar'
   | 'alerts'
   | 'termsHistory'
@@ -72,6 +74,8 @@ type IpadSidebarNavState = {
   disclosureFlowParams: IpadDisclosureFlowPaneParams | null;
   todayBriefingDate: string | null;
   marketBriefingParams: IpadMarketBriefingPaneParams | null;
+  etfInsightId: string | null;
+  etfInsightDate: string | null;
   communityPostId: string | null;
   symbolTicker: string | null;
   calendarFromAccount: boolean;
@@ -96,6 +100,8 @@ type IpadSidebarNavActions = {
     date?: string,
     options?: WidePaneDrillOptions,
   ) => void;
+  showEtfInsights: (options?: WidePaneDrillOptions) => void;
+  showEtfInsight: (id: string, options?: WidePaneDrillOptions & { date?: string }) => void;
   showCalendar: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   showAlerts: (options?: { from?: 'account' } & WidePaneDrillOptions) => void;
   showTermsHistory: (options?: WidePaneDrillOptions) => void;
@@ -130,6 +136,8 @@ const defaultState: IpadSidebarNavState = {
   disclosureFlowParams: null,
   todayBriefingDate: null,
   marketBriefingParams: null,
+  etfInsightId: null,
+  etfInsightDate: null,
   communityPostId: null,
   symbolTicker: null,
   calendarFromAccount: false,
@@ -150,6 +158,8 @@ const defaultActions: IpadSidebarNavActions = {
   showDisclosureFlow: () => {},
   showTodayBriefing: () => {},
   showMarketBriefing: () => {},
+  showEtfInsights: () => {},
+  showEtfInsight: () => {},
   showCalendar: () => {},
   showAlerts: () => {},
   showTermsHistory: () => {},
@@ -233,6 +243,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const [todayBriefingDate, setTodayBriefingDate] = useState<string | null>(null);
+  const [etfInsightId, setEtfInsightId] = useState<string | null>(null);
+  const [etfInsightDate, setEtfInsightDate] = useState<string | null>(null);
   const [marketBriefingParams, setMarketBriefingParams] = useState<IpadMarketBriefingPaneParams | null>(null);
   const [communityPostId, setCommunityPostId] = useState<string | null>(null);
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
@@ -292,6 +304,18 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           session: parseSignalSessionParam(p.session),
           date: parseDateParam(p.date),
         });
+        return;
+      }
+
+      if (kind === 'etf-insights') {
+        setEtfInsightId(null);
+        setEtfInsightDate(null);
+        return;
+      }
+
+      if (kind === 'etf-insight') {
+        setEtfInsightId(firstParam(p.id) || null);
+        setEtfInsightDate(parseDateParam(p.date) ?? null);
         return;
       }
 
@@ -632,6 +656,45 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [beginWideOverlay, router, useTwoPane],
   );
 
+  const showEtfInsights = useCallback(
+    (options?: WidePaneDrillOptions) => {
+      if (useTwoPane) {
+        beginWideOverlay('etf-insights', {}, options?.drillFrom);
+        return;
+      }
+      router.navigate('/etf-insights' as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showEtfInsight = useCallback(
+    (id: string, options?: WidePaneDrillOptions & { date?: string }) => {
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+      setEtfInsightId(cleanId);
+      setEtfInsightDate(options?.date ?? null);
+      if (useTwoPane) {
+        beginWideOverlay(
+          'etf-insight',
+          {
+            id: cleanId,
+            ...(options?.date ? { date: options.date } : null),
+          },
+          options?.drillFrom,
+        );
+        return;
+      }
+      router.push({
+        pathname: '/etf-insight',
+        params: {
+          id: cleanId,
+          ...(options?.date ? { date: options.date } : null),
+        },
+      } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
   const showMarketBriefing = useCallback(
     (session?: SignalSessionKey, date?: string, options?: WidePaneDrillOptions) => {
       if (session) pendingSignalSessionRef.current = session;
@@ -891,6 +954,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
     contentPane === 'marketBriefing' ||
+    contentPane === 'etfInsights' ||
+    contentPane === 'etfInsight' ||
     contentPane === 'board' ||
     contentPane === 'community' ||
     contentPane === 'symbol' ||
@@ -918,6 +983,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       disclosureFlowParams,
       todayBriefingDate,
       marketBriefingParams,
+      etfInsightId,
+      etfInsightDate,
       communityPostId,
       symbolTicker,
       calendarFromAccount,
@@ -937,6 +1004,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       disclosureFlowParams,
       todayBriefingDate,
       marketBriefingParams,
+      etfInsightId,
+      etfInsightDate,
       communityPostId,
       symbolTicker,
       calendarFromAccount,
@@ -959,6 +1028,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showDisclosureFlow,
       showTodayBriefing,
       showMarketBriefing,
+      showEtfInsights,
+      showEtfInsight,
       showCalendar,
       showAlerts,
       showTermsHistory,
@@ -986,6 +1057,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showDisclosureFlow,
       showTodayBriefing,
       showMarketBriefing,
+      showEtfInsights,
+      showEtfInsight,
       showCalendar,
       showAlerts,
       showTermsHistory,

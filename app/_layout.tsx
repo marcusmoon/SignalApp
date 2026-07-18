@@ -187,6 +187,8 @@ function RootLayoutNav() {
         'calendar',
         'today-briefing',
         'market-briefing',
+        'etf-insights',
+        'etf-insight',
         'news-issues',
         'disclosure-flow',
         'terms',
@@ -236,6 +238,8 @@ function RootLayoutNav() {
           'more-youtube': t('tabYoutube'),
           'more-it-news': t('tabItNews'),
           'market-briefing': t('ipadHomeSignalTitle'),
+          'etf-insights': t('homeEtfInsightTitle'),
+          'etf-insight': t('etfInsightDetailKicker'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

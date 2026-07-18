@@ -18,7 +18,7 @@ type EtfInsightPage = {
   };
 };
 
-export async function fetchSignalEtfInsights(
+export async function fetchSignalEtfInsightsPage(
   params: {
     period?: string;
     date?: string;
@@ -28,12 +28,23 @@ export async function fetchSignalEtfInsights(
     offset?: number;
   } = {},
   options?: { cacheMode?: SignalCacheMode },
-): Promise<SignalApiEtfInsight[]> {
+): Promise<{ items: SignalApiEtfInsight[]; meta: EtfInsightPage['meta'] }> {
   const cacheMode = options?.cacheMode || 'use';
   const cacheKey = buildSignalEtfInsightsCacheKey(params);
   if (cacheMode !== 'bypass') {
     const hit = peekSignalEtfInsightsCache(cacheKey);
-    if (hit) return hit;
+    if (hit) {
+      return {
+        items: hit,
+        meta: {
+          limit: params.limit ?? 10,
+          offset: params.offset ?? 0,
+          total: hit.length,
+          hasMore: false,
+          nextOffset: null,
+        },
+      };
+    }
   }
   const json = await signalApi<EtfInsightPage>(
     '/v1/etf-insights',
@@ -48,8 +59,52 @@ export async function fetchSignalEtfInsights(
     { timeoutMs: 5000, attempts: 1 },
   );
   const rows = Array.isArray(json.data) ? json.data : [];
+  const meta = json.meta || {
+    limit: params.limit ?? 10,
+    offset: params.offset ?? 0,
+    total: rows.length,
+    hasMore: false,
+    nextOffset: null,
+  };
   if (cacheMode !== 'bypass') storeSignalEtfInsightsCache(cacheKey, rows);
-  return rows;
+  return { items: rows, meta };
+}
+
+export async function fetchSignalEtfInsights(
+  params: {
+    period?: string;
+    date?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
+  options?: { cacheMode?: SignalCacheMode },
+): Promise<SignalApiEtfInsight[]> {
+  const page = await fetchSignalEtfInsightsPage(params, options);
+  return page.items;
+}
+
+export async function fetchSignalEtfInsightById(
+  id: string,
+  options?: { cacheMode?: SignalCacheMode },
+): Promise<SignalApiEtfInsight | null> {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) return null;
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = `etf-insight|id|${cleanId}`;
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalEtfInsightsCache(cacheKey);
+    if (hit?.[0]) return hit[0];
+  }
+  const json = await signalApi<{ data: SignalApiEtfInsight }>(
+    `/v1/etf-insights/${encodeURIComponent(cleanId)}`,
+    undefined,
+    { timeoutMs: 5000, attempts: 1 },
+  );
+  const row = json?.data ?? null;
+  if (row && cacheMode !== 'bypass') storeSignalEtfInsightsCache(cacheKey, [row]);
+  return row;
 }
 
 /**

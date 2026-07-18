@@ -161,16 +161,16 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 역할 | 시장 브리핑 | ETF 브리핑 | 공유 UI |
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
-  | 시각 펄스 | **sectors → 리스트** (등락 칩만 히트맵 색) | **heatmap → 히트맵** | 등락색 `heatFillColor` / ETF는 `ChangeHeatmapGrid` |
-  | 섹터/테마 내러티브 | **섹터 흐름** 리스트: 이름 \| 등락칩 → why → 메타 티커 | **themes** ≈ **companies**: `[로고·테마명]` \| 모멘텀 → 요약 → 메타 티커 | 동일 row 밀도 |
-  | 종목/수급 플로우 | **companies** (로고·호가·요약) | **flowHighlights** | 동일 row 밀도 |
+  | 시각 펄스 | **sectors → 리스트** (첫 행만 히트맵 색) | **heatmap → 히트맵** | 등락색 `heatFillColor` / ETF는 `ChangeHeatmapGrid` |
+  | 섹터/테마 내러티브 | **섹터 흐름**: `[로고·섹터명·티커]` \| % (첫 행 heat) → why | **themes** ≈ **companies**: `[로고·테마명]` \| 모멘텀 → 요약 → 메타 티커 | 동일 row 밀도 |
+  | 종목/수급 플로우 | **companies** (`SymbolLogo`·호가·요약) | **flowHighlights** | 동일 row 밀도 |
   | 맥락 | macro · sources | sources | — |
-  - **섹터 흐름**: 히트맵 **순**(등락 내림차순) 리스트. 행 전체 배경 채색 금지 — 등락 칩(`heatFillColor` + 등락 텍스트색)에만 적용
-  - **섹터 중복 방지**: 칩 = %·trend. 본문 = 히트맵에 없는 해석 문장만 (`stripSectorSummaryQuotePreamble`). 시세 나열을 summary에 반복하지 않음
+  - **섹터 흐름**: 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. why 본문·행 전체는 채색하지 않음. 대표 `symbol`이 있으면 `SymbolLogo`
+  - **섹터 중복 방지**: 첫 행 = 이름·티커·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 섹터·테마·수급 티커 탭 → 국내 Naver / 해외 Yahoo
   - 섹터 `changePercent`·`symbol` 권장. 없으면 summary에서 파싱
 - 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
-- 상세(`MarketBriefingBlock` 등): 섹터 why·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 등락 칩
+- 상세(`MarketBriefingBlock` 등): 섹터 why·종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
 ## 피드·리스트·다이제스트

@@ -178,7 +178,7 @@ function MacroHighlightRow({
   );
 }
 
-/** 섹터 흐름: 리스트 + 히트맵 순·색(등락 칩만, 행 전체 배경 없음) */
+/** 섹터 흐름: 리스트 + 히트맵 순. 첫 행만 heat 배경, 대표 종목 로고 */
 function SectorFlowRow({
   cell,
   market,
@@ -203,41 +203,47 @@ function SectorFlowRow({
   const positive = heatPct == null ? null : isQuoteChangePositive({ changePercent: heatPct });
   const pctColor =
     positive === null ? theme.textMuted : positive ? changeColors.up : changeColors.down;
-  const chipFill = heatFillColor(heatPct, changeColors.up, changeColors.down, theme.bgElevated);
-  const chipLabel =
+  const topFill = heatFillColor(heatPct, changeColors.up, changeColors.down, theme.bgElevated);
+  const pctLabel =
     cell.changePercent != null && Number.isFinite(cell.changePercent)
       ? formatHeatChangePct(cell.changePercent)
       : cell.trend || '—';
+  const openSymbol = symbol ? () => openEtfInsightSymbol(symbol, market) : undefined;
+  const a11y = symbol
+    ? korea
+      ? t('quotesNaverFinanceA11y', { symbol: ticker })
+      : t('quotesYahooFinanceA11y', { symbol: ticker })
+    : cell.name;
 
   return (
     <View style={[styles.sectorFlowRow, bordered && styles.listRowBordered]}>
-      <View style={styles.sectorFlowTop}>
-        <Text style={styles.sectorName} numberOfLines={1}>
-          {cell.name}
+      <View style={[styles.sectorFlowTop, { backgroundColor: topFill }]}>
+        <Pressable
+          onPress={openSymbol}
+          disabled={!openSymbol}
+          style={({ pressed }) => [
+            styles.sectorIdentity,
+            pressed && openSymbol ? styles.sectorIdentityPressed : null,
+          ]}
+          accessibilityRole={openSymbol ? 'link' : 'text'}
+          accessibilityLabel={a11y}>
+          {symbol ? <SymbolLogo symbol={symbol} size={20} /> : null}
+          <View style={styles.sectorIdentityText}>
+            <Text style={styles.sectorName} numberOfLines={1}>
+              {cell.name}
+            </Text>
+            {ticker ? (
+              <Text style={styles.sectorTicker} numberOfLines={1}>
+                {ticker}
+              </Text>
+            ) : null}
+          </View>
+        </Pressable>
+        <Text style={[styles.sectorHeatPct, { color: pctColor }]} numberOfLines={1}>
+          {pctLabel}
         </Text>
-        <View style={[styles.sectorHeatChip, { backgroundColor: chipFill }]}>
-          <Text style={[styles.sectorHeatChipText, { color: pctColor }]} numberOfLines={1}>
-            {chipLabel}
-          </Text>
-        </View>
       </View>
       {why ? <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText> : null}
-      {ticker ? (
-        <View style={styles.sectorMetaFooter}>
-          <Pressable
-            onPress={() => openEtfInsightSymbol(symbol, market)}
-            hitSlop={4}
-            accessibilityRole="link"
-            accessibilityLabel={
-              korea
-                ? t('quotesNaverFinanceA11y', { symbol: ticker })
-                : t('quotesYahooFinanceA11y', { symbol: ticker })
-            }
-            style={({ pressed }) => [pressed && styles.sectorMetaPressed]}>
-            <Text style={styles.sectorMetaTicker}>{ticker}</Text>
-          </Pressable>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -446,7 +452,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderBottomColor: theme.border,
     },
     sectorFlowRow: {
-      gap: 4,
+      gap: 6,
       paddingVertical: 7,
     },
     sectorFlowTop: {
@@ -455,24 +461,44 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'space-between',
       gap: 10,
       minWidth: 0,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 7,
+    },
+    sectorIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    sectorIdentityPressed: {
+      opacity: 0.72,
+    },
+    sectorIdentityText: {
+      flexShrink: 1,
+      minWidth: 0,
+      gap: 1,
     },
     sectorName: {
       fontSize: ft.ff(14),
-      lineHeight: sf(20),
+      lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
       flexShrink: 1,
       minWidth: 0,
     },
-    sectorHeatChip: {
-      flexShrink: 0,
-      borderRadius: 6,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+    sectorTicker: {
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      fontVariant: ['tabular-nums'],
     },
-    sectorHeatChipText: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
+    sectorHeatPct: {
+      flexShrink: 0,
+      fontSize: ft.ff(13),
+      lineHeight: sf(17),
       fontWeight: ft.emphasisWeight,
       fontVariant: ['tabular-nums'],
     },
@@ -481,21 +507,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
       lineHeight: sf(19),
-    },
-    sectorMetaFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 2,
-    },
-    sectorMetaPressed: {
-      opacity: 0.72,
-    },
-    sectorMetaTicker: {
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      fontVariant: ['tabular-nums'],
     },
     companyRow: {
       gap: 4,

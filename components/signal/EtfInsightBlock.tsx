@@ -6,8 +6,8 @@ import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/C
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
+import { SymbolLinkedTintedText } from '@/components/signal/SymbolLinkedTintedText';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -123,6 +123,36 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
     () => parseEtfFlowHighlights(insight.flowHighlights, insight.id),
     [insight.flowHighlights, insight.id],
   );
+  /** 테마 본문 링크용 — 히트맵·테마 etfs에 등장한 티커 */
+  const themeBodyLinkSymbols = useMemo(() => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const add = (raw: unknown) => {
+      const symbol = String(raw ?? '').trim();
+      if (!symbol) return;
+      const key = symbol.toUpperCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(symbol);
+    };
+    for (const cell of heatmapCells) {
+      const title = String(cell.title || '').trim();
+      if (title && title !== '—') add(title);
+    }
+    const heatRaw = Array.isArray(insight.heatmap) ? insight.heatmap : [];
+    for (const item of heatRaw) {
+      if (!item || typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      add(row.etf ?? row.symbol);
+    }
+    for (const raw of themes) {
+      if (!raw || typeof raw !== 'object') continue;
+      const etfs = (raw as Record<string, unknown>).etfs;
+      if (!Array.isArray(etfs)) continue;
+      for (const sym of etfs) add(sym);
+    }
+    return out;
+  }, [heatmapCells, insight.heatmap, themes]);
   const sources = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
   const rotation = insight.rotation && typeof insight.rotation === 'object' ? insight.rotation : null;
   const rotationFrom = String(rotation?.from ?? '').trim();
@@ -181,84 +211,37 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
           <View style={styles.sectionFeedCard}>
             {themes.map((raw, index) => {
               const item = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-              const name = String(item.name ?? item.label ?? item.title ?? '').trim();
+              const name = String(item.name ?? item.label ?? item.title ?? '').trim() || '—';
               const summary = String(item.summary ?? '').trim();
               const momentum = String(item.momentum ?? '').trim();
-              const etfs = Array.isArray(item.etfs)
+              const themeEtfs = Array.isArray(item.etfs)
                 ? item.etfs.map((v) => String(v || '').trim()).filter(Boolean)
                 : [];
+              const linkSymbols =
+                themeEtfs.length > 0
+                  ? [...themeEtfs, ...themeBodyLinkSymbols]
+                  : themeBodyLinkSymbols;
               const momentumColor = trendColor(momentum, theme, changeColors.up, changeColors.down);
-              /** 시장 브리핑 companies와 동일: [로고·이름] | 모멘텀 → 요약 → 메타 티커 */
-              const primarySymbol = etfs[0] || '';
-              const identityLabel = name || (primarySymbol ? etfInsightDisplayTicker(primarySymbol) : '—');
-              const identityIsName = Boolean(name);
               return (
                 <View
                   key={`${insight.id}-theme-${index}`}
                   style={[styles.themeRow, index < themes.length - 1 && styles.listRowBordered]}>
                   <View style={styles.themeTopRow}>
-                    <Pressable
-                      onPress={
-                        primarySymbol ? () => openEtfInsightSymbol(primarySymbol) : undefined
-                      }
-                      disabled={!primarySymbol}
-                      style={({ pressed }) => [
-                        styles.themeIdentity,
-                        identityIsName ? styles.themeIdentityNamed : null,
-                        pressed && primarySymbol ? styles.themeIdentityPressed : null,
-                      ]}
-                      accessibilityRole={primarySymbol ? 'link' : 'text'}
-                      accessibilityLabel={
-                        primarySymbol
-                          ? isKoreaEtfSymbol(primarySymbol)
-                            ? t('quotesNaverFinanceA11y', {
-                                symbol: etfInsightDisplayTicker(primarySymbol),
-                              })
-                            : t('quotesYahooFinanceA11y', {
-                                symbol: etfInsightDisplayTicker(primarySymbol),
-                              })
-                          : identityLabel
-                      }>
-                      {primarySymbol ? <SymbolLogo symbol={primarySymbol} size={20} /> : null}
-                      <Text
-                        style={[
-                          styles.themeIdentityLabel,
-                          identityIsName ? styles.themeIdentityName : styles.themeIdentityTicker,
-                        ]}
-                        numberOfLines={1}>
-                        {identityLabel}
-                      </Text>
-                    </Pressable>
+                    <Text style={styles.themeName} numberOfLines={1}>
+                      {name}
+                    </Text>
                     {momentum ? (
                       <Text style={[styles.themeMomentum, { color: momentumColor }]} numberOfLines={1}>
                         {momentum}
                       </Text>
                     ) : null}
                   </View>
-                  {summary ? <ChangeTintedText style={styles.themeSummary}>{summary}</ChangeTintedText> : null}
-                  {etfs.length > 0 ? (
-                    <View style={styles.themeMetaFooter}>
-                      {etfs.map((sym, etfIndex) => {
-                        const label = etfInsightDisplayTicker(sym);
-                        const korea = isKoreaEtfSymbol(sym);
-                        const a11y = korea
-                          ? t('quotesNaverFinanceA11y', { symbol: label })
-                          : t('quotesYahooFinanceA11y', { symbol: label });
-                        return (
-                          <View key={`${insight.id}-theme-${index}-${sym}`} style={styles.themeMetaItem}>
-                            {etfIndex > 0 ? <Text style={styles.themeMetaSep}>·</Text> : null}
-                            <Pressable
-                              onPress={() => openEtfInsightSymbol(sym)}
-                              hitSlop={4}
-                              accessibilityRole="link"
-                              accessibilityLabel={a11y}
-                              style={({ pressed }) => [pressed && styles.themeIdentityPressed]}>
-                              <Text style={styles.themeMetaTicker}>{label}</Text>
-                            </Pressable>
-                          </View>
-                        );
-                      })}
-                    </View>
+                  {summary ? (
+                    <SymbolLinkedTintedText
+                      style={styles.themeSummary}
+                      linkSymbols={linkSymbols}>
+                      {summary}
+                    </SymbolLinkedTintedText>
                   ) : null}
                 </View>
               );
@@ -510,7 +493,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 10,
       minWidth: 0,
     },
-    /** MarketBriefingBlock `companyIdentity`와 동일 밀도 */
+    themeName: {
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: ft.ff(14),
+      lineHeight: sf(20),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+    },
     themeIdentity: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -522,28 +512,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 8,
       backgroundColor: theme.bg,
     },
-    themeIdentityNamed: {
-      flexShrink: 1,
-      minWidth: 56,
-      maxWidth: '58%',
-    },
     themeIdentityPressed: {
       opacity: 0.72,
     },
-    themeIdentityLabel: {
+    themeIdentityTicker: {
       fontSize: ft.ff(12),
       letterSpacing: -0.1,
-      flexShrink: 1,
-      minWidth: 0,
-    },
-    themeIdentityTicker: {
       fontWeight: ft.emphasisWeight,
       color: theme.green,
       fontVariant: ['tabular-nums'],
-    },
-    themeIdentityName: {
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
+      flexShrink: 1,
+      minWidth: 0,
     },
     themeMomentum: {
       fontSize: ft.ff(12),
@@ -557,32 +536,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
       lineHeight: sf(19),
-    },
-    themeMetaFooter: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 0,
-      marginTop: 2,
-      minWidth: 0,
-    },
-    themeMetaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    themeMetaSep: {
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      marginHorizontal: 5,
-    },
-    themeMetaTicker: {
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      fontVariant: ['tabular-nums'],
     },
     themeNameFallback: {
       flex: 1,

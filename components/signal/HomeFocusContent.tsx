@@ -922,6 +922,22 @@ export function HomeFocusContent({
             {renderHeroCard()}
           </View>
 
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('newsIssuesTitle')}
+              badge={<AiBadge />}
+              onPress={() => openIssue()}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {homeIssues.length > 0 ? (
+              renderIssueCard(homeIssues)
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+              </View>
+            )}
+          </View>
+
           {homeCalendarChips.length > 0 ? (
             <View style={styles.section}>
               <HomeSectionHeader
@@ -1003,22 +1019,6 @@ export function HomeFocusContent({
               {renderEtfSectionBody()}
             </View>
           ) : null}
-
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('newsIssuesTitle')}
-              badge={<AiBadge />}
-              onPress={() => openIssue()}
-              accessibilityLabel={t('commonViewAll')}
-            />
-            {homeIssues.length > 0 ? (
-              renderIssueCard(homeIssues)
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
-              </View>
-            )}
-          </View>
         </>
       )}
         </WebWheelScrollView>

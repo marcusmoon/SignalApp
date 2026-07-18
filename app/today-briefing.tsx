@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { TodayBriefingBlock } from '@/components/signal/TodayBriefingBlock';
@@ -143,7 +142,6 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
           {item ? (
             <>
               <View style={styles.heroCard}>
-                <BriefingMetaChip label={t('todayBriefingDetailKicker')} />
                 {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
               </View>
               <TodayBriefingBlock

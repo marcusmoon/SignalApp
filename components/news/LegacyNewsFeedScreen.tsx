@@ -286,7 +286,7 @@ export function LegacyNewsFeedScreen() {
 
   useEffect(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
-    if (fromUrl && fromUrl !== 'video') {
+    if (fromUrl) {
       segmentHydratedRef.current = true;
       return;
     }
@@ -427,6 +427,30 @@ export function LegacyNewsFeedScreen() {
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         syncSegmentLatestSeen('korea', dedupedRows[0]?.id);
+        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
+      }
+
+      /** IT: 기존 ItNewsFeedPanel과 동일하게 category=it, digest 없음 */
+      if (segment === 'it') {
+        const { items: rows, meta } = await fetchSignalNews(
+          {
+            locale,
+            category: 'it',
+            limit: FEED_PAGE_IT,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        );
+        const dedupedRows = syncServerRows(rows);
+        commitDigestLookupRows(dedupedRows);
+        setServerDigestRows([]);
+        feedMetaRef.current = meta;
+        hasMoreRef.current = meta.hasMore;
+        setHasMore(meta.hasMore);
+        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
+        setItems(mapped);
+        syncSegmentLatestSeen('it', dedupedRows[0]?.id);
         return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
@@ -658,7 +682,7 @@ export function LegacyNewsFeedScreen() {
   /** URL → state. focus-effect에 두면 setParams 경합으로 클릭이 되돌아간다. */
   useEffect(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
-    if (!fromUrl || fromUrl === 'video') return;
+    if (!fromUrl) return;
     segmentHydratedRef.current = true;
     if (fromUrl !== segmentRef.current) {
       onPickSegmentRef.current(fromUrl);
@@ -667,16 +691,11 @@ export function LegacyNewsFeedScreen() {
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
-  const ipadSegmentOrder = useMemo(
-    () => segmentOrder.filter((key) => key !== 'video'),
-    [segmentOrder],
-  );
-
   const registerNewsSubTabs = useCallback(() => {
     if (!useTwoPane) return;
     setActiveSubTabKey(segment);
     setSubTabs(
-      ipadSegmentOrder.map((key) => ({
+      segmentOrder.map((key) => ({
         key,
         label: t(NEWS_SEGMENT_LABEL[key]),
         href: '/(tabs)/news',
@@ -684,18 +703,12 @@ export function LegacyNewsFeedScreen() {
         onPress: () => onPickSegment(key),
       })),
     );
-  }, [ipadSegmentOrder, onPickSegment, segment, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+  }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
 
   useEffect(() => {
     if (!useTwoPane || !isFocused) return;
     registerNewsSubTabs();
   }, [isFocused, registerNewsSubTabs, useTwoPane]);
-
-  useEffect(() => {
-    if (!useTwoPane || segment !== 'video') return;
-    const next = ipadSegmentOrder[0] || DEFAULT_NEWS_SEGMENT;
-    onPickSegment(next);
-  }, [ipadSegmentOrder, onPickSegment, segment, useTwoPane]);
 
   // iPad: 홈·사이드바 pending / 저장 세그먼트 (URL과 충돌하지 않을 때만)
   useFocusEffect(
@@ -703,7 +716,7 @@ export function LegacyNewsFeedScreen() {
       if (!useTwoPane || !ipadNav.isAvailable) return;
 
       const pending = ipadNav.takePendingNewsSegment();
-      if (pending && pending !== 'video') {
+      if (pending) {
         segmentHydratedRef.current = true;
         if (pending !== segmentRef.current) {
           onPickSegmentRef.current(pending, { force: true });
@@ -713,15 +726,13 @@ export function LegacyNewsFeedScreen() {
 
       if (!segmentHydratedRef.current) {
         const paramSegment = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
-        if (paramSegment && paramSegment !== 'video') {
+        if (paramSegment) {
           segmentHydratedRef.current = true;
           return;
         }
         segmentHydratedRef.current = true;
         void loadNewsSegment().then((s) => {
-          if (s && s !== 'video') {
-            onPickSegmentRef.current(s);
-          }
+          if (s) onPickSegmentRef.current(s);
         });
       }
     }, [ipadNav, routeParams.segment, useTwoPane]),

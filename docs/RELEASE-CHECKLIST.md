@@ -7,6 +7,7 @@
 - [ ] IT 뉴스: More(iPhone)·사이드바(wide, 내 정보 위) 진입, GeekNews 수집분 표시
 - [ ] 퀵 설정 → More settings: iPhone·iPad 모두 설정 pill 탭 표시 / My info 진입은 단일 탭
 - [ ] 홈 장중 브리핑 히어로 카드 → `MarketBriefingSheet`(해당 회차만), 섹션 헤더 `>` → 시장 화면
+- [ ] 홈 오늘 정리 히어로 카드 → `TodayBriefingSheet`, 섹션 헤더 `>` → `/today-briefing`
 - [ ] 시장 탭: 날짜·회차(미장·장전·장중·마감), 브리핑 본문·종목 가격 표시
 - [ ] 피드 PTR: 당겨서 새로고침 시 스크롤 위치 유지 ([FEED-INTERACTION.md](./FEED-INTERACTION.md))
 - [ ] 새 소식 chip: scope별 표시·탭 전환 시 독립 동작 (뉴스·공시·시장·알림함)

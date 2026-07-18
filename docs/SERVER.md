@@ -94,7 +94,7 @@ flyway \
 
 | 그룹 | 경로 |
 |---|---|
-| 공개 | `/v1/news`, `/v1/news/ingest`, `/v1/news/pending-translations`, `/v1/news/translations/ingest`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/calendar` |
+| 공개 | `/v1/news`, `/v1/news/ingest`, `/v1/news/pending-translations`, `/v1/news/translations/ingest`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/etf-insights`, `/v1/calendar` |
 | 인증 | `/v1/auth/*`, `/v1/notifications`, `/v1/legal/terms` |
 | Admin | `/admin/api/*` |
 

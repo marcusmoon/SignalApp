@@ -62,6 +62,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
+import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
 import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import {
@@ -86,6 +87,7 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
@@ -94,6 +96,7 @@ import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import type {
   SignalApiCommunityPost,
   SignalApiDisclosureDigestItem,
+  SignalApiEtfInsight,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
   SignalApiNewsDigestItem,
@@ -345,10 +348,12 @@ export function HomeFocusContent({
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
+  const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
+  const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
     [calendarEvents],
@@ -366,7 +371,7 @@ export function HomeFocusContent({
     [briefings, marketBriefingDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
-    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading],
+    resyncDeps: [issues, briefings, todayBriefing, etfInsight, disclosures, calendarEvents, boardPosts, loading],
   });
   const scrollResetKey = selectedYmd;
 
@@ -436,8 +441,8 @@ export function HomeFocusContent({
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
 
-      /** Wave 1 — above-the-fold: briefing, issues, market briefings, watchlist quotes. */
-      const [todayBriefing, nextIssues, quoteRows, briefingRows] = await Promise.all([
+      /** Wave 1 — above-the-fold: briefing, issues, market briefings, ETF insight, watchlist quotes. */
+      const [todayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -449,6 +454,7 @@ export function HomeFocusContent({
           { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
           { cacheMode },
         ).catch(() => [] as SignalApiMarketBriefing[]),
+        fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }).catch(() => null),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -470,6 +476,7 @@ export function HomeFocusContent({
           [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
         ).slice(0, HOME_MARKET_BRIEFING_DISPLAY_MAX),
       );
+      setEtfInsight(nextEtfInsight);
 
       /** Wave 2 — below-fold; runs after first paint (load returns after wave 1). */
       void (async () => {
@@ -639,6 +646,15 @@ export function HomeFocusContent({
     setBriefingSheet(null);
   }, []);
 
+  const openEtfInsightSheet = useCallback(() => {
+    if (!etfInsight) return;
+    setEtfInsightSheetOpen(true);
+  }, [etfInsight]);
+
+  const closeEtfInsightSheet = useCallback(() => {
+    setEtfInsightSheetOpen(false);
+  }, []);
+
   const briefingSheetTitle = useMemo(
     () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
     [briefingSheet],
@@ -797,6 +813,41 @@ export function HomeFocusContent({
       );
     },
     [openTodayBriefing, showIssueSummary, styles, t],
+  );
+
+  const renderEtfInsightCard = useCallback(
+    (item: SignalApiEtfInsight) => {
+      const leadText = item.title?.trim() || item.summary?.trim() || '';
+      const bodyText = item.summary?.trim() || '';
+      const previewText = bodyText && bodyText !== leadText ? bodyText : '';
+      return (
+        <Pressable
+          onPress={openEtfInsightSheet}
+          accessibilityRole="button"
+          accessibilityLabel={t('homeEtfInsightTitle')}
+          style={({ pressed }) => [
+            styles.heroCard,
+            showIssueSummary && styles.heroCardSummary,
+            pressed && styles.pressed,
+          ]}>
+          <View style={styles.issueGroupList}>
+            <View style={styles.issueGroupItem}>
+              {leadText ? (
+                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
+                  {leadText}
+                </ChangeTintedText>
+              ) : null}
+              {previewText ? (
+                <ChangeTintedText style={styles.signalText} numberOfLines={2}>
+                  {previewText}
+                </ChangeTintedText>
+              ) : null}
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [openEtfInsightSheet, showIssueSummary, styles, t],
   );
 
   const renderIssueCard = useCallback(
@@ -1033,7 +1084,7 @@ export function HomeFocusContent({
       <WebWheelScrollView
         ref={scrollRef as never}
         scrollResetKey={scrollResetKey}
-        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading]}
+        contentRevision={[issues, briefings, todayBriefing, etfInsight, disclosures, calendarEvents, boardPosts, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -1097,6 +1148,22 @@ export function HomeFocusContent({
                 <Text style={styles.emptyText}>
                   {t('homeFocusSignalEmpty')}
                 </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('homeEtfInsightTitle')}
+              badge={<AiBadge />}
+              onPress={etfInsight ? openEtfInsightSheet : undefined}
+              accessibilityLabel={etfInsight ? t('commonViewAll') : undefined}
+            />
+            {etfInsight ? (
+              renderEtfInsightCard(etfInsight)
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('homeEtfInsightEmpty')}</Text>
               </View>
             )}
           </View>
@@ -1229,6 +1296,11 @@ export function HomeFocusContent({
         title={briefingSheetTitle}
         sessionLabel={briefingSheetSessionLabel}
         onClose={closeBriefingSheet}
+      />
+      <EtfInsightSheet
+        visible={etfInsightSheetOpen && etfInsight != null}
+        insight={etfInsight}
+        onClose={closeEtfInsightSheet}
       />
     </>
   );

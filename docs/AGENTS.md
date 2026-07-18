@@ -20,6 +20,7 @@
 | [NEWS-TRANSLATION-AUTOMATION.md](./NEWS-TRANSLATION-AUTOMATION.md) | 뉴스 번역 pending·ingest JSON |
 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
 | [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
+| [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) | ETF 인사이트 ingest·홈 노출 |
 | [EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md) | Expo/EAS·Xcode 빌드 |
 | [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |
 | [SIGNAL-ADMIN-UIUX.md](./SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |
@@ -62,6 +63,7 @@
 | `youtubeCache` | 유튜브·채널 | 2분 |
 | `marketBriefingsCache` | 시장 브리핑 | 2분 |
 | `todayBriefingsCache` | 오늘의 브리핑 | 2분 |
+| `etfInsightsCache` | ETF 인사이트 | 2분 |
 | `marketCache` | 시세·코인·마켓 리스트 | 5분 / 10분(리스트) |
 | `calendarCache` | 캘린더 | 15분 |
 

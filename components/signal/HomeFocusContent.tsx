@@ -27,7 +27,6 @@ import {
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
-import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
@@ -726,7 +725,11 @@ export function HomeFocusContent({
           pressed && styles.pressed,
         ]}>
         {headline ? (
-          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
+          <EntityLinkedTintedText
+            style={styles.issueGroupTitle}
+            entities={homeHero.briefing.entities}>
+            {headline}
+          </EntityLinkedTintedText>
         ) : null}
       </Pressable>
     );

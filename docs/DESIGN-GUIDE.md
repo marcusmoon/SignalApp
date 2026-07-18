@@ -152,6 +152,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → (조건부) ETF 브리핑 → (오늘만) 게시판·관심 종목 → 투자 일정
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
+- **마감 브리핑 홈**: 헤드라인 + 본문 **최대 2줄**(ETF 카드와 동일 밀도). 카드 탭 → `TodayBriefingSheet`, 섹션 헤더 `>` → 상세(`/today-briefing`)
 - **ETF 브리핑 (주간) 노출**:
   - **메인 진입**: 더보기 허브 타일 → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`
   - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 카드 1장 (`shouldShowEtfBriefingOnHome`). 카드 탭 → 시트, `>` → 리스트
@@ -211,11 +212,12 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 마감 브리핑 상세
 
-`app/today-briefing.tsx` — 홈 카드 「전체 보기」 진입.
+`app/today-briefing.tsx` — 홈 섹션 헤더 `>` / 푸시 딥링크 진입. 홈 카드는 `TodayBriefingSheet`.
 
 - Stack 헤더 제목: `todayBriefingDetailKicker` (마감 브리핑)
 - 날짜: 헤더 바로 아래 고정 `dateBar` (본문 kicker 중복 없음)
-- 본문: 히어로 카드 → 핵심 포인트 · 출처 (`HomeDigestFeedRow` 스타일)
+- 본문: 헤드라인 → `TodayBriefingBlock` (시장 브리핑과 동일 lead panel: summary · keyPoints → 출처 `HomeDigestFeedRow`)
+- 시트·상세 본문은 동일 블록 공유 (`MarketBriefingSheet` / `MarketBriefingBlock` 패턴)
 
 ### 종목 상세 바로가기
 
@@ -235,7 +237,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 컴포넌트 | 용도 |
 |---|---|
 | `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드 · More settings) |
-| `QuickSettingsSheet` / `MarketBriefingSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% |
+| `QuickSettingsSheet` / `MarketBriefingSheet` / `TodayBriefingSheet` / `EtfInsightSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% |
 | `ItNewsFeedPanel` | IT 뉴스 리스트 (`category=it`) |
 | `WideSubpaneHeader` | wide 우측 pane **드릴인** — chevron + 제목 (`PhoneHeaderBackButton`) |
 | `SignalFloatingTabBar` | iPhone 하단 탭 |

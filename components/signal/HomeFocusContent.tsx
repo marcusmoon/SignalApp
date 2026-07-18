@@ -58,6 +58,7 @@ import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
 import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
+import { TodayBriefingSheet } from '@/components/signal/TodayBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
@@ -339,6 +340,7 @@ export function HomeFocusContent({
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
+  const [todayBriefingSheetOpen, setTodayBriefingSheetOpen] = useState(false);
   const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
@@ -712,6 +714,7 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
+  /** 섹션 헤더 `>` — 전체 상세(스택/와이드). 카드 탭은 시트. */
   const openTodayBriefing = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showTodayBriefing(selectedYmd, { drillFrom: 'home' });
@@ -722,6 +725,15 @@ export function HomeFocusContent({
       params: { date: selectedYmd },
     } as never);
   }, [ipadNav, router, selectedYmd]);
+
+  const openTodayBriefingSheet = useCallback(() => {
+    if (!todayBriefing) return;
+    setTodayBriefingSheetOpen(true);
+  }, [todayBriefing]);
+
+  const closeTodayBriefingSheet = useCallback(() => {
+    setTodayBriefingSheetOpen(false);
+  }, []);
 
   const formatCalendarDateLabel = useCallback(
     (event: CalendarEvent) =>
@@ -740,7 +752,7 @@ export function HomeFocusContent({
       const previewText = bodyText && bodyText !== leadText ? bodyText : '';
       return (
         <Pressable
-          onPress={openTodayBriefing}
+          onPress={openTodayBriefingSheet}
           accessibilityRole="button"
           accessibilityLabel={t('ipadHomeTitle')}
           style={({ pressed }) => [
@@ -765,7 +777,7 @@ export function HomeFocusContent({
         </Pressable>
       );
     },
-    [openTodayBriefing, showIssueSummary, styles, t],
+    [openTodayBriefingSheet, showIssueSummary, styles, t],
   );
 
   const renderEtfInsightCard = useCallback(
@@ -1198,6 +1210,11 @@ export function HomeFocusContent({
         visible={etfInsightSheetOpen && etfInsight != null}
         insight={etfInsight}
         onClose={closeEtfInsightSheet}
+      />
+      <TodayBriefingSheet
+        visible={todayBriefingSheetOpen && todayBriefing != null}
+        briefing={todayBriefing}
+        onClose={closeTodayBriefingSheet}
       />
     </>
   );

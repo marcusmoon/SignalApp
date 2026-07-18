@@ -98,7 +98,7 @@ SafeAreaView edges={['top']}
 - **뉴스·공시 고정 스택**: 세그먼트는 `submenuStrip`(카드 배경), 다이제스트는 `digestSlot`(배경 없음)으로 분리. `fixedStack` 내부 gap은 `COMFORT_TOP_FIXED_GAP`(12).
 - **날짜 바 패턴**: 홈·시장·캘린더·뉴스/공시 플로우 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치. **C1**: 바깥 셸 1개만(보더·`bgElevated`), 안쪽 화살표/날짜/오늘 컨트롤은 보더·배경 없이 Ionicons + 텍스트. 뉴스·공시 플로우 리스트는 시장 브리핑과 같이 **날짜 바 → 세그먼트** 순서로 `topFixed`에 둔다.
 - **설정**: More 탭에는 없음. **My info** 허브의 「환경 설정」에서 진입. iPhone은 `app/settings?from=account` — 이때 설정 상단 pill 서브탭은 숨긴다. 웹·iPad는 사이드바 **게시판 아래 내 정보**로 진입하고, 퀵 링크는 사이드바 하단 도크(`SidebarReferenceLinksDock`)에 둔다. More 항목은 사이드바에 없음.
-- **마감 브리핑 상세** (`app/today-briefing.tsx`): 폰은 Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`. wide는 아래 우측 pane 규칙을 따른다.
+- **마감 브리핑 상세** (`app/today-briefing.tsx`): 폰은 Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`. 본문은 헤드라인 + `TodayBriefingBlock`(시장 브리핑 lead·출처와 동일). 홈 카드는 `TodayBriefingSheet`. wide는 아래 우측 pane 규칙을 따른다.
 
 ## Wide 우측 pane 내비 (iPad · 넓은 웹)
 

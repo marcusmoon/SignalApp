@@ -71,6 +71,7 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 
 ## 앱 UI
 
-- 홈 카드: `components/signal/HomeFocusContent.tsx`
-- 상세 화면: `app/today-briefing.tsx` — Stack 제목 「마감 브리핑」, 날짜는 헤더 아래 `dateBar`. 본문 섹션(핵심 포인트·출처)은 `HomeDigestFeedRow` 스타일.
+- 홈 카드: `components/signal/HomeFocusContent.tsx` — 카드 탭 → `TodayBriefingSheet`, 섹션 헤더 `>` → 상세
+- 본문 블록: `components/signal/TodayBriefingBlock.tsx` — 시장 브리핑(`MarketBriefingBlock`)과 동일 lead·출처 밀도 (summary · keyPoints → sources)
+- 상세 화면: `app/today-briefing.tsx` — Stack 제목 「마감 브리핑」, 날짜는 헤더 아래 `dateBar`, 헤드라인 + `TodayBriefingBlock`
 - 레이아웃·여백: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)

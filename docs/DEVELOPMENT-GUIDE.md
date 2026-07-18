@@ -201,8 +201,8 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
 | IT 뉴스 | `app/(tabs)/it-news.tsx`, `app/more-it-news.tsx`, `components/news/ItNewsFeedPanel.tsx` — `GET /v1/news?category=it` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` (푸시 딥링크) |
-| 홈 오늘 정리 시트 | `components/signal/TodayBriefingSheet.tsx` (히어로 카드), 본문 `TodayBriefingBlock` |
-| 홈 장중 브리핑 시트 | `components/signal/MarketBriefingSheet.tsx` (히어로 카드), 섹션 `>`는 시장 탭/화면 |
+| 뉴스·공시 다이제스트 상세 | `app/news-digest.tsx` · `app/disclosure-digest.tsx` (알림·푸시) |
+| 홈 오늘 정리·장중·ETF | 히어로/카드 → 상세 (`today-briefing` · `market-briefing` · `etf-insight`). 뉴스 행만 `DigestSourcesSheet` |
 | 퀵 설정 | `components/signal/QuickSettingsSheet.tsx`, `constants/bottomSheetLayout.ts` |
 | 설정 | `app/settings.tsx` |
 | My info | `app/account.tsx` |

@@ -30,6 +30,7 @@ import SettingsScreen from '@/app/settings';
 import TermsHistoryScreen from '@/app/terms-history';
 import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
+import { DigestDetailContent } from '@/components/signal/DigestDetailContent';
 import { EtfInsightDetailContent } from '@/components/signal/EtfInsightDetailContent';
 import { EtfInsightsListContent } from '@/app/etf-insights';
 import { CommunityPostContent } from '@/app/community/[id]';
@@ -408,7 +409,9 @@ function IpadWideTabLayout({
   const {
     contentPane,
     newsIssuesParams,
+    newsDigestId,
     disclosureFlowParams,
+    disclosureDigestId,
     todayBriefingDate,
     marketBriefingParams,
     etfInsightId,
@@ -442,12 +445,26 @@ function IpadWideTabLayout({
                 hideDateNavigator={newsIssuesParams.hideDateNavigator === true}
                 onBack={subpaneBack}
               />
+            ) : contentPane === 'newsDigest' && newsDigestId ? (
+              <DigestDetailContent
+                embedded
+                kind="news"
+                id={newsDigestId}
+                onBack={subpaneBack}
+              />
             ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
               <DisclosureFlowContent
                 embedded
                 initialDate={disclosureFlowParams.date}
                 initialMarket={disclosureFlowParams.market}
                 initialDigestId={disclosureFlowParams.digestId}
+                onBack={subpaneBack}
+              />
+            ) : contentPane === 'disclosureDigest' && disclosureDigestId ? (
+              <DigestDetailContent
+                embedded
+                kind="disclosure"
+                id={disclosureDigestId}
                 onBack={subpaneBack}
               />
             ) : contentPane === 'account' ? (

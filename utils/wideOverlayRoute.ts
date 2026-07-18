@@ -3,7 +3,9 @@ import type { IpadContentPane } from '@/contexts/IpadSidebarNavContext';
 /** Wide web/iPad — `/(tabs)/home` 쿼리 `overlay` 값 */
 export type WideOverlayKind =
   | 'news-issues'
+  | 'news-digest'
   | 'disclosure-flow'
+  | 'disclosure-digest'
   | 'today-briefing'
   | 'market-briefing'
   | 'etf-insights'
@@ -49,7 +51,9 @@ export function isWideHomePath(pathname: string): boolean {
 
 export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind | null {
   const path = normalizePathname(pathname);
+  if (path.startsWith('/news-digest')) return 'news-digest';
   if (path.startsWith('/news-issues')) return 'news-issues';
+  if (path.startsWith('/disclosure-digest')) return 'disclosure-digest';
   if (path.startsWith('/disclosure-flow')) return 'disclosure-flow';
   if (path.startsWith('/today-briefing')) return 'today-briefing';
   if (path.startsWith('/market-briefing')) return 'market-briefing';
@@ -71,8 +75,12 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
   switch (kind) {
     case 'news-issues':
       return 'newsIssues';
+    case 'news-digest':
+      return 'newsDigest';
     case 'disclosure-flow':
       return 'disclosureFlow';
+    case 'disclosure-digest':
+      return 'disclosureDigest';
     case 'today-briefing':
       return 'todayBriefing';
     case 'market-briefing':
@@ -109,7 +117,9 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
 export function isWideOverlayKind(value: string | undefined): value is WideOverlayKind {
   return (
     value === 'news-issues' ||
+    value === 'news-digest' ||
     value === 'disclosure-flow' ||
+    value === 'disclosure-digest' ||
     value === 'today-briefing' ||
     value === 'market-briefing' ||
     value === 'etf-insights' ||

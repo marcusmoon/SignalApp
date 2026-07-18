@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { COMFORT_GAP_LG, COMFORT_GAP_SM } from '@/constants/comfortDensity';
@@ -69,8 +70,8 @@ export function MarketBriefingSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
+              {subtitle ? <BriefingMetaChip label={subtitle} /> : null}
               <HomeSectionHeader title={title} showChevron={false} />
-              {subtitle ? <Text style={styles.sessionLabel}>{subtitle}</Text> : null}
             </View>
             {briefing ? (
               <MarketBriefingBlock
@@ -149,13 +150,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: COMFORT_GAP_LG,
     },
     section: {
-      gap: 4,
-    },
-    sessionLabel: {
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '500',
-      color: theme.textMuted,
+      gap: COMFORT_GAP_SM,
     },
   });
 }

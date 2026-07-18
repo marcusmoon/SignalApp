@@ -598,6 +598,20 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'etfInsights',
+    store: 'insights',
+    table: 'etf_insights',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      period: textOrNull(row.period) || 'daily',
+      insight_date: dateOrNull(row.insightDate || row.publishedAt),
+      published_at: isoOrNull(row.publishedAt),
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'communityPosts',
     store: 'community',
     table: 'community_posts',

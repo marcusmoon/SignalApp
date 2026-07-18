@@ -10,6 +10,7 @@ import { handleAdminNewsRoutes } from './admin/api/news.mjs';
 import { handleAdminNotificationsRoutes } from './admin/api/notifications.mjs';
 import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
 import { handleAdminYoutubeRoutes } from './admin/api/youtube.mjs';
+import { handleAdminEtfInsightRoutes } from './admin/api/etfInsights.mjs';
 import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
 import { handleAdminStaticRoutes } from './admin/static.mjs';
 import { handleWebStaticRoutes } from './webStatic.mjs';
@@ -23,6 +24,7 @@ import { handlePublicMarketRoutes } from './public/v1/market.mjs';
 import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
 import { handlePublicTodayBriefingRoutes } from './public/v1/todayBriefings.mjs';
+import { handlePublicEtfInsightRoutes } from './public/v1/etfInsights.mjs';
 import { handlePublicYoutubeRoutes } from './public/v1/youtube.mjs';
 import { handlePublicCommunityRoutes } from './public/v1/community.mjs';
 import { handlePublicMiscRoutes } from './public/routes.mjs';
@@ -42,6 +44,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicYoutubeRoutes,
   handlePublicCommunityRoutes,
   handlePublicMarketRoutes,
+  handlePublicEtfInsightRoutes,
 ];
 
 const ADMIN_API_HANDLERS = [
@@ -54,6 +57,7 @@ const ADMIN_API_HANDLERS = [
   handleAdminYoutubeRoutes,
   handleAdminSettingsRoutes,
   handleAdminDataResetRoutes,
+  handleAdminEtfInsightRoutes,
 ];
 
 export async function handleRequest(req, res) {

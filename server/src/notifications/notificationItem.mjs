@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = {
   todayBriefing: 'today_briefing',
   newsDigest: 'news_digest',
   disclosureDigest: 'disclosure_digest',
+  etfInsight: 'etf_insight',
 };
 
 const SEND_STATE_STATUSES = new Set(['sending', 'sent', 'failed', 'cancelled', 'skipped']);

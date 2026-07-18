@@ -4,7 +4,11 @@
   "title": "Signal News Issue Digest Ingest Payload (v2)",
   "type": "object",
   "additionalProperties": true,
-  "required": ["schemaVersion", "run", "items"],
+  "required": [
+    "schemaVersion",
+    "run",
+    "items"
+  ],
   "properties": {
     "schemaVersion": {
       "type": "integer",
@@ -22,7 +26,12 @@
     "run": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "generatedAt", "window", "categories"],
+      "required": [
+        "id",
+        "generatedAt",
+        "window",
+        "categories"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -43,7 +52,10 @@
         "window": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["from", "to"],
+          "required": [
+            "from",
+            "to"
+          ],
           "properties": {
             "from": {
               "type": "string",
@@ -97,7 +109,11 @@
   "$defs": {
     "category": {
       "type": "string",
-      "enum": ["global", "korea", "crypto"]
+      "enum": [
+        "global",
+        "korea",
+        "crypto"
+      ]
     },
     "item": {
       "type": "object",
@@ -137,20 +153,6 @@
           },
           "uniqueItems": true
         },
-        "entities": {
-          "type": "array",
-          "description": "Body name↔Yahoo symbol map. name must match body text exactly.",
-          "maxItems": 40,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "symbol"],
-            "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "symbol": { "type": "string", "minLength": 1 }
-            }
-          }
-        },
         "sources": {
           "type": "array",
           "description": "Deprecated in v2 ingest; server derives from hydrated sourceRefs on read.",
@@ -179,10 +181,16 @@
           "format": "date-time"
         },
         "primaryNewsId": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "primaryPublishedAt": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "date-time"
         },
         "groupKey": {
@@ -227,7 +235,14 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["company", "sector", "macro", "crypto", "disclosure", "mixed"]
+          "enum": [
+            "company",
+            "sector",
+            "macro",
+            "crypto",
+            "disclosure",
+            "mixed"
+          ]
         },
         "eventType": {
           "type": "string",
@@ -272,11 +287,23 @@
       "properties": {
         "direction": {
           "type": "string",
-          "enum": ["positive", "negative", "mixed", "neutral", "unknown"]
+          "enum": [
+            "positive",
+            "negative",
+            "mixed",
+            "neutral",
+            "unknown"
+          ]
         },
         "horizon": {
           "type": "string",
-          "enum": ["intraday", "short", "medium", "long", "unknown"]
+          "enum": [
+            "intraday",
+            "short",
+            "medium",
+            "long",
+            "unknown"
+          ]
         },
         "affectedAreas": {
           "type": "array",
@@ -297,11 +324,20 @@
     "sourceRef": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["news", "disclosure", "youtube", "calendar", "market", "external"]
+          "enum": [
+            "news",
+            "disclosure",
+            "youtube",
+            "calendar",
+            "market",
+            "external"
+          ]
         },
         "id": {
           "type": "string",
@@ -322,22 +358,37 @@
         },
         "relation": {
           "type": "string",
-          "enum": ["primary", "supporting", "background"]
+          "enum": [
+            "primary",
+            "supporting",
+            "background"
+          ]
         }
       },
       "oneOf": [
         {
-          "required": ["type", "id"],
+          "required": [
+            "type",
+            "id"
+          ],
           "properties": {
             "type": {
-              "enum": ["news", "disclosure"]
+              "enum": [
+                "news",
+                "disclosure"
+              ]
             }
           }
         },
         {
-          "required": ["type", "url"],
+          "required": [
+            "type",
+            "url"
+          ],
           "not": {
-            "required": ["id"]
+            "required": [
+              "id"
+            ]
           }
         }
       ]

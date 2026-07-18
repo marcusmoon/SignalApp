@@ -1,8 +1,4 @@
-import type {
-  SignalApiBodyEntity,
-  SignalApiNewsDigestSourceRef,
-  SignalApiNewsItem,
-} from '@/integrations/signal-api/types';
+import type { SignalApiNewsDigestSourceRef, SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 export type NewsDigestItem = {
   id: string;
@@ -16,7 +12,6 @@ export type NewsDigestItem = {
   aiGenerated: boolean;
   generatedAt: string | null;
   sourceRefs: SignalApiNewsDigestSourceRef[];
-  entities?: SignalApiBodyEntity[];
   primary: SignalApiNewsItem;
 };
 

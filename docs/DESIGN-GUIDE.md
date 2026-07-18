@@ -177,17 +177,11 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 맥락 | macro · sources | sources | — |
   - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). 시장 companies·ETF 수급 등 브리핑 리스트에서 공통. 화면별 칩 스타일 금지
   - **장중 브리핑 섹터 리스트**: 홈 「섹터 흐름」과 구분 — 본문 섹션 제목은 **섹터**. 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
-  - **ETF themes**: 로고·하단 메타 티커 없음. 요약 본문은 `EntityLinkedTintedText` — ingest `entities`의 name이 본문과 정확히 일치할 때만 하이라이트·딥링크
+  - **ETF themes**: 로고·하단 메타 티커 없음. 요약 본문은 텍스트만(`ChangeTintedText`) — 티커 인라인 링크 없음
   - **ETF 빈 섹션 금지**: heatmap·themes·flows·sources·rotation·insights·summary는 값이 있을 때만 렌더. 이름/요약 없는 theme·title 없는 source는 제외
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
-  - 수급·종목 identity 칩·본문 entity 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
+  - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
-- **본문 entity 링크** (장중·ETF·오늘 정리·뉴스/공시 다이제스트·홈 히어로 공통):
-  - ingest 선택 필드 `entities: { name, symbol }[]`
-  - 도메인: `domain/entities/linkEntitiesInText.ts` (`splitTextWithEntityLinks`) · 딥링크 `openFinanceSymbol`
-  - UI: **`EntityLinkedTintedText`** — 변동률 틴트 + name 정확 매칭 링크. `entities` 없으면 틴트만 (`ChangeTintedText`는 이 컴포넌트 별칭)
-  - 새 본문 렌더에는 이 경로를 쓰고, 데이터에 `entities`가 있으면 prop으로 넘긴다. 추측성 티커 스캔 금지
-  - 심볼 Yahoo 형식(US 그대로, KR `.KS`/`.KQ`, 지수 `^`, 크립토 `BTC-USD`). KR → Naver, 그 외 → Yahoo
 - 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스 흐름** 조절. 히어로·일정은 자동 (장중 브리핑 목록·게시판 피커 없음)
 - 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
 - 상세(`MarketBriefingBlock`·`TodayBriefingBlock`·시트·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat

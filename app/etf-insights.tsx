@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -193,12 +193,9 @@ export function EtfInsightsListContent({ embedded = false, onBack }: EtfInsights
                   {item.title}
                 </Text>
                 {item.summary?.trim() ? (
-                  <EntityLinkedTintedText
-                    style={styles.cardSummary}
-                    numberOfLines={3}
-                    entities={item.entities}>
+                  <ChangeTintedText style={styles.cardSummary} numberOfLines={3}>
                     {item.summary.trim()}
-                  </EntityLinkedTintedText>
+                  </ChangeTintedText>
                 ) : null}
                 {timeLabel ? <Text style={styles.cardTime}>{timeLabel}</Text> : null}
               </Pressable>

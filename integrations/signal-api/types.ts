@@ -42,12 +42,6 @@ export type SignalApiNewsDigestSourceRef = {
   publishedAt: string | null;
 };
 
-/** 본문 name↔Yahoo symbol (ingest entities). name은 본문 표기와 정확히 일치 */
-export type SignalApiBodyEntity = {
-  name: string;
-  symbol: string;
-};
-
 export type SignalApiNewsDigestItem = {
   id: string;
   category: string;
@@ -61,7 +55,6 @@ export type SignalApiNewsDigestItem = {
   generatedAt: string | null;
   primaryNewsId: string | null;
   sourceRefs: SignalApiNewsDigestSourceRef[];
-  entities?: SignalApiBodyEntity[];
   aiGenerated?: boolean | null;
 };
 
@@ -121,7 +114,6 @@ export type SignalApiMarketBriefing = {
   companies: SignalApiMarketBriefingCompany[];
   macro: SignalApiMarketBriefingMacroItem[];
   sourceRefs: SignalApiMarketBriefingSourceRef[];
-  entities?: SignalApiBodyEntity[];
   publishedAt: string | null;
   briefingDate: string | null;
   pushTitle?: string;
@@ -150,7 +142,6 @@ export type SignalApiTodayBriefing = {
   sourceRefs: SignalApiTodayBriefingSourceRef[];
   relatedDigestIds: string[];
   relatedMarketBriefingIds: string[];
-  entities?: SignalApiBodyEntity[];
   generatedAt: string | null;
   publishedAt: string | null;
   briefingDate: string | null;
@@ -185,7 +176,6 @@ export type SignalApiEtfInsight = {
   rotation: Record<string, unknown> | null;
   insights: string[];
   sourceRefs: SignalApiEtfInsightSourceRef[];
-  entities?: SignalApiBodyEntity[];
   pushTitle?: string;
   pushBody?: string;
   createdAt: string | null;
@@ -243,7 +233,6 @@ export type SignalApiDisclosureDigestItem = {
   generatedAt: string | null;
   primaryDisclosureId: string | null;
   sourceRefs: SignalApiDisclosureDigestSourceRef[];
-  entities?: SignalApiBodyEntity[];
 };
 
 export type SignalApiCalendarEvent = {

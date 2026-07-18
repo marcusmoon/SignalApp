@@ -141,7 +141,6 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
     aiGenerated: item.aiGenerated === true,
     generatedAt: item.generatedAt,
     sourceRefs: item.sourceRefs,
-    ...(item.entities?.length ? { entities: item.entities } : {}),
     primary: digestPrimaryNews(item, rows),
   };
 }

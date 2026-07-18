@@ -3,7 +3,6 @@ import { hydrateMarketBriefingItems } from '../../sources/resolveSourceRefs.mjs'
 import { queryPublicMarketQuoteRows } from './marketRepository.mjs';
 import {
   cleanText,
-  normalizeEntities,
   pageOptions,
   payloadFromRow,
   sqlUtcRangeFrom,
@@ -12,7 +11,6 @@ import {
 
 function publicBriefing(item) {
   if (!item) return null;
-  const entities = normalizeEntities(item.entities);
   return {
     id: item.id,
     market: item.market || '',
@@ -25,7 +23,6 @@ function publicBriefing(item) {
     companies: Array.isArray(item.companies) ? item.companies : [],
     macro: Array.isArray(item.macro) ? item.macro : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
-    ...(entities.length > 0 ? { entities } : {}),
     publishedAt: item.publishedAt || item.generatedAt || null,
     briefingDate: item.briefingDate || item.generatedDate || null,
     pushTitle: item.pushTitle || '',

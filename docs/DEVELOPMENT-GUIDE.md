@@ -127,7 +127,6 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 | 더보기 숏링크 | `constants/referenceAppLinks.ts` | `buildAppLaunchUrls({ webUrl, linkId: item.id })` | `utils/referenceLinkOpen.ts` → `openReferenceLink` |
 | 앱 연동 레지스트리 | `utils/externalLinkRegistry.ts` | id·host → `*AppLaunchUrls` 빌더 | 종목·더보기·`open*` 헬퍼 공통 |
 | Yahoo·네이버·토스 단일 | `utils/yahooFinance.ts`, `naverFinance.ts`, `tossFinance.ts` | 레지스트리 위임 | 각 `open*()` 헬퍼 |
-| 본문 entity 딥링크 | ingest `entities` + `domain/entities/linkEntitiesInText.ts` | `openFinanceSymbol` → Naver/Yahoo | `EntityLinkedTintedText` (`entities` prop). `ChangeTintedText`는 틴트 전용 별칭 |
 | 유튜브 영상 | `utils/openYoutube.ts` | `youtubeWatchAppLaunchUrls` | `openYoutube` |
 | 뉴스·공시 원문 | `NewsCard`, `disclosures` | — | 인앱 브라우저 직접 (피드 원문 전용) |
 
@@ -210,7 +209,6 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 종목 상세 | `app/symbol/[ticker].tsx`, `components/symbol/SymbolDetailPane.tsx` |
 | 알림함 | `app/alerts.tsx`, [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) |
 | 외부 링크 | `utils/externalLinkRegistry.ts`, `utils/openExternalLink.ts`, `utils/externalLinkOpen.ts` |
-| 본문 entity 링크 | `domain/entities/linkEntitiesInText.ts`, `components/signal/EntityLinkedTintedText.tsx`, `domain/quotes/openFinanceSymbol.ts` |
 | 레이아웃 상수 | `constants/screenLayout.ts`, `constants/screenFixedHeader.ts` |
 | Signal API | `integrations/signal-api/` |
 

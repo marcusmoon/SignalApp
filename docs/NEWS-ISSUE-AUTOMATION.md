@@ -60,8 +60,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 
 권장 필드:
 
-- `symbols`: 관련 종목 코드 (Yahoo 형식 — US 그대로, KR `.KS`/`.KQ`, 지수 `^`, 크립토 `BTC-USD`)
-- `entities`: 본문(title·summary)에 언급된 종목·ETF·코인의 `{ name, symbol }[]`. `name`은 본문 표기와 **정확히 일치**. 불확실한 매핑은 제외. 앱이 name 매칭 → 하이라이트 + 국내 Naver / 해외 Yahoo
+- `symbols`: 관련 종목 코드
 - `topics`: 대표 주제 태그
 - `sources`: (v2 ingest 생략) read 시 hydrate된 `sourceRefs`에서 파생
 - `count`: 묶인 원문 수

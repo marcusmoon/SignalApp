@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import type { AppTheme } from '@/constants/theme';
@@ -28,15 +27,9 @@ export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: 
   const summary = briefing.summary?.trim() || '';
   const title = titleText?.trim() || lead;
   const summaryBody = showSummary && summary && summary !== title ? summary : '';
-  const entities = briefing.entities;
-
   return (
     <View style={styles.root}>
-      {summaryBody ? (
-        <EntityLinkedTintedText style={styles.summary} entities={entities}>
-          {summaryBody}
-        </EntityLinkedTintedText>
-      ) : null}
+      {summaryBody ? <Text style={styles.summary}>{summaryBody}</Text> : null}
 
       {briefing.keyPoints.length > 0 ? (
         <View style={styles.sectionWrap}>
@@ -49,7 +42,6 @@ export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: 
                 key={`${briefing.id}-point-${index}`}
                 title={point}
                 titleLines={null}
-                entities={entities}
                 bordered={index < briefing.keyPoints.length - 1}
               />
             ))}

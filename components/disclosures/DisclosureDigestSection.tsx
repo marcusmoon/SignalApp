@@ -256,7 +256,6 @@ export function DisclosureDigestSection({
         kicker={t('disclosureFlowTitle')}
         digestTitle={sourcesItem?.title ?? ''}
         digestSummary={sourcesItem?.summary?.trim() || undefined}
-        entities={sourcesItem?.entities}
         rows={sourceRows}
         onClose={closeSources}
       />

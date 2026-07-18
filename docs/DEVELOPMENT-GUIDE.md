@@ -210,6 +210,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 종목 상세 | `app/symbol/[ticker].tsx`, `components/symbol/SymbolDetailPane.tsx` |
 | 알림함 | `app/alerts.tsx`, [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) |
 | 외부 링크 | `utils/externalLinkRegistry.ts`, `utils/openExternalLink.ts`, `utils/externalLinkOpen.ts` |
+| 본문 entity 링크 | `domain/entities/linkEntitiesInText.ts`, `components/signal/EntityLinkedTintedText.tsx`, `domain/etfInsights/openSymbol.ts` |
 | 레이아웃 상수 | `constants/screenLayout.ts`, `constants/screenFixedHeader.ts` |
 | Signal API | `integrations/signal-api/` |
 

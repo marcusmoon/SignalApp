@@ -5,6 +5,8 @@
 - 사용자 활동 기반 개인화: 읽은 뉴스, 열어본 종목, 숨긴 출처, 알림 반응을 랭킹에 반영한다.
 - 시장 브리핑 품질: ingest payload의 종목 가격·등락률 필드 활용과 회차별 비교 UX를 개선한다.
 - **시장 주간·월간 브리핑**: 일간 외 주/월 요약 제공. 화면은 상단 기간 세그먼트(일·주·월) + 기간별 네비게이터(일=날짜, 주=거래주, 월=달) + 2단 탭(일간=회차 4탭, 주·월=국내·미국). 본문은 `MarketBriefingBlock` 스키마 재사용. 서버는 `market_briefings`에 `period`(daily/weekly/monthly), `period_start`/`period_end` 확장 검토.
+- **IT 뉴스 소스 확대**: 현재 GeekNews(`news.hada.io/rss/news`)만. 필요 시 해외 유명 매체·국내 IT지 RSS를 `category=it`에 추가(Admin RSS + `market_news_it_rss`의 `rssSourceIds`).
+- **IT 뉴스 UX**: unread 배지(More·사이드바), 허브 타일 순서 저장과의 정합, 번역 토글·다이제스트 연동 여부 검토.
 
 ## Platform
 
@@ -14,10 +16,11 @@
 - Android alternate app icon: activity-alias 또는 config plugin 방식 검토.
 - Web/PWA 아이콘과 manifest 전략 정리.
 - Android 출시 QA: push, deep link, social login, status bar, splash 확인.
-- iPad·wide 웹 레이아웃 QA: 2-pane, 사이드바 서브탭, PTR·chip.
+- iPad·wide 웹 레이아웃 QA: 2-pane, 사이드바 서브탭(IT 뉴스 포함), PTR·chip, 퀵설정→전체 설정 탭 통일.
 
 ## Server
 
+- **배포 직후**: Flyway `V19` 적용·`market_news_it_rss` 수동/자동 실행·`GET /v1/news?category=it` 응답 확인.
 - Postgres 운영 고도화: public API direct SQL 범위를 확대하고 heavy read 경로의 인덱스/쿼리 플랜을 정기 점검한다.
 - DB 접근 계층 정리: Kysely repository를 기능별로 확대하고 legacy raw SQL 집중도를 낮춘다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.

@@ -73,7 +73,8 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 
 ## My info · 설정
 
-- **My info** (`app/account.tsx`): 로그인 후 허브. 환경 설정은 `router.push({ pathname: '/settings', params: { tab, from: 'account' } })`.
+- **My info** (`app/account.tsx`): 로그인 후 허브. 환경 설정은 `router.push({ pathname: '/settings', params: { tab, from: 'account' } })` (wide: `showSettings(tab, { drillFrom: 'account' })` → `settingsFromAccount`).
+- **퀵 설정 → More settings**: `from` 없이 `/settings?tab=display` (wide: `showSettings('display', { drillFrom: 'home' })`). pill 탭 표시·탭 전환은 `switchSettingsTab`.
 - **설정 탭 순서**: `constants/settingsTabs.ts` — `display` · `notifications` · `news` · `quotes` · `server`(개발 모드).
 - **허브 메뉴 설명**(`accountHub*Desc`)과 설정 화면 lead(`settings*Lead`) 문구는 동일 의미로 유지한다.
 - **소셜 연동**: 해제 전 확인 다이얼로그. 비밀번호 미설정 + 마지막 소셜이면 해제 불가([SOCIAL-AUTH.md](./SOCIAL-AUTH.md)). 서버 비활성 공급자는 목록에 「준비 중」으로 표시.
@@ -197,8 +198,11 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
-| 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx` |
+| 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
+| IT 뉴스 | `app/(tabs)/it-news.tsx`, `app/more-it-news.tsx`, `components/news/ItNewsFeedPanel.tsx` — `GET /v1/news?category=it` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` |
+| 홈 마켓 브리핑 시트 | `components/signal/MarketBriefingSheet.tsx` (행 탭), 헤더는 시장 탭/화면 |
+| 퀵 설정 | `components/signal/QuickSettingsSheet.tsx`, `constants/bottomSheetLayout.ts` |
 | 설정 | `app/settings.tsx` |
 | My info | `app/account.tsx` |
 | 종목 상세 | `app/symbol/[ticker].tsx`, `components/symbol/SymbolDetailPane.tsx` |

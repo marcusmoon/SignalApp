@@ -4,6 +4,9 @@
 
 - [ ] `npx tsc --noEmit` 통과
 - [ ] 홈·뉴스·공시·시장·시세·더보기 주요 흐름 확인
+- [ ] IT 뉴스: More(iPhone)·사이드바(wide, 내 정보 위) 진입, GeekNews 수집분 표시
+- [ ] 퀵 설정 → More settings: iPhone·iPad 모두 설정 pill 탭 표시 / My info 진입은 단일 탭
+- [ ] 홈 시황 행 탭 → `MarketBriefingSheet`, 섹션 헤더 → 시장 화면
 - [ ] 시장 탭: 날짜·회차(미장·장전·장중·마감), 브리핑 본문·종목 가격 표시
 - [ ] 피드 PTR: 당겨서 새로고침 시 스크롤 위치 유지 ([FEED-INTERACTION.md](./FEED-INTERACTION.md))
 - [ ] 새 소식 chip: scope별 표시·탭 전환 시 독립 동작 (뉴스·공시·시장·알림함)
@@ -15,16 +18,16 @@
 
 ## 서버
 
-- [ ] 운영 DB에 Flyway migration 선적용
+- [ ] 운영 DB에 Flyway migration 선적용 (`V19` IT RSS·`geeknews` 포함)
 - [ ] `npm --prefix server run start` 기동 확인
 - [ ] `/health` 확인
 - [ ] `/web`, `/web/news`, `/web/signal` 웹 클라이언트 route 확인
 - [ ] `/web/_expo/*`, `/web/assets/*` asset 응답 확인
 - [ ] `/news` 같은 root 웹 route가 `/web/news`로 redirect되는지 확인
-- [ ] 주요 public API 응답 확인 (`/v1/market-briefings`, `/v1/news` 등)
+- [ ] 주요 public API 응답 확인 (`/v1/market-briefings`, `/v1/news`, `/v1/news?category=it` 등)
 - [ ] Admin 로그인 확인
-- [ ] Job 수동 실행과 이력 저장 확인
-- [ ] Postgres 연결과 기본 Job/Provider/RSS seed 확인
+- [ ] Job 수동 실행과 이력 저장 확인 (`market_news_it_rss` 포함)
+- [ ] Postgres 연결과 기본 Job/Provider/RSS seed 확인 (GeekNews `rss_sources.geeknews`)
 
 ## 배포
 

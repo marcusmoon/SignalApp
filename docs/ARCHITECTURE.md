@@ -26,7 +26,7 @@
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
 | 더보기 | `app/(tabs)/more.tsx` | IT 뉴스·게시판·공시·유튜브·My info 숏컷 |
-| IT 뉴스 | `app/(tabs)/it-news.tsx` | RSS `category=it` 피드 (More·사이드바) |
+| IT 뉴스 | `app/(tabs)/it-news.tsx` | GeekNews RSS → `category=it` (More·사이드바, 내 정보 위) |
 | My info | `app/account.tsx` | 환경 설정·내 활동·계정 |
 
 유튜브(`app/(tabs)/youtube.tsx`)는 iPhone에서 더보기로 진입하고, iPad에서는 넓은 화면용 사이드 메뉴에서 직접 진입할 수 있다.

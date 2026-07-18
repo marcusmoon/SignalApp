@@ -169,10 +169,14 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 · My info
 
-- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — IT 뉴스·게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
+- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — IT 뉴스·게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음. 허브 순서: `constants/moreHubOrder.ts`.
+- **IT 뉴스** (`app/(tabs)/it-news.tsx`, `ItNewsFeedPanel`): GeekNews RSS(`category=it`). iPhone은 More → `/more-it-news`, wide는 사이드바(내 정보 위).
 - **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 유튜브 · 게시판 · **IT 뉴스** · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
-- **설정** (`app/settings.tsx`): My info에서 진입. `from=account`이면 상단 pill 서브탭 숨김(iPhone). 웹·iPad는 우측 pane 드릴인 + `WideSubpaneHeader`(chevron→내 정보). 탭 순서는 `constants/settingsTabs.ts`.
+- **퀵 설정** (`QuickSettingsSheet`): 헤더 우측 options 아이콘. 언어·화면 모드. 푸터 **More settings** → 전체 설정(pill 탭 표시, iPhone·iPad 동일).
+- **설정** (`app/settings.tsx`): 탭 순서 `constants/settingsTabs.ts`.
+  - **전체 설정**(퀵 설정·알림 등, `from≠account`): 상단 pill 서브탭 표시(iPhone·embedded iPad 공통).
+  - **My info 드릴인**(`from=account` / `settingsFromAccount`): pill 숨김·단일 탭. wide는 `WideSubpaneHeader`(chevron→내 정보).
 - **Wide 우측 pane**: 좌측 사이드바·상단 `SignalHeader` 고정, 우측만 페이지 교체. 드릴인 시에만 `WideSubpaneHeader`. 상세는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#wide-우측-pane-내비-ipad--넓은-웹).
 - **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만, iPhone).
 
@@ -201,7 +205,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 | 컴포넌트 | 용도 |
 |---|---|
-| `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드) |
+| `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드 · More settings) |
+| `QuickSettingsSheet` / `MarketBriefingSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% |
+| `ItNewsFeedPanel` | IT 뉴스 리스트 (`category=it`) |
 | `WideSubpaneHeader` | wide 우측 pane **드릴인** — chevron + 제목 (`PhoneHeaderBackButton`) |
 | `SignalFloatingTabBar` | iPhone 하단 탭 |
 | `IpadSidebarScreen` | wide 스택 |

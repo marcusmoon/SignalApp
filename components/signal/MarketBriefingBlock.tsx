@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
@@ -13,9 +12,10 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   briefingSectorHeatCells,
-  parseSectorSummaryQuoteHint,
+  type BriefingSectorHeatCell,
   sectorSummaryWhyText,
 } from '@/domain/briefings/sectorHeatmap';
+import { formatHeatChangePct, heatFillColor } from '@/domain/heatmaps/changeHeat';
 import {
   etfInsightDisplayTicker,
   isKoreaEtfSymbol,
@@ -32,7 +32,6 @@ import type {
   SignalApiMarketBriefing,
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
-  SignalApiMarketBriefingSector,
 } from '@/integrations/signal-api/types';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
@@ -179,31 +178,50 @@ function MacroHighlightRow({
   );
 }
 
-function SectorWhyRow({
-  item,
+/** 섹터 흐름: 리스트 + 히트맵 순·색(등락 칩만, 행 전체 배경 없음) */
+function SectorFlowRow({
+  cell,
   market,
+  theme,
   styles,
+  changeColors,
   bordered,
 }: {
-  item: SignalApiMarketBriefingSector;
+  cell: BriefingSectorHeatCell;
   market: string;
+  theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
+  changeColors: { up: string; down: string };
   bordered: boolean;
 }) {
   const { t } = useLocale();
-  const why = sectorSummaryWhyText(item.summary);
-  if (!why) return null;
-  const hint = parseSectorSummaryQuoteHint(item.summary || '');
-  const symbol = String(item.symbol || item.etf || hint.symbol || '').trim();
+  const why = sectorSummaryWhyText(cell.summary);
+  const symbol = cell.symbol?.trim() || '';
   const ticker = symbol ? etfInsightDisplayTicker(symbol) : '';
   const korea = symbol ? isKoreaEtfSymbol(symbol, market) : false;
+  const heatPct = cell.heatPercent;
+  const positive = heatPct == null ? null : isQuoteChangePositive({ changePercent: heatPct });
+  const pctColor =
+    positive === null ? theme.textMuted : positive ? changeColors.up : changeColors.down;
+  const chipFill = heatFillColor(heatPct, changeColors.up, changeColors.down, theme.bgElevated);
+  const chipLabel =
+    cell.changePercent != null && Number.isFinite(cell.changePercent)
+      ? formatHeatChangePct(cell.changePercent)
+      : cell.trend || '—';
 
   return (
-    <View style={[styles.sectorNarrativeRow, bordered && styles.listRowBordered]}>
-      <Text style={styles.sectorName} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText>
+    <View style={[styles.sectorFlowRow, bordered && styles.listRowBordered]}>
+      <View style={styles.sectorFlowTop}>
+        <Text style={styles.sectorName} numberOfLines={1}>
+          {cell.name}
+        </Text>
+        <View style={[styles.sectorHeatChip, { backgroundColor: chipFill }]}>
+          <Text style={[styles.sectorHeatChipText, { color: pctColor }]} numberOfLines={1}>
+            {chipLabel}
+          </Text>
+        </View>
+      </View>
+      {why ? <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText> : null}
       {ticker ? (
         <View style={styles.sectorMetaFooter}>
           <Pressable
@@ -236,32 +254,9 @@ export function MarketBriefingBlock({
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
-  const sectors = briefing.sectors || [];
-  const sectorHeatCells = useMemo((): ChangeHeatmapCell[] => {
-    return briefingSectorHeatCells(sectors, briefing.id).map((cell) => {
-      const ticker = cell.symbol ? etfInsightDisplayTicker(cell.symbol) : '';
-      const korea = cell.symbol ? isKoreaEtfSymbol(cell.symbol, briefing.market) : false;
-      const a11y = cell.symbol
-        ? korea
-          ? t('quotesNaverFinanceA11y', { symbol: ticker })
-          : t('quotesYahooFinanceA11y', { symbol: ticker })
-        : undefined;
-      return {
-        key: cell.key,
-        title: cell.name,
-        subtitle: ticker || null,
-        changePercent: cell.heatPercent,
-        displayPercent: cell.changePercent,
-        onPress: cell.symbol
-          ? () => openEtfInsightSymbol(cell.symbol!, briefing.market)
-          : undefined,
-        accessibilityLabel: [cell.name, ticker, a11y].filter(Boolean).join('. '),
-      };
-    });
-  }, [briefing.id, briefing.market, sectors, t]);
-  const sectorsWithWhy = useMemo(
-    () => sectors.filter((s) => Boolean(sectorSummaryWhyText(s.summary))),
-    [sectors],
+  const sectorFlowRows = useMemo(
+    () => briefingSectorHeatCells(briefing.sectors, briefing.id),
+    [briefing.id, briefing.sectors],
   );
 
   return (
@@ -287,28 +282,20 @@ export function MarketBriefingBlock({
         </View>
       ) : null}
 
-      {sectorHeatCells.length > 0 ? (
+      {sectorFlowRows.length > 0 ? (
         <BriefingSection title={t('briefingDetailSectors')} styles={styles}>
-          <View style={styles.sectorStack}>
-            <ChangeHeatmapGrid
-              cells={sectorHeatCells}
-              theme={theme}
-              scaleFont={scaleFont}
-              changeColorConvention={changeColorConvention}
-            />
-            {sectorsWithWhy.length > 0 ? (
-              <View style={styles.sectionFeedCard}>
-                {sectorsWithWhy.map((item, index) => (
-                  <SectorWhyRow
-                    key={`${item.name}-why-${index}`}
-                    item={item}
-                    market={briefing.market}
-                    styles={styles}
-                    bordered={index < sectorsWithWhy.length - 1}
-                  />
-                ))}
-              </View>
-            ) : null}
+          <View style={styles.sectionFeedCard}>
+            {sectorFlowRows.map((cell, index) => (
+              <SectorFlowRow
+                key={cell.key}
+                cell={cell}
+                market={briefing.market}
+                theme={theme}
+                styles={styles}
+                changeColors={changeColors}
+                bordered={index < sectorFlowRows.length - 1}
+              />
+            ))}
           </View>
         </BriefingSection>
       ) : null}
@@ -458,12 +445,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    sectorStack: {
-      gap: 12,
-    },
-    sectorNarrativeRow: {
+    sectorFlowRow: {
       gap: 4,
       paddingVertical: 7,
+    },
+    sectorFlowTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      minWidth: 0,
     },
     sectorName: {
       fontSize: ft.ff(14),
@@ -472,6 +463,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       flexShrink: 1,
       minWidth: 0,
+    },
+    sectorHeatChip: {
+      flexShrink: 0,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    sectorHeatChipText: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
+      fontVariant: ['tabular-nums'],
     },
     sectorSummary: {
       fontSize: ft.signalBodyFont(13),

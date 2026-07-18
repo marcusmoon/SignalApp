@@ -1,16 +1,15 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { BriefingMetaChip } from '@/components/signal/BriefingMetaChip';
-import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { TodayBriefingBlock } from '@/components/signal/TodayBriefingBlock';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
@@ -28,7 +27,7 @@ import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatLocalYmdLabel, formatFeedItemTimeLabel, toYmd } from '@/utils/date';
+import { formatLocalYmdLabel, toYmd } from '@/utils/date';
 
 function parseDateParam(value: unknown): string {
   const raw = String(Array.isArray(value) ? value[0] : value || '').slice(0, 10);
@@ -146,54 +145,12 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
               <View style={styles.heroCard}>
                 <BriefingMetaChip label={t('todayBriefingDetailKicker')} />
                 {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
-                {bodyText && bodyText !== leadText ? <Text style={styles.summary}>{bodyText}</Text> : null}
               </View>
-
-              {item.keyPoints.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('todayBriefingKeyPoints')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {item.keyPoints.map((point, index) => (
-                      <HomeDigestFeedRow
-                        key={`${item.id}-point-${index}`}
-                        title={point}
-                        titleLines={null}
-                        bordered={index < item.keyPoints.length - 1}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {item.sourceRefs.length > 0 ? (
-                <View style={styles.sectionWrap}>
-                  <View style={styles.sectionHead}>
-                    <Text style={styles.sectionHeading}>{t('todayBriefingSources')}</Text>
-                  </View>
-                  <View style={styles.sectionFeedCard}>
-                    {item.sourceRefs.map((ref, index) => (
-                      <HomeDigestFeedRow
-                        key={`${item.id}-source-${index}`}
-                        title={ref.title || ref.sourceName || ref.url || ''}
-                        titleLines={null}
-                        trailText={ref.sourceName?.trim() || null}
-                        timeLabel={formatFeedItemTimeLabel(ref.publishedAt, locale)}
-                        sourceEntries={briefingSourceIconEntries([ref])}
-                        bordered={index < item.sourceRefs.length - 1}
-                        onPress={
-                          ref.url
-                            ? () => {
-                                void Linking.openURL(ref.url!);
-                              }
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : null}
+              <TodayBriefingBlock
+                briefing={item}
+                titleText={leadText}
+                showSummary={Boolean(bodyText && bodyText !== leadText)}
+              />
             </>
           ) : null}
         </WebWheelScrollView>
@@ -297,38 +254,6 @@ function makeStyles(
       lineHeight: sf(25),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    summary: {
-      fontSize: ft.signalBodyFont(15),
-      lineHeight: sf(23),
-      fontWeight: ft.signalBodyWeight,
-      color: theme.textMuted,
-    },
-    sectionWrap: {
-      gap: 16,
-    },
-    sectionHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      minWidth: 0,
-    },
-    sectionHeading: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.signalTitleFont(16),
-      fontWeight: ft.titleWeight,
-      letterSpacing: -0.15,
-      color: theme.text,
-    },
-    sectionFeedCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      overflow: 'hidden',
     },
   });
 }

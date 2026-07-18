@@ -49,6 +49,7 @@ import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
 import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
+import { TodayBriefingSheet } from '@/components/signal/TodayBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import {
@@ -315,6 +316,7 @@ export function HomeFocusContent({
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
+  const [todayBriefingSheet, setTodayBriefingSheet] = useState<SignalApiTodayBriefing | null>(null);
   const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
 
   const homeHero = useMemo(
@@ -687,14 +689,22 @@ export function HomeFocusContent({
     } as never);
   }, [ipadNav, router, selectedYmd]);
 
+  const openTodayBriefingSheet = useCallback((row: SignalApiTodayBriefing) => {
+    setTodayBriefingSheet(row);
+  }, []);
+
+  const closeTodayBriefingSheet = useCallback(() => {
+    setTodayBriefingSheet(null);
+  }, []);
+
   const openHero = useCallback(() => {
     if (!homeHero) return;
     if (homeHero.kind === 'today') {
-      openTodayBriefing();
+      openTodayBriefingSheet(homeHero.briefing);
       return;
     }
     openSignalSheet(homeHero.briefing);
-  }, [homeHero, openSignalSheet, openTodayBriefing]);
+  }, [homeHero, openSignalSheet, openTodayBriefingSheet]);
 
   const openHeroSection = useCallback(() => {
     if (!homeHero) return;
@@ -1048,6 +1058,11 @@ export function HomeFocusContent({
         title={briefingSheetTitle}
         sessionLabel={briefingSheetSessionLabel}
         onClose={closeBriefingSheet}
+      />
+      <TodayBriefingSheet
+        visible={todayBriefingSheet != null}
+        briefing={todayBriefingSheet}
+        onClose={closeTodayBriefingSheet}
       />
       <EtfInsightSheet
         visible={etfInsightSheetOpen && etfInsight != null}

@@ -157,7 +157,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 · 관심 종목·게시판 숨김
   - **관심 종목 `>`**: `/watchlist` 드릴 — 관심 세그먼트만 + 상단 백 (시세 탭 전체로 가지 않음)
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
-- **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 섹션 `>` → 시장 탭 해당 회차 · 오늘 정리 → `/today-briefing`
+- **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 섹션 `>` → 시장 탭 해당 회차 · 오늘 정리 카드 → `TodayBriefingSheet` · 섹션 `>` → `/today-briefing`
 - **히어로 메타 칩** (`BriefingMetaChip`): 카드 상단에 종류/회차 — 오늘 정리=`ipadHomeTitle` · 장중=`briefingSession*`(장전·장중·미장·마감). 시트·오늘 정리 상세 히어로에도 동일. AI(`AiBadge`)와 역할 분리
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)
 - **일정 칩**: 히어로 바로 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)

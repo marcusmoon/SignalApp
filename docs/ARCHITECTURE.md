@@ -21,15 +21,14 @@
 | 탭 | 화면 | 역할 |
 |---|---|---|
 | 홈 | `app/(tabs)/home.tsx` | 오늘의 브리핑·홈 다이제스트 |
-| 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·와치·YouTube 피드 (`YoutubeFeedPanel` 공유) |
+| 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·IT·YouTube 피드 (`YoutubeFeedPanel` 공유) |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
-| 더보기 | `app/(tabs)/more.tsx` | IT 뉴스·게시판·공시·유튜브·My info 숏컷 |
-| IT 뉴스 | `app/(tabs)/it-news.tsx` | RSS `category=it` 피드 (More·사이드바) |
+| 더보기 | `app/(tabs)/more.tsx` | 게시판·공시·My info 숏컷 |
 | My info | `app/account.tsx` | 환경 설정·내 활동·계정 |
 
-유튜브(`app/(tabs)/youtube.tsx`)는 iPhone에서 더보기로 진입하고, iPad에서는 넓은 화면용 사이드 메뉴에서 직접 진입할 수 있다.
+IT 뉴스와 YouTube는 뉴스 탭의 세그먼트(IT, Video)에서만 접근할 수 있다.
 
 ## 서버 구조
 

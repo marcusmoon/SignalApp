@@ -52,8 +52,8 @@ import {
   dedupeNewsFeedRows,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
+  FEED_PAGE_IT,
   FEED_PAGE_KOREA,
-  FEED_PAGE_WATCH,
   NEWS_SEGMENT_LABEL,
   type NewsDigestItem,
 } from '@/domain/news';
@@ -78,7 +78,6 @@ import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import {
   useResetRefreshingOnTabBlur,
   useScrollToTopOnChange,
@@ -178,7 +177,6 @@ export function LegacyNewsFeedScreen() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
-  const [watchSymbolOptions, setWatchSymbolOptions] = useState<string[]>([]);
   const [newContentSegments, setNewContentSegments] = useState(() => new Set<NewsSegmentKey>());
   /** 백그라운드 폴링: 세그먼트별 가장 최근에 본 항목 ID */
   const latestSeenIdBySegmentRef = useRef<Partial<Record<NewsSegmentKey, string>>>({});
@@ -258,15 +256,6 @@ export function LegacyNewsFeedScreen() {
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
       if (seg === 'video') {
         const page = await fetchSignalYoutube({ sort: 'latest', limit: 1, offset: 0 }, { cacheMode: 'bypass' });
-        return page.items[0]?.id ?? null;
-      }
-      if (seg === 'watch') {
-        const symbols = (await loadWatchlistSymbols()).slice(0, 40);
-        if (symbols.length === 0) return null;
-        const page = await fetchSignalNews(
-          { locale, symbols: symbols.join(','), limit: 1, offset: 0 },
-          { cacheMode: 'bypass' },
-        );
         return page.items[0]?.id ?? null;
       }
       const page = await fetchSignalNews({ locale, category: seg, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
@@ -387,40 +376,6 @@ export function LegacyNewsFeedScreen() {
         return { itemIds: [], kind: 'video' };
       }
 
-      if (segment === 'watch') {
-        const symbols = (await loadWatchlistSymbols()).slice(0, 40);
-        setWatchSymbolOptions(symbols);
-        if (symbols.length === 0) {
-          setServerRows([]);
-          setServerDigestRows([]);
-          setItems([]);
-          setHasMore(false);
-          clearSegmentNewContent('watch');
-          delete latestSeenIdBySegmentRef.current.watch;
-          return { itemIds: [], kind: 'news' };
-        }
-        const { items: rows, meta } = await fetchSignalNews(
-          {
-            locale,
-            symbols: symbols.join(','),
-            limit: FEED_PAGE_WATCH,
-            offset: 0,
-            tag: activeTag || undefined,
-          },
-          { cacheMode },
-        );
-        const dedupedRows = syncServerRows(rows);
-        commitDigestLookupRows(dedupedRows);
-        setServerDigestRows([]);
-        feedMetaRef.current = meta;
-        hasMoreRef.current = meta.hasMore;
-        setHasMore(meta.hasMore);
-        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
-        setItems(mapped);
-        syncSegmentLatestSeen('watch', dedupedRows[0]?.id);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
-      }
-
       if (segment === 'crypto') {
         const [newsPage, digestPage] = await Promise.all([
           fetchSignalNews(
@@ -537,20 +492,14 @@ export function LegacyNewsFeedScreen() {
       }
 
       const pageLimit =
-        segment === 'watch'
-          ? FEED_PAGE_WATCH
+        segment === 'it'
+          ? FEED_PAGE_IT
           : segment === 'crypto'
             ? FEED_PAGE_CRYPTO
             : segment === 'korea'
               ? FEED_PAGE_KOREA
               : FEED_PAGE_GLOBAL;
-      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
-      const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
-      if (segment === 'watch' && symbols.length === 0) {
-        hasMoreRef.current = false;
-        setHasMore(false);
-        return;
-      }
+      const category = segment === 'it' ? 'it' : segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
 
       let requestOffset = feedMetaRef.current?.nextOffset ?? serverRowsRef.current.length;
       let totalAdded = 0;
@@ -560,7 +509,6 @@ export function LegacyNewsFeedScreen() {
           {
             locale,
             category,
-            symbols: symbols.length > 0 ? symbols.join(',') : undefined,
             limit: pageLimit,
             offset: requestOffset,
             tag: activeTag || undefined,
@@ -796,7 +744,7 @@ export function LegacyNewsFeedScreen() {
       ? t('newsTitleListShowTranslation')
       : t('newsTitleListShowOriginal');
   const digestBatches = useMemo(() => {
-    if (segment === 'video' || segment === 'watch') return [];
+    if (segment === 'video' || segment === 'it') return [];
     if (serverDigestRows.length > 0) {
       const lookupRows = digestLookupRowsRef.current;
       const byTs = new Map<string, SignalApiNewsDigestItem[]>();
@@ -832,8 +780,8 @@ export function LegacyNewsFeedScreen() {
 
   const emptyMessage =
     !loading && listData.length === 0 && !error
-      ? segment === 'watch'
-        ? t('feedEmptyWatch')
+      ? segment === 'it'
+        ? t('feedEmptyIt')
         : t('feedEmpty')
       : null;
 
@@ -843,9 +791,8 @@ export function LegacyNewsFeedScreen() {
     : fabStackBottom(tabBarHeight, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET);
   const useNewsTitleFab = showNewsTitleListToggle;
   const useNewsTitleListMode = showNewsTitleListToggle;
-  const showDigest = segment !== 'video' && segment !== 'watch';
-  const newContentAvailable =
-    newContentSegments.has(segment) && !(segment === 'watch' && watchSymbolOptions.length === 0);
+  const showDigest = segment !== 'video' && segment !== 'it';
+  const newContentAvailable = newContentSegments.has(segment);
 
   const listHeaderEl = useMemo(() => {
     const hasContent =
@@ -992,7 +939,7 @@ export function LegacyNewsFeedScreen() {
                         compactMeta
                         titleToggle={segment === 'global' || segment === 'crypto'}
                         titleShowAlternate={useNewsTitleListMode ? newsTitleShowAlternate : undefined}
-                        maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
+                        maxHashtagsToShow={maxHashtagDisplay}
                         onTagPress={(label) => {
                           const next = label.trim();
                           if (next) setActiveTag(next);

@@ -1,6 +1,6 @@
 /**
  * iPad·웹 좌측 사이드바 내비게이션.
- * - 메인 탭(홈·뉴스·시장·시세·공시·유튜브·게시판·IT 뉴스·내 정보)
+ * - 메인 탭(홈·뉴스·시장·시세·공시·게시판·내 정보)
  * - 설정은 내 정보 허브에서 진입 (More 탭 없음)
  * - 퀵 링크는 하단 슬림 도크
  */
@@ -66,20 +66,6 @@ const SIDEBAR_TABS: TabDef[] = [
     iconOutline: 'document-text-outline',
     iconFilled: 'document-text',
     labelId: 'tabDisclosures',
-  },
-  {
-    name: 'youtube',
-    route: '/(tabs)/youtube',
-    iconOutline: 'logo-youtube',
-    iconFilled: 'logo-youtube',
-    labelId: 'tabYoutube',
-  },
-  {
-    name: 'it-news',
-    route: '/(tabs)/it-news',
-    iconOutline: 'hardware-chip-outline',
-    iconFilled: 'hardware-chip',
-    labelId: 'tabItNews',
   },
   {
     name: 'board',

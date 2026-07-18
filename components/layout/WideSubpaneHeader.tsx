@@ -4,7 +4,8 @@ import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type Props = {
-  title: string;
+  /** 비우면 chevron만 (알림 단건 상세 등) */
+  title?: string;
   onBack: () => void;
 };
 
@@ -15,13 +16,16 @@ type Props = {
 export function WideSubpaneHeader({ title, onBack }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const styles = makeStyles(theme, scaleFont);
+  const label = String(title ?? '').trim();
 
   return (
     <View style={styles.wrap}>
       <PhoneHeaderBackButton onPress={onBack} />
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+      {label ? (
+        <Text style={styles.title} numberOfLines={1}>
+          {label}
+        </Text>
+      ) : null}
     </View>
   );
 }

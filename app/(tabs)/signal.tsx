@@ -117,8 +117,10 @@ export type SignalScreenProps = {
   onBack?: () => void;
   initialSession?: string | null;
   initialDate?: string | null;
-  /** 홈 섹션 `>` 드릴 — 선택일이 고정이므로 날짜피커 숨김 */
+  /** 홈·알림 드릴 — 선택일이 고정이므로 날짜피커 숨김 */
   hideDateNavigator?: boolean;
+  /** 알림 단건 — 회차 세그먼트 숨김 */
+  hideSessionSegments?: boolean;
 };
 
 export default function SignalScreen({
@@ -127,6 +129,7 @@ export default function SignalScreen({
   initialSession = null,
   initialDate = null,
   hideDateNavigator = false,
+  hideSessionSegments = false,
 }: SignalScreenProps = {}) {
   const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
@@ -558,7 +561,13 @@ export default function SignalScreen({
       {paneActive ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
-      {onBack ? <WideSubpaneHeader title={t('ipadHomeSignalTitle')} onBack={onBack} /> : null}
+      {onBack ? (
+        <WideSubpaneHeader
+          title={hideSessionSegments ? undefined : t('ipadHomeSignalTitle')}
+          onBack={onBack}
+        />
+      ) : null}
+      {hideDateNavigator && hideSessionSegments ? null : (
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
         {hideDateNavigator ? null : (
           <SignalDateNavigator
@@ -577,7 +586,7 @@ export default function SignalScreen({
           />
         )}
 
-      {!loading && (!useTwoPane || embedded) ? (
+      {!loading && !hideSessionSegments && (!useTwoPane || embedded) ? (
         <View style={styles.segment}>
             {FLAT_TABS.map((tab) => {
               const hasBriefing = briefingByTabKey.has(tab.key);
@@ -608,6 +617,7 @@ export default function SignalScreen({
         </View>
       ) : null}
       </View>
+      )}
 
       {paneActive && selectedYmd >= todayYmd ? (
         <FeedNewContentChip

@@ -325,7 +325,7 @@ export function navigateToAlert(
     }
     router.push({
       pathname: '/news-digest',
-      params: { id: digestId },
+      params: { id: digestId, from: 'alerts' },
     } as Href);
     return;
   }
@@ -353,7 +353,11 @@ export function navigateToAlert(
     }
     router.push({
       pathname: '/market-briefing',
-      params: { ...(date ? { date } : {}), ...(session ? { session } : {}) },
+      params: {
+        ...(date ? { date } : {}),
+        ...(session ? { session } : {}),
+        from: 'alerts',
+      },
     } as never);
     return;
   }
@@ -366,7 +370,7 @@ export function navigateToAlert(
     }
     router.push({
       pathname: '/today-briefing',
-      params: { date },
+      params: { date, from: 'alerts' },
     } as Href);
     return;
   }
@@ -380,7 +384,7 @@ export function navigateToAlert(
     }
     router.push({
       pathname: '/disclosure-digest',
-      params: { id: digestId },
+      params: { id: digestId, from: 'alerts' },
     } as Href);
     return;
   }

@@ -9,6 +9,7 @@
 - [ ] 홈 장중 히어로 → `/market-briefing` 상세. 오늘 정리 히어로 → `/today-briefing`. 섹터 흐름 → `/etf-insight`
 - [ ] 홈 뉴스 흐름 행 → `DigestSourcesSheet`. 오늘 정리 본문 없으면 히어로 미노출
 - [ ] 홈 섹션 헤더 `>` 없음(목록은 각 메뉴)
+- [ ] 알림→장중: 날짜바·회차 세그먼트·Stack 제목 없음(해당 회차 본문만). 알림→다이제스트/오늘정리/ETF: dateBar·Stack 제목 없음
 - [ ] 홈 섹션 표기 **뉴스 흐름** (메뉴 탭 **뉴스**와 구분)
 - [ ] 시장 탭: 날짜·회차(미장·장전·장중·마감), 브리핑 본문·종목 가격 표시
 - [ ] 피드 PTR: 당겨서 새로고침 시 스크롤 위치 유지 ([FEED-INTERACTION.md](./FEED-INTERACTION.md))

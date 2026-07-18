@@ -7,12 +7,14 @@ import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   briefingSectorHeatCells,
   parseSectorSummaryQuoteHint,
+  sectorSummaryWhyText,
 } from '@/domain/briefings/sectorHeatmap';
 import {
   etfInsightDisplayTicker,
@@ -177,64 +179,47 @@ function MacroHighlightRow({
   );
 }
 
-function sectorTrendColor(
-  trend: string,
-  theme: AppTheme,
-  up: string,
-  down: string,
-): string {
-  const t = String(trend || '').trim();
-  if (t === '▲' || t === 'up' || t === '강세' || t === '상승') return up;
-  if (t === '▽' || t === '▼' || t === 'down' || t === '약세' || t === '하락') return down;
-  return theme.textMuted;
-}
-
-function SectorNarrativeRow({
+function SectorWhyRow({
   item,
   market,
-  theme,
   styles,
-  changeColors,
   bordered,
 }: {
   item: SignalApiMarketBriefingSector;
   market: string;
-  theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
-  changeColors: { up: string; down: string };
   bordered: boolean;
 }) {
   const { t } = useLocale();
-  const summary = item.summary?.trim() || '';
-  if (!summary) return null;
-  const color = sectorTrendColor(item.trend, theme, changeColors.up, changeColors.down);
-  const hint = parseSectorSummaryQuoteHint(summary);
+  const why = sectorSummaryWhyText(item.summary);
+  if (!why) return null;
+  const hint = parseSectorSummaryQuoteHint(item.summary || '');
   const symbol = String(item.symbol || item.etf || hint.symbol || '').trim();
   const ticker = symbol ? etfInsightDisplayTicker(symbol) : '';
   const korea = symbol ? isKoreaEtfSymbol(symbol, market) : false;
 
   return (
     <View style={[styles.sectorNarrativeRow, bordered && styles.listRowBordered]}>
-      <View style={styles.sectorNarrativeTop}>
-        <Text style={[styles.sectorTrend, { color }]}>{item.trend || '→'}</Text>
-        <Text style={styles.sectorName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {ticker ? (
+      <Text style={styles.sectorName} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText>
+      {ticker ? (
+        <View style={styles.sectorMetaFooter}>
           <Pressable
             onPress={() => openEtfInsightSymbol(symbol, market)}
-            hitSlop={6}
+            hitSlop={4}
             accessibilityRole="link"
             accessibilityLabel={
               korea
                 ? t('quotesNaverFinanceA11y', { symbol: ticker })
                 : t('quotesYahooFinanceA11y', { symbol: ticker })
-            }>
-            <Text style={styles.sectorTicker}>{ticker}</Text>
+            }
+            style={({ pressed }) => [pressed && styles.sectorMetaPressed]}>
+            <Text style={styles.sectorMetaTicker}>{ticker}</Text>
           </Pressable>
-        ) : null}
-      </View>
-      <ChangeTintedText style={styles.sectorSummary}>{summary}</ChangeTintedText>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -274,8 +259,8 @@ export function MarketBriefingBlock({
       };
     });
   }, [briefing.id, briefing.market, sectors, t]);
-  const sectorsWithSummary = useMemo(
-    () => sectors.filter((s) => Boolean(s.summary?.trim())),
+  const sectorsWithWhy = useMemo(
+    () => sectors.filter((s) => Boolean(sectorSummaryWhyText(s.summary))),
     [sectors],
   );
 
@@ -311,17 +296,15 @@ export function MarketBriefingBlock({
               scaleFont={scaleFont}
               changeColorConvention={changeColorConvention}
             />
-            {sectorsWithSummary.length > 0 ? (
+            {sectorsWithWhy.length > 0 ? (
               <View style={styles.sectionFeedCard}>
-                {sectorsWithSummary.map((item, index) => (
-                  <SectorNarrativeRow
-                    key={`${item.name}-narrative-${index}`}
+                {sectorsWithWhy.map((item, index) => (
+                  <SectorWhyRow
+                    key={`${item.name}-why-${index}`}
                     item={item}
                     market={briefing.market}
-                    theme={theme}
                     styles={styles}
-                    changeColors={changeColors}
-                    bordered={index < sectorsWithSummary.length - 1}
+                    bordered={index < sectorsWithWhy.length - 1}
                   />
                 ))}
               </View>
@@ -482,39 +465,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 4,
       paddingVertical: 7,
     },
-    sectorNarrativeTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      minWidth: 0,
-    },
-    sectorTrend: {
-      fontSize: ft.ff(15),
-      fontWeight: ft.titleWeight,
-      width: 20,
-      textAlign: 'center',
-      flexShrink: 0,
-    },
     sectorName: {
-      fontSize: ft.ff(13),
-      fontWeight: ft.emphasisWeight,
+      fontSize: ft.ff(14),
+      lineHeight: sf(20),
+      fontWeight: ft.titleWeight,
       color: theme.text,
       flexShrink: 1,
       minWidth: 0,
-    },
-    sectorTicker: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      fontVariant: ['tabular-nums'],
-      flexShrink: 0,
-      marginLeft: 'auto',
     },
     sectorSummary: {
       fontSize: ft.signalBodyFont(13),
       fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
       lineHeight: sf(19),
+    },
+    sectorMetaFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    sectorMetaPressed: {
+      opacity: 0.72,
+    },
+    sectorMetaTicker: {
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      fontVariant: ['tabular-nums'],
     },
     companyRow: {
       gap: 4,

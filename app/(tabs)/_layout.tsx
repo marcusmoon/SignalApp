@@ -56,9 +56,7 @@ type TabBarIconKey =
   | 'quotes'
   | 'more'
   | 'disclosures'
-  | 'youtube'
-  | 'board'
-  | 'it-news';
+  | 'board';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -69,9 +67,7 @@ const TAB_ICON_PAIR: Record<TabBarIconKey, { outline: IoniconName; filled: Ionic
   quotes: { outline: 'stats-chart-outline', filled: 'stats-chart' },
   more: { outline: 'ellipsis-horizontal-outline', filled: 'ellipsis-horizontal' },
   disclosures: { outline: 'document-text-outline', filled: 'document-text' },
-  youtube: { outline: 'logo-youtube', filled: 'logo-youtube' },
   board: { outline: 'chatbubbles-outline', filled: 'chatbubbles' },
-  'it-news': { outline: 'hardware-chip-outline', filled: 'hardware-chip' },
 };
 
 function TabBarIcon({
@@ -351,27 +347,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="youtube"
-        options={{
-          title: t('tabYoutube'),
-          href: null,
-          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="youtube" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
         name="board"
         options={{
           title: t('screenBoard'),
           href: null,
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon="board" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="it-news"
-        options={{
-          title: t('tabItNews'),
-          href: null,
-          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="it-news" color={color} focused={focused} />,
         }}
       />
     </Tabs>
@@ -525,9 +505,7 @@ function IpadWideTabLayout({
             <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
             <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
             <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
-            <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
             <Tabs.Screen name="board" options={{ href: null, title: t('screenBoard') }} />
-            <Tabs.Screen name="it-news" options={{ href: null, title: t('tabItNews') }} />
           </Tabs>
         </View>
       </View>

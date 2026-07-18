@@ -169,9 +169,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 · My info
 
-- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — IT 뉴스·게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음. 허브 순서: `constants/moreHubOrder.ts`.
-- **IT 뉴스** (`app/(tabs)/it-news.tsx`, `ItNewsFeedPanel`): GeekNews RSS(`category=it`). iPhone은 More → `/more-it-news`, wide는 사이드바(내 정보 위).
-- **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 유튜브 · 게시판 · **IT 뉴스** · **내 정보**. 설정은 내 정보 허브에서 진입.
+- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 게시판·공시·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
+- **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 게시판 · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
 - **퀵 설정** (`QuickSettingsSheet`): 헤더 우측 options 아이콘. 언어·화면 모드. 푸터 **More settings** → 전체 설정(pill 탭 표시, iPhone·iPad 동일).
 - **설정** (`app/settings.tsx`): 탭 순서 `constants/settingsTabs.ts`.

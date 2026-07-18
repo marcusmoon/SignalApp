@@ -47,16 +47,6 @@ const HUB_META: Record<
     icon: 'file-text-o',
     titleId: 'tabDisclosures',
   },
-  youtube: {
-    href: '/more-youtube' as Href,
-    icon: 'youtube-play',
-    titleId: 'tabYoutube',
-  },
-  itNews: {
-    href: '/more-it-news' as Href,
-    icon: 'laptop',
-    titleId: 'tabItNews',
-  },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
 

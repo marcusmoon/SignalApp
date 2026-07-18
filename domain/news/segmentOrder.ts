@@ -23,6 +23,7 @@ export function normalizeNewsSegmentOrder(raw: unknown): NewsSegmentKey[] {
     ['global', 'crypto', 'video', 'watch'],
     ['global', 'korea', 'crypto', 'video', 'watch'],
     ['global', 'korea', 'crypto', 'watch', 'video'],
+    ['global', 'korea', 'crypto', 'it', 'video'],
   ];
   if (previousDefaults.some((order) => isSameOrder(out, order))) return [...NEWS_SEGMENT_ORDER];
   for (const k of NEWS_SEGMENT_ORDER) {

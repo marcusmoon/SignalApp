@@ -34,6 +34,8 @@ export type DigestSourceSheetRow = {
 
 type Props = {
   visible: boolean;
+  /** 시트 상단 종류명 (뉴스 흐름 · 공시 흐름 등) */
+  kicker?: string;
   digestTitle: string;
   digestSummary?: string;
   rows: DigestSourceSheetRow[];
@@ -42,6 +44,7 @@ type Props = {
 
 export function DigestSourcesSheet({
   visible,
+  kicker,
   digestTitle,
   digestSummary,
   rows,
@@ -53,6 +56,7 @@ export function DigestSourcesSheet({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const summary = digestSummary?.trim() || '';
   const hasSources = rows.length > 0;
+  const sheetKicker = kicker?.trim() || t('newsIssuesTitle');
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -66,7 +70,7 @@ export function DigestSourcesSheet({
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
           <View style={styles.grab} />
           <View style={styles.head}>
-            <Text style={styles.sheetKicker}>{t('feedDigestDetailTitle')}</Text>
+            <Text style={styles.sheetKicker}>{sheetKicker}</Text>
             <Pressable
               onPress={onClose}
               style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}

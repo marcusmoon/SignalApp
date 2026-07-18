@@ -386,6 +386,7 @@ export function DisclosureFlowContent({
       {datePickerSheet}
       <DigestSourcesSheet
         visible={sourcesDigestId != null}
+        kicker={t('disclosureFlowTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
         rows={sourceRows}

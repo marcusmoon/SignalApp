@@ -168,7 +168,7 @@ export function DisclosureDigestSection({
   goToListA11y,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const { locale } = useLocale();
+  const { t, locale } = useLocale();
   const pairLayout = columns === 2;
   const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);

@@ -50,7 +50,7 @@ export function MarketBriefingSheet({
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
           <View style={styles.grab} />
           <View style={styles.head}>
-            <Text style={styles.sheetKicker}>{t('feedDigestDetailTitle')}</Text>
+            <Text style={styles.sheetKicker}>{t('ipadHomeSignalTitle')}</Text>
             <Pressable
               onPress={onClose}
               style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}

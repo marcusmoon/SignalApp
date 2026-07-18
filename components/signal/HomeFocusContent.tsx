@@ -1026,6 +1026,7 @@ export function HomeFocusContent({
       {datePickerSheet}
       <DigestSourcesSheet
         visible={digestSheet != null}
+        kicker={t('newsIssuesTitle')}
         digestTitle={digestSheetTitle}
         digestSummary={digestSheetSummary}
         rows={digestSheetRows}

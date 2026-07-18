@@ -141,11 +141,19 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 ## 홈 · 시황 브리핑 밀도
 
 - 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
-- 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → **ETF 인사이트** → 공시 플로우 → (오늘만) 게시판·관심 시세 → 투자 일정
+- 홈 섹션 **동일 래퍼** (`styles.section` + `COMFORT_GAP_PAGE` 사이 간격). heroStack으로 앞 섹션만 좁히지 않음
+- 홈 섹션 제목 네이밍 (2어절·역할 병행):
+  | 역할 | 제목 | 패턴 |
+  |---|---|---|
+  | AI 합성 브리핑 | 마감 브리핑 · 시장 브리핑 · **ETF 브리핑** | `~ 브리핑` |
+  | AI 다이제스트 흐름 | 뉴스 흐름 · 공시 흐름 | `~ 흐름` |
+  | 개인/도구 | 게시판 · 관심 종목 · 투자 일정 | 짧은 명사 |
+  - AI 섹션만 `AiBadge`. 영어 혼용 제목(`인사이트` 등) 금지에 가깝게 통일
+- 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → ETF 브리핑 → 공시 흐름 → (오늘만) 게시판·관심 종목 → 투자 일정
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
-- ETF 인사이트: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → `EtfInsightSheet`(시황 `MarketBriefingSheet`와 동일 셸), 섹션 헤더 `>` → 리스트(`app/etf-insights.tsx`). ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
-- **시장 브리핑 ↔ ETF 인사이트 보완 모델** (같은 시각 언어, 다른 레이어):
-  | 역할 | 시장 브리핑 | ETF 인사이트 | 공유 UI |
+- ETF 브리핑: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → `EtfInsightSheet`, 섹션 헤더 `>` → 리스트. ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) (`etf-insights` API 키는 유지)
+- **시장 브리핑 ↔ ETF 브리핑 보완 모델** (같은 시각 언어, 다른 레이어):
+  | 역할 | 시장 브리핑 | ETF 브리핑 | 공유 UI |
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 히트맵** | **heatmap → 히트맵** | `ChangeHeatmapGrid` |

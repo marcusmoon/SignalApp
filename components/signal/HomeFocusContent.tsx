@@ -692,14 +692,9 @@ export function HomeFocusContent({
   }, [homeHero, openSignal]);
 
   const renderHeroCard = useCallback(() => {
-    if (!homeHero) {
-      return (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t('ipadHomeHeroEmpty')}</Text>
-        </View>
-      );
-    }
+    if (!homeHero) return null;
     const headline = homeHeroHeadline(homeHero);
+    if (!headline) return null;
     return (
       <Pressable
         onPress={openHero}
@@ -710,12 +705,10 @@ export function HomeFocusContent({
           showIssueSummary && styles.heroCardSummary,
           pressed && styles.pressed,
         ]}>
-        {headline ? (
-          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
-        ) : null}
+        <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
       </Pressable>
     );
-  }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles, t]);
+  }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles]);
 
   const renderCalendarChips = useCallback(
     () => (
@@ -898,19 +891,21 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={heroSectionTitle}
-              badge={<AiBadge />}
-              onPress={
-                homeHero && homeHero.kind !== 'today' ? openHeroSection : undefined
-              }
-              accessibilityLabel={
-                homeHero && homeHero.kind !== 'today' ? t('commonViewAll') : undefined
-              }
-            />
-            {renderHeroCard()}
-          </View>
+          {homeHero && homeHeroHeadline(homeHero) ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={heroSectionTitle}
+                badge={<AiBadge />}
+                onPress={
+                  homeHero.kind !== 'today' ? openHeroSection : undefined
+                }
+                accessibilityLabel={
+                  homeHero.kind !== 'today' ? t('commonViewAll') : undefined
+                }
+              />
+              {renderHeroCard()}
+            </View>
+          ) : null}
 
           <View style={styles.section}>
             <HomeSectionHeader

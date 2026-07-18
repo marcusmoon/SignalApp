@@ -120,6 +120,7 @@ export const en = {
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE community',
   homeFocusBoardEmpty: 'No recent posts',
   homeFocusSignalEmpty: 'No market briefing to show.',
+  moreHubEtfShort: 'ETF',
   homeEtfInsightTitle: 'ETF Briefing',
   homeEtfInsightEmpty: 'No ETF briefing for this date.',
   etfInsightDetailKicker: 'ETF Briefing',

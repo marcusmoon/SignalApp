@@ -62,6 +62,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
+import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
 import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import {
@@ -352,6 +353,7 @@ export function HomeFocusContent({
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
   const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
+  const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
     [calendarEvents],
@@ -652,23 +654,14 @@ export function HomeFocusContent({
     router.navigate('/etf-insights' as never);
   }, [ipadNav, router]);
 
-  const openEtfInsightDetail = useCallback(() => {
+  const openEtfInsightSheet = useCallback(() => {
     if (!etfInsight) return;
-    if (ipadNav.isAvailable) {
-      ipadNav.showEtfInsight(etfInsight.id, {
-        drillFrom: 'home',
-        date: etfInsight.insightDate || selectedYmd,
-      });
-      return;
-    }
-    router.push({
-      pathname: '/etf-insight',
-      params: {
-        id: etfInsight.id,
-        ...(etfInsight.insightDate ? { date: etfInsight.insightDate } : null),
-      },
-    } as never);
-  }, [etfInsight, ipadNav, router, selectedYmd]);
+    setEtfInsightSheetOpen(true);
+  }, [etfInsight]);
+
+  const closeEtfInsightSheet = useCallback(() => {
+    setEtfInsightSheetOpen(false);
+  }, []);
 
   const briefingSheetTitle = useMemo(
     () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
@@ -837,7 +830,7 @@ export function HomeFocusContent({
       const previewText = bodyText && bodyText !== leadText ? bodyText : '';
       return (
         <Pressable
-          onPress={openEtfInsightDetail}
+          onPress={openEtfInsightSheet}
           accessibilityRole="button"
           accessibilityLabel={t('homeEtfInsightTitle')}
           style={({ pressed }) => [
@@ -862,7 +855,7 @@ export function HomeFocusContent({
         </Pressable>
       );
     },
-    [openEtfInsightDetail, showIssueSummary, styles, t],
+    [openEtfInsightSheet, showIssueSummary, styles, t],
   );
 
   const renderIssueCard = useCallback(
@@ -1311,6 +1304,11 @@ export function HomeFocusContent({
         title={briefingSheetTitle}
         sessionLabel={briefingSheetSessionLabel}
         onClose={closeBriefingSheet}
+      />
+      <EtfInsightSheet
+        visible={etfInsightSheetOpen && etfInsight != null}
+        insight={etfInsight}
+        onClose={closeEtfInsightSheet}
       />
     </>
   );

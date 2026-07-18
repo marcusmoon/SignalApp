@@ -120,6 +120,7 @@ export const ja = {
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE コミュニティ',
   homeFocusBoardEmpty: '新着投稿はありません',
   homeFocusSignalEmpty: '表示する市場ブリーフィングがありません。',
+  moreHubEtfShort: 'ETF',
   homeEtfInsightTitle: 'ETFブリーフィング',
   homeEtfInsightEmpty: 'この日付のETFブリーフィングはありません。',
   etfInsightDetailKicker: 'ETFブリーフィング',

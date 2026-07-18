@@ -68,6 +68,13 @@ const SIDEBAR_TABS: TabDef[] = [
     labelId: 'tabDisclosures',
   },
   {
+    name: 'etfBriefing',
+    route: '/etf-insights',
+    iconOutline: 'pie-chart-outline',
+    iconFilled: 'pie-chart',
+    labelId: 'moreHubEtfShort',
+  },
+  {
     name: 'board',
     route: '/(tabs)/board',
     iconOutline: 'chatbubbles-outline',
@@ -146,17 +153,22 @@ export function SignalSidebarTabBar({
     ipadState.isAccountPaneActive ||
     ipadState.isSettingsPaneActive ||
     ACCOUNT_AUX_PATHS.some((path) => pathname.startsWith(path));
-  const homeActive = ipadState.isHomePaneActive && !accountActive;
+  const etfActive =
+    ipadState.contentPane === 'etfInsights' || ipadState.contentPane === 'etfInsight';
+  const homeActive = ipadState.isHomePaneActive && !accountActive && !etfActive;
 
   const activeTabName = accountActive
     ? 'account'
-    : homeActive
-      ? null
-      : SIDEBAR_TABS.find(
-          (tab) =>
-            tab.name !== 'account' &&
-            (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
-        )?.name ?? 'news';
+    : etfActive
+      ? 'etfBriefing'
+      : homeActive
+        ? null
+        : SIDEBAR_TABS.find(
+            (tab) =>
+              tab.name !== 'account' &&
+              tab.name !== 'etfBriefing' &&
+              (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
+          )?.name ?? 'news';
 
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
@@ -168,6 +180,15 @@ export function SignalSidebarTabBar({
         return;
       }
       router.navigate({ pathname: '/account', params: { from: 'sidebar' } } as never);
+      return;
+    }
+    if (tab.name === 'etfBriefing') {
+      if (ipadState.contentPane === 'etfInsights') return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showEtfInsights({ drillFrom: 'tabs' });
+        return;
+      }
+      router.navigate('/etf-insights' as never);
       return;
     }
     if (activeTabName === tab.name) {
@@ -286,7 +307,11 @@ export function SignalSidebarTabBar({
                   </Text>
                 </Pressable>
 
-                {isActive && tab.name !== 'youtube' && tab.name !== 'account' && subTabs.length > 0 ? (
+                {isActive &&
+                tab.name !== 'youtube' &&
+                tab.name !== 'account' &&
+                tab.name !== 'etfBriefing' &&
+                subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
                     {subTabs.map((sub) => {
                       const subActive = activeSubTabKey === sub.key;

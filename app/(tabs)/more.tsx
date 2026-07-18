@@ -50,7 +50,7 @@ const HUB_META: Record<
   etfBriefing: {
     href: '/etf-insights' as Href,
     icon: 'pie-chart',
-    titleId: 'homeEtfInsightTitle',
+    titleId: 'moreHubEtfShort',
   },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };

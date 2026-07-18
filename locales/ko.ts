@@ -118,6 +118,7 @@ export const ko = {
   homeFocusBoardSubtitle: '미주미 · 세이브 커뮤니티',
   homeFocusBoardEmpty: '최신 글이 없습니다',
   homeFocusSignalEmpty: '표시할 시장 브리핑이 없습니다.',
+  moreHubEtfShort: 'ETF',
   homeEtfInsightTitle: 'ETF 브리핑',
   homeEtfInsightEmpty: '이 날짜의 ETF 브리핑이 없습니다.',
   etfInsightDetailKicker: 'ETF 브리핑',

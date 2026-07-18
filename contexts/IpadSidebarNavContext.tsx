@@ -954,8 +954,6 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
     contentPane === 'marketBriefing' ||
-    contentPane === 'etfInsights' ||
-    contentPane === 'etfInsight' ||
     contentPane === 'board' ||
     contentPane === 'community' ||
     contentPane === 'symbol' ||

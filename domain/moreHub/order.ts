@@ -25,7 +25,17 @@ export function normalizeMoreHubOrder(raw: unknown): MoreHubRouteKey[] {
     }
   }
   for (const k of MORE_HUB_ROUTE_ORDER_DEFAULT) {
-    if (!seen.has(k)) out.push(k);
+    if (seen.has(k)) continue;
+    // ETF는 게시판 바로 앞 (신규 키 마이그레이션)
+    if (k === 'etfBriefing') {
+      const boardIdx = out.indexOf('board');
+      if (boardIdx >= 0) out.splice(boardIdx, 0, k);
+      else out.push(k);
+      seen.add(k);
+      continue;
+    }
+    out.push(k);
+    seen.add(k);
   }
   return out;
 }

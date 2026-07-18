@@ -35,6 +35,7 @@ import { EtfInsightsListContent } from '@/app/etf-insights';
 import { CommunityPostContent } from '@/app/community/[id]';
 import { SymbolDetailContent } from '@/app/symbol/[ticker]';
 import { BoardContent } from '@/components/community/BoardContent';
+import { QuotesContent } from '@/components/quotes/QuotesContent';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import SignalScreen from '@/app/(tabs)/signal';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
@@ -498,6 +499,10 @@ function IpadWideTabLayout({
               <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />
             ) : contentPane === 'symbol' && symbolTicker ? (
               <SymbolDetailContent embedded ticker={symbolTicker} onBack={subpaneBack} />
+            ) : contentPane === 'watchlist' ? (
+              <BottomTabBarHeightContext.Provider value={0}>
+                <QuotesContent embedded lockedSegment="watch" onBack={subpaneBack} />
+              </BottomTabBarHeightContext.Provider>
             ) : null}
           </View>
         ) : null}

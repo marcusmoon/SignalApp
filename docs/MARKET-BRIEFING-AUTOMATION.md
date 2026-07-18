@@ -120,7 +120,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 | 레이어 | 담는 정보 | 비고 |
 |---|---|---|
-| 시장 **섹터 흐름** 리스트 | `name` · 등락 칩 · why · `symbol` | 히트맵 **순** 정렬. 채색은 등락 칩만(행 전체 배경 금지) |
+| 시장 **섹터 흐름** 리스트 | `name` · `symbol` 로고 · 등락 · why | 히트맵 **순** 정렬. 채색은 **첫 행만** (`heatFillColor`) |
 | ETF **히트맵** 그리드 | `etf` · `changePercent` · sector | 시각 펄스 전용 |
 | companies | 개별 종목 스토리 | 섹터 why와 겹치지 않게 종목 단위로 |
 

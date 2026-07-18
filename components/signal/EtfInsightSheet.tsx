@@ -17,8 +17,10 @@ import { UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
+  etfInsightHeatmapLabel,
   etfInsightLabeledRows,
   etfInsightRotationLines,
+  etfInsightThemeLabel,
 } from '@/domain/etfInsights/display';
 import type { SignalApiEtfInsight } from '@/integrations/signal-api/types';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
@@ -37,15 +39,24 @@ export function EtfInsightSheet({ visible, insight, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const themes = useMemo(() => etfInsightLabeledRows(insight?.themes || []), [insight]);
+  const themes = useMemo(
+    () => etfInsightLabeledRows(insight?.themes || [], etfInsightThemeLabel),
+    [insight],
+  );
   const flows = useMemo(() => etfInsightLabeledRows(insight?.flowHighlights || []), [insight]);
-  const heatmap = useMemo(() => etfInsightLabeledRows(insight?.heatmap || []), [insight]);
+  const heatmap = useMemo(
+    () => etfInsightLabeledRows(insight?.heatmap || [], etfInsightHeatmapLabel),
+    [insight],
+  );
   const rotationLines = useMemo(() => etfInsightRotationLines(insight?.rotation), [insight]);
   const insights = insight?.insights?.filter((line) => String(line || '').trim()) || [];
   const sources = insight?.sourceRefs || [];
-  const periodLabel = insight?.period?.trim()
-    ? t('etfInsightPeriodLabel', { period: insight.period })
-    : '';
+  const periodLabel = [
+    insight?.insightDate?.trim() || '',
+    insight?.period?.trim() ? t('etfInsightPeriodLabel', { period: insight.period }) : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -110,6 +121,7 @@ export function EtfInsightSheet({ visible, insight, onClose }: Props) {
                           title={row.label}
                           titleLines={null}
                           trailText={row.trail}
+                          summary={row.summary}
                           bordered={index < themes.length - 1}
                         />
                       ))}

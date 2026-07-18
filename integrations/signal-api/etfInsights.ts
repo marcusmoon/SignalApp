@@ -52,12 +52,16 @@ export async function fetchSignalEtfInsights(
   return rows;
 }
 
-/** 홈용: 선택 날짜의 최신 인사이트 1건 (`period` 지정 시 해당 period만) */
+/**
+ * 홈용: 선택 날짜의 인사이트.
+ * 1) insightDate 정확 일치
+ * 2) 없으면 최신 N건 중 insightDate ≤ 선택일 (장중/전일 마감 인사이트 노출)
+ */
 export async function fetchSignalEtfInsightForDate(
   date: string,
   options?: { cacheMode?: SignalCacheMode; period?: string },
 ): Promise<SignalApiEtfInsight | null> {
-  const rows = await fetchSignalEtfInsights(
+  const exact = await fetchSignalEtfInsights(
     {
       date,
       period: options?.period,
@@ -66,5 +70,19 @@ export async function fetchSignalEtfInsightForDate(
     },
     options,
   );
-  return rows[0] ?? null;
+  if (exact[0]) return exact[0];
+
+  const recent = await fetchSignalEtfInsights(
+    {
+      period: options?.period,
+      limit: 10,
+      offset: 0,
+    },
+    options,
+  );
+  const onOrBefore = recent.find((row) => {
+    const insightDate = String(row.insightDate || '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(insightDate) && insightDate <= date;
+  });
+  return onOrBefore ?? null;
 }

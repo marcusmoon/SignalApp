@@ -168,6 +168,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). 시장 companies·ETF 수급 등 브리핑 리스트에서 공통. 화면별 칩 스타일 금지
   - **섹터 흐름**: 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
   - **ETF themes**: 로고·하단 메타 티커 없음. `etfs`/히트맵 티커가 요약 본문에 있으면 `SymbolLinkedTintedText`로 탭 → 국내 Naver / 해외 Yahoo
+  - **ETF 빈 섹션 금지**: heatmap·themes·flows·sources·rotation·insights·summary는 값이 있을 때만 렌더. 이름/요약 없는 theme·title 없는 source는 제외
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱

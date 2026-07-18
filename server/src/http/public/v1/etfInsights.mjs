@@ -24,6 +24,50 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
+function normalizeHeatmapRows(value) {
+  return cleanArray(value)
+    .filter((row) => {
+      if (!row || typeof row !== 'object') return false;
+      const etf = cleanText(row.etf || row.symbol);
+      const sector = cleanText(row.sector || row.name || row.label);
+      return Boolean(etf || sector);
+    })
+    .slice(0, 50);
+}
+
+function normalizeThemeRows(value) {
+  return cleanArray(value)
+    .filter((row) => {
+      if (typeof row === 'string') return Boolean(cleanText(row));
+      if (!row || typeof row !== 'object') return false;
+      const name = cleanText(row.name || row.label || row.title);
+      const summary = cleanText(row.summary);
+      return Boolean(name || summary);
+    })
+    .slice(0, 10);
+}
+
+function normalizeFlowHighlightRows(value) {
+  return cleanArray(value)
+    .filter((row) => {
+      if (typeof row === 'string') return Boolean(cleanText(row));
+      if (!row || typeof row !== 'object') return false;
+      const etf = cleanText(row.etf || row.symbol);
+      const signal = cleanText(row.signal || row.summary || row.label || row.name || row.title);
+      return Boolean(etf || signal);
+    })
+    .slice(0, 10);
+}
+
+function normalizeRotation(value) {
+  if (!value || typeof value !== 'object') return null;
+  const from = cleanText(value.from);
+  const to = cleanText(value.to);
+  if (!from && !to) return null;
+  const confidence = cleanText(value.confidence) || null;
+  return { from: from || null, to: to || null, ...(confidence ? { confidence } : {}) };
+}
+
 function normalizeEtfInsightPayload(input) {
   const id = cleanText(input?.id);
   const title = cleanText(input?.title);
@@ -41,10 +85,10 @@ function normalizeEtfInsightPayload(input) {
     summary,
     insightDate,
     publishedAt,
-    heatmap: cleanArray(input?.heatmap).slice(0, 50),
-    themes: cleanArray(input?.themes).slice(0, 10),
-    flowHighlights: cleanArray(input?.flowHighlights).slice(0, 10),
-    rotation: input?.rotation && typeof input.rotation === 'object' ? input.rotation : null,
+    heatmap: normalizeHeatmapRows(input?.heatmap),
+    themes: normalizeThemeRows(input?.themes),
+    flowHighlights: normalizeFlowHighlightRows(input?.flowHighlights),
+    rotation: normalizeRotation(input?.rotation),
     insights: cleanArray(input?.insights).map(cleanText).filter(Boolean).slice(0, 10),
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
     pushTitle: cleanText(input?.pushTitle) || title,

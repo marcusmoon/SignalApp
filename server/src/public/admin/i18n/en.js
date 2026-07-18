@@ -637,6 +637,8 @@ export const baseEn = {
   settingsResetQuotesSub: 'Equity quote cache (e.g. mega-cap)',
   settingsResetCoins: 'Crypto',
   settingsResetCoinsSub: 'Coin market cache',
+  settingsResetEtfInsights: 'ETF briefing',
+  settingsResetEtfInsightsSub: 'Stored ETF briefing payloads',
   settingsResetNotifications: 'Notifications',
   settingsResetNotificationsSub: 'Queued push alerts and delivery results',
   settingsResetJobRuns: 'Job run history',

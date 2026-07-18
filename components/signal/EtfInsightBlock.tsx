@@ -117,7 +117,40 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
   );
 
   const insights = (insight.insights || []).map((line) => String(line || '').trim()).filter(Boolean);
-  const themes = Array.isArray(insight.themes) ? insight.themes : [];
+  const themes = useMemo(() => {
+    const raw = Array.isArray(insight.themes) ? insight.themes : [];
+    return raw
+      .map((item, index) => {
+        if (typeof item === 'string') {
+          const summary = item.trim();
+          if (!summary) return null;
+          return {
+            key: `${insight.id}-theme-${index}`,
+            name: '',
+            summary,
+            momentum: '',
+            etfs: [] as string[],
+          };
+        }
+        if (!item || typeof item !== 'object') return null;
+        const row = item as Record<string, unknown>;
+        const name = String(row.name ?? row.label ?? row.title ?? '').trim();
+        const summary = String(row.summary ?? '').trim();
+        const momentum = String(row.momentum ?? '').trim();
+        const etfs = Array.isArray(row.etfs)
+          ? row.etfs.map((v) => String(v || '').trim()).filter(Boolean)
+          : [];
+        if (!name && !summary) return null;
+        return {
+          key: `${insight.id}-theme-${index}`,
+          name,
+          summary,
+          momentum,
+          etfs,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+  }, [insight.id, insight.themes]);
   const heatmapCells = useMemo(() => parseHeatCells(insight, t as never), [insight, t]);
   const flows = useMemo(
     () => parseEtfFlowHighlights(insight.flowHighlights, insight.id),
@@ -141,27 +174,29 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       const row = item as Record<string, unknown>;
       add(row.etf ?? row.symbol);
     }
-    for (const raw of themes) {
-      if (!raw || typeof raw !== 'object') continue;
-      const etfs = (raw as Record<string, unknown>).etfs;
-      if (!Array.isArray(etfs)) continue;
-      for (const sym of etfs) add(sym);
+    for (const row of themes) {
+      for (const sym of row.etfs) add(sym);
     }
     return out;
   }, [insight.heatmap, themes]);
-  const sources = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
+  const sources = useMemo(() => {
+    const raw = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
+    return raw.filter((ref) => {
+      const title = String(ref?.title || ref?.sourceName || ref?.url || '').trim();
+      return Boolean(title);
+    });
+  }, [insight.sourceRefs]);
   const rotation = insight.rotation && typeof insight.rotation === 'object' ? insight.rotation : null;
   const rotationFrom = String(rotation?.from ?? '').trim();
   const rotationTo = String(rotation?.to ?? '').trim();
-  const hasLead = Boolean(insight.summary?.trim()) || insights.length > 0 || Boolean(rotationFrom || rotationTo);
+  const summaryText = insight.summary?.trim() || '';
+  const hasLead = Boolean(summaryText) || insights.length > 0 || Boolean(rotationFrom || rotationTo);
 
   return (
     <View style={styles.block}>
       {hasLead ? (
         <View style={styles.leadPanel}>
-          {insight.summary?.trim() ? (
-            <ChangeTintedText style={styles.summary}>{insight.summary.trim()}</ChangeTintedText>
-          ) : null}
+          {summaryText ? <ChangeTintedText style={styles.summary}>{summaryText}</ChangeTintedText> : null}
 
           {rotationFrom || rotationTo ? (
             <View style={styles.rotationRow}>
@@ -174,9 +209,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
 
           {insights.length > 0 ? (
             <View style={styles.overviewBlock}>
-              {insight.summary?.trim() || rotationFrom || rotationTo ? (
-                <View style={styles.leadDivider} />
-              ) : null}
+              {summaryText || rotationFrom || rotationTo ? <View style={styles.leadDivider} /> : null}
               <Text style={styles.overviewKicker}>{t('etfInsightKeyPoints')}</Text>
               <View style={styles.overviewList}>
                 {insights.map((line, index) => (
@@ -205,38 +238,39 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       {themes.length > 0 ? (
         <InsightSection title={t('etfInsightThemes')} styles={styles}>
           <View style={styles.sectionFeedCard}>
-            {themes.map((raw, index) => {
-              const item = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-              const name = String(item.name ?? item.label ?? item.title ?? '').trim() || '—';
-              const summary = String(item.summary ?? '').trim();
-              const momentum = String(item.momentum ?? '').trim();
-              const themeEtfs = Array.isArray(item.etfs)
-                ? item.etfs.map((v) => String(v || '').trim()).filter(Boolean)
-                : [];
+            {themes.map((item, index) => {
               const linkSymbols =
-                themeEtfs.length > 0
-                  ? [...themeEtfs, ...themeBodyLinkSymbols]
+                item.etfs.length > 0
+                  ? [...item.etfs, ...themeBodyLinkSymbols]
                   : themeBodyLinkSymbols;
-              const momentumColor = trendColor(momentum, theme, changeColors.up, changeColors.down);
+              const momentumColor = item.momentum
+                ? trendColor(item.momentum, theme, changeColors.up, changeColors.down)
+                : theme.textMuted;
               return (
                 <View
-                  key={`${insight.id}-theme-${index}`}
+                  key={item.key}
                   style={[styles.themeRow, index < themes.length - 1 && styles.listRowBordered]}>
-                  <View style={styles.themeTopRow}>
-                    <Text style={styles.themeName} numberOfLines={1}>
-                      {name}
-                    </Text>
-                    {momentum ? (
-                      <Text style={[styles.themeMomentum, { color: momentumColor }]} numberOfLines={1}>
-                        {momentum}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {summary ? (
+                  {item.name || item.momentum ? (
+                    <View style={styles.themeTopRow}>
+                      {item.name ? (
+                        <Text style={styles.themeName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                      ) : (
+                        <View style={styles.themeNameSpacer} />
+                      )}
+                      {item.momentum ? (
+                        <Text style={[styles.themeMomentum, { color: momentumColor }]} numberOfLines={1}>
+                          {item.momentum}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  {item.summary ? (
                     <SymbolLinkedTintedText
                       style={styles.themeSummary}
                       linkSymbols={linkSymbols}>
-                      {summary}
+                      {item.summary}
                     </SymbolLinkedTintedText>
                   ) : null}
                 </View>
@@ -336,14 +370,15 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
           <View style={styles.sectionFeedCard}>
             {sources.map((ref, index) => {
               const title = String(ref.title || ref.sourceName || ref.url || '').trim();
-              if (!title) return null;
               return (
                 <HomeDigestFeedRow
                   key={`${insight.id}-src-${index}`}
                   title={title}
                   titleLines={null}
                   trailText={ref.sourceName?.trim() || null}
-                  timeLabel={formatFeedItemTimeLabel(ref.publishedAt, locale)}
+                  timeLabel={
+                    ref.publishedAt ? formatFeedItemTimeLabel(ref.publishedAt, locale) : null
+                  }
                   sourceEntries={briefingSourceIconEntries([ref])}
                   bordered={index < sources.length - 1}
                   onPress={
@@ -490,6 +525,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    themeNameSpacer: {
+      flex: 1,
+      minWidth: 0,
     },
     themeMomentum: {
       fontSize: ft.ff(12),

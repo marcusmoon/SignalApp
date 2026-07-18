@@ -638,6 +638,8 @@ export const baseKo = {
   settingsResetQuotesSub: '메가캡 등 주식 시세 캐시',
   settingsResetCoins: '코인',
   settingsResetCoinsSub: '코인 마켓 데이터 캐시',
+  settingsResetEtfInsights: 'ETF 브리핑',
+  settingsResetEtfInsightsSub: '적재된 ETF 브리핑 본문',
   settingsResetNotifications: '알림 Outbox',
   settingsResetNotificationsSub: '푸시 발송 대기·결과 이력',
   settingsResetJobRuns: 'Job 실행 이력',

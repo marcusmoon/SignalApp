@@ -1,4 +1,4 @@
--- IT/tech news: seed RSS sources + dedicated ingest job (category = it).
+-- IT/tech news: seed a small RSS set (3 global + 2 KR) + dedicated ingest job (category = it).
 
 WITH rows AS (
   SELECT value AS payload, ordinality::int AS position
@@ -53,54 +53,6 @@ WITH rows AS (
     "updatedAt": "2026-07-17T00:00:00.000Z"
   },
   {
-    "id": "wired",
-    "name": "WIRED",
-    "providerId": "wired",
-    "sourceName": "WIRED",
-    "feedUrl": "https://www.wired.com/feed/rss",
-    "category": "it",
-    "enabled": true,
-    "hidden": false,
-    "order": 4,
-    "defaultLimit": 40,
-    "daysBack": 3,
-    "includeKeywords": [],
-    "excludeKeywords": [],
-    "updatedAt": "2026-07-17T00:00:00.000Z"
-  },
-  {
-    "id": "engadget",
-    "name": "Engadget",
-    "providerId": "engadget",
-    "sourceName": "Engadget",
-    "feedUrl": "https://www.engadget.com/rss.xml",
-    "category": "it",
-    "enabled": true,
-    "hidden": false,
-    "order": 5,
-    "defaultLimit": 40,
-    "daysBack": 3,
-    "includeKeywords": [],
-    "excludeKeywords": [],
-    "updatedAt": "2026-07-17T00:00:00.000Z"
-  },
-  {
-    "id": "zdnet",
-    "name": "ZDNET",
-    "providerId": "zdnet",
-    "sourceName": "ZDNET",
-    "feedUrl": "https://www.zdnet.com/news/rss.xml",
-    "category": "it",
-    "enabled": true,
-    "hidden": false,
-    "order": 6,
-    "defaultLimit": 40,
-    "daysBack": 3,
-    "includeKeywords": [],
-    "excludeKeywords": [],
-    "updatedAt": "2026-07-17T00:00:00.000Z"
-  },
-  {
     "id": "digital_today",
     "name": "디지털투데이",
     "providerId": "digital_today",
@@ -109,7 +61,7 @@ WITH rows AS (
     "category": "it",
     "enabled": true,
     "hidden": false,
-    "order": 7,
+    "order": 4,
     "defaultLimit": 40,
     "daysBack": 3,
     "includeKeywords": [],
@@ -125,7 +77,7 @@ WITH rows AS (
     "category": "it",
     "enabled": true,
     "hidden": false,
-    "order": 8,
+    "order": 5,
     "defaultLimit": 40,
     "daysBack": 3,
     "includeKeywords": [],
@@ -163,7 +115,7 @@ WITH rows AS (
   {
     "jobKey": "market_news_it_rss",
     "displayName": "IT 뉴스 RSS 수집·보정",
-    "description": "The Verge·TechCrunch·Ars·WIRED·Engadget·ZDNET·디지털투데이·바이라인네트워크 RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
+    "description": "The Verge·TechCrunch·Ars Technica·디지털투데이·바이라인네트워크 RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
     "area": "news",
     "stage": "ingest",
     "domain": "news",
@@ -177,9 +129,6 @@ WITH rows AS (
         "the_verge",
         "techcrunch",
         "ars_technica",
-        "wired",
-        "engadget",
-        "zdnet",
         "digital_today",
         "byline_network"
       ],

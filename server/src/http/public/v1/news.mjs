@@ -119,9 +119,11 @@ async function publishDigestNotification(item, queuePush) {
     utcDateKeyFromInstant(item?.generatedAt) ||
     utcDateKeyFromInstant(item?.publishedAt);
   const digestId = cleanText(item?.id);
-  const params = new URLSearchParams({ category });
-  if (date) params.set('date', date);
-  if (digestId) params.set('digestId', digestId);
+  const deepLink = digestId
+    ? `/news-digest?id=${encodeURIComponent(digestId)}`
+    : date
+      ? `/news-issues?category=${encodeURIComponent(category)}&date=${encodeURIComponent(date)}`
+      : '/news-issues';
   const notification = buildPublishedNotification(
     {
       id: `notification:push:news_digest:${item.id}`,
@@ -133,7 +135,7 @@ async function publishDigestNotification(item, queuePush) {
       targetType: 'all',
       sourceType: 'news_digest',
       sourceId: item.id,
-      deepLink: `/news-issues?${params.toString()}`,
+      deepLink,
       reason: `news digest updated: ${category}`,
       scheduledAt: item.generatedAt,
       sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 4 }),

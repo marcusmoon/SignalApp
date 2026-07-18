@@ -25,7 +25,9 @@ export function resolveIpadContentPaneFromPathname(pathname: string): IpadConten
   if (ACCOUNT_AUX_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return 'account';
   }
+  if (path.startsWith('/news-digest')) return 'newsDigest';
   if (path.startsWith('/news-issues')) return 'newsIssues';
+  if (path.startsWith('/disclosure-digest')) return 'disclosureDigest';
   if (path.startsWith('/disclosure-flow')) return 'disclosureFlow';
   if (path.startsWith('/watchlist')) return 'watchlist';
   if (path.startsWith('/community/')) return 'community';

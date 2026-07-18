@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -16,11 +15,6 @@ import {
   sectorSummaryWhyText,
 } from '@/domain/briefings/sectorHeatmap';
 import { formatHeatChangePct, heatFillColor } from '@/domain/heatmaps/changeHeat';
-import {
-  etfInsightDisplayTicker,
-  isKoreaEtfSymbol,
-  openEtfInsightSymbol,
-} from '@/domain/etfInsights/openSymbol';
 import type { AppLocale } from '@/locales/messages';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -178,27 +172,21 @@ function MacroHighlightRow({
   );
 }
 
-/** 섹터 흐름: 리스트 + 히트맵 순. 첫 행만 heat 배경, 대표 종목 로고 */
+/** 섹터 흐름: 리스트 + 히트맵 순. 첫 행만 heat (이름·등락). 종목·티커는 본문/companies에 맡김 */
 function SectorFlowRow({
   cell,
-  market,
   theme,
   styles,
   changeColors,
   bordered,
 }: {
   cell: BriefingSectorHeatCell;
-  market: string;
   theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
   changeColors: { up: string; down: string };
   bordered: boolean;
 }) {
-  const { t } = useLocale();
   const why = sectorSummaryWhyText(cell.summary);
-  const symbol = cell.symbol?.trim() || '';
-  const ticker = symbol ? etfInsightDisplayTicker(symbol) : '';
-  const korea = symbol ? isKoreaEtfSymbol(symbol, market) : false;
   const heatPct = cell.heatPercent;
   const positive = heatPct == null ? null : isQuoteChangePositive({ changePercent: heatPct });
   const pctColor =
@@ -208,37 +196,13 @@ function SectorFlowRow({
     cell.changePercent != null && Number.isFinite(cell.changePercent)
       ? formatHeatChangePct(cell.changePercent)
       : cell.trend || '—';
-  const openSymbol = symbol ? () => openEtfInsightSymbol(symbol, market) : undefined;
-  const a11y = symbol
-    ? korea
-      ? t('quotesNaverFinanceA11y', { symbol: ticker })
-      : t('quotesYahooFinanceA11y', { symbol: ticker })
-    : cell.name;
 
   return (
     <View style={[styles.sectorFlowRow, bordered && styles.listRowBordered]}>
       <View style={[styles.sectorFlowTop, { backgroundColor: topFill }]}>
-        <Pressable
-          onPress={openSymbol}
-          disabled={!openSymbol}
-          style={({ pressed }) => [
-            styles.sectorIdentity,
-            pressed && openSymbol ? styles.sectorIdentityPressed : null,
-          ]}
-          accessibilityRole={openSymbol ? 'link' : 'text'}
-          accessibilityLabel={a11y}>
-          {symbol ? <SymbolLogo symbol={symbol} size={20} /> : null}
-          <View style={styles.sectorIdentityText}>
-            <Text style={styles.sectorName} numberOfLines={1}>
-              {cell.name}
-            </Text>
-            {ticker ? (
-              <Text style={styles.sectorTicker} numberOfLines={1}>
-                {ticker}
-              </Text>
-            ) : null}
-          </View>
-        </Pressable>
+        <Text style={styles.sectorName} numberOfLines={1}>
+          {cell.name}
+        </Text>
         <Text style={[styles.sectorHeatPct, { color: pctColor }]} numberOfLines={1}>
           {pctLabel}
         </Text>
@@ -295,7 +259,6 @@ export function MarketBriefingBlock({
               <SectorFlowRow
                 key={cell.key}
                 cell={cell}
-                market={briefing.market}
                 theme={theme}
                 styles={styles}
                 changeColors={changeColors}
@@ -465,21 +428,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: 8,
       paddingVertical: 7,
     },
-    sectorIdentity: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      flexShrink: 1,
-      minWidth: 0,
-    },
-    sectorIdentityPressed: {
-      opacity: 0.72,
-    },
-    sectorIdentityText: {
-      flexShrink: 1,
-      minWidth: 0,
-      gap: 1,
-    },
     sectorName: {
       fontSize: ft.ff(14),
       lineHeight: sf(18),
@@ -487,13 +435,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       flexShrink: 1,
       minWidth: 0,
-    },
-    sectorTicker: {
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      fontVariant: ['tabular-nums'],
     },
     sectorHeatPct: {
       flexShrink: 0,

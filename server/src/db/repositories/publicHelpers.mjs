@@ -11,27 +11,6 @@ export function cleanText(value) {
   return String(value || '').trim();
 }
 
-/**
- * 본문 name↔Yahoo symbol 매핑. name은 본문 표기와 정확히 일치해야 함.
- * @returns {{ name: string, symbol: string }[]}
- */
-export function normalizeEntities(input, { limit = 40 } = {}) {
-  const raw = Array.isArray(input) ? input : [];
-  const out = [];
-  const seen = new Set();
-  for (const row of raw) {
-    if (!row || typeof row !== 'object') continue;
-    const name = cleanText(row.name);
-    const symbol = cleanText(row.symbol);
-    if (!name || !symbol) continue;
-    const key = `${name}\u0000${symbol.toUpperCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ name, symbol });
-    if (out.length >= limit) break;
-  }
-  return out;
-}
 
 export function safeLimit(value, fallback = 30, max = 100) {
   return Math.min(max, Math.max(1, Math.floor(Number(value)) || fallback));

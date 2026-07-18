@@ -334,7 +334,6 @@ export function NewsIssuesContent({
                       trailText={trailText || null}
                       summary={item.summary}
                       summaryLines={3}
-                      entities={item.entities}
                       sourceEntries={sourceEntries}
                       badges={
                         <>
@@ -386,7 +385,6 @@ export function NewsIssuesContent({
         kicker={t('newsIssuesTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
-        entities={sourcesDigest?.entities}
         rows={sourceRows}
         onClose={closeSources}
       />

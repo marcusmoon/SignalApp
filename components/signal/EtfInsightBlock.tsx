@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import {
   briefingSourceIconEntries,
@@ -169,7 +169,6 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
   const rotationFrom = String(rotation?.from ?? '').trim();
   const rotationTo = String(rotation?.to ?? '').trim();
   const summaryText = insight.summary?.trim() || '';
-  const entities = insight.entities;
   const hasLead = Boolean(summaryText) || insights.length > 0 || Boolean(rotationFrom || rotationTo);
 
   return (
@@ -177,9 +176,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       {hasLead ? (
         <View style={styles.leadPanel}>
           {summaryText ? (
-            <EntityLinkedTintedText style={styles.summary} entities={entities}>
+            <ChangeTintedText style={styles.summary}>
               {summaryText}
-            </EntityLinkedTintedText>
+            </ChangeTintedText>
           ) : null}
 
           {rotationFrom || rotationTo ? (
@@ -199,9 +198,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                 {insights.map((line, index) => (
                   <View key={`${insight.id}-point-${index}`} style={styles.overviewRow}>
                     <View style={styles.overviewDot} />
-                    <EntityLinkedTintedText style={styles.overviewText} entities={entities}>
+                    <ChangeTintedText style={styles.overviewText}>
                       {line}
-                    </EntityLinkedTintedText>
+                    </ChangeTintedText>
                   </View>
                 ))}
               </View>
@@ -249,9 +248,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     </View>
                   ) : null}
                   {item.summary ? (
-                    <EntityLinkedTintedText style={styles.themeSummary} entities={entities}>
+                    <ChangeTintedText style={styles.themeSummary}>
                       {item.summary}
-                    </EntityLinkedTintedText>
+                    </ChangeTintedText>
                   ) : null}
                 </View>
               );
@@ -313,9 +312,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                         }
                       />
                     ) : flow.signal ? (
-                      <EntityLinkedTintedText style={styles.themeNameFallback} entities={entities}>
+                      <ChangeTintedText style={styles.themeNameFallback}>
                         {flow.signal}
-                      </EntityLinkedTintedText>
+                      </ChangeTintedText>
                     ) : null}
                     {trailBits.length > 0 ? (
                       <Text style={[styles.flowTrail, { color: actionColor }]}>
@@ -324,9 +323,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     ) : null}
                   </View>
                   {flow.etf && flow.signal ? (
-                    <EntityLinkedTintedText style={styles.themeSummary} entities={entities}>
+                    <ChangeTintedText style={styles.themeSummary}>
                       {flow.signal}
-                    </EntityLinkedTintedText>
+                    </ChangeTintedText>
                   ) : null}
                   {sourceEntries.length > 0 ? (
                     <Pressable

@@ -27,7 +27,7 @@ import {
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -725,11 +725,7 @@ export function HomeFocusContent({
           pressed && styles.pressed,
         ]}>
         {headline ? (
-          <EntityLinkedTintedText
-            style={styles.issueGroupTitle}
-            entities={homeHero.briefing.entities}>
-            {headline}
-          </EntityLinkedTintedText>
+          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
         ) : null}
       </Pressable>
     );
@@ -781,20 +777,14 @@ export function HomeFocusContent({
           <View style={styles.issueGroupList}>
             <View style={styles.issueGroupItem}>
               {leadText ? (
-                <EntityLinkedTintedText
-                  style={styles.issueGroupTitle}
-                  numberOfLines={2}
-                  entities={item.entities}>
+                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
                   {leadText}
-                </EntityLinkedTintedText>
+                </ChangeTintedText>
               ) : null}
               {previewText ? (
-                <EntityLinkedTintedText
-                  style={styles.signalText}
-                  numberOfLines={2}
-                  entities={item.entities}>
+                <ChangeTintedText style={styles.signalText} numberOfLines={2}>
                   {previewText}
-                </EntityLinkedTintedText>
+                </ChangeTintedText>
               ) : null}
             </View>
           </View>
@@ -855,7 +845,6 @@ export function HomeFocusContent({
                 timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
                 trailText={trailText || null}
                 summary={null}
-                entities={row.item.entities}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
                 onPress={() => openIssueSheet(row)}
@@ -1040,7 +1029,6 @@ export function HomeFocusContent({
         kicker={t('newsIssuesTitle')}
         digestTitle={digestSheetTitle}
         digestSummary={digestSheetSummary}
-        entities={digestSheet?.row.item.entities}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
       />

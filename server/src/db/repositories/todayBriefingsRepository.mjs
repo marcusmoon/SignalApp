@@ -2,7 +2,6 @@ import { queryKysely } from '../kysely/client.mjs';
 import { hydrateTodayBriefingItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
-  normalizeEntities,
   pageOptions,
   payloadFromRow,
   sqlUtcRangeFrom,
@@ -11,7 +10,6 @@ import {
 
 function publicTodayBriefing(item) {
   if (!item) return null;
-  const entities = normalizeEntities(item.entities);
   return {
     id: item.id,
     locale: item.locale || 'ko',
@@ -24,7 +22,6 @@ function publicTodayBriefing(item) {
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     relatedDigestIds: Array.isArray(item.relatedDigestIds) ? item.relatedDigestIds : [],
     relatedMarketBriefingIds: Array.isArray(item.relatedMarketBriefingIds) ? item.relatedMarketBriefingIds : [],
-    ...(entities.length > 0 ? { entities } : {}),
     generatedAt: item.generatedAt || null,
     publishedAt: item.publishedAt || item.generatedAt || null,
     briefingDate: item.briefingDate || item.generatedDate || null,

@@ -1,13 +1,55 @@
-import type { ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
+import { Text, type StyleProp, type TextStyle } from 'react-native';
 
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
+import { splitTextWithSignedChangeTints } from '@/domain/quotes/tintSignedChangeInText';
+import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 
-type Props = Omit<ComponentProps<typeof EntityLinkedTintedText>, 'entities'>;
+type Props = {
+  children: string;
+  style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+  /** nested Text에 추가로 줄 강조(기본 semibold) */
+  tintWeight?: TextStyle['fontWeight'];
+} & Omit<ComponentProps<typeof Text>, 'children' | 'style' | 'numberOfLines'>;
 
 /**
- * 본문 변동률 틴트 전용 별칭.
- * entity 링크가 필요하면 `EntityLinkedTintedText`에 `entities`를 넘긴다.
+ * 본문 뷰잉 시 변동률(`+1.2%`, `-0.5%`, `2.78% 상승`, 근처 방향 힌트가 있는 `2.78%` 등)을
+ * 설정 규칙(한/미) 색으로 칠한다.
  */
-export function ChangeTintedText(props: Props) {
-  return <EntityLinkedTintedText {...props} />;
+export function ChangeTintedText({
+  children,
+  style,
+  numberOfLines,
+  tintWeight = '600',
+  ...rest
+}: Props) {
+  const quoteChange = useQuoteChangeColors();
+  const segments = useMemo(() => splitTextWithSignedChangeTints(children), [children]);
+  const hasTint = segments.some((part) => part.kind !== 'plain');
+
+  if (!hasTint) {
+    return (
+      <Text style={style} numberOfLines={numberOfLines} {...rest}>
+        {children}
+      </Text>
+    );
+  }
+
+  return (
+    <Text style={style} numberOfLines={numberOfLines} {...rest}>
+      {segments.map((part, index) => {
+        if (part.kind === 'plain') return part.text;
+        return (
+          <Text
+            key={`${part.kind}-${index}`}
+            style={{
+              color: part.kind === 'up' ? quoteChange.colors.up : quoteChange.colors.down,
+              fontWeight: tintWeight,
+            }}>
+            {part.text}
+          </Text>
+        );
+      })}
+    </Text>
+  );
 }

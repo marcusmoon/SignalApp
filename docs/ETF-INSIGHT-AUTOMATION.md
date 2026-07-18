@@ -95,10 +95,6 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
       "publishedAt": "2026-07-18T05:00:00Z"
     }
   ],
-  "entities": [
-    { "name": "SMH", "symbol": "SMH" },
-    { "name": "QQQ", "symbol": "QQQ" }
-  ],
   "pushTitle": "ETF 브리핑 도착",
   "pushBody": "반도체·AI ETF로 자금이 재집중됐습니다"
 }
@@ -108,7 +104,7 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 
 앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·수급 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
 
-**themes UI**: 테마명·모멘텀·요약만 표시(로고·하단 티커 목록 없음). 본문 링크는 ingest `entities`의 name 정확 매칭만 — 추측성 티커 스캔 없음. `name`은 본문 표기와 일치해야 하고, 심볼은 Yahoo 형식(KR은 `.KS`/`.KQ`).
+**themes UI**: 테마명·모멘텀·요약만 표시(로고·하단 티커 목록 없음). 요약 본문은 텍스트만 — 티커 인라인 링크 없음.
 
 ### flowHighlights 권장 필드
 

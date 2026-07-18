@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
 import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import {
@@ -13,7 +13,6 @@ import {
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
-import type { SignalApiBodyEntity } from '@/integrations/signal-api/types';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -31,8 +30,6 @@ type Props = {
   summary?: string | null;
   /** 기본 1줄. `null`이면 전체 표시. `0`이면 숨김 */
   summaryLines?: number | null;
-  /** ingest entities — 제목·요약 name 매칭 링크 */
-  entities?: SignalApiBodyEntity[] | null;
   sourceEntries?: SourceIconEntry[];
   badges?: ReactNode;
   bordered?: boolean;
@@ -53,7 +50,6 @@ export function HomeDigestFeedRow({
   trailText,
   summary,
   summaryLines = 1,
-  entities,
   sourceEntries = [],
   badges,
   bordered = false,
@@ -107,16 +103,15 @@ export function HomeDigestFeedRow({
         onPress && pressed && styles.rowPressed,
       ]}>
       {badges ? <View style={styles.badgeRow}>{badges}</View> : null}
-      <EntityLinkedTintedText style={styles.title} numberOfLines={resolvedTitleLines} entities={entities}>
+      <ChangeTintedText style={styles.title} numberOfLines={resolvedTitleLines}>
         {title}
-      </EntityLinkedTintedText>
+      </ChangeTintedText>
       {trimmedSummary && (resolvedSummaryLines == null || resolvedSummaryLines > 0) ? (
-        <EntityLinkedTintedText
+        <ChangeTintedText
           style={styles.summary}
-          numberOfLines={resolvedSummaryLines}
-          entities={entities}>
+          numberOfLines={resolvedSummaryLines}>
           {trimmedSummary}
-        </EntityLinkedTintedText>
+        </ChangeTintedText>
       ) : null}
       {footer}
     </Pressable>

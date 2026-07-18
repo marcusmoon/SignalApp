@@ -13,6 +13,7 @@ export const JOB_PRESETS = {
       'market_news_crypto',
       'market_news_financial_juice',
       'market_news_mk_rss',
+      'market_news_it_rss',
       'market_news_globenewswire_earnings',
     ],
   },

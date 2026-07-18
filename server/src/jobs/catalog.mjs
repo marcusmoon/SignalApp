@@ -11,6 +11,7 @@ export const JOB_CATALOG = {
   market_news_financial_juice: { area: 'news', stage: 'ingest' },
   market_news_sec_edgar_filings: { area: 'disclosures', stage: 'ingest' },
   market_news_mk_rss: { area: 'news', stage: 'ingest' },
+  market_news_it_rss: { area: 'news', stage: 'ingest' },
   market_news_dart_filings: { area: 'disclosures', stage: 'ingest' },
   market_news_globenewswire_earnings: { area: 'news', stage: 'ingest' },
   calendar_economic: { area: 'calendar', stage: 'ingest' },

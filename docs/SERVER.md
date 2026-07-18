@@ -119,7 +119,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 주요 Job (reconcile 쌍은 `sync`로 통합):
 
-- 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART). 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)로 유지
+- 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART). IT/tech RSS는 `market_news_it_rss` (`category=it`, More·사이드바 IT 뉴스). 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)로 유지
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)
 - YouTube (`youtube_economy_latest` sync)
 - 시세·일봉·코인

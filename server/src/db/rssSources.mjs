@@ -12,6 +12,7 @@ function normalizeCategory(raw) {
   const value = String(raw || '').trim().toLowerCase();
   if (value === 'crypto') return 'crypto';
   if (value === 'korea') return 'korea';
+  if (value === 'it') return 'it';
   if (value === 'earnings') return 'earnings';
   if (value === 'filings') return 'filings';
   return 'global';

@@ -38,6 +38,7 @@ export const ja = {
   tabCalls: '決算',
   tabMore: 'その他',
   tabDisclosures: '開示',
+  tabItNews: 'ITニュース',
   screenBoard: '掲示板',
   communitySourceAll: 'すべて',
   communitySourceNaverLikeusstock: 'LikeUSStock',

@@ -234,6 +234,7 @@ function RootLayoutNav() {
           'more-board': t('screenBoard'),
           'more-disclosures': t('tabDisclosures'),
           'more-youtube': t('tabYoutube'),
+          'more-it-news': t('tabItNews'),
           'market-briefing': t('ipadHomeSignalTitle'),
         };
         return {

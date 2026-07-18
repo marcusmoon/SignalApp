@@ -37,7 +37,8 @@ export type IpadContentPane =
   | 'terms'
   | 'board'
   | 'community'
-  | 'symbol';
+  | 'symbol'
+  | 'watchlist';
 
 export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
@@ -119,6 +120,7 @@ type IpadSidebarNavActions = {
   showBoard: (options?: WidePaneDrillOptions & { source?: string }) => void;
   showCommunityPost: (id: string, options?: WidePaneDrillOptions) => void;
   showSymbol: (ticker: string, options?: WidePaneDrillOptions) => void;
+  showWatchlist: (options?: WidePaneDrillOptions) => void;
   showYoutubeTab: () => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
@@ -174,6 +176,7 @@ const defaultActions: IpadSidebarNavActions = {
   showBoard: () => {},
   showCommunityPost: () => {},
   showSymbol: () => {},
+  showWatchlist: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -840,6 +843,17 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [beginWideOverlay, router, useTwoPane],
   );
 
+  const showWatchlist = useCallback(
+    (options?: WidePaneDrillOptions) => {
+      if (useTwoPane) {
+        beginWideOverlay('watchlist', {}, options?.drillFrom);
+        return;
+      }
+      router.push('/watchlist' as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
   const goBackWidePane = useCallback(() => {
     const stack = wideBackStackRef.current;
     if (stack.length === 0) return;
@@ -967,6 +981,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'disclosureFlow' ||
     contentPane === 'todayBriefing' ||
     contentPane === 'marketBriefing' ||
+    contentPane === 'watchlist' ||
     contentPane === 'board' ||
     contentPane === 'community' ||
     contentPane === 'symbol' ||
@@ -1048,6 +1063,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showBoard,
       showCommunityPost,
       showSymbol,
+      showWatchlist,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -1077,6 +1093,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showBoard,
       showCommunityPost,
       showSymbol,
+      showWatchlist,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

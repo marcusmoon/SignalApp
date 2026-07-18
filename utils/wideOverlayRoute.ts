@@ -16,7 +16,8 @@ export type WideOverlayKind =
   | 'terms'
   | 'board'
   | 'community'
-  | 'symbol';
+  | 'symbol'
+  | 'watchlist';
 
 export const WIDE_HOME_ROUTE = '/(tabs)/home';
 
@@ -62,6 +63,7 @@ export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind |
   if (path.startsWith('/terms')) return 'terms';
   if (path.startsWith('/community/')) return 'community';
   if (path.startsWith('/symbol/')) return 'symbol';
+  if (path.startsWith('/watchlist')) return 'watchlist';
   return null;
 }
 
@@ -97,6 +99,8 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
       return 'community';
     case 'symbol':
       return 'symbol';
+    case 'watchlist':
+      return 'watchlist';
     default:
       return 'home';
   }
@@ -118,7 +122,8 @@ export function isWideOverlayKind(value: string | undefined): value is WideOverl
     value === 'terms' ||
     value === 'board' ||
     value === 'community' ||
-    value === 'symbol'
+    value === 'symbol' ||
+    value === 'watchlist'
   );
 }
 

@@ -155,6 +155,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름 → 뉴스
   - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 · 관심 종목·게시판 숨김
+  - **관심 종목 `>`**: `/watchlist` 드릴 — 관심 세그먼트만 + 상단 백 (시세 탭 전체로 가지 않음)
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **히어로 탭**: 장중 브리핑 → 시장 탭 해당 회차 · 오늘 정리 → `/today-briefing`
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)

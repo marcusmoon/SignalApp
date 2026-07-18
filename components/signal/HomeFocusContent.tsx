@@ -579,11 +579,12 @@ export function HomeFocusContent({
     setEtfInsightSheetOpen(false);
   }, []);
 
-  const openQuotes = useCallback(() => {
+  const openWatchlist = useCallback(() => {
     if (ipadNav.isAvailable) {
-      ipadNav.showTabs();
+      ipadNav.showWatchlist({ drillFrom: 'home' });
+      return;
     }
-    router.navigate('/(tabs)/quotes' as never);
+    router.push('/watchlist' as never);
   }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
@@ -881,7 +882,7 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('homeFocusWatchTitle')}
-                onPress={openQuotes}
+                onPress={openWatchlist}
                 accessibilityLabel={t('commonViewAll')}
               />
               <View style={styles.quoteGrid}>

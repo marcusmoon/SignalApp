@@ -191,6 +191,7 @@ function RootLayoutNav() {
         'etf-insight',
         'news-issues',
         'disclosure-flow',
+        'watchlist',
         'terms',
         'terms-history',
       ]),
@@ -240,6 +241,7 @@ function RootLayoutNav() {
           'market-briefing': t('ipadHomeSignalTitle'),
           'etf-insights': t('homeEtfInsightTitle'),
           'etf-insight': t('etfInsightDetailKicker'),
+          watchlist: t('homeFocusWatchTitle'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

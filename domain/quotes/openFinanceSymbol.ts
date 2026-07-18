@@ -1,8 +1,8 @@
 import { normalizeKrxStockCode, openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 
-/** 국내 ETF·주식 심볼 — 6자리 / `.KS`·`.KQ` / market=kr */
-export function isKoreaEtfSymbol(symbol: string, market?: string | null): boolean {
+/** 국내 주식·ETF 심볼 — 6자리 / `.KS`·`.KQ` / market=kr */
+export function isKoreaFinanceSymbol(symbol: string, market?: string | null): boolean {
   const m = String(market || '')
     .trim()
     .toLowerCase();
@@ -13,8 +13,8 @@ export function isKoreaEtfSymbol(symbol: string, market?: string | null): boolea
   return Boolean(normalizeKrxStockCode(trimmed));
 }
 
-/** 히트맵·테마 셀 표시용 — `091160.KS` → `091160` */
-export function etfInsightDisplayTicker(symbol: string): string {
+/** 표시용 티커 — `091160.KS` → `091160` */
+export function financeDisplayTicker(symbol: string): string {
   const trimmed = String(symbol || '').trim().toUpperCase();
   if (!trimmed) return '';
   const krx = normalizeKrxStockCode(trimmed);
@@ -23,12 +23,13 @@ export function etfInsightDisplayTicker(symbol: string): string {
 }
 
 /**
- * ETF 브리핑 종목 외부 링크 — 국내 Naver, 해외 Yahoo (시세 탭과 동일).
+ * 종목·ETF·코인 등 시세 외부 링크 — 국내 Naver, 해외 Yahoo.
+ * 브리핑·다이제스트 entity 탭·히트맵 칩 등 공용.
  */
-export function openEtfInsightSymbol(symbol: string, market?: string | null): void {
+export function openFinanceSymbol(symbol: string, market?: string | null): void {
   const trimmed = String(symbol || '').trim();
   if (!trimmed || trimmed === '—') return;
-  if (isKoreaEtfSymbol(trimmed, market)) {
+  if (isKoreaFinanceSymbol(trimmed, market)) {
     void openNaverFinanceStock(trimmed);
     return;
   }

@@ -1,4 +1,4 @@
-import { etfInsightDisplayTicker } from '@/domain/etfInsights/openSymbol';
+import { financeDisplayTicker } from '@/domain/quotes/openFinanceSymbol';
 import type { SignalApiEtfInsight } from '@/integrations/signal-api/types';
 
 export type EtfHomeHeatCell = {
@@ -21,7 +21,7 @@ export function etfHomeHeatmapCells(insight: SignalApiEtfInsight, maxCells = 6):
       typeof item.changePercent === 'number' && Number.isFinite(item.changePercent)
         ? item.changePercent
         : null;
-    const ticker = etfInsightDisplayTicker(etf) || sector || '—';
+    const ticker = financeDisplayTicker(etf) || sector || '—';
     cells.push({
       key: `${insight.id}-home-heat-${etf || sector}-${index}`,
       title: ticker,

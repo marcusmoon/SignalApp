@@ -16,10 +16,10 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { parseEtfFlowHighlights } from '@/domain/etfInsights/flowHighlights';
 import {
-  etfInsightDisplayTicker,
-  isKoreaEtfSymbol,
-  openEtfInsightSymbol,
-} from '@/domain/etfInsights/openSymbol';
+  financeDisplayTicker,
+  isKoreaFinanceSymbol,
+  openFinanceSymbol,
+} from '@/domain/quotes/openFinanceSymbol';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import {
   getQuoteChangeColors,
@@ -86,8 +86,8 @@ function parseHeatCells(insight: SignalApiEtfInsight, t: (key: string, params?: 
       typeof item.changePercent === 'number' && Number.isFinite(item.changePercent)
         ? item.changePercent
         : null;
-    const ticker = etfInsightDisplayTicker(etf) || sector || '—';
-    const korea = etf ? isKoreaEtfSymbol(etf, market) : false;
+    const ticker = financeDisplayTicker(etf) || sector || '—';
+    const korea = etf ? isKoreaFinanceSymbol(etf, market) : false;
     const a11y = etf
       ? korea
         ? t('quotesNaverFinanceA11y', { symbol: ticker })
@@ -99,7 +99,7 @@ function parseHeatCells(insight: SignalApiEtfInsight, t: (key: string, params?: 
       subtitle: sector && etf ? sector : null,
       changePercent: pct,
       displayPercent: pct,
-      onPress: etf ? () => openEtfInsightSymbol(etf, market) : undefined,
+      onPress: etf ? () => openFinanceSymbol(etf, market) : undefined,
       accessibilityLabel: a11y,
     });
   }
@@ -264,7 +264,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
         <InsightSection title={t('etfInsightFlows')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {flows.map((flow, index) => {
-              const ticker = flow.etf ? etfInsightDisplayTicker(flow.etf) : '';
+              const ticker = flow.etf ? financeDisplayTicker(flow.etf) : '';
               const actionLabel =
                 flow.actionKind === 'inflow'
                   ? t('etfInsightFlowInflow')
@@ -278,9 +278,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     ? changeColors.down
                     : theme.textMuted;
               const trailBits = [actionLabel, flow.amountLabel].filter(Boolean);
-              const korea = flow.etf ? isKoreaEtfSymbol(flow.etf, flow.market) : false;
+              const korea = flow.etf ? isKoreaFinanceSymbol(flow.etf, flow.market) : false;
               const openSymbol = flow.etf
-                ? () => openEtfInsightSymbol(flow.etf!, flow.market)
+                ? () => openFinanceSymbol(flow.etf!, flow.market)
                 : undefined;
               const sourceName = flow.sourceName?.trim() || null;
               const sourceUrl = flow.url?.trim() || null;

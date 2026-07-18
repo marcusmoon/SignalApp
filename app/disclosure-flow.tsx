@@ -40,7 +40,10 @@ import {
   disclosureMeaningLabelIdsForForms,
   isImportantDisclosureDigest,
 } from '@/domain/disclosures';
-import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
+import {
+  fetchSignalDisclosureDigestById,
+  fetchSignalDisclosureDigests,
+} from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
@@ -51,6 +54,16 @@ import type { AppLocale, MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
+
+function localYmdFromDisclosureDigest(item: SignalApiDisclosureDigestItem): string | null {
+  const iso = String(item.generatedAt || '').trim();
+  if (iso) {
+    const d = new Date(iso);
+    if (Number.isFinite(d.getTime())) return toYmd(d);
+  }
+  const dateOnly = String(item.generatedDate || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
+}
 
 const MARKET_LABEL: Record<DisclosureFlowMarket, MessageId> = {
   all: 'disclosuresFilterAll',
@@ -138,6 +151,7 @@ export function DisclosureFlowContent({
   const itemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   itemsRef.current = items;
   const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
+  const [focusedDigest, setFocusedDigest] = useState<SignalApiDisclosureDigestItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { ref: scrollRef } = useScrollToTopOnChange([market, selectedYmd], {
@@ -155,6 +169,7 @@ export function DisclosureFlowContent({
 
   useEffect(() => {
     setSourcesDigestId(initialDigestId);
+    if (!initialDigestId) setFocusedDigest(null);
   }, [initialDigestId]);
 
   const syncRoute = useCallback(
@@ -191,6 +206,8 @@ export function DisclosureFlowContent({
 
   const openSources = useCallback(
     (id: string) => {
+      const row = itemsRef.current.find((item) => item.id === id) ?? null;
+      setFocusedDigest(row);
       setSourcesDigestId(id);
       syncRoute({ digestId: id });
     },
@@ -199,13 +216,23 @@ export function DisclosureFlowContent({
 
   const closeSources = useCallback(() => {
     setSourcesDigestId(null);
+    setFocusedDigest(null);
     syncRoute({ digestId: null });
   }, [syncRoute]);
 
-  const sourcesDigest = useMemo(
-    () => (sourcesDigestId ? items.find((item) => item.id === sourcesDigestId) ?? null : null),
-    [items, sourcesDigestId],
-  );
+  const sourcesDigest = useMemo(() => {
+    if (!sourcesDigestId) return null;
+    return (
+      items.find((item) => item.id === sourcesDigestId) ??
+      (focusedDigest?.id === sourcesDigestId ? focusedDigest : null)
+    );
+  }, [focusedDigest, items, sourcesDigestId]);
+
+  useEffect(() => {
+    if (!sourcesDigestId) return;
+    const row = items.find((item) => item.id === sourcesDigestId);
+    if (row) setFocusedDigest(row);
+  }, [items, sourcesDigestId]);
 
   const sourceRows = useMemo(
     () => (sourcesDigest ? disclosureDigestSourceSheetRows(sourcesDigest, locale as AppLocale) : []),
@@ -248,6 +275,37 @@ export function DisclosureFlowContent({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** 알림 deepLink `digestId` — 당일 목록에 없으면 id로 가져와 상세 시트에 쓴다 */
+  useEffect(() => {
+    const pendingId = String(sourcesDigestId || '').trim();
+    if (!pendingId || loading) return;
+    if (items.some((item) => item.id === pendingId)) return;
+    let cancelled = false;
+    void (async () => {
+      const byId = await fetchSignalDisclosureDigestById(pendingId, { locale }).catch(() => null);
+      if (cancelled) return;
+      if (!byId) {
+        setSourcesDigestId(null);
+        setFocusedDigest(null);
+        syncRoute({ digestId: null });
+        return;
+      }
+      setFocusedDigest(byId);
+      setItems((prev) => {
+        if (prev.some((item) => item.id === byId.id)) return prev;
+        return sortDigests([byId, ...prev]);
+      });
+      const digestDay = localYmdFromDisclosureDigest(byId);
+      if (digestDay && digestDay !== selectedYmd) {
+        setSelectedYmd(digestDay);
+        syncRoute({ date: digestDay, digestId: pendingId });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, loading, locale, selectedYmd, sourcesDigestId, syncRoute]);
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
@@ -385,7 +443,7 @@ export function DisclosureFlowContent({
       {body}
       {datePickerSheet}
       <DigestSourcesSheet
-        visible={sourcesDigestId != null}
+        visible={sourcesDigest != null}
         kicker={t('disclosureFlowTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}

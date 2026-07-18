@@ -5,6 +5,7 @@ type DisclosureDigestCacheValue = { items: SignalApiDisclosureDigestItem[]; meta
 const digestsCache = new Map<string, { value: DisclosureDigestCacheValue; expiresAt: number }>();
 
 export function buildSignalDisclosureDigestsCacheKey(params?: {
+  id?: string;
   market?: string;
   limit?: number;
   offset?: number;
@@ -14,6 +15,7 @@ export function buildSignalDisclosureDigestsCacheKey(params?: {
   locale?: string;
 }): string {
   const p = {
+    id: String(params?.id || '').trim(),
     market: String(params?.market || '').trim(),
     limit: Number(params?.limit) || 0,
     offset: Number(params?.offset) || 0,
@@ -22,7 +24,7 @@ export function buildSignalDisclosureDigestsCacheKey(params?: {
     batches: Number(params?.batches) || 0,
     locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `disclosure-digests|${p.market}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
+  return `disclosure-digests|${p.id}|${p.market}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
 }
 
 export function peekSignalDisclosureDigestsCache(key: string): DisclosureDigestCacheValue | null {

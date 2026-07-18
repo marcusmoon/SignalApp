@@ -28,6 +28,7 @@
 | `user_notification_state` | lazy link가 어디까지 소비했는지 (유저당 1 row) |
 | `app_users.notification_prefs` | 서버 푸시 필터 (`pushEnabled`, `briefingPushEnabled`) |
 | 앱 `app/alerts.tsx` | `GET /v1/notifications` 단일 소스 |
+| 뉴스·공시 다이제스트 탭 | deepLink `digestId` → 목록 로드 후 해당 건 상세 시트. 당일 목록에 없으면 `GET ...?id=`로 조회한 뒤 시트 오픈 |
 
 ### ingest (브리핑·주요이슈)
 

@@ -269,6 +269,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
 
   if (req.method === 'GET' && pathname === '/v1/news-digests') {
     const page = await queryPublicNewsDigests({
+      id: url.searchParams.get('id') || '',
       category: url.searchParams.get('category') || '',
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',

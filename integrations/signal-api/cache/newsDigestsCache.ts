@@ -5,6 +5,7 @@ type NewsDigestCacheValue = { items: SignalApiNewsDigestItem[]; meta: SignalNews
 const digestsCache = new Map<string, { value: NewsDigestCacheValue; expiresAt: number }>();
 
 export function buildSignalNewsDigestsCacheKey(params?: {
+  id?: string;
   category?: string;
   limit?: number;
   offset?: number;
@@ -14,6 +15,7 @@ export function buildSignalNewsDigestsCacheKey(params?: {
   locale?: string;
 }): string {
   const p = {
+    id: String(params?.id || '').trim(),
     category: String(params?.category || '').trim(),
     limit: Number(params?.limit) || 0,
     offset: Number(params?.offset) || 0,
@@ -22,7 +24,7 @@ export function buildSignalNewsDigestsCacheKey(params?: {
     batches: Number(params?.batches) || 0,
     locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `news-digests|${p.category}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
+  return `news-digests|${p.id}|${p.category}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
 }
 
 export function peekSignalNewsDigestsCache(key: string): NewsDigestCacheValue | null {

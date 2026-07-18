@@ -130,6 +130,7 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
 
   if (req.method === 'GET' && pathname === '/v1/disclosure-digests') {
     const page = await queryPublicDisclosureDigests({
+      id: url.searchParams.get('id') || '',
       market: url.searchParams.get('market') || '',
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',

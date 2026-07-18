@@ -31,6 +31,22 @@ export async function queryPublicNewsDigestRows(options = {}) {
   const maxBatches = Math.max(1, Math.min(20, Number(options.batches) || 1));
   const params = [];
   const where = [];
+  const id = cleanText(options.id);
+  if (id) {
+    const byId = await queryKysely('SELECT payload FROM news_digest_items WHERE id = $1 LIMIT 1', [id]);
+    const rows = byId.rows.map(payloadFromRow).filter(Boolean).map(publicDigest);
+    const hydrated = await hydrateNewsDigestItems(rows, {
+      locale: cleanText(options.locale) || 'ko',
+    });
+    return {
+      rows: hydrated,
+      total: hydrated.length,
+      limit: 1,
+      offset: 0,
+      hasMore: false,
+      nextOffset: null,
+    };
+  }
   const category = cleanText(options.category);
   if (category) {
     params.push(category);

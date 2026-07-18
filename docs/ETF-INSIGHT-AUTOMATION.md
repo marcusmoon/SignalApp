@@ -12,7 +12,9 @@
 | 리스트 행 | 상세 `/etf-insight` |
 | 푸시·알림함 | ingest 시 발행 |
 
-본문 UI: 시황 브리핑과 **보완** — lead · 히트맵 · 테마(≈companies) · 수급 · 출처. 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
+본문 UI: 시황 브리핑과 **보완** — lead · 히트맵 · 테마 · 수급 · 출처. **서버에 없는 섹션·필드는 앱에서 숨긴다**(빈 배열·빈 문자열·빈 rotation 표시 금지). 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
+
+Admin 데이터 초기화에 **ETF 브리핑**(`etfInsights`) 대상이 있다. 배포 시 `V21__purge_etf_insights.sql`로 기존 적재분·관련 알림을 비운다.
 
 홈 조회: `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일` 최신 1건 → 그다음 7일 freshness 게이트. UTC는 [DATE-TIME.md](./DATE-TIME.md).
 

@@ -637,6 +637,8 @@ export const baseJa = {
   settingsResetQuotesSub: 'メガキャップ等の株価キャッシュ',
   settingsResetCoins: 'コイン',
   settingsResetCoinsSub: 'コインマーケットキャッシュ',
+  settingsResetEtfInsights: 'ETFブリーフィング',
+  settingsResetEtfInsightsSub: '保存済みETFブリーフィング本文',
   settingsResetNotifications: '通知 Outbox',
   settingsResetNotificationsSub: 'プッシュ待機通知と配信結果',
   settingsResetJobRuns: 'Job 実行履歴',

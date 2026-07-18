@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
+import {
+  briefingSourceIconEntries,
+  SourceIconStack,
+} from '@/components/signal/SourceIconStack';
 import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import { SymbolLinkedTintedText } from '@/components/signal/SymbolLinkedTintedText';
+import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -24,7 +28,6 @@ import {
 } from '@/domain/quotes/changeColorConvention';
 import type { SignalApiEtfInsight } from '@/integrations/signal-api/types';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
 type Props = {
@@ -302,12 +305,17 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
               const openSymbol = flow.etf
                 ? () => openEtfInsightSymbol(flow.etf!, flow.market)
                 : undefined;
-              const openSource = flow.url
+              const sourceName = flow.sourceName?.trim() || null;
+              const sourceUrl = flow.url?.trim() || null;
+              const sourceEntries =
+                sourceName || sourceUrl
+                  ? briefingSourceIconEntries([
+                      { sourceName: sourceName || t('etfInsightFlowOpenSource'), url: sourceUrl },
+                    ])
+                  : [];
+              const openSource = sourceUrl
                 ? () => {
-                    void openConfiguredExternalLink({
-                      webUrl: flow.url!,
-                      openInAppBrowser: true,
-                    });
+                    void Linking.openURL(sourceUrl);
                   }
                 : undefined;
               return (
@@ -327,13 +335,11 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                             : t('quotesYahooFinanceA11y', { symbol: ticker })
                         }
                       />
-                    ) : (
-                      <Text style={styles.themeNameFallback} numberOfLines={1}>
-                        {flow.signal}
-                      </Text>
-                    )}
+                    ) : flow.signal ? (
+                      <ChangeTintedText style={styles.themeNameFallback}>{flow.signal}</ChangeTintedText>
+                    ) : null}
                     {trailBits.length > 0 ? (
-                      <Text style={[styles.flowTrail, { color: actionColor }]} numberOfLines={1}>
+                      <Text style={[styles.flowTrail, { color: actionColor }]}>
                         {trailBits.join(' · ')}
                       </Text>
                     ) : null}
@@ -341,21 +347,20 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                   {flow.etf && flow.signal ? (
                     <ChangeTintedText style={styles.themeSummary}>{flow.signal}</ChangeTintedText>
                   ) : null}
-                  {flow.url || flow.sourceName ? (
+                  {sourceEntries.length > 0 ? (
                     <Pressable
                       onPress={openSource}
                       disabled={!openSource}
                       style={({ pressed }) => [
-                        styles.flowSourceBtn,
+                        styles.flowSourceFooter,
                         pressed && openSource ? styles.flowSourcePressed : null,
                       ]}
                       accessibilityRole={openSource ? 'link' : 'text'}
                       accessibilityLabel={
-                        openSource ? t('etfInsightFlowOpenSource') : flow.sourceName || undefined
+                        sourceName || (openSource ? t('etfInsightFlowOpenSource') : undefined)
                       }>
-                      <Text style={styles.flowSourceText} numberOfLines={1}>
-                        {flow.sourceName?.trim() || t('etfInsightFlowOpenSource')}
-                      </Text>
+                      <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
+                      {sourceName ? <Text style={styles.flowSourceTrail}>{sourceName}</Text> : null}
                     </Pressable>
                   ) : null}
                 </View>
@@ -384,10 +389,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                   onPress={
                     ref.url
                       ? () => {
-                          void openConfiguredExternalLink({
-                            webUrl: ref.url!,
-                            openInAppBrowser: true,
-                          });
+                          void Linking.openURL(ref.url!);
                         }
                       : undefined
                   }
@@ -566,21 +568,29 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(12),
       lineHeight: sf(16),
       fontWeight: ft.metaWeight,
-      flexShrink: 0,
+      flexShrink: 1,
+      textAlign: 'right',
       fontVariant: ['tabular-nums'],
     },
-    flowSourceBtn: {
-      alignSelf: 'flex-start',
+    flowSourceFooter: {
       marginTop: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      minWidth: 0,
+      maxWidth: '100%',
     },
     flowSourcePressed: {
       opacity: 0.72,
     },
-    flowSourceText: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
+    flowSourceTrail: {
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
     },
   });
 }

@@ -163,7 +163,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 리스트** (첫 행만 히트맵 색) | **heatmap → 히트맵** | 등락색 `heatFillColor` / ETF는 `ChangeHeatmapGrid` |
   | 섹터/테마 내러티브 | **섹터 흐름**: 섹터명 \| % (첫 행 heat) → why | **themes**: 테마명 \| 모멘텀 → 요약(본문 티커 탭) | 동일 row 밀도 |
-  | 종목/수급 플로우 | **companies** | **flowHighlights** | 동일 `SymbolIdentityChip` |
+  | 종목/수급 플로우 | **companies** | **flow** (`flowHighlights`) | `SymbolIdentityChip` · 본문 말줄임 없음 · 출처=`SourceIconStack`+외부 링크 |
   | 맥락 | macro · sources | sources | — |
   - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). 시장 companies·ETF 수급 등 브리핑 리스트에서 공통. 화면별 칩 스타일 금지
   - **섹터 흐름**: 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)

@@ -114,8 +114,8 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 | `action` | 권장 | `inflow` / `outflow` (또는 유입·유출) |
 | `signal` | ✅ | 사용자가 읽어야 할 한 줄 시그널 |
 | `amountLabel` | 권장 | `$2.4B` 등 금액 라벨 |
-| `url` / `sourceUrl` | 선택 | 출처 기사 — 있으면 “출처 보기” |
-| `sourceName` | 선택 | 출처명 |
+| `url` / `sourceUrl` | 선택 | 출처 기사 URL — 있으면 출처 행 탭 시 **외부 브라우저**로 연다 |
+| `sourceName` | 선택 | 출처명 (아이콘 스택 + 라벨, 시장 브리핑·출처 섹션과 동일 패턴) |
 
 ## 저장
 

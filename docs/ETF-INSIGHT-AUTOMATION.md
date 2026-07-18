@@ -60,7 +60,16 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
       "summary": "미국·한국 반도체 ETF 동반 약세."
     }
   ],
-  "flowHighlights": [],
+  "flowHighlights": [
+    {
+      "etf": "QQQ",
+      "action": "inflow",
+      "signal": "나스닥 하락 중에도 대형 성장주 저가 매수 유입",
+      "amountLabel": "$2.4B",
+      "url": "https://example.com/etf-flow",
+      "sourceName": "Example Wire"
+    }
+  ],
   "heatmap": [
     { "etf": "XLE", "sector": "에너지", "trend": "▲", "changePercent": 1.16 },
     { "etf": "SMH", "sector": "반도체", "trend": "▽", "changePercent": -2.18 }
@@ -87,7 +96,18 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 
 `id`와 `title`은 필수. `period` 기본값은 `daily`. `insightDate`가 없으면 `publishedAt`의 UTC 날짜를 쓴다.
 
-앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·테마 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
+앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·테마·수급 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
+
+### flowHighlights 권장 필드
+
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `etf` / `symbol` | 권장 | 티커 — 로고·Yahoo/Naver 링크 |
+| `action` | 권장 | `inflow` / `outflow` (또는 유입·유출) |
+| `signal` | ✅ | 사용자가 읽어야 할 한 줄 시그널 |
+| `amountLabel` | 권장 | `$2.4B` 등 금액 라벨 |
+| `url` / `sourceUrl` | 선택 | 출처 기사 — 있으면 “출처 보기” |
+| `sourceName` | 선택 | 출처명 |
 
 ## 저장
 

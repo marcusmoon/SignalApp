@@ -10,12 +10,12 @@ import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { parseEtfFlowHighlights } from '@/domain/etfInsights/flowHighlights';
 import {
   etfInsightDisplayTicker,
   isKoreaEtfSymbol,
   openEtfInsightSymbol,
 } from '@/domain/etfInsights/openSymbol';
-import { formatHeatChangePct } from '@/domain/heatmaps/changeHeat';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import {
   getQuoteChangeColors,
@@ -118,7 +118,10 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
   const insights = (insight.insights || []).map((line) => String(line || '').trim()).filter(Boolean);
   const themes = Array.isArray(insight.themes) ? insight.themes : [];
   const heatmapCells = useMemo(() => parseHeatCells(insight, t as never), [insight, t]);
-  const flows = Array.isArray(insight.flowHighlights) ? insight.flowHighlights : [];
+  const flows = useMemo(
+    () => parseEtfFlowHighlights(insight.flowHighlights, insight.id),
+    [insight.flowHighlights, insight.id],
+  );
   const sources = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
   const rotation = insight.rotation && typeof insight.rotation === 'object' ? insight.rotation : null;
   const rotationFrom = String(rotation?.from ?? '').trim();
@@ -242,33 +245,88 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
       {flows.length > 0 ? (
         <InsightSection title={t('etfInsightFlows')} styles={styles}>
           <View style={styles.sectionFeedCard}>
-            {flows.map((raw, index) => {
-              const item = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
-              const symbol = String(item?.etf ?? item?.symbol ?? '').trim();
-              const title =
-                typeof raw === 'string'
-                  ? raw.trim()
-                  : String(item?.label ?? item?.name ?? item?.title ?? symbol).trim();
-              const trail =
-                item && typeof item.value === 'string'
-                  ? item.value.trim()
-                  : item && typeof item.changePercent === 'number'
-                    ? formatHeatChangePct(item.changePercent)
-                    : null;
-              if (!title) return null;
-              return (
-                <HomeDigestFeedRow
-                  key={`${insight.id}-flow-${index}`}
-                  title={title}
-                  titleLines={null}
-                  trailText={trail}
-                  bordered={index < flows.length - 1}
-                  onPress={
-                    symbol
-                      ? () => openEtfInsightSymbol(symbol, String(item?.market ?? '') || null)
-                      : undefined
+            {flows.map((flow, index) => {
+              const ticker = flow.etf ? etfInsightDisplayTicker(flow.etf) : '';
+              const actionLabel =
+                flow.actionKind === 'inflow'
+                  ? t('etfInsightFlowInflow')
+                  : flow.actionKind === 'outflow'
+                    ? t('etfInsightFlowOutflow')
+                    : flow.action;
+              const actionColor =
+                flow.actionKind === 'inflow'
+                  ? changeColors.up
+                  : flow.actionKind === 'outflow'
+                    ? changeColors.down
+                    : theme.textMuted;
+              const trailBits = [actionLabel, flow.amountLabel].filter(Boolean);
+              const korea = flow.etf ? isKoreaEtfSymbol(flow.etf, flow.market) : false;
+              const openSymbol = flow.etf
+                ? () => openEtfInsightSymbol(flow.etf!, flow.market)
+                : undefined;
+              const openSource = flow.url
+                ? () => {
+                    void openConfiguredExternalLink({
+                      webUrl: flow.url!,
+                      openInAppBrowser: true,
+                    });
                   }
-                />
+                : undefined;
+              return (
+                <View
+                  key={flow.key}
+                  style={[styles.flowRow, index < flows.length - 1 && styles.listRowBordered]}>
+                  <View style={styles.flowTopRow}>
+                    {flow.etf ? (
+                      <Pressable
+                        onPress={openSymbol}
+                        style={({ pressed }) => [
+                          styles.themeIdentity,
+                          pressed && styles.themeIdentityPressed,
+                        ]}
+                        accessibilityRole="link"
+                        accessibilityLabel={
+                          korea
+                            ? t('quotesNaverFinanceA11y', { symbol: ticker })
+                            : t('quotesYahooFinanceA11y', { symbol: ticker })
+                        }>
+                        <SymbolLogo symbol={flow.etf} size={20} />
+                        <Text style={styles.themeIdentityTicker} numberOfLines={1}>
+                          {ticker}
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <Text style={styles.themeNameFallback} numberOfLines={1}>
+                        {flow.signal}
+                      </Text>
+                    )}
+                    {trailBits.length > 0 ? (
+                      <Text style={[styles.flowTrail, { color: actionColor }]} numberOfLines={1}>
+                        {trailBits.join(' · ')}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {flow.etf && flow.signal ? (
+                    <ChangeTintedText style={styles.themeSummary}>{flow.signal}</ChangeTintedText>
+                  ) : null}
+                  {flow.url || flow.sourceName ? (
+                    <Pressable
+                      onPress={openSource}
+                      disabled={!openSource}
+                      style={({ pressed }) => [
+                        styles.flowSourceBtn,
+                        pressed && openSource ? styles.themeIdentityPressed : null,
+                      ]}
+                      accessibilityRole={openSource ? 'link' : 'text'}
+                      accessibilityLabel={
+                        openSource ? t('etfInsightFlowOpenSource') : flow.sourceName || undefined
+                      }>
+                      <Text style={styles.flowSourceText} numberOfLines={1}>
+                        {flow.sourceName?.trim() || t('etfInsightFlowOpenSource')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               );
             })}
           </View>
@@ -483,6 +541,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
       lineHeight: sf(19),
+    },
+    flowRow: {
+      gap: 4,
+      paddingVertical: 7,
+    },
+    flowTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      minWidth: 0,
+    },
+    flowTrail: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      flexShrink: 0,
+      fontVariant: ['tabular-nums'],
+    },
+    flowSourceBtn: {
+      alignSelf: 'flex-start',
+      marginTop: 2,
+    },
+    flowSourceText: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
     },
   });
 }

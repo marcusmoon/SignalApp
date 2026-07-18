@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
@@ -10,7 +10,10 @@ import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { briefingSectorHeatCells } from '@/domain/briefings/sectorHeatmap';
+import {
+  briefingSectorHeatCells,
+  parseSectorSummaryQuoteHint,
+} from '@/domain/briefings/sectorHeatmap';
 import {
   etfInsightDisplayTicker,
   isKoreaEtfSymbol,
@@ -27,6 +30,7 @@ import type {
   SignalApiMarketBriefing,
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
+  SignalApiMarketBriefingSector,
 } from '@/integrations/signal-api/types';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
@@ -173,6 +177,68 @@ function MacroHighlightRow({
   );
 }
 
+function sectorTrendColor(
+  trend: string,
+  theme: AppTheme,
+  up: string,
+  down: string,
+): string {
+  const t = String(trend || '').trim();
+  if (t === '▲' || t === 'up' || t === '강세' || t === '상승') return up;
+  if (t === '▽' || t === '▼' || t === 'down' || t === '약세' || t === '하락') return down;
+  return theme.textMuted;
+}
+
+function SectorNarrativeRow({
+  item,
+  market,
+  theme,
+  styles,
+  changeColors,
+  bordered,
+}: {
+  item: SignalApiMarketBriefingSector;
+  market: string;
+  theme: AppTheme;
+  styles: ReturnType<typeof makeStyles>;
+  changeColors: { up: string; down: string };
+  bordered: boolean;
+}) {
+  const { t } = useLocale();
+  const summary = item.summary?.trim() || '';
+  if (!summary) return null;
+  const color = sectorTrendColor(item.trend, theme, changeColors.up, changeColors.down);
+  const hint = parseSectorSummaryQuoteHint(summary);
+  const symbol = String(item.symbol || item.etf || hint.symbol || '').trim();
+  const ticker = symbol ? etfInsightDisplayTicker(symbol) : '';
+  const korea = symbol ? isKoreaEtfSymbol(symbol, market) : false;
+
+  return (
+    <View style={[styles.sectorNarrativeRow, bordered && styles.listRowBordered]}>
+      <View style={styles.sectorNarrativeTop}>
+        <Text style={[styles.sectorTrend, { color }]}>{item.trend || '→'}</Text>
+        <Text style={styles.sectorName} numberOfLines={1}>
+          {item.name}
+        </Text>
+        {ticker ? (
+          <Pressable
+            onPress={() => openEtfInsightSymbol(symbol, market)}
+            hitSlop={6}
+            accessibilityRole="link"
+            accessibilityLabel={
+              korea
+                ? t('quotesNaverFinanceA11y', { symbol: ticker })
+                : t('quotesYahooFinanceA11y', { symbol: ticker })
+            }>
+            <Text style={styles.sectorTicker}>{ticker}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <ChangeTintedText style={styles.sectorSummary}>{summary}</ChangeTintedText>
+    </View>
+  );
+}
+
 export function MarketBriefingBlock({
   briefing,
   theme,
@@ -185,8 +251,9 @@ export function MarketBriefingBlock({
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
+  const sectors = briefing.sectors || [];
   const sectorHeatCells = useMemo((): ChangeHeatmapCell[] => {
-    return briefingSectorHeatCells(briefing.sectors, briefing.id).map((cell) => {
+    return briefingSectorHeatCells(sectors, briefing.id).map((cell) => {
       const ticker = cell.symbol ? etfInsightDisplayTicker(cell.symbol) : '';
       const korea = cell.symbol ? isKoreaEtfSymbol(cell.symbol, briefing.market) : false;
       const a11y = cell.symbol
@@ -206,7 +273,11 @@ export function MarketBriefingBlock({
         accessibilityLabel: [cell.name, ticker, a11y].filter(Boolean).join('. '),
       };
     });
-  }, [briefing.id, briefing.market, briefing.sectors, t]);
+  }, [briefing.id, briefing.market, sectors, t]);
+  const sectorsWithSummary = useMemo(
+    () => sectors.filter((s) => Boolean(s.summary?.trim())),
+    [sectors],
+  );
 
   return (
     <View style={styles.block}>
@@ -233,12 +304,29 @@ export function MarketBriefingBlock({
 
       {sectorHeatCells.length > 0 ? (
         <BriefingSection title={t('briefingDetailSectors')} styles={styles}>
-          <ChangeHeatmapGrid
-            cells={sectorHeatCells}
-            theme={theme}
-            scaleFont={scaleFont}
-            changeColorConvention={changeColorConvention}
-          />
+          <View style={styles.sectorStack}>
+            <ChangeHeatmapGrid
+              cells={sectorHeatCells}
+              theme={theme}
+              scaleFont={scaleFont}
+              changeColorConvention={changeColorConvention}
+            />
+            {sectorsWithSummary.length > 0 ? (
+              <View style={styles.sectionFeedCard}>
+                {sectorsWithSummary.map((item, index) => (
+                  <SectorNarrativeRow
+                    key={`${item.name}-narrative-${index}`}
+                    item={item}
+                    market={briefing.market}
+                    theme={theme}
+                    styles={styles}
+                    changeColors={changeColors}
+                    bordered={index < sectorsWithSummary.length - 1}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
         </BriefingSection>
       ) : null}
 
@@ -386,6 +474,47 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     listRowBordered: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
+    },
+    sectorStack: {
+      gap: 12,
+    },
+    sectorNarrativeRow: {
+      gap: 4,
+      paddingVertical: 7,
+    },
+    sectorNarrativeTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    sectorTrend: {
+      fontSize: ft.ff(15),
+      fontWeight: ft.titleWeight,
+      width: 20,
+      textAlign: 'center',
+      flexShrink: 0,
+    },
+    sectorName: {
+      fontSize: ft.ff(13),
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    sectorTicker: {
+      fontSize: ft.ff(12),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+      fontVariant: ['tabular-nums'],
+      flexShrink: 0,
+      marginLeft: 'auto',
+    },
+    sectorSummary: {
+      fontSize: ft.signalBodyFont(13),
+      fontWeight: ft.signalMetaWeight,
+      color: theme.textDim,
+      lineHeight: sf(19),
     },
     companyRow: {
       gap: 4,

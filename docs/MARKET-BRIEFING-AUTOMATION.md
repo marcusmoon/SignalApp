@@ -115,7 +115,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 ## 섹터 ↔ ETF 히트맵
 
-앱에서 `sectors`는 ETF 인사이트 `heatmap`과 같은 **3열 색상 그리드**로 그린다.
+앱에서 `sectors`는 ETF 인사이트 `heatmap`과 같은 **3열 색상 그리드**로 그리고, `summary`는 그리드 아래 내러티브 행으로 **그대로** 노출한다(정보 누락 없음).
 
 | 필드 | 필수 | 설명 |
 |---|---|---|

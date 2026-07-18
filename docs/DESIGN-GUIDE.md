@@ -143,9 +143,18 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
 - 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → **ETF 인사이트** → 공시 플로우 → (오늘만) 게시판·관심 시세 → 투자 일정
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
-- ETF 인사이트: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → `EtfInsightSheet`(시황 `MarketBriefingSheet`와 동일 셸), 섹션 헤더 `>` → 리스트(`app/etf-insights.tsx`). 본문 블록은 `EtfInsightBlock`(lead panel · **색상 그리드 히트맵** · 테마). 히트맵·테마 티커 탭 → 국내 Naver / 해외 Yahoo (`domain/etfInsights/openSymbol.ts`). ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
+- ETF 인사이트: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → `EtfInsightSheet`(시황 `MarketBriefingSheet`와 동일 셸), 섹션 헤더 `>` → 리스트(`app/etf-insights.tsx`). ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
+- **시장 브리핑 ↔ ETF 인사이트 보완 모델** (같은 시각 언어, 다른 레이어):
+  | 역할 | 시장 브리핑 | ETF 인사이트 | 공유 UI |
+  |---|---|---|---|
+  | Lead | summary · overview | summary · rotation · key points | lead panel |
+  | 시각 펄스 | **sectors → 히트맵** | **heatmap → 히트맵** | `ChangeHeatmapGrid` |
+  | 내러티브 플로우 | **companies** (로고·호가·요약) | **themes** (ETF 칩·모멘텀·요약) | 동일 row 밀도 |
+  | 맥락 | macro | flows · sources | — |
+  - 섹터/히트맵 셀·테마 티커 탭 → 국내 Naver / 해외 Yahoo (`domain/etfInsights/openSymbol.ts`)
+  - 섹터 `changePercent`·`symbol`이 없으면 summary에서 등락·티커를 파싱 (`domain/briefings/sectorHeatmap.ts`)
 - 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
-- 상세(`MarketBriefingBlock` 등): 섹터·매크로·출처 본문은 말줄임 없이 전체 표시
+- 상세(`MarketBriefingBlock` 등): 종목·매크로·출처 본문은 말줄임 없이 전체 표시. 섹터는 히트맵 그리드
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
 ## 피드·리스트·다이제스트

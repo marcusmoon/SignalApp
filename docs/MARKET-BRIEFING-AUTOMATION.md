@@ -51,6 +51,15 @@
     "삼성전자와 SK하이닉스 뉴스 흐름이 가장 강합니다.",
     "오늘 오전 발표 예정인 국내 지표는 제한적입니다."
   ],
+  "sectors": [
+    {
+      "name": "반도체",
+      "trend": "▲",
+      "changePercent": 2.4,
+      "symbol": "091160",
+      "summary": "HBM·AI 관련 모멘텀이 업종 전반을 끌어올렸습니다."
+    }
+  ],
   "companies": [
     {
       "symbol": "005930",
@@ -101,7 +110,22 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 오래된 기사와 최신 기사 구분
 - 추정 수치는 `추정` 명시
 - 종목 하이라이트에는 가능하면 `price`, `changePercent` 포함
+- 섹터에는 가능하면 `changePercent`, `symbol`(대표 ETF·지수) 포함 — 앱 히트맵 채색·외부 링크에 사용
 - 결과 생성 후 ingest endpoint로 POST
+
+## 섹터 ↔ ETF 히트맵
+
+앱에서 `sectors`는 ETF 인사이트 `heatmap`과 같은 **3열 색상 그리드**로 그린다.
+
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `name` | ✅ | 섹터명 |
+| `trend` | 권장 | `▲` / `▽` / `→` — 수치 없을 때 약한 채색 |
+| `summary` | 권장 | 내러티브(종목 플로우와 중복되지 않게 짧게) |
+| `changePercent` | 권장 | 히트맵 등락. 없으면 summary의 `(-1.09%)` / `-9.49%` 파싱 |
+| `symbol` / `etf` | 권장 | 대표 티커. 탭 시 국내 Naver · 해외 Yahoo |
+
+ETF 인사이트와의 역할 분담(시각=히트맵, 내러티브=종목/테마)은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 보완 모델을 본다.
 
 ## 앱 표시
 

@@ -94,6 +94,12 @@ export type SignalApiMarketBriefingSector = {
   trend: string;
   /** 한 줄 요약. 예: "SK하이닉스 +4.3%, HBM 수요 기대감" */
   summary: string;
+  /** 대표 등락률 — 있으면 히트맵 채색·표시에 우선 */
+  changePercent?: number | null;
+  /** 대표 심볼(섹터 ETF 등) — 탭 시 Yahoo/Naver */
+  symbol?: string | null;
+  /** `symbol` 별칭 (ETF 인사이트 heatmap 필드와 맞춤) */
+  etf?: string | null;
 };
 
 export type SignalApiMarketBriefing = {

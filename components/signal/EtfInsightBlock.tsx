@@ -10,7 +10,6 @@ import {
   SourceIconStack,
 } from '@/components/signal/SourceIconStack';
 import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
-import { SymbolLinkedTintedText } from '@/components/signal/SymbolLinkedTintedText';
 import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -159,29 +158,6 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
     () => parseEtfFlowHighlights(insight.flowHighlights, insight.id),
     [insight.flowHighlights, insight.id],
   );
-  /** 테마 본문 링크용 — 히트맵·테마 `etfs` 티커만 (섹터명 오탐 방지) */
-  const themeBodyLinkSymbols = useMemo(() => {
-    const out: string[] = [];
-    const seen = new Set<string>();
-    const add = (raw: unknown) => {
-      const symbol = String(raw ?? '').trim();
-      if (!symbol) return;
-      const key = symbol.toUpperCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      out.push(symbol);
-    };
-    const heatRaw = Array.isArray(insight.heatmap) ? insight.heatmap : [];
-    for (const item of heatRaw) {
-      if (!item || typeof item !== 'object') continue;
-      const row = item as Record<string, unknown>;
-      add(row.etf ?? row.symbol);
-    }
-    for (const row of themes) {
-      for (const sym of row.etfs) add(sym);
-    }
-    return out;
-  }, [insight.heatmap, themes]);
   const sources = useMemo(() => {
     const raw = Array.isArray(insight.sourceRefs) ? insight.sourceRefs : [];
     return raw.filter((ref) => {
@@ -242,10 +218,6 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
         <InsightSection title={t('etfInsightThemes')} styles={styles}>
           <View style={styles.sectionFeedCard}>
             {themes.map((item, index) => {
-              const linkSymbols =
-                item.etfs.length > 0
-                  ? [...item.etfs, ...themeBodyLinkSymbols]
-                  : themeBodyLinkSymbols;
               const momentumColor = item.momentum
                 ? trendColor(item.momentum, theme, changeColors.up, changeColors.down)
                 : theme.textMuted;
@@ -270,11 +242,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     </View>
                   ) : null}
                   {item.summary ? (
-                    <SymbolLinkedTintedText
-                      style={styles.themeSummary}
-                      linkSymbols={linkSymbols}>
-                      {item.summary}
-                    </SymbolLinkedTintedText>
+                    <ChangeTintedText style={styles.themeSummary}>{item.summary}</ChangeTintedText>
                   ) : null}
                 </View>
               );

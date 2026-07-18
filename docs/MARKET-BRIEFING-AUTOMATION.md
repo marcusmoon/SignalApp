@@ -111,21 +111,28 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 추정 수치는 `추정` 명시
 - 종목 하이라이트에는 가능하면 `price`, `changePercent` 포함
 - 섹터에는 가능하면 `changePercent`, `symbol`(대표 ETF·지수) 포함 — 앱 히트맵 채색·외부 링크에 사용
+- 섹터 `summary`는 **왜(해석)** 만 쓴다. `SMH 556 (-2.1%).` / `반도체 ETF -9%` 같은 시세 나열은 `changePercent`·`symbol`·companies로 보내고 summary에 반복하지 않는다
 - 결과 생성 후 ingest endpoint로 POST
 
 ## 섹터 ↔ ETF 히트맵
 
-앱에서 `sectors`는 ETF 인사이트 `heatmap`과 같은 **3열 색상 그리드**로 그리고, `summary`는 그리드 아래 내러티브 행으로 **그대로** 노출한다(정보 누락 없음).
+앱 표시 역할 분리:
+
+| 레이어 | 담는 정보 | 비고 |
+|---|---|---|
+| 히트맵 | `name` · `changePercent` · `symbol` | 펄스. 등락·티커 중복 금지 구역 |
+| 아래 why 행 | `summary`의 해석 문장만 | 시세 프리앰블은 앱이 제거. 왜가 없으면 행 숨김 |
+| companies | 개별 종목 스토리 | 섹터 why와 겹치지 않게 종목 단위로 |
 
 | 필드 | 필수 | 설명 |
 |---|---|---|
 | `name` | ✅ | 섹터명 |
 | `trend` | 권장 | `▲` / `▽` / `→` — 수치 없을 때 약한 채색 |
-| `summary` | 권장 | 내러티브(종목 플로우와 중복되지 않게 짧게) |
+| `summary` | 권장 | **왜**만 (시세·종목 % 나열 금지에 가깝게) |
 | `changePercent` | 권장 | 히트맵 등락. 없으면 summary의 `(-1.09%)` / `-9.49%` 파싱 |
 | `symbol` / `etf` | 권장 | 대표 티커. 탭 시 국내 Naver · 해외 Yahoo |
 
-ETF 인사이트와의 역할 분담(시각=히트맵, 내러티브=종목/테마)은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 보완 모델을 본다.
+역할 분담 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 보완 모델을 본다.
 
 ## 앱 표시
 

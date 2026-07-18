@@ -149,7 +149,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 히트맵** | **heatmap → 히트맵** | `ChangeHeatmapGrid` |
-  | 섹터/테마 내러티브 | 히트맵 아래 **섹터 요약 행**(trend·name·summary 유지) | **themes** (ETF 칩·모멘텀·요약) | row 밀도 맞춤 |
+  | 섹터/테마 내러티브 | 히트맵 아래 **섹터 요약 행**(trend·name·summary 유지) | **themes**: 제목·모멘텀 → 요약 → **푸터 메타 티커**(출처 밀도, 큰 로고 칩 금지) | `HomeDigestFeedRow` 순서 |
   | 종목/수급 플로우 | **companies** (로고·호가·요약) | **flowHighlights** (로고·유입/유출·금액·시그널, 티커→Yahoo/Naver, url 있으면 출처) | 동일 row 밀도 |
   | 맥락 | macro · sources | sources | — |
   - 섹터/히트맵 셀·테마·수급 티커 탭 → 국내 Naver / 해외 Yahoo (`domain/etfInsights/openSymbol.ts`)

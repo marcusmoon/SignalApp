@@ -7,6 +7,7 @@ import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -192,49 +193,40 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                   key={`${insight.id}-theme-${index}`}
                   style={[styles.themeRow, index < themes.length - 1 && styles.listRowBordered]}>
                   <View style={styles.themeTopRow}>
-                    <View style={styles.themeIdentityWrap}>
-                      {etfs.length > 0
-                        ? etfs.map((sym) => {
-                            const label = etfInsightDisplayTicker(sym);
-                            const korea = isKoreaEtfSymbol(sym);
-                            const a11y = korea
-                              ? t('quotesNaverFinanceA11y', { symbol: label })
-                              : t('quotesYahooFinanceA11y', { symbol: label });
-                            return (
-                              <Pressable
-                                key={`${insight.id}-theme-${index}-${sym}`}
-                                onPress={() => openEtfInsightSymbol(sym)}
-                                style={({ pressed }) => [
-                                  styles.themeIdentity,
-                                  pressed && styles.themeIdentityPressed,
-                                ]}
-                                accessibilityRole="link"
-                                accessibilityLabel={a11y}>
-                                <SymbolLogo symbol={sym} size={20} />
-                                <Text style={styles.themeIdentityTicker} numberOfLines={1}>
-                                  {label}
-                                </Text>
-                              </Pressable>
-                            );
-                          })
-                        : (
-                          <Text style={styles.themeNameFallback} numberOfLines={2}>
-                            {name || '—'}
-                          </Text>
-                          )}
-                    </View>
+                    <Text style={styles.themeName} numberOfLines={2}>
+                      {name || '—'}
+                    </Text>
                     {momentum ? (
                       <Text style={[styles.themeMomentum, { color: momentumColor }]} numberOfLines={1}>
                         {momentum}
                       </Text>
                     ) : null}
                   </View>
-                  {etfs.length > 0 && name ? (
-                    <Text style={styles.themeName} numberOfLines={2}>
-                      {name}
-                    </Text>
-                  ) : null}
                   {summary ? <ChangeTintedText style={styles.themeSummary}>{summary}</ChangeTintedText> : null}
+                  {etfs.length > 0 ? (
+                    <View style={styles.themeMetaFooter}>
+                      {etfs.map((sym, etfIndex) => {
+                        const label = etfInsightDisplayTicker(sym);
+                        const korea = isKoreaEtfSymbol(sym);
+                        const a11y = korea
+                          ? t('quotesNaverFinanceA11y', { symbol: label })
+                          : t('quotesYahooFinanceA11y', { symbol: label });
+                        return (
+                          <View key={`${insight.id}-theme-${index}-${sym}`} style={styles.themeMetaItem}>
+                            {etfIndex > 0 ? <Text style={styles.themeMetaSep}>·</Text> : null}
+                            <Pressable
+                              onPress={() => openEtfInsightSymbol(sym)}
+                              hitSlop={4}
+                              accessibilityRole="link"
+                              accessibilityLabel={a11y}
+                              style={({ pressed }) => [pressed && styles.themeIdentityPressed]}>
+                              <Text style={styles.themeMetaTicker}>{label}</Text>
+                            </Pressable>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
@@ -480,18 +472,58 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     themeTopRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 10,
       minWidth: 0,
     },
-    themeIdentityWrap: {
+    themeName: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(14),
+      lineHeight: sf(20),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+    },
+    themeMomentum: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      flexShrink: 0,
+      marginTop: 2,
+    },
+    themeSummary: {
+      fontSize: ft.signalBodyFont(13),
+      fontWeight: ft.signalMetaWeight,
+      color: theme.textDim,
+      lineHeight: sf(19),
+    },
+    /** HomeDigestFeedRow footer / 출처 메타와 동일 밀도 */
+    themeMetaFooter: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 6,
-      flex: 1,
+      gap: 0,
+      marginTop: 2,
       minWidth: 0,
+    },
+    themeMetaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    themeMetaSep: {
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      marginHorizontal: 5,
+    },
+    themeMetaTicker: {
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      fontVariant: ['tabular-nums'],
     },
     themeIdentity: {
       flexDirection: 'row',
@@ -523,24 +555,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    themeMomentum: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
-      fontWeight: ft.metaWeight,
-      flexShrink: 0,
-    },
-    themeName: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(18),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
-    },
-    themeSummary: {
-      fontSize: ft.signalBodyFont(13),
-      fontWeight: ft.signalMetaWeight,
-      color: theme.textDim,
-      lineHeight: sf(19),
     },
     flowRow: {
       gap: 4,

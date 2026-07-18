@@ -15,6 +15,7 @@ import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { hashtagRecordsFromLabels, normalizeNewsHashtagLabels } from '../../../newsHashtags.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
+import { normalizeEntities } from '../../../db/repositories/publicHelpers.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -233,13 +234,19 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     const sendPush = resolveIngestSendPush(body);
     const notifyInbox = resolveIngestNotifyInbox(body);
     const now = new Date().toISOString();
-    const items = rawItems.map((item, index) => ({
-      ...item,
-      sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
-      sources: [],
-      score: 100 - index * 10,
-      updatedAt: now,
-    }));
+    const items = rawItems.map((item, index) => {
+      const entities = normalizeEntities(item?.entities);
+      const next = {
+        ...item,
+        sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
+        sources: [],
+        score: 100 - index * 10,
+        updatedAt: now,
+      };
+      if (entities.length > 0) next.entities = entities;
+      else delete next.entities;
+      return next;
+    });
     await upsertCollectionRows('newsDigestItems', items);
     let inboxPublished = 0;
     let pushQueued = 0;

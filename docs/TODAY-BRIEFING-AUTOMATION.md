@@ -52,6 +52,11 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   ],
   "relatedDigestIds": [],
   "relatedMarketBriefingIds": [],
+  "entities": [
+    { "name": "삼성전자", "symbol": "005930.KS" },
+    { "name": "SK하이닉스", "symbol": "000660.KS" },
+    { "name": "비트코인", "symbol": "BTC-USD" }
+  ],
   "briefingDate": "2026-07-03",
   "generatedAt": "2026-07-03T14:00:00Z",
   "publishedAt": "2026-07-03T14:00:00Z",
@@ -60,6 +65,12 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "pushBody": "오늘 시장을 한눈에 정리했습니다."
 }
 ```
+
+### 심볼·entities (공통)
+
+- **심볼 표준**: Yahoo 형식 — US 그대로, KR `.KS`/`.KQ`, 지수 `^`, 크립토 `BTC-USD`.
+- **`entities`** (선택): 본문·keyPoints에 언급된 종목의 `{ name, symbol }[]`. `name`은 본문 표기와 정확히 일치. 불확실하면 제외.
+- 앱: name 매칭 → 하이라이트 + 국내 Naver / 해외 Yahoo.
 
 ## 예약 작업 원칙
 

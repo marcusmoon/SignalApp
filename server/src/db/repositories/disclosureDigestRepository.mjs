@@ -2,6 +2,7 @@ import { queryKysely } from '../kysely/client.mjs';
 import { hydrateDisclosureDigestItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
+  normalizeEntities,
   pageOptions,
   payloadFromRow,
   sqlUtcRangeFrom,
@@ -13,6 +14,7 @@ function publicDisclosureDigest(item) {
   const importance = Number.isFinite(importanceRaw)
     ? Math.max(0, Math.min(2, Math.round(importanceRaw)))
     : null;
+  const entities = normalizeEntities(item.entities);
   return {
     id: item.id,
     market: item.market || 'us',
@@ -27,6 +29,7 @@ function publicDisclosureDigest(item) {
     generatedAt: item.generatedAt || null,
     primaryDisclosureId: item.primaryDisclosureId || null,
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
+    ...(entities.length > 0 ? { entities } : {}),
   };
 }
 

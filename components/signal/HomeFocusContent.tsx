@@ -28,6 +28,7 @@ import {
 } from '@/components/signal/SourceIconStack';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
+import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -777,14 +778,20 @@ export function HomeFocusContent({
           <View style={styles.issueGroupList}>
             <View style={styles.issueGroupItem}>
               {leadText ? (
-                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
+                <EntityLinkedTintedText
+                  style={styles.issueGroupTitle}
+                  numberOfLines={2}
+                  entities={item.entities}>
                   {leadText}
-                </ChangeTintedText>
+                </EntityLinkedTintedText>
               ) : null}
               {previewText ? (
-                <ChangeTintedText style={styles.signalText} numberOfLines={2}>
+                <EntityLinkedTintedText
+                  style={styles.signalText}
+                  numberOfLines={2}
+                  entities={item.entities}>
                   {previewText}
-                </ChangeTintedText>
+                </EntityLinkedTintedText>
               ) : null}
             </View>
           </View>
@@ -845,6 +852,7 @@ export function HomeFocusContent({
                 timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
                 trailText={trailText || null}
                 summary={null}
+                entities={row.item.entities}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
                 onPress={() => openIssueSheet(row)}
@@ -1029,6 +1037,7 @@ export function HomeFocusContent({
         kicker={t('newsIssuesTitle')}
         digestTitle={digestSheetTitle}
         digestSummary={digestSheetSummary}
+        entities={digestSheet?.row.item.entities}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
       />

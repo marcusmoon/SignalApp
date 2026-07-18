@@ -240,6 +240,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
         kicker={t('newsIssuesTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
+        entities={sourcesDigest?.entities}
         rows={sourceRows}
         onClose={closeSources}
       />

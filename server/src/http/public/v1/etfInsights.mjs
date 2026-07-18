@@ -4,6 +4,7 @@ import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifi
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicEtfInsights } from '../../../db/repositories/etfInsightsRepository.mjs';
+import { normalizeEntities } from '../../../db/repositories/publicHelpers.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateOnlyOrNull, utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -78,6 +79,7 @@ function normalizeEtfInsightPayload(input) {
   const insightDate =
     utcDateOnlyOrNull(input?.insightDate) ||
     utcDateKeyFromInstant(publishedAt);
+  const entities = normalizeEntities(input?.entities);
   return {
     id,
     period,
@@ -91,6 +93,7 @@ function normalizeEtfInsightPayload(input) {
     rotation: normalizeRotation(input?.rotation),
     insights: cleanArray(input?.insights).map(cleanText).filter(Boolean).slice(0, 10),
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
+    ...(entities.length > 0 ? { entities } : {}),
     pushTitle: cleanText(input?.pushTitle) || title,
     pushBody: cleanText(input?.pushBody) || summary,
     createdAt: cleanText(input?.createdAt) || publishedAt,

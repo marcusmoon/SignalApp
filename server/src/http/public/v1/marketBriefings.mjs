@@ -4,6 +4,7 @@ import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifi
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
+import { normalizeEntities } from '../../../db/repositories/publicHelpers.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -36,6 +37,7 @@ function normalizeBriefingPayload(input) {
   const summary = cleanText(input?.summary);
   const publishedAt = parseToUtcIsoOrNull(input?.publishedAt) || new Date().toISOString();
   if (!id || !title || !headline || !ALLOWED_MARKETS.has(market) || !ALLOWED_SESSIONS.has(session)) return null;
+  const entities = normalizeEntities(input?.entities);
   return {
     id,
     market,
@@ -60,6 +62,7 @@ function normalizeBriefingPayload(input) {
     companies: cleanArray(input?.companies).slice(0, 12),
     macro: cleanArray(input?.macro).slice(0, 8),
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
+    ...(entities.length > 0 ? { entities } : {}),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     publishedAt,
     pushTitle: cleanText(input?.pushTitle) || title,

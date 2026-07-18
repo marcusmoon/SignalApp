@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
-import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
+import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
@@ -23,6 +23,7 @@ import {
   type QuotesChangeColorConvention,
 } from '@/domain/quotes/changeColorConvention';
 import type {
+  SignalApiBodyEntity,
   SignalApiMarketBriefing,
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
@@ -81,6 +82,7 @@ function CompanyHighlightRow({
   styles,
   changeColors,
   bordered,
+  entities,
 }: {
   item: SignalApiMarketBriefingCompany;
   market: string;
@@ -88,6 +90,7 @@ function CompanyHighlightRow({
   styles: ReturnType<typeof makeStyles>;
   changeColors: { up: string; down: string };
   bordered: boolean;
+  entities?: SignalApiBodyEntity[];
 }) {
   const hasPrice = item.price != null && Number.isFinite(item.price);
   const hasChange = item.changePercent != null && Number.isFinite(item.changePercent);
@@ -123,7 +126,9 @@ function CompanyHighlightRow({
           </View>
         ) : null}
       </View>
-      <ChangeTintedText style={styles.companySummary}>{item.summary}</ChangeTintedText>
+      <EntityLinkedTintedText style={styles.companySummary} entities={entities}>
+        {item.summary}
+      </EntityLinkedTintedText>
     </View>
   );
 }
@@ -132,10 +137,12 @@ function MacroHighlightRow({
   item,
   bordered,
   locale,
+  entities,
 }: {
   item: SignalApiMarketBriefingMacroItem;
   bordered: boolean;
   locale: AppLocale;
+  entities?: SignalApiBodyEntity[];
 }) {
   const sourceName = item.sourceName?.trim() || null;
   const sourceUrl = item.sourceUrl?.trim() || null;
@@ -146,6 +153,7 @@ function MacroHighlightRow({
       titleLines={null}
       summary={item.summary}
       summaryLines={null}
+      entities={entities}
       trailText={sourceName}
       timeLabel={formatFeedItemTimeLabel(item.publishedAt || item.checkedAt, locale)}
       sourceEntries={
@@ -170,12 +178,14 @@ function SectorFlowRow({
   styles,
   changeColors,
   bordered,
+  entities,
 }: {
   cell: BriefingSectorHeatCell;
   theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
   changeColors: { up: string; down: string };
   bordered: boolean;
+  entities?: SignalApiBodyEntity[];
 }) {
   const why = sectorSummaryWhyText(cell.summary);
   const heatPct = cell.heatPercent;
@@ -194,7 +204,11 @@ function SectorFlowRow({
         <Text style={styles.sectorName}>{cell.name}</Text>
         <Text style={[styles.sectorHeatPct, { color: pctColor }]}>{pctLabel}</Text>
       </View>
-      {why ? <ChangeTintedText style={styles.sectorSummary}>{why}</ChangeTintedText> : null}
+      {why ? (
+        <EntityLinkedTintedText style={styles.sectorSummary} entities={entities}>
+          {why}
+        </EntityLinkedTintedText>
+      ) : null}
     </View>
   );
 }
@@ -211,6 +225,7 @@ export function MarketBriefingBlock({
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
+  const entities = briefing.entities;
   const sectorFlowRows = useMemo(
     () => briefingSectorHeatCells(briefing.sectors, briefing.id),
     [briefing.id, briefing.sectors],
@@ -220,7 +235,11 @@ export function MarketBriefingBlock({
     <View style={styles.block}>
       {hasLead ? (
         <View style={styles.leadPanel}>
-          {briefing.summary ? <ChangeTintedText style={styles.summary}>{briefing.summary}</ChangeTintedText> : null}
+          {briefing.summary ? (
+            <EntityLinkedTintedText style={styles.summary} entities={entities}>
+              {briefing.summary}
+            </EntityLinkedTintedText>
+          ) : null}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
@@ -230,7 +249,9 @@ export function MarketBriefingBlock({
                 {briefing.overview.map((line, index) => (
                   <View key={`overview-${index}`} style={styles.overviewRow}>
                     <View style={styles.overviewDot} />
-                    <ChangeTintedText style={styles.overviewText}>{line}</ChangeTintedText>
+                    <EntityLinkedTintedText style={styles.overviewText} entities={entities}>
+                      {line}
+                    </EntityLinkedTintedText>
                   </View>
                 ))}
               </View>
@@ -250,6 +271,7 @@ export function MarketBriefingBlock({
                 styles={styles}
                 changeColors={changeColors}
                 bordered={index < sectorFlowRows.length - 1}
+                entities={entities}
               />
             ))}
           </View>
@@ -268,6 +290,7 @@ export function MarketBriefingBlock({
                 styles={styles}
                 changeColors={changeColors}
                 bordered={index < briefing.companies.length - 1}
+                entities={entities}
               />
             ))}
           </View>
@@ -283,6 +306,7 @@ export function MarketBriefingBlock({
                 item={item}
                 locale={locale}
                 bordered={index < briefing.macro.length - 1}
+                entities={entities}
               />
             ))}
           </View>

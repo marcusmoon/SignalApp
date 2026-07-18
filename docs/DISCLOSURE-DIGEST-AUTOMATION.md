@@ -49,7 +49,8 @@ GET /v1/disclosures?market=kr&limit=120&offset=0
 
 | 필드 | 설명 |
 |---|---|
-| `symbols`, `companies`, `forms` | 칩·필터용 |
+| `symbols`, `companies`, `forms` | 칩·필터용. `symbols`는 Yahoo 형식 권장(US 그대로, KR `.KS`/`.KQ`) |
+| `entities` | 본문(title·summary) 종목 `{ name, symbol }[]`. `name`은 본문 표기와 정확히 일치. 불확실하면 제외 |
 | `count` | 묶인 공시 수 |
 | `importance` | `0` 일반 · `1` 정기/중간 · `2` 중요 이벤트. 앱 **중요** 뱃지에 사용 |
 | `primaryDisclosureId` | 대표 공시 id (상세 진입) |
@@ -58,6 +59,11 @@ GET /v1/disclosures?market=kr&limit=120&offset=0
 | `notifyInbox` | 항목별 알림함 제외 시 `false` |
 
 `score`는 생략 가능. 서버가 배열 순서로 보강한다.
+
+### 심볼·entities
+
+- 심볼은 Yahoo 형식. 앱은 `entities.name` 정확 매칭만으로 하이라이트 + 국내 Naver / 해외 Yahoo 딥링크를 단다.
+- **공시 예외**: 응답의 KR 심볼이 접미사 없는 코드면 코스피/코스닥 구분이 **확실할 때만** `.KS`/`.KQ`를 붙인다. 아니면 원본 유지(잘못된 접미사가 더 나쁘다).
 
 ### summary 작성 규칙 (앱 가독성)
 

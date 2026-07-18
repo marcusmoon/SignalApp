@@ -330,6 +330,7 @@ export function DisclosureFlowContent({
                       trailText={trailText || null}
                       summary={item.summary}
                       summaryLines={3}
+                      entities={item.entities}
                       sourceEntries={sourceEntries}
                       badges={
                         <>
@@ -389,6 +390,7 @@ export function DisclosureFlowContent({
         kicker={t('disclosureFlowTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
+        entities={sourcesDigest?.entities}
         rows={sourceRows}
         onClose={closeSources}
       />

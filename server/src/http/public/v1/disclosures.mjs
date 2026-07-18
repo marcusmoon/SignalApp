@@ -9,6 +9,7 @@ import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs'
 import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
+import { normalizeEntities } from '../../../db/repositories/publicHelpers.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -47,13 +48,17 @@ function resolveIngestImportance(item) {
 }
 
 function normalizeDisclosureDigestIngestItem(item, index, now) {
-  return {
+  const entities = normalizeEntities(item?.entities);
+  const next = {
     ...item,
     sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
     importance: resolveIngestImportance(item),
     score: item.score ?? 100 - index * 10,
     updatedAt: now,
   };
+  if (entities.length > 0) next.entities = entities;
+  else delete next.entities;
+  return next;
 }
 
 async function publishDigestNotification(item, queuePush) {

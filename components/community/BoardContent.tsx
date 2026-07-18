@@ -261,11 +261,12 @@ export function BoardContent({
   const openPost = useCallback(
     (id: string) => {
       if (ipadNav.isAvailable) {
-        ipadNav.showCommunityPost(id, { drillFrom: embedded ? 'board' : 'tabs' });
+        // Wide board is an overlay root; always drill back to the board list.
+        ipadNav.showCommunityPost(id, { drillFrom: 'board' });
         return;
       }
     },
-    [embedded, ipadNav],
+    [ipadNav],
   );
 
   const renderItem = useCallback(

@@ -119,7 +119,8 @@ export function EtfInsightsListContent({ embedded = false, onBack }: EtfInsights
   const openDetail = useCallback(
     (row: SignalApiEtfInsight) => {
       if (ipadNav.isAvailable) {
-        ipadNav.showEtfInsight(row.id, { drillFrom: 'home' });
+        // List is the wide root (or home drill); detail should return to the list.
+        ipadNav.showEtfInsight(row.id, { drillFrom: 'etfInsights' });
         return;
       }
       router.push({

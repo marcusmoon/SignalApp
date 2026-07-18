@@ -185,7 +185,7 @@ export default function MoreHubScreen() {
       }
       if (item === 'etfBriefing') {
         if (ipadNav.isAvailable) {
-          ipadNav.showEtfInsights({ drillFrom: 'home' });
+          ipadNav.showEtfInsights();
           return;
         }
         router.push('/etf-insights' as never);

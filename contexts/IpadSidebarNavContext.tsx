@@ -54,7 +54,14 @@ export type IpadMarketBriefingPaneParams = {
   date?: string;
 };
 
-export type WidePaneDrillFrom = 'home' | 'account' | 'termsHistory' | 'tabs' | 'alerts' | 'board';
+export type WidePaneDrillFrom =
+  | 'home'
+  | 'account'
+  | 'termsHistory'
+  | 'tabs'
+  | 'alerts'
+  | 'board'
+  | 'etfInsights';
 
 export type WidePaneDrillOptions = {
   /** In-memory drill origin — never put this in the shareable URL. */
@@ -874,6 +881,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         router.navigate({
           pathname: WIDE_HOME_ROUTE,
           params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'board' },
+        } as never);
+      } else if (target === 'etfInsights') {
+        applyOverlayKind('etf-insights', {});
+        router.navigate({
+          pathname: WIDE_HOME_ROUTE,
+          params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'etf-insights' },
         } as never);
       } else {
         setContentPane('tabs');

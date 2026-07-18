@@ -66,7 +66,9 @@ async function publishEtfInsightNotification(insight, queuePush) {
       targetType: 'all',
       sourceType: 'etf_insight',
       sourceId: insight.id,
-      deepLink: '/signal',
+      deepLink: insight.insightDate
+        ? `/(tabs)/home?date=${insight.insightDate}`
+        : '/(tabs)/home',
       sourceRefs: insight.sourceRefs,
       reason: `ETF insight ${insight.period} published`,
       scheduledAt: insight.publishedAt,

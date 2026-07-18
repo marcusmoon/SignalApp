@@ -146,6 +146,36 @@ export type SignalApiTodayBriefing = {
   updatedAt: string | null;
 };
 
+export type SignalApiEtfInsightSourceRef = {
+  type?: string;
+  id?: string;
+  kind?: string;
+  title?: string;
+  url?: string | null;
+  sourceName?: string | null;
+  publishedAt?: string | null;
+};
+
+/** ETF 인사이트 — 외부 ingest(`POST /v1/etf-insights/ingest`) 후 홈에 노출 */
+export type SignalApiEtfInsight = {
+  id: string;
+  period: string;
+  title: string;
+  summary: string;
+  insightDate: string | null;
+  publishedAt: string | null;
+  heatmap: unknown[];
+  themes: unknown[];
+  flowHighlights: unknown[];
+  rotation: Record<string, unknown> | null;
+  insights: string[];
+  sourceRefs: SignalApiEtfInsightSourceRef[];
+  pushTitle?: string;
+  pushBody?: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type SignalApiNewsSource = {
   id: string;
   name: string;

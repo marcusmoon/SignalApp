@@ -20,7 +20,7 @@
 
 | 탭 | 화면 | 역할 |
 |---|---|---|
-| 홈 | `app/(tabs)/home.tsx` | 오늘의 브리핑·홈 다이제스트 |
+| 홈 | `app/(tabs)/home.tsx` | 마감 브리핑·뉴스 흐름·시장 브리핑·ETF 인사이트·공시·관심 시세 |
 | 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·IT·YouTube 피드 (`YoutubeFeedPanel` 공유) |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |

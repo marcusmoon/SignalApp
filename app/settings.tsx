@@ -118,6 +118,13 @@ import {
   saveHomeWatchlistDisplayCount,
 } from '@/services/homeWatchlistDisplayPreference';
 import {
+  HOME_SECTOR_FLOW_DISPLAY_MAX,
+  HOME_SECTOR_FLOW_DISPLAY_MIN,
+  HOME_SECTOR_FLOW_DISPLAY_DEFAULT,
+  loadHomeSectorFlowDisplayCount,
+  saveHomeSectorFlowDisplayCount,
+} from '@/services/homeSectorFlowDisplayPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -247,7 +254,7 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
 
 type SettingsCountPicker =
   | { kind: 'quotes'; field: 'popular' | 'mcap' | 'coin' }
-  | { kind: 'home'; field: 'newsFlow' | 'watchlist' };
+  | { kind: 'home'; field: 'newsFlow' | 'watchlist' | 'sectorFlow' };
 
 function settingsCountChoices(min: number, max: number): number[] {
   const out: number[] = [];
@@ -1047,6 +1054,10 @@ export default function SettingsScreen({
   const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
+  const [homeSectorFlowDisplayCount, setHomeSectorFlowDisplayCount] = useState(
+    HOME_SECTOR_FLOW_DISPLAY_DEFAULT,
+  );
+  const [homeSectorFlowDisplayReady, setHomeSectorFlowDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1092,6 +1103,9 @@ export default function SettingsScreen({
     if (countPicker.field === 'newsFlow') {
       return settingsCountChoices(HOME_NEWS_FLOW_DISPLAY_MIN, HOME_NEWS_FLOW_DISPLAY_MAX);
     }
+    if (countPicker.field === 'sectorFlow') {
+      return settingsCountChoices(HOME_SECTOR_FLOW_DISPLAY_MIN, HOME_SECTOR_FLOW_DISPLAY_MAX);
+    }
     return settingsCountChoices(HOME_WATCHLIST_DISPLAY_MIN, HOME_WATCHLIST_DISPLAY_MAX);
   }, [countPicker]);
 
@@ -1103,6 +1117,7 @@ export default function SettingsScreen({
       return t('settingsQuotesCoinCountLabel');
     }
     if (countPicker.field === 'newsFlow') return t('settingsHomeNewsFlowDisplaySection');
+    if (countPicker.field === 'sectorFlow') return t('settingsHomeSectorFlowDisplaySection');
     return t('settingsHomeWatchlistDisplaySection');
   }, [countPicker, t]);
 
@@ -1114,11 +1129,13 @@ export default function SettingsScreen({
       return quotesListLimits.coinMax;
     }
     if (countPicker.field === 'newsFlow') return homeNewsFlowDisplayCount;
+    if (countPicker.field === 'sectorFlow') return homeSectorFlowDisplayCount;
     return homeWatchlistDisplayCount;
   }, [
     countPicker,
     quotesListLimits,
     homeNewsFlowDisplayCount,
+    homeSectorFlowDisplayCount,
     homeWatchlistDisplayCount,
   ]);
 
@@ -1140,6 +1157,9 @@ export default function SettingsScreen({
       } else if (countPicker.field === 'newsFlow') {
         setHomeNewsFlowDisplayCount(n);
         void saveHomeNewsFlowDisplayCount(n);
+      } else if (countPicker.field === 'sectorFlow') {
+        setHomeSectorFlowDisplayCount(n);
+        void saveHomeSectorFlowDisplayCount(n);
       } else {
         setHomeWatchlistDisplayCount(n);
         void saveHomeWatchlistDisplayCount(n);
@@ -1295,6 +1315,12 @@ export default function SettingsScreen({
     setHomeWatchlistDisplayReady(true);
   }, []);
 
+  const reloadHomeSectorFlowDisplayPref = useCallback(async () => {
+    const v = await loadHomeSectorFlowDisplayCount();
+    setHomeSectorFlowDisplayCount(v);
+    setHomeSectorFlowDisplayReady(true);
+  }, []);
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1318,6 +1344,7 @@ export default function SettingsScreen({
     void reloadMoreReferenceLinksPref();
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
+    void reloadHomeSectorFlowDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1331,6 +1358,7 @@ export default function SettingsScreen({
     reloadMoreReferenceLinksPref,
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
+    reloadHomeSectorFlowDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -2031,7 +2059,9 @@ clearCalendarCache();
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
-              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady ? (
+              {!homeNewsFlowDisplayReady ||
+              !homeWatchlistDisplayReady ||
+              !homeSectorFlowDisplayReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
@@ -2045,6 +2075,20 @@ clearCalendarCache();
                         count: String(homeWatchlistDisplayCount),
                       })}>
                       <Text style={styles.limitPickerTriggerText}>{homeWatchlistDisplayCount}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeSectorFlowDisplaySection')}</Text>
+                    <Pressable
+                      onPress={() => setCountPicker({ kind: 'home', field: 'sectorFlow' })}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsHomeSectorFlowDisplayValue', {
+                        count: String(homeSectorFlowDisplayCount),
+                      })}>
+                      <Text style={styles.limitPickerTriggerText}>{homeSectorFlowDisplayCount}</Text>
                       <FontAwesome name="chevron-down" size={14} color={theme.green} />
                     </Pressable>
                   </View>

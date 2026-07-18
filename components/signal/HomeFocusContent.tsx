@@ -97,6 +97,11 @@ import {
   subscribeHomeNewsFlowDisplayCountChanged,
 } from '@/services/homeNewsFlowDisplayPreference';
 import {
+  HOME_SECTOR_FLOW_DISPLAY_DEFAULT,
+  loadHomeSectorFlowDisplayCount,
+  subscribeHomeSectorFlowDisplayCountChanged,
+} from '@/services/homeSectorFlowDisplayPreference';
+import {
   HOME_WATCHLIST_DISPLAY_DEFAULT,
   loadHomeWatchlistDisplayCount,
   subscribeHomeWatchlistDisplayCountChanged,
@@ -274,7 +279,10 @@ export function HomeFocusContent({
   const { t, locale } = useLocale();
   const ipadNav = useIpadSidebarNavActions();
   const { useTwoPane } = useResponsiveLayout();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, feedTypo, useTwoPane),
+    [theme, scaleFont, feedTypo, useTwoPane],
+  );
   const selectedIsToday = selectedYmd >= todayYmd;
   const selectedIsExactToday = selectedYmd === todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
@@ -286,6 +294,7 @@ export function HomeFocusContent({
   const [error, setError] = useState<string | null>(null);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
+  const [sectorFlowDisplayCount, setSectorFlowDisplayCount] = useState(HOME_SECTOR_FLOW_DISPLAY_DEFAULT);
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
@@ -322,14 +331,14 @@ export function HomeFocusContent({
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
-    return etfHomeHeatmapCells(etfInsight).map((cell) => ({
+    return etfHomeHeatmapCells(etfInsight, sectorFlowDisplayCount).map((cell) => ({
       key: cell.key,
       title: cell.title,
       subtitle: cell.subtitle,
       changePercent: cell.changePercent,
       displayPercent: cell.changePercent,
     }));
-  }, [etfInsight]);
+  }, [etfInsight, sectorFlowDisplayCount]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -493,12 +502,14 @@ export function HomeFocusContent({
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   const reloadHomeDisplayPrefs = useCallback(async () => {
-    const [newsFlow, watchlist] = await Promise.all([
+    const [newsFlow, watchlist, sectorFlow] = await Promise.all([
       loadHomeNewsFlowDisplayCount(),
       loadHomeWatchlistDisplayCount(),
+      loadHomeSectorFlowDisplayCount(),
     ]);
     setNewsFlowDisplayCount(newsFlow);
     setWatchlistDisplayCount(watchlist);
+    setSectorFlowDisplayCount(sectorFlow);
     setHomeDisplayPrefsReady(true);
   }, []);
 
@@ -509,6 +520,9 @@ export function HomeFocusContent({
         void reloadHomeDisplayPrefs();
       }),
       subscribeHomeWatchlistDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+      subscribeHomeSectorFlowDisplayCountChanged(() => {
         void reloadHomeDisplayPrefs();
       }),
     ];
@@ -989,6 +1003,7 @@ function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
   ft: FeedContentTypography,
+  useTwoPane: boolean,
 ) {
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
@@ -1076,7 +1091,8 @@ function makeStyles(
       rowGap: COMFORT_GAP_MD,
     },
     quoteTile: {
-      width: '48%',
+      /** 폰 2열 · 와이드(웹/iPad) 3열 */
+      width: useTwoPane ? '32%' : '48%',
       minHeight: 54,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,

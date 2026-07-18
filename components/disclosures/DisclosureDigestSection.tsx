@@ -253,6 +253,7 @@ export function DisclosureDigestSection({
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet
         visible={sourcesItem != null}
+        kicker={t('disclosureFlowTitle')}
         digestTitle={sourcesItem?.title ?? ''}
         digestSummary={sourcesItem?.summary?.trim() || undefined}
         rows={sourceRows}

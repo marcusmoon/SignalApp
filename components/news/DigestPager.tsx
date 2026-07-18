@@ -237,6 +237,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet
         visible={sourcesDigest != null}
+        kicker={t('newsIssuesTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
         rows={sourceRows}

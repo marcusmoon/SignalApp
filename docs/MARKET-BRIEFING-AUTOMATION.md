@@ -84,12 +84,22 @@
       "relation": "primary"
     }
   ],
+  "entities": [
+    { "name": "삼성전자", "symbol": "005930.KS" },
+    { "name": "SK하이닉스", "symbol": "000660.KS" }
+  ],
   "publishedAt": "2026-06-13T22:30:00Z",
   "briefingDate": "2026-06-14",
   "pushTitle": "국내 아침 브리핑 도착",
   "pushBody": "장 시작 전 핵심 이슈를 확인하세요."
 }
 ```
+
+### 심볼·entities (공통)
+
+- **심볼 표준**: 모든 심볼 필드는 Yahoo 형식 — US 티커 그대로, KR은 `.KS`/`.KQ` 접미사, 지수 `^`, 크립토 `BTC-USD`.
+- **`entities`** (선택): 본문에 언급된 종목·ETF·코인의 `{ name, symbol }[]`. `name`은 본문 표기와 **정확히 일치**. 불확실한 매핑은 제외.
+- 앱: 본문 name 매칭 → 하이라이트 + 국내 Naver / 해외 Yahoo 딥링크. 서버는 필드를 그대로 통과한다.
 
 ## curl 예시
 
@@ -112,6 +122,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 종목 하이라이트에는 가능하면 `price`, `changePercent` 포함
 - 섹터에는 가능하면 `changePercent`, `symbol`(대표 ETF·지수) 포함 — 앱 등락 칩 채색·외부 링크에 사용
 - 섹터 `summary`는 **왜(해석)** 만 쓴다. `SMH 556 (-2.1%).` / `반도체 ETF -9%` 같은 시세 나열은 `changePercent`·`symbol`·companies로 보내고 summary에 반복하지 않는다
+- 본문에 나온 종목명이 있으면 `entities`에 name↔Yahoo symbol을 넣는다 (불확실하면 생략)
 - 결과 생성 후 ingest endpoint로 POST
 
 ## 섹터 흐름 ↔ ETF 히트맵

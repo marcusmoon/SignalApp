@@ -4,6 +4,7 @@ import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifi
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
+import { normalizeEntities } from '../../../db/repositories/publicHelpers.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -32,6 +33,7 @@ function normalizeTodayBriefingPayload(input) {
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || publishedAt;
   if (!id || !title || !headline) return null;
   const summary = cleanText(input?.summary);
+  const entities = normalizeEntities(input?.entities);
   return {
     id,
     locale: cleanText(input?.locale) || 'ko',
@@ -44,6 +46,7 @@ function normalizeTodayBriefingPayload(input) {
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 30 }),
     relatedDigestIds: cleanArray(input?.relatedDigestIds).map(cleanText).filter(Boolean).slice(0, 30),
     relatedMarketBriefingIds: cleanArray(input?.relatedMarketBriefingIds).map(cleanText).filter(Boolean).slice(0, 30),
+    ...(entities.length > 0 ? { entities } : {}),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     generatedAt,
     publishedAt,

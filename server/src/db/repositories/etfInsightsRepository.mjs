@@ -1,6 +1,7 @@
 import { queryKysely } from '../kysely/client.mjs';
 import {
   cleanText,
+  normalizeEntities,
   pageOptions,
   payloadFromRow,
   sqlUtcRangeFrom,
@@ -9,6 +10,7 @@ import {
 
 function publicEtfInsight(item) {
   if (!item) return null;
+  const entities = normalizeEntities(item.entities);
   return {
     id: item.id,
     period: item.period || 'daily',
@@ -22,6 +24,7 @@ function publicEtfInsight(item) {
     rotation: item.rotation && typeof item.rotation === 'object' ? item.rotation : null,
     insights: Array.isArray(item.insights) ? item.insights : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
+    ...(entities.length > 0 ? { entities } : {}),
     pushTitle: item.pushTitle || '',
     pushBody: item.pushBody || '',
     createdAt: item.createdAt || null,

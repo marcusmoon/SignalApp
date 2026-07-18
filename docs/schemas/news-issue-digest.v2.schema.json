@@ -137,6 +137,20 @@
           },
           "uniqueItems": true
         },
+        "entities": {
+          "type": "array",
+          "description": "Body name↔Yahoo symbol map. name must match body text exactly.",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "symbol"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "symbol": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
         "sources": {
           "type": "array",
           "description": "Deprecated in v2 ingest; server derives from hydrated sourceRefs on read.",

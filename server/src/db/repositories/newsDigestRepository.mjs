@@ -2,6 +2,7 @@ import { queryKysely } from '../kysely/client.mjs';
 import { hydrateNewsDigestItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
+  normalizeEntities,
   pageOptions,
   payloadFromRow,
   sqlUtcRangeFrom,
@@ -9,6 +10,7 @@ import {
 } from './publicHelpers.mjs';
 
 function publicDigest(item) {
+  const entities = normalizeEntities(item.entities);
   return {
     id: item.id,
     category: item.category || 'global',
@@ -22,6 +24,7 @@ function publicDigest(item) {
     generatedAt: item.generatedAt || null,
     primaryNewsId: item.primaryNewsId || null,
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
+    ...(entities.length > 0 ? { entities } : {}),
     aiGenerated: item.aiGenerated === true,
   };
 }

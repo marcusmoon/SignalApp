@@ -29,6 +29,20 @@
           "description": "대표 공시 summary/title 기반 읽을거리. 건수·출처 메타만 금지."
         },
         "symbols": { "type": "array", "items": { "type": "string" } },
+        "entities": {
+          "type": "array",
+          "description": "Body name↔Yahoo symbol map. name must match body text exactly. KR suffix only when exchange is certain.",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "symbol"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "symbol": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
         "companies": { "type": "array", "items": { "type": "string" } },
         "forms": { "type": "array", "items": { "type": "string" } },
         "count": { "type": "integer", "minimum": 0 },

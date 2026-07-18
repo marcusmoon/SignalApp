@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EntityLinkedTintedText } from '@/components/signal/EntityLinkedTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import type { SourceIconEntry } from '@/components/signal/SourceIconStack';
@@ -18,6 +19,7 @@ import {
   BOTTOM_SHEET_SCROLL_STYLE,
 } from '@/constants/bottomSheetLayout';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG, UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
+import type { SignalApiBodyEntity } from '@/integrations/signal-api/types';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -38,6 +40,8 @@ type Props = {
   kicker?: string;
   digestTitle: string;
   digestSummary?: string;
+  /** ingest entities — 제목·요약 name 매칭 링크 */
+  entities?: SignalApiBodyEntity[] | null;
   rows: DigestSourceSheetRow[];
   onClose: () => void;
 };
@@ -47,6 +51,7 @@ export function DigestSourcesSheet({
   kicker,
   digestTitle,
   digestSummary,
+  entities,
   rows,
   onClose,
 }: Props) {
@@ -89,7 +94,9 @@ export function DigestSourcesSheet({
               <HomeSectionHeader title={digestTitle} showChevron={false} />
               {summary ? (
                 <View style={styles.feedCard}>
-                  <Text style={styles.digestSummary}>{summary}</Text>
+                  <EntityLinkedTintedText style={styles.digestSummary} entities={entities}>
+                    {summary}
+                  </EntityLinkedTintedText>
                 </View>
               ) : null}
             </View>

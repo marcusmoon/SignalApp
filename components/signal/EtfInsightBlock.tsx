@@ -188,14 +188,47 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                 ? item.etfs.map((v) => String(v || '').trim()).filter(Boolean)
                 : [];
               const momentumColor = trendColor(momentum, theme, changeColors.up, changeColors.down);
+              /** 시장 브리핑 companies와 동일: [로고·이름] | 모멘텀 → 요약 → 메타 티커 */
+              const primarySymbol = etfs[0] || '';
+              const identityLabel = name || (primarySymbol ? etfInsightDisplayTicker(primarySymbol) : '—');
+              const identityIsName = Boolean(name);
               return (
                 <View
                   key={`${insight.id}-theme-${index}`}
                   style={[styles.themeRow, index < themes.length - 1 && styles.listRowBordered]}>
                   <View style={styles.themeTopRow}>
-                    <Text style={styles.themeName} numberOfLines={2}>
-                      {name || '—'}
-                    </Text>
+                    <Pressable
+                      onPress={
+                        primarySymbol ? () => openEtfInsightSymbol(primarySymbol) : undefined
+                      }
+                      disabled={!primarySymbol}
+                      style={({ pressed }) => [
+                        styles.themeIdentity,
+                        identityIsName ? styles.themeIdentityNamed : null,
+                        pressed && primarySymbol ? styles.themeIdentityPressed : null,
+                      ]}
+                      accessibilityRole={primarySymbol ? 'link' : 'text'}
+                      accessibilityLabel={
+                        primarySymbol
+                          ? isKoreaEtfSymbol(primarySymbol)
+                            ? t('quotesNaverFinanceA11y', {
+                                symbol: etfInsightDisplayTicker(primarySymbol),
+                              })
+                            : t('quotesYahooFinanceA11y', {
+                                symbol: etfInsightDisplayTicker(primarySymbol),
+                              })
+                          : identityLabel
+                      }>
+                      {primarySymbol ? <SymbolLogo symbol={primarySymbol} size={20} /> : null}
+                      <Text
+                        style={[
+                          styles.themeIdentityLabel,
+                          identityIsName ? styles.themeIdentityName : styles.themeIdentityTicker,
+                        ]}
+                        numberOfLines={1}>
+                        {identityLabel}
+                      </Text>
+                    </Pressable>
                     {momentum ? (
                       <Text style={[styles.themeMomentum, { color: momentumColor }]} numberOfLines={1}>
                         {momentum}
@@ -472,17 +505,44 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     themeTopRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
       gap: 10,
       minWidth: 0,
     },
-    themeName: {
-      flex: 1,
+    /** MarketBriefingBlock `companyIdentity`와 동일 밀도 */
+    themeIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 0,
+      minWidth: 72,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: theme.bg,
+    },
+    themeIdentityNamed: {
+      flexShrink: 1,
+      minWidth: 56,
+      maxWidth: '58%',
+    },
+    themeIdentityPressed: {
+      opacity: 0.72,
+    },
+    themeIdentityLabel: {
+      fontSize: ft.ff(12),
+      letterSpacing: -0.1,
+      flexShrink: 1,
       minWidth: 0,
-      fontSize: ft.ff(14),
-      lineHeight: sf(20),
-      fontWeight: ft.titleWeight,
+    },
+    themeIdentityTicker: {
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+      fontVariant: ['tabular-nums'],
+    },
+    themeIdentityName: {
+      fontWeight: ft.bodyWeight,
       color: theme.text,
     },
     themeMomentum: {
@@ -490,7 +550,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(16),
       fontWeight: ft.metaWeight,
       flexShrink: 0,
-      marginTop: 2,
+      fontVariant: ['tabular-nums'],
     },
     themeSummary: {
       fontSize: ft.signalBodyFont(13),
@@ -498,7 +558,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textDim,
       lineHeight: sf(19),
     },
-    /** HomeDigestFeedRow footer / 출처 메타와 동일 밀도 */
     themeMetaFooter: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -524,29 +583,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
       fontVariant: ['tabular-nums'],
-    },
-    themeIdentity: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexShrink: 0,
-      minWidth: 72,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      backgroundColor: theme.bg,
-    },
-    themeIdentityPressed: {
-      opacity: 0.72,
-    },
-    themeIdentityTicker: {
-      fontSize: ft.ff(12),
-      letterSpacing: -0.1,
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      fontVariant: ['tabular-nums'],
-      flexShrink: 1,
-      minWidth: 0,
     },
     themeNameFallback: {
       flex: 1,

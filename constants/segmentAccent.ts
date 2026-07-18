@@ -21,12 +21,12 @@ export function newsSegmentAccent(key: NewsSegmentKey, theme: AppTheme): SourceA
         dim: accentAlpha('#F59F00', theme.colorScheme === 'dark' ? 0.22 : 0.14),
         border: accentAlpha('#F59F00', theme.colorScheme === 'dark' ? 0.45 : 0.3),
       };
-    case 'watch':
+    case 'it':
       return {
-        glyph: '★',
-        accent: theme.accentOrange,
-        dim: theme.warningDim,
-        border: accentAlpha(theme.accentOrange, theme.colorScheme === 'dark' ? 0.5 : 0.35),
+        glyph: '⌘',
+        accent: '#0D9488',
+        dim: accentAlpha('#0D9488', theme.colorScheme === 'dark' ? 0.22 : 0.12),
+        border: accentAlpha('#0D9488', theme.colorScheme === 'dark' ? 0.45 : 0.28),
       };
     case 'video':
       return {

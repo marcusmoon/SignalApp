@@ -251,7 +251,7 @@ export function LegacyNewsFeedScreen() {
     if (!hasSignalApi()) return;
     if (!isFocused) return;
     const POLL_MS = 3 * 60 * 1000;
-    const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'watch', 'video'];
+    const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'it', 'video'];
 
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
       if (seg === 'video') {
@@ -465,7 +465,7 @@ export function LegacyNewsFeedScreen() {
     if (loadMoreInFlightRef.current || !hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) {
       return;
     }
-    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') {
+    if (segment !== 'it' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') {
       return;
     }
 
@@ -548,7 +548,7 @@ export function LegacyNewsFeedScreen() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [activeTag, locale, segment, syncServerRows, t, watchSymbolOptions]);
+  }, [activeTag, locale, segment, syncServerRows, t]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);

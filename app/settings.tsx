@@ -182,10 +182,10 @@ const QUOTES_CHANGE_COLOR_DESC: Record<QuotesChangeColorConvention, MessageId> =
 };
 
 const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
-  watch: 'feedSegmentWatch',
   global: 'feedSegmentGlobal',
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
+  it: 'feedSegmentIt',
   video: 'feedSegmentVideo',
 };
 

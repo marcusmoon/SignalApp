@@ -117,6 +117,8 @@ export type SignalScreenProps = {
   onBack?: () => void;
   initialSession?: string | null;
   initialDate?: string | null;
+  /** 홈 섹션 `>` 드릴 — 선택일이 고정이므로 날짜피커 숨김 */
+  hideDateNavigator?: boolean;
 };
 
 export default function SignalScreen({
@@ -124,6 +126,7 @@ export default function SignalScreen({
   onBack,
   initialSession = null,
   initialDate = null,
+  hideDateNavigator = false,
 }: SignalScreenProps = {}) {
   const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
@@ -557,20 +560,22 @@ export default function SignalScreen({
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       {onBack ? <WideSubpaneHeader title={t('ipadHomeSignalTitle')} onBack={onBack} /> : null}
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-        <SignalDateNavigator
-          label={selectedDateLabel}
-          previousA11y={t('insightDatePrevious')}
-          nextA11y={t('insightDateNext')}
-          labelA11y={t('insightOpenCalendar')}
-          todayLabel={t('insightCalendarToday')}
-          onPrevious={() => moveDate(-1)}
-          onNext={() => moveDate(1)}
-          onPressLabel={openCalendar}
-          onToday={goToday}
-          showToday={!selectedIsToday}
-          nextDisabled={selectedIsToday}
-          style={styles.dateNavigator}
-        />
+        {hideDateNavigator ? null : (
+          <SignalDateNavigator
+            label={selectedDateLabel}
+            previousA11y={t('insightDatePrevious')}
+            nextA11y={t('insightDateNext')}
+            labelA11y={t('insightOpenCalendar')}
+            todayLabel={t('insightCalendarToday')}
+            onPrevious={() => moveDate(-1)}
+            onNext={() => moveDate(1)}
+            onPressLabel={openCalendar}
+            onToday={goToday}
+            showToday={!selectedIsToday}
+            nextDisabled={selectedIsToday}
+            style={styles.dateNavigator}
+          />
+        )}
 
       {!loading && (!useTwoPane || embedded) ? (
         <View style={styles.segment}>

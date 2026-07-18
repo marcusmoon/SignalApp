@@ -564,7 +564,7 @@ export function HomeFocusContent({
       }
       router.push({
         pathname: '/news-issues',
-        params,
+        params: { ...params, from: 'home' },
       } as Href);
     },
     [ipadNav, router, selectedYmd],
@@ -583,7 +583,7 @@ export function HomeFocusContent({
       }
       router.push({
         pathname: '/market-briefing',
-        params: { date: selectedYmd, ...(session ? { session } : null) },
+        params: { date: selectedYmd, from: 'home', ...(session ? { session } : null) },
       } as never);
     },
     [ipadNav, router, selectedYmd],

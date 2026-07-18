@@ -439,6 +439,7 @@ function IpadWideTabLayout({
                 initialCategory={newsIssuesParams.category}
                 initialDate={newsIssuesParams.date}
                 initialDigestId={newsIssuesParams.digestId}
+                hideDateNavigator={newsIssuesParams.hideDateNavigator === true}
                 onBack={subpaneBack}
               />
             ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
@@ -462,6 +463,7 @@ function IpadWideTabLayout({
                   onBack={subpaneBack}
                   initialSession={marketBriefingParams?.session ?? null}
                   initialDate={marketBriefingParams?.date ?? null}
+                  hideDateNavigator={marketBriefingParams?.hideDateNavigator === true}
                 />
               </BottomTabBarHeightContext.Provider>
             ) : contentPane === 'etfInsights' ? (

@@ -668,17 +668,6 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
-  const openTodayBriefing = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showTodayBriefing(selectedYmd, { drillFrom: 'home' });
-      return;
-    }
-    router.navigate({
-      pathname: '/today-briefing',
-      params: { date: selectedYmd },
-    } as never);
-  }, [ipadNav, router, selectedYmd]);
-
   const openTodayBriefingSheet = useCallback((row: SignalApiTodayBriefing) => {
     setTodayBriefingSheet(row);
   }, []);
@@ -696,14 +685,11 @@ export function HomeFocusContent({
     openSignalSheet(homeHero.briefing);
   }, [homeHero, openSignalSheet, openTodayBriefingSheet]);
 
+  /** 장중 브리핑만 — 오늘 정리는 단건이라 섹션 `>` 없음 */
   const openHeroSection = useCallback(() => {
-    if (!homeHero) return;
-    if (homeHero.kind === 'today') {
-      openTodayBriefing();
-      return;
-    }
+    if (!homeHero || homeHero.kind === 'today') return;
     openSignal(homeHero.briefing);
-  }, [homeHero, openSignal, openTodayBriefing]);
+  }, [homeHero, openSignal]);
 
   const renderHeroCard = useCallback(() => {
     if (!homeHero) {
@@ -916,8 +902,12 @@ export function HomeFocusContent({
             <HomeSectionHeader
               title={heroSectionTitle}
               badge={<AiBadge />}
-              onPress={homeHero ? openHeroSection : undefined}
-              accessibilityLabel={homeHero ? t('commonViewAll') : undefined}
+              onPress={
+                homeHero && homeHero.kind !== 'today' ? openHeroSection : undefined
+              }
+              accessibilityLabel={
+                homeHero && homeHero.kind !== 'today' ? t('commonViewAll') : undefined
+              }
             />
             {renderHeroCard()}
           </View>

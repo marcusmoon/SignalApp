@@ -1,4 +1,4 @@
-import { type Href, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -35,10 +35,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
-  HOME_SIGNAL_SESSIONS,
   type HomeDigestCategory,
-  type NewsIssuesCategory,
-  type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
 import { newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
@@ -221,13 +218,6 @@ function formatPrice(row: QuoteRow): string {
   const value = row.quote?.currentPrice;
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
-}
-
-function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessionKey | undefined {
-  if (!row) return undefined;
-  return HOME_SIGNAL_SESSIONS.find(
-    (session) => session.market === row.market && session.session === row.session,
-  )?.key;
 }
 
 /** 장중 브리핑 시트·히어로 카드용 한 줄 제목 */
@@ -544,50 +534,9 @@ export function HomeFocusContent({
     };
   }, [reloadHomeDisplayPrefs]);
 
-  const openIssue = useCallback(
-    (row?: IssueRow) => {
-      const params: Record<string, string> = {
-        date: selectedYmd,
-        category: row?.category ?? 'all',
-      };
-      if (row?.item.id) params.digestId = row.item.id;
-      if (ipadNav.isAvailable) {
-        ipadNav.showNewsIssues(
-          {
-            category: params.category as NewsIssuesCategory,
-            date: params.date,
-            digestId: params.digestId ?? null,
-          },
-          { drillFrom: 'home' },
-        );
-        return;
-      }
-      router.push({
-        pathname: '/news-issues',
-        params: { ...params, from: 'home' },
-      } as Href);
-    },
-    [ipadNav, router, selectedYmd],
-  );
-
   const openIssueSheet = useCallback((row: IssueRow) => {
     setDigestSheet({ kind: 'news', row });
   }, []);
-
-  const openSignal = useCallback(
-    (row?: SignalApiMarketBriefing) => {
-      const session = signalSessionKeyForBriefing(row);
-      if (ipadNav.isAvailable) {
-        ipadNav.showMarketBriefing(session, selectedYmd, { drillFrom: 'home' });
-        return;
-      }
-      router.push({
-        pathname: '/market-briefing',
-        params: { date: selectedYmd, from: 'home', ...(session ? { session } : null) },
-      } as never);
-    },
-    [ipadNav, router, selectedYmd],
-  );
 
   const openSignalSheet = useCallback((row: SignalApiMarketBriefing) => {
     setBriefingSheet(row);
@@ -602,14 +551,6 @@ export function HomeFocusContent({
     [briefingSheet],
   );
 
-  const openEtfInsightsList = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showEtfInsights({ drillFrom: 'home' });
-      return;
-    }
-    router.navigate('/etf-insights' as never);
-  }, [ipadNav, router]);
-
   const openEtfInsightSheet = useCallback(() => {
     if (!etfInsight) return;
     setEtfInsightSheetOpen(true);
@@ -618,14 +559,6 @@ export function HomeFocusContent({
   const closeEtfInsightSheet = useCallback(() => {
     setEtfInsightSheetOpen(false);
   }, []);
-
-  const openWatchlist = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showWatchlist({ drillFrom: 'home' });
-      return;
-    }
-    router.push('/watchlist' as never);
-  }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -684,12 +617,6 @@ export function HomeFocusContent({
     }
     openSignalSheet(homeHero.briefing);
   }, [homeHero, openSignalSheet, openTodayBriefingSheet]);
-
-  /** 장중 브리핑만 — 오늘 정리는 단건이라 섹션 `>` 없음 */
-  const openHeroSection = useCallback(() => {
-    if (!homeHero || homeHero.kind === 'today') return;
-    openSignal(homeHero.briefing);
-  }, [homeHero, openSignal]);
 
   const renderHeroCard = useCallback(() => {
     if (!homeHero) return null;
@@ -893,27 +820,13 @@ export function HomeFocusContent({
           <>
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
-              <HomeSectionHeader
-                title={heroSectionTitle}
-                badge={<AiBadge />}
-                onPress={
-                  homeHero.kind !== 'today' ? openHeroSection : undefined
-                }
-                accessibilityLabel={
-                  homeHero.kind !== 'today' ? t('commonViewAll') : undefined
-                }
-              />
+              <HomeSectionHeader title={heroSectionTitle} badge={<AiBadge />} />
               {renderHeroCard()}
             </View>
           ) : null}
 
           <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('newsIssuesTitle')}
-              badge={<AiBadge />}
-              onPress={() => openIssue()}
-              accessibilityLabel={t('commonViewAll')}
-            />
+            <HomeSectionHeader title={t('newsIssuesTitle')} badge={<AiBadge />} />
             {homeIssues.length > 0 ? (
               renderIssueCard(homeIssues)
             ) : (
@@ -925,22 +838,14 @@ export function HomeFocusContent({
 
           {homeCalendarChips.length > 0 ? (
             <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('ipadHomeCalendarTitle')}
-                onPress={openCalendar}
-                accessibilityLabel={t('commonViewAll')}
-              />
+              <HomeSectionHeader title={t('ipadHomeCalendarTitle')} />
               {renderCalendarChips()}
             </View>
           ) : null}
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('homeFocusWatchTitle')}
-                onPress={openWatchlist}
-                accessibilityLabel={t('commonViewAll')}
-              />
+              <HomeSectionHeader title={t('homeFocusWatchTitle')} />
               <View style={styles.quoteGrid}>
                 {quotes.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
@@ -995,12 +900,7 @@ export function HomeFocusContent({
 
           {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
             <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('homeEtfInsightTitle')}
-                badge={<AiBadge />}
-                onPress={openEtfInsightsList}
-                accessibilityLabel={t('commonViewAll')}
-              />
+              <HomeSectionHeader title={t('homeEtfInsightTitle')} badge={<AiBadge />} />
               {renderEtfSectionBody()}
             </View>
           ) : null}

@@ -155,17 +155,16 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름
   - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → (조건부) 섹터 흐름 · 관심 종목·게시판 숨김
-  - **관심 종목 `>`**: `/watchlist` 드릴 — 관심 세그먼트만 + 상단 백 (시세 탭 전체로 가지 않음)
-- **장중 브리핑·뉴스 흐름 `>`** (홈): `from=home` — 홈 선택일 고정, **날짜피커 숨김** (회차/카테고리 세그먼트는 유지). 알림·뉴스 탭 진입은 날짜피커 유지
+  - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로. 홈은 카드/행 탭(시트)·일정 칩·종목 타일만
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
-- **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 섹션 `>` → 시장 탭 해당 회차 · 오늘 정리 카드 → `TodayBriefingSheet` · 섹션 `>` 없음 (단건·날짜 스코프)
-- **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기)
+- **히어로 탭**: 장중 브리핑 카드 → `MarketBriefingSheet`(해당 회차만) · 오늘 정리 카드 → `TodayBriefingSheet`
+- **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴
 - **일정 칩**: 뉴스 흐름 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
-  - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 홈 카드 `>`
-  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 히트맵 미니뷰 우선. 카드 탭 → 시트, `>` → 리스트
+  - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 사이드바
+  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 히트맵 미니뷰 우선. 카드 탭 → 시트
   - 발행 알림: ingest 푸시·알림함 (일상 발견 경로)
   - ingest 계약: [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
 - **장중 브리핑 ↔ 섹터 흐름 보완 모델** (같은 시각 언어, 다른 레이어):

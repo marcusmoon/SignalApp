@@ -27,8 +27,22 @@ function normalizeMeta(
   return { limit, offset, total, hasMore, nextOffset };
 }
 
+export async function fetchSignalDisclosureDigestById(
+  id: string,
+  options?: { cacheMode?: SignalCacheMode; locale?: string },
+): Promise<SignalApiDisclosureDigestItem | null> {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) return null;
+  const page = await fetchSignalDisclosureDigests(
+    { id: cleanId, limit: 1, locale: options?.locale },
+    options,
+  );
+  return page.items[0] ?? null;
+}
+
 export async function fetchSignalDisclosureDigests(
   params: {
+    id?: string;
     market?: string;
     limit?: number;
     offset?: number;

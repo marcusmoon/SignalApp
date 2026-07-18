@@ -38,7 +38,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
-import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
+import { fetchSignalNewsDigestById, fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
@@ -46,6 +46,16 @@ import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+
+function localYmdFromDigest(item: SignalApiNewsDigestItem): string | null {
+  const iso = String(item.generatedAt || '').trim();
+  if (iso) {
+    const d = new Date(iso);
+    if (Number.isFinite(d.getTime())) return toYmd(d);
+  }
+  const dateOnly = String(item.generatedDate || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
+}
 
 function parseCategory(value: unknown): NewsIssuesCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
@@ -130,6 +140,8 @@ export function NewsIssuesContent({
   const itemsRef = useRef<SignalApiNewsDigestItem[]>([]);
   itemsRef.current = items;
   const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
+  /** deepLink로 연 상세 — 날짜 목록 리로드 중에도 시트 유지 */
+  const [focusedDigest, setFocusedDigest] = useState<SignalApiNewsDigestItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
@@ -147,6 +159,7 @@ export function NewsIssuesContent({
 
   useEffect(() => {
     setSourcesDigestId(initialDigestId);
+    if (!initialDigestId) setFocusedDigest(null);
   }, [initialDigestId]);
 
   const syncRoute = useCallback(
@@ -183,6 +196,8 @@ export function NewsIssuesContent({
 
   const openSources = useCallback(
     (id: string) => {
+      const row = itemsRef.current.find((item) => item.id === id) ?? null;
+      setFocusedDigest(row);
       setSourcesDigestId(id);
       syncRoute({ digestId: id });
     },
@@ -191,13 +206,23 @@ export function NewsIssuesContent({
 
   const closeSources = useCallback(() => {
     setSourcesDigestId(null);
+    setFocusedDigest(null);
     syncRoute({ digestId: null });
   }, [syncRoute]);
 
-  const sourcesDigest = useMemo(
-    () => (sourcesDigestId ? items.find((item) => item.id === sourcesDigestId) ?? null : null),
-    [items, sourcesDigestId],
-  );
+  const sourcesDigest = useMemo(() => {
+    if (!sourcesDigestId) return null;
+    return (
+      items.find((item) => item.id === sourcesDigestId) ??
+      (focusedDigest?.id === sourcesDigestId ? focusedDigest : null)
+    );
+  }, [focusedDigest, items, sourcesDigestId]);
+
+  useEffect(() => {
+    if (!sourcesDigestId) return;
+    const row = items.find((item) => item.id === sourcesDigestId);
+    if (row) setFocusedDigest(row);
+  }, [items, sourcesDigestId]);
 
   const sourceRows = useMemo(
     () => (sourcesDigest ? newsDigestSourceSheetRows(sourcesDigest, locale) : []),
@@ -255,6 +280,37 @@ export function NewsIssuesContent({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** 알림 deepLink `digestId` — 당일 목록에 없으면 id로 가져와 상세 시트에 쓴다 */
+  useEffect(() => {
+    const pendingId = String(sourcesDigestId || '').trim();
+    if (!pendingId || loading) return;
+    if (items.some((item) => item.id === pendingId)) return;
+    let cancelled = false;
+    void (async () => {
+      const byId = await fetchSignalNewsDigestById(pendingId, { locale }).catch(() => null);
+      if (cancelled) return;
+      if (!byId) {
+        setSourcesDigestId(null);
+        setFocusedDigest(null);
+        syncRoute({ digestId: null });
+        return;
+      }
+      setFocusedDigest(byId);
+      setItems((prev) => {
+        if (prev.some((item) => item.id === byId.id)) return prev;
+        return sortDigests([byId, ...prev]);
+      });
+      const digestDay = localYmdFromDigest(byId);
+      if (digestDay && digestDay !== selectedYmd) {
+        setSelectedYmd(digestDay);
+        syncRoute({ date: digestDay, digestId: pendingId });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, loading, locale, selectedYmd, sourcesDigestId, syncRoute]);
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
@@ -381,7 +437,7 @@ export function NewsIssuesContent({
       {body}
       {hideDateNavigator ? null : datePickerSheet}
       <DigestSourcesSheet
-        visible={sourcesDigestId != null}
+        visible={sourcesDigest != null}
         kicker={t('newsIssuesTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}

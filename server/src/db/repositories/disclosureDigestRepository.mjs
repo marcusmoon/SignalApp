@@ -36,6 +36,26 @@ export async function queryPublicDisclosureDigestRows(options = {}) {
   const params = [];
   const where = [];
 
+  const id = cleanText(options.id);
+  if (id) {
+    const byId = await queryKysely(
+      'SELECT payload FROM disclosure_digest_items WHERE id = $1 LIMIT 1',
+      [id],
+    );
+    const rows = byId.rows.map(payloadFromRow).filter(Boolean).map(publicDisclosureDigest);
+    const hydrated = await hydrateDisclosureDigestItems(rows, {
+      locale: cleanText(options.locale) || 'ko',
+    });
+    return {
+      rows: hydrated,
+      total: hydrated.length,
+      limit: 1,
+      offset: 0,
+      hasMore: false,
+      nextOffset: null,
+    };
+  }
+
   const market = cleanText(options.market);
   if (market) {
     params.push(market);

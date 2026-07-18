@@ -25,6 +25,8 @@ const WEB_ROOT_APP_PATHS = new Set([
   '/terms',
   '/terms-history',
   '/today-briefing',
+  '/etf-insights',
+  '/etf-insight',
   '/youtube',
 ]);
 const WEB_ROOT_APP_PREFIXES = ['/disclosures/', '/symbol/'];

@@ -143,7 +143,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 섹션 제목만 두고 **부제(subtitle) 없음** (`HomeFocusContent`)
 - 홈 섹션 순서: 마감 브리핑 → 뉴스 흐름 → 시장 브리핑 → **ETF 인사이트** → 공시 플로우 → (오늘만) 게시판·관심 시세 → 투자 일정
 - 홈 시황 카드: 헤드라인 + 본문 **최대 2줄**. 행 탭 → `MarketBriefingSheet`(해당 회차), 섹션 헤더 → 시장 브리핑 화면
-- ETF 인사이트: 날짜별 단일 카드(title + summary 최대 2줄). 탭 → `EtfInsightSheet`. ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
+- ETF 인사이트: 날짜별 단일 카드(title + summary 최대 2줄). 카드 탭 → 상세(`app/etf-insight.tsx`), 섹션 헤더 `>` → 리스트(`app/etf-insights.tsx`). 상세는 마감 브리핑과 동일 구조(히어로 → 섹션 카드). ingest 계약은 [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
 - 홈 노출 개수: 설정 → 표시에서 **스크롤 피커**(시세 개수와 동일 패턴). 시황 브리핑 기본 2 · 최대 4 (`homeMarketBriefingDisplayPreference`)
 - 상세(`MarketBriefingBlock` 등): 섹터·매크로·출처 본문은 말줄임 없이 전체 표시
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

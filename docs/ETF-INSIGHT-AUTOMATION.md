@@ -5,10 +5,11 @@ ETF 인사이트는 외부 에이전트가 Signal Server에 적재한 뒤, 앱 �
 ## 홈 노출
 
 - 위치: **시장 브리핑 아래 · 공시 플로우 위**
-- 패턴: 마감 브리핑과 동일한 **날짜별 단일 카드** (title + summary)
-- 탭: 상세 시트 — 핵심 포인트·테마·수급·히트맵·로테이션·출처
-- 조회: 선택일 `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일`인 최신 1건
-- 장 마감일(`insightDate`)과 홈 선택일(오늘)이 하루 어긋나도 최신 인사이트가 보이도록 한다. UTC 규칙은 [DATE-TIME.md](./DATE-TIME.md).
+- 홈 카드: 마감 브리핑과 동일한 **날짜별 단일 카드** (title + summary) → 상세
+- 섹션 헤더 `>`: 리스트(`GET /v1/etf-insights`) → 행 탭 시 상세
+- 상세: 히어로(title·summary·로테이션) → 핵심 포인트 · 테마 · 히트맵 · 수급 · 출처
+- 홈 조회: 선택일 `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일`인 최신 1건
+- UTC 규칙은 [DATE-TIME.md](./DATE-TIME.md).
 
 ## Ingest Endpoint
 

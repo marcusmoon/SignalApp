@@ -6,6 +6,8 @@ export type WideOverlayKind =
   | 'disclosure-flow'
   | 'today-briefing'
   | 'market-briefing'
+  | 'etf-insights'
+  | 'etf-insight'
   | 'calendar'
   | 'account'
   | 'settings'
@@ -50,6 +52,8 @@ export function legacyPathnameToOverlayKind(pathname: string): WideOverlayKind |
   if (path.startsWith('/disclosure-flow')) return 'disclosure-flow';
   if (path.startsWith('/today-briefing')) return 'today-briefing';
   if (path.startsWith('/market-briefing')) return 'market-briefing';
+  if (path.startsWith('/etf-insights')) return 'etf-insights';
+  if (path.startsWith('/etf-insight')) return 'etf-insight';
   if (path.startsWith('/calendar')) return 'calendar';
   if (path.startsWith('/account')) return 'account';
   if (path.startsWith('/settings')) return 'settings';
@@ -71,6 +75,10 @@ export function overlayKindToContentPane(kind: WideOverlayKind): IpadContentPane
       return 'todayBriefing';
     case 'market-briefing':
       return 'marketBriefing';
+    case 'etf-insights':
+      return 'etfInsights';
+    case 'etf-insight':
+      return 'etfInsight';
     case 'calendar':
       return 'calendar';
     case 'account':
@@ -100,6 +108,8 @@ export function isWideOverlayKind(value: string | undefined): value is WideOverl
     value === 'disclosure-flow' ||
     value === 'today-briefing' ||
     value === 'market-briefing' ||
+    value === 'etf-insights' ||
+    value === 'etf-insight' ||
     value === 'calendar' ||
     value === 'account' ||
     value === 'settings' ||

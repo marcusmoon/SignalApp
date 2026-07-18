@@ -30,6 +30,8 @@ import SettingsScreen from '@/app/settings';
 import TermsHistoryScreen from '@/app/terms-history';
 import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
+import { EtfInsightDetailContent } from '@/components/signal/EtfInsightDetailContent';
+import { EtfInsightsListContent } from '@/app/etf-insights';
 import { CommunityPostContent } from '@/app/community/[id]';
 import { SymbolDetailContent } from '@/app/symbol/[ticker]';
 import { BoardContent } from '@/components/community/BoardContent';
@@ -408,6 +410,8 @@ function IpadWideTabLayout({
     disclosureFlowParams,
     todayBriefingDate,
     marketBriefingParams,
+    etfInsightId,
+    etfInsightDate,
     communityPostId,
     symbolTicker,
     calendarFromAccount,
@@ -459,6 +463,15 @@ function IpadWideTabLayout({
                   initialDate={marketBriefingParams?.date ?? null}
                 />
               </BottomTabBarHeightContext.Provider>
+            ) : contentPane === 'etfInsights' ? (
+              <EtfInsightsListContent embedded onBack={subpaneBack} />
+            ) : contentPane === 'etfInsight' ? (
+              <EtfInsightDetailContent
+                embedded
+                id={etfInsightId}
+                date={etfInsightDate}
+                onBack={subpaneBack}
+              />
             ) : contentPane === 'calendar' ? (
               <CalendarScreen
                 embedded

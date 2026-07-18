@@ -118,23 +118,6 @@ import {
   saveHomeWatchlistDisplayCount,
 } from '@/services/homeWatchlistDisplayPreference';
 import {
-  HOME_BOARD_DISPLAY_MAX,
-  HOME_BOARD_DISPLAY_MIN,
-  defaultHomeBoardDisplayCounts,
-  loadHomeBoardDisplayCounts,
-  saveHomeBoardDisplayCountForSource,
-  type HomeBoardDisplayCounts,
-} from '@/services/homeBoardDisplayPreference';
-import { COMMUNITY_SOURCES, type CommunitySourceKey } from '@/constants/communitySources';
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import {
-  HOME_MARKET_BRIEFING_DISPLAY_MAX,
-  HOME_MARKET_BRIEFING_DISPLAY_MIN,
-  HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
-  loadHomeMarketBriefingDisplayCount,
-  saveHomeMarketBriefingDisplayCount,
-} from '@/services/homeMarketBriefingDisplayPreference';
-import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -264,8 +247,7 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
 
 type SettingsCountPicker =
   | { kind: 'quotes'; field: 'popular' | 'mcap' | 'coin' }
-  | { kind: 'home'; field: 'newsFlow' | 'marketBriefing' | 'watchlist' }
-  | { kind: 'homeBoard'; source: CommunitySourceKey };
+  | { kind: 'home'; field: 'newsFlow' | 'watchlist' };
 
 function settingsCountChoices(min: number, max: number): number[] {
   const out: number[] = [];
@@ -1072,14 +1054,6 @@ export default function SettingsScreen({
   const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
-  const [homeBoardDisplayCounts, setHomeBoardDisplayCounts] = useState<HomeBoardDisplayCounts>(
-    defaultHomeBoardDisplayCounts,
-  );
-  const [homeBoardDisplayReady, setHomeBoardDisplayReady] = useState(false);
-  const [homeMarketBriefingDisplayCount, setHomeMarketBriefingDisplayCount] = useState(
-    HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
-  );
-  const [homeMarketBriefingDisplayReady, setHomeMarketBriefingDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1122,14 +1096,8 @@ export default function SettingsScreen({
     if (countPicker.kind === 'quotes') {
       return quotesListCountChoicesForField(countPicker.field);
     }
-    if (countPicker.kind === 'homeBoard') {
-      return settingsCountChoices(HOME_BOARD_DISPLAY_MIN, HOME_BOARD_DISPLAY_MAX);
-    }
     if (countPicker.field === 'newsFlow') {
       return settingsCountChoices(HOME_NEWS_FLOW_DISPLAY_MIN, HOME_NEWS_FLOW_DISPLAY_MAX);
-    }
-    if (countPicker.field === 'marketBriefing') {
-      return settingsCountChoices(HOME_MARKET_BRIEFING_DISPLAY_MIN, HOME_MARKET_BRIEFING_DISPLAY_MAX);
     }
     return settingsCountChoices(HOME_WATCHLIST_DISPLAY_MIN, HOME_WATCHLIST_DISPLAY_MAX);
   }, [countPicker]);
@@ -1141,11 +1109,7 @@ export default function SettingsScreen({
       if (countPicker.field === 'mcap') return t('settingsQuotesMcapCountLabel');
       return t('settingsQuotesCoinCountLabel');
     }
-    if (countPicker.kind === 'homeBoard') {
-      return t(communitySourceLabelId(countPicker.source));
-    }
     if (countPicker.field === 'newsFlow') return t('settingsHomeNewsFlowDisplaySection');
-    if (countPicker.field === 'marketBriefing') return t('settingsHomeMarketBriefingDisplaySection');
     return t('settingsHomeWatchlistDisplaySection');
   }, [countPicker, t]);
 
@@ -1156,18 +1120,12 @@ export default function SettingsScreen({
       if (countPicker.field === 'mcap') return quotesListLimits.mcapMax;
       return quotesListLimits.coinMax;
     }
-    if (countPicker.kind === 'homeBoard') {
-      return homeBoardDisplayCounts[countPicker.source];
-    }
     if (countPicker.field === 'newsFlow') return homeNewsFlowDisplayCount;
-    if (countPicker.field === 'marketBriefing') return homeMarketBriefingDisplayCount;
     return homeWatchlistDisplayCount;
   }, [
     countPicker,
     quotesListLimits,
-    homeBoardDisplayCounts,
     homeNewsFlowDisplayCount,
-    homeMarketBriefingDisplayCount,
     homeWatchlistDisplayCount,
   ]);
 
@@ -1186,14 +1144,9 @@ export default function SettingsScreen({
           void saveQuotesListLimits(next);
           return next;
         });
-      } else if (countPicker.kind === 'homeBoard') {
-        void saveHomeBoardDisplayCountForSource(countPicker.source, n).then(setHomeBoardDisplayCounts);
       } else if (countPicker.field === 'newsFlow') {
         setHomeNewsFlowDisplayCount(n);
         void saveHomeNewsFlowDisplayCount(n);
-      } else if (countPicker.field === 'marketBriefing') {
-        setHomeMarketBriefingDisplayCount(n);
-        void saveHomeMarketBriefingDisplayCount(n);
       } else {
         setHomeWatchlistDisplayCount(n);
         void saveHomeWatchlistDisplayCount(n);
@@ -1349,18 +1302,6 @@ export default function SettingsScreen({
     setHomeWatchlistDisplayReady(true);
   }, []);
 
-  const reloadHomeBoardDisplayPref = useCallback(async () => {
-    const v = await loadHomeBoardDisplayCounts();
-    setHomeBoardDisplayCounts(v);
-    setHomeBoardDisplayReady(true);
-  }, []);
-
-  const reloadHomeMarketBriefingDisplayPref = useCallback(async () => {
-    const v = await loadHomeMarketBriefingDisplayCount();
-    setHomeMarketBriefingDisplayCount(v);
-    setHomeMarketBriefingDisplayReady(true);
-  }, []);
-
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1384,8 +1325,6 @@ export default function SettingsScreen({
     void reloadMoreReferenceLinksPref();
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
-    void reloadHomeBoardDisplayPref();
-    void reloadHomeMarketBriefingDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1399,8 +1338,6 @@ export default function SettingsScreen({
     reloadMoreReferenceLinksPref,
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
-    reloadHomeBoardDisplayPref,
-    reloadHomeMarketBriefingDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -2101,10 +2038,7 @@ clearCalendarCache();
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
-              {!homeNewsFlowDisplayReady ||
-              !homeWatchlistDisplayReady ||
-              !homeBoardDisplayReady ||
-              !homeMarketBriefingDisplayReady ? (
+              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
@@ -2123,20 +2057,6 @@ clearCalendarCache();
                   </View>
 
                   <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsHomeMarketBriefingDisplaySection')}</Text>
-                    <Pressable
-                      onPress={() => setCountPicker({ kind: 'home', field: 'marketBriefing' })}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsHomeMarketBriefingDisplayValue', {
-                        count: String(homeMarketBriefingDisplayCount),
-                      })}>
-                      <Text style={styles.limitPickerTriggerText}>{homeMarketBriefingDisplayCount}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.limitRow}>
                     <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
                     <Pressable
                       onPress={() => setCountPicker({ kind: 'home', field: 'watchlist' })}
@@ -2148,36 +2068,6 @@ clearCalendarCache();
                       <Text style={styles.limitPickerTriggerText}>{homeWatchlistDisplayCount}</Text>
                       <FontAwesome name="chevron-down" size={14} color={theme.green} />
                     </Pressable>
-                  </View>
-
-                  <Text style={[styles.prefLabel, { marginTop: 4 }]}>
-                    {t('settingsHomeBoardDisplaySection')}
-                  </Text>
-                  <View style={styles.boardSubRows}>
-                    {COMMUNITY_SOURCES.map((source, index) => {
-                      const count = homeBoardDisplayCounts[source];
-                      const isLast = index === COMMUNITY_SOURCES.length - 1;
-                      return (
-                        <View
-                          key={source}
-                          style={[styles.limitRow, isLast && styles.limitRowLast]}>
-                          <Text style={[styles.prefLabel, styles.boardSubLabel]}>
-                            {t(communitySourceLabelId(source))}
-                          </Text>
-                          <Pressable
-                            onPress={() => setCountPicker({ kind: 'homeBoard', source })}
-                            style={styles.limitPickerTrigger}
-                            accessibilityRole="button"
-                            accessibilityLabel={t('settingsHomeBoardDisplaySourceValue', {
-                              board: t(communitySourceLabelId(source)),
-                              count: String(count),
-                            })}>
-                            <Text style={styles.limitPickerTriggerText}>{count}</Text>
-                            <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                          </Pressable>
-                        </View>
-                      );
-                    })}
                   </View>
                 </>
               )}

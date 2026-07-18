@@ -1,4 +1,3 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -16,30 +15,21 @@ import {
 } from '@/constants/comfortDensity';
 import {
   FEED_BADGE_PX,
-  FEED_BODY_PX,
   FEED_DIGEST_TITLE_PX,
-  FEED_META_TIME_PX,
-  FEED_META_TRAIL_PX,
-  FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
+import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
-  briefingSourceIconEntries,
   digestSourceIconEntries,
-  SourceIconStack,
 } from '@/components/signal/SourceIconStack';
-import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { COMMUNITY_SOURCES, communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -50,16 +40,25 @@ import {
   type NewsIssuesCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
-import { marketBriefingAccent, newsSegmentAccent } from '@/constants/segmentAccent';
+import { newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
-import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
+import {
+  filterCalendarChipsForHome,
+  homeCalendarChipLabel,
+  homeCalendarChipRangeEnd,
+} from '@/domain/home/calendarChipLabel';
+import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
+import {
+  homeHeroHeadline,
+  selectHomeHeroBriefing,
+} from '@/domain/home/selectHomeHeroBriefing';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -83,9 +82,7 @@ import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBrie
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
-import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import type {
-  SignalApiCommunityPost,
   SignalApiEtfInsight,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
@@ -94,18 +91,6 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
-import {
-  defaultHomeBoardDisplayCounts,
-  loadHomeBoardDisplayCounts,
-  subscribeHomeBoardDisplayCountChanged,
-  type HomeBoardDisplayCounts,
-} from '@/services/homeBoardDisplayPreference';
-import {
-  HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
-  HOME_MARKET_BRIEFING_DISPLAY_MAX,
-  loadHomeMarketBriefingDisplayCount,
-  subscribeHomeMarketBriefingDisplayCountChanged,
-} from '@/services/homeMarketBriefingDisplayPreference';
 import {
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
   loadHomeNewsFlowDisplayCount,
@@ -132,7 +117,7 @@ import {
 
 const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
-const HOME_CALENDAR_LIMIT = 6;
+const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
 type HomeFocusContentProps = {
@@ -163,25 +148,10 @@ function sortBriefingTime(row: SignalApiMarketBriefing): string {
   return String(row.publishedAt || row.updatedAt || row.createdAt || row.briefingDate || '');
 }
 
-function boardPostSortTime(post: SignalApiCommunityPost): string {
-  return String(post.publishedAt || post.fetchedAt || post.updatedAt || '');
-}
-
-function sortBoardPostsByNewest(posts: SignalApiCommunityPost[]): SignalApiCommunityPost[] {
-  return [...posts].sort((a, b) => boardPostSortTime(b).localeCompare(boardPostSortTime(a)));
-}
-
 function briefingLeadText(row: SignalApiMarketBriefing): string {
   const summary = String(row.summary || row.headline || '').trim();
   if (summary) return summary;
   return row.overview[0] || '';
-}
-
-/** 홈 미리보기 — 짧은 헤드라인 우선 (전문은 상세에서) */
-function briefingHomeTitle(row: SignalApiMarketBriefing): string {
-  const headline = String(row.headline || '').trim();
-  if (headline) return headline;
-  return briefingLeadText(row);
 }
 
 function briefingVisibleKey(row: SignalApiMarketBriefing): string {
@@ -244,13 +214,6 @@ function formatPrice(row: QuoteRow): string {
   const value = row.quote?.currentPrice;
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
-}
-
-function disclosureMarketLabel(market: string, locale: string): string {
-  const key = String(market || '').trim().toLowerCase();
-  if (key === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
-  if (key === 'us') return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
-  return key ? key.toUpperCase() : 'SIGNAL';
 }
 
 function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessionKey | undefined {
@@ -323,14 +286,7 @@ export function HomeFocusContent({
   const [error, setError] = useState<string | null>(null);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
-  const [boardDisplayCounts, setBoardDisplayCounts] = useState<HomeBoardDisplayCounts>(
-    defaultHomeBoardDisplayCounts,
-  );
-  const [marketBriefingDisplayCount, setMarketBriefingDisplayCount] = useState(
-    HOME_MARKET_BRIEFING_DISPLAY_DEFAULT,
-  );
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
-  const [boardPosts, setBoardPosts] = useState<SignalApiCommunityPost[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
@@ -338,13 +294,24 @@ export function HomeFocusContent({
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
-  const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
   const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
-  const visibleCalendarEvents = useMemo(
-    () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
-    [calendarEvents],
+
+  const homeHero = useMemo(
+    () => selectHomeHeroBriefing({ selectedYmd, todayYmd, todayBriefing, briefings }),
+    [selectedYmd, todayYmd, todayBriefing, briefings],
   );
-  const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
+
+  const homeCalendarChips = useMemo(
+    () =>
+      filterCalendarChipsForHome(
+        calendarEvents,
+        selectedYmd,
+        todayYmd,
+        HOME_CALENDAR_CHIP_LIMIT,
+      ),
+    [calendarEvents, selectedYmd, todayYmd],
+  );
+
   const homeIssues = useMemo(
     () =>
       [...issues]
@@ -352,12 +319,20 @@ export function HomeFocusContent({
         .slice(0, newsFlowDisplayCount),
     [issues, newsFlowDisplayCount],
   );
-  const homeBriefings = useMemo(
-    () => briefings.slice(0, marketBriefingDisplayCount),
-    [briefings, marketBriefingDisplayCount],
-  );
+
+  const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
+    if (!etfInsight) return [];
+    return etfHomeHeatmapCells(etfInsight).map((cell) => ({
+      key: cell.key,
+      title: cell.title,
+      subtitle: cell.subtitle,
+      changePercent: cell.changePercent,
+      displayPercent: cell.changePercent,
+    }));
+  }, [etfInsight]);
+
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
-    resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, boardPosts, loading],
+    resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
   });
   const scrollResetKey = selectedYmd;
 
@@ -371,6 +346,12 @@ export function HomeFocusContent({
       }),
     [locale, selectedYmd],
   );
+
+  const heroSectionTitle = homeHero
+    ? homeHero.kind === 'today'
+      ? t('ipadHomeTitle')
+      : t('ipadHomeSignalTitle')
+    : t('ipadHomeTitle');
 
   const changeSelectedYmd = useCallback(
     (ymd: string) => {
@@ -393,7 +374,6 @@ export function HomeFocusContent({
       setBriefings([]);
       setTodayBriefing(null);
       setCalendarEvents([]);
-      setBoardPosts([]);
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -403,30 +383,12 @@ export function HomeFocusContent({
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const isDateChange = loadedYmdRef.current !== selectedYmd;
-      // Clear below-fold sections so prior-date data does not linger during wave 2.
       if (isDateChange) {
         setBriefings([]);
       }
       setCalendarEvents([]);
-      setBoardPosts([]);
-      const fetchBoardPosts =
-        selectedYmd === todayYmd
-          ? Promise.all(
-              COMMUNITY_SOURCES.map((source) =>
-                fetchSignalCommunity(
-                  { source, limit: boardDisplayCounts[source] },
-                  { cacheMode },
-                ).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
-              ),
-            ).then((pages) => ({
-              items: sortBoardPostsByNewest(
-                COMMUNITY_SOURCES.flatMap((_, index) => pages[index]?.items ?? []),
-              ),
-            }))
-          : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
 
-      /** Wave 1 — above-the-fold: briefing, issues, market briefings, ETF briefing, watchlist quotes. */
-      const [todayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight] = await Promise.all([
+      const [nextTodayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -447,7 +409,7 @@ export function HomeFocusContent({
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
       }
       if (generation !== loadGenerationRef.current) return;
-      setTodayBriefing(todayBriefing);
+      setTodayBriefing(nextTodayBriefing);
       setIssues(nextIssues);
       setQuotes(
         symbols.map((symbol) => {
@@ -458,23 +420,22 @@ export function HomeFocusContent({
       setBriefings(
         uniqueVisibleBriefings(
           [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
-        ).slice(0, HOME_MARKET_BRIEFING_DISPLAY_MAX),
+        ),
       );
       setEtfInsight(nextEtfInsight);
 
-      /** Wave 2 — below-fold; runs after first paint (load returns after wave 1). */
       void (async () => {
-        const [calendarRows, boardPage] = await Promise.all([
-          fetchSignalCalendar(
-            {
-              from: shiftYmd(selectedYmd, -1),
-              to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
-              limit: 120,
-            },
-            { cacheMode },
-          ).catch(() => []),
-          fetchBoardPosts,
-        ]);
+        const calendarRangeEnd = selectedYmd === todayYmd
+          ? homeCalendarChipRangeEnd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS)
+          : selectedYmd;
+        const calendarRows = await fetchSignalCalendar(
+          {
+            from: shiftYmd(selectedYmd, -1),
+            to: calendarRangeEnd,
+            limit: 120,
+          },
+          { cacheMode },
+        ).catch(() => []);
 
         if (generation !== loadGenerationRef.current) return;
         setCalendarEvents(
@@ -484,20 +445,15 @@ export function HomeFocusContent({
               .filter((row): row is CalendarEvent => row != null),
             watchlist,
             selectedYmd,
-            shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+            calendarRangeEnd,
           ),
         );
-        if (selectedYmd === todayYmd) {
-          setBoardPosts(boardPage.items ?? []);
-        } else {
-          setBoardPosts([]);
-        }
       })();
     } catch (e) {
       if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCounts]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -537,16 +493,12 @@ export function HomeFocusContent({
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   const reloadHomeDisplayPrefs = useCallback(async () => {
-    const [newsFlow, watchlist, board, marketBriefing] = await Promise.all([
+    const [newsFlow, watchlist] = await Promise.all([
       loadHomeNewsFlowDisplayCount(),
       loadHomeWatchlistDisplayCount(),
-      loadHomeBoardDisplayCounts(),
-      loadHomeMarketBriefingDisplayCount(),
     ]);
     setNewsFlowDisplayCount(newsFlow);
     setWatchlistDisplayCount(watchlist);
-    setBoardDisplayCounts(board);
-    setMarketBriefingDisplayCount(marketBriefing);
     setHomeDisplayPrefsReady(true);
   }, []);
 
@@ -557,12 +509,6 @@ export function HomeFocusContent({
         void reloadHomeDisplayPrefs();
       }),
       subscribeHomeWatchlistDisplayCountChanged(() => {
-        void reloadHomeDisplayPrefs();
-      }),
-      subscribeHomeBoardDisplayCountChanged(() => {
-        void reloadHomeDisplayPrefs();
-      }),
-      subscribeHomeMarketBriefingDisplayCountChanged(() => {
         void reloadHomeDisplayPrefs();
       }),
     ];
@@ -604,26 +550,17 @@ export function HomeFocusContent({
   const openSignal = useCallback(
     (row?: SignalApiMarketBriefing) => {
       const session = signalSessionKeyForBriefing(row);
-      const params = { date: selectedYmd, ...(session ? { session } : null) };
       if (ipadNav.isAvailable) {
         ipadNav.showMarketBriefing(session, selectedYmd, { drillFrom: 'home' });
         return;
       }
       router.push({
         pathname: '/market-briefing',
-        params,
+        params: { date: selectedYmd, ...(session ? { session } : null) },
       } as never);
     },
     [ipadNav, router, selectedYmd],
   );
-
-  const openSignalSheet = useCallback((row: SignalApiMarketBriefing) => {
-    setBriefingSheet(row);
-  }, []);
-
-  const closeBriefingSheet = useCallback(() => {
-    setBriefingSheet(null);
-  }, []);
 
   const openEtfInsightsList = useCallback(() => {
     if (ipadNav.isAvailable) {
@@ -642,33 +579,11 @@ export function HomeFocusContent({
     setEtfInsightSheetOpen(false);
   }, []);
 
-  const briefingSheetTitle = useMemo(
-    () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
-    [briefingSheet],
-  );
-
-  const briefingSheetSessionLabel = useMemo(() => {
-    if (!briefingSheet) return undefined;
-    const session = HOME_SIGNAL_SESSIONS.find(
-      (candidate) =>
-        candidate.market === briefingSheet.market && candidate.session === briefingSheet.session,
-    );
-    return session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle');
-  }, [briefingSheet, t]);
-
   const openQuotes = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showTabs();
     }
     router.navigate('/(tabs)/quotes' as never);
-  }, [ipadNav, router]);
-
-  const openBoard = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showBoard({ drillFrom: 'home' });
-      return;
-    }
-    router.push('/more-board' as never);
   }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
@@ -723,49 +638,69 @@ export function HomeFocusContent({
     } as never);
   }, [ipadNav, router, selectedYmd]);
 
-  const formatCalendarDateLabel = useCallback(
-    (event: CalendarEvent) =>
-      formatLocalYmdLabel(calendarEventDisplayYmd(event), locale, {
-        month: 'short',
-        day: 'numeric',
-        weekday: 'short',
-      }),
-    [locale],
-  );
+  const openHero = useCallback(() => {
+    if (!homeHero) return;
+    if (homeHero.kind === 'today') {
+      openTodayBriefing();
+      return;
+    }
+    openSignal(homeHero.briefing);
+  }, [homeHero, openSignal, openTodayBriefing]);
 
-  const renderTodayBriefingCard = useCallback(
-    (item: SignalApiTodayBriefing) => {
-      const leadText = item.headline?.trim() || item.summary?.trim() || '';
-      const bodyText = item.summary?.trim() || '';
-      const previewText = bodyText && bodyText !== leadText ? bodyText : '';
+  const renderHeroCard = useCallback(() => {
+    if (!homeHero) {
       return (
-        <Pressable
-          onPress={openTodayBriefing}
-          accessibilityRole="button"
-          accessibilityLabel={t('ipadHomeTitle')}
-          style={({ pressed }) => [
-            styles.heroCard,
-            showIssueSummary && styles.heroCardSummary,
-            pressed && styles.pressed,
-          ]}>
-          <View style={styles.issueGroupList}>
-            <View style={styles.issueGroupItem}>
-              {leadText ? (
-                <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
-                  {leadText}
-                </ChangeTintedText>
-              ) : null}
-              {previewText ? (
-                <ChangeTintedText style={styles.signalText} numberOfLines={2}>
-                  {previewText}
-                </ChangeTintedText>
-              ) : null}
-            </View>
-          </View>
-        </Pressable>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>{t('ipadHomeHeroEmpty')}</Text>
+        </View>
       );
-    },
-    [openTodayBriefing, showIssueSummary, styles, t],
+    }
+    const headline = homeHeroHeadline(homeHero);
+    return (
+      <Pressable
+        onPress={openHero}
+        accessibilityRole="button"
+        accessibilityLabel={heroSectionTitle}
+        style={({ pressed }) => [
+          styles.heroCard,
+          showIssueSummary && styles.heroCardSummary,
+          pressed && styles.pressed,
+        ]}>
+        {headline ? (
+          <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
+            {headline}
+          </ChangeTintedText>
+        ) : null}
+      </Pressable>
+    );
+  }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles, t]);
+
+  const renderCalendarChips = useCallback(
+    () => (
+      <View style={styles.calendarChipRow}>
+        {homeCalendarChips.map((event) => (
+          <Pressable
+            key={event.id}
+            onPress={openCalendar}
+            accessibilityRole="button"
+            accessibilityLabel={homeCalendarChipLabel(
+              event,
+              selectedYmd,
+              t(calendarTypeLabelId(event.type)),
+            )}
+            style={({ pressed }) => [styles.calendarChip, pressed && styles.pressed]}>
+            <Text style={styles.calendarChipText} numberOfLines={1}>
+              {homeCalendarChipLabel(
+                event,
+                selectedYmd,
+                t(calendarTypeLabelId(event.type)),
+              )}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    ),
+    [homeCalendarChips, openCalendar, selectedYmd, styles, t],
   );
 
   const renderEtfInsightCard = useCallback(
@@ -802,6 +737,42 @@ export function HomeFocusContent({
     },
     [openEtfInsightSheet, showIssueSummary, styles, t],
   );
+
+  const renderEtfSectionBody = useCallback(() => {
+    if (!etfInsight) return null;
+    if (etfHeatmapCells.length > 0) {
+      return (
+        <Pressable
+          onPress={openEtfInsightSheet}
+          accessibilityRole="button"
+          accessibilityLabel={t('homeEtfInsightTitle')}
+          style={({ pressed }) => [
+            styles.heroCard,
+            showIssueSummary && styles.heroCardSummary,
+            pressed && styles.pressed,
+          ]}>
+          <ChangeHeatmapGrid
+            cells={etfHeatmapCells}
+            theme={theme}
+            scaleFont={scaleFont}
+            changeColorConvention={quoteChange.convention ?? 'korea'}
+          />
+        </Pressable>
+      );
+    }
+    return renderEtfInsightCard(etfInsight);
+  }, [
+    etfHeatmapCells,
+    etfInsight,
+    openEtfInsightSheet,
+    quoteChange.convention,
+    renderEtfInsightCard,
+    scaleFont,
+    showIssueSummary,
+    styles,
+    t,
+    theme,
+  ]);
 
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
@@ -842,142 +813,6 @@ export function HomeFocusContent({
     [openIssueSheet, showIssueSummary, styles, locale, t, theme],
   );
 
-  const renderSignalCard = useCallback(
-    (rows: SignalApiMarketBriefing[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.issueGroupList}>
-          {rows.map((row, index) => {
-            const session = HOME_SIGNAL_SESSIONS.find(
-              (candidate) => candidate.market === row.market && candidate.session === row.session,
-            );
-            const sourceEntries = briefingSourceIconEntries(row.sourceRefs);
-            const sessionLabel = session
-              ? t(session.labelId as MessageId)
-              : t('briefingSessionEmptyTitle');
-            const marketA11y =
-              String(row.market || '').trim().toLowerCase() === 'kr'
-                ? disclosureMarketLabel('kr', locale)
-                : disclosureMarketLabel('us', locale);
-            return (
-              <HomeDigestFeedRow
-                key={row.id}
-                variant="signal"
-                title={briefingHomeTitle(row)}
-                titleLines={2}
-                timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
-                trailText={sessionLabel}
-                sourceEntries={sourceEntries}
-                bordered={index < rows.length - 1}
-                onPress={() => openSignalSheet(row)}
-                footerLead={
-                  <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
-                    <CommunitySourceMark
-                      accent={marketBriefingAccent(row.market, theme)}
-                      size={18}
-                      style={styles.boardSourceMark}
-                    />
-                  </View>
-                }
-              />
-            );
-          })}
-        </View>
-      </View>
-    ),
-    [locale, openSignalSheet, showIssueSummary, styles, t, theme],
-  );
-
-  const renderCalendarCard = useCallback(
-    (rows: CalendarEvent[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.issueGroupList}>
-          {rows.map((event, index) => {
-            const sourceEntries = calendarProviderSourceEntries(event.provider);
-            return (
-            <Pressable
-              key={event.id}
-              onPress={openCalendar}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.issueGroupItem,
-                index < rows.length - 1 && styles.issueGroupItemBorder,
-                pressed && styles.pressed,
-              ]}>
-              <View style={styles.issueRowTop}>
-                <View style={styles.calendarPillRow}>
-                  <Text style={styles.calendarDatePill}>{formatCalendarDateLabel(event)}</Text>
-                  <Text style={styles.calendarTypePill}>{t(calendarTypeLabelId(event.type))}</Text>
-                  {event.symbol ? (
-                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
-                      {event.symbol}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {[event.time, event.country].filter(Boolean).join(' · ') || '—'}
-                </Text>
-              </View>
-              <Text style={styles.issueGroupTitle} numberOfLines={2}>
-                {event.title}
-              </Text>
-              {sourceEntries.length > 0 ? (
-                <View style={styles.calendarSourceFooter}>
-                  <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
-                </View>
-              ) : null}
-            </Pressable>
-            );
-          })}
-        </View>
-      </View>
-    ),
-    [formatCalendarDateLabel, openCalendar, showIssueSummary, styles, t],
-  );
-
-  const renderBoardCard = useCallback(
-    () => (
-      <View style={[styles.heroCard, styles.heroCardCompact]}>
-        {boardPosts.length > 0 ? (
-          <View style={styles.issueGroupList}>
-            {boardPosts.map((post, index) => {
-              const sourceLabel = t(communitySourceLabelId(post.source));
-              const sourceAccent = communitySourceAccent(post.source, theme);
-              return (
-                <HomeDigestFeedRow
-                  key={post.id}
-                  title={post.title}
-                  titleLines={2}
-                  timeLabel={formatFeedItemTimeLabel(post.publishedAt, locale)}
-                  summary={post.body?.trim() || null}
-                  summaryLines={1}
-                  footerLead={
-                    <View style={styles.boardFooterLead}>
-                      <CommunitySourceMark accent={sourceAccent} size={18} style={styles.boardSourceMark} />
-                      <Text style={styles.boardSourceLabel} numberOfLines={1}>
-                        {sourceLabel}
-                      </Text>
-                    </View>
-                  }
-                  bordered={index < boardPosts.length - 1}
-                  onPress={() => {
-                    if (ipadNav.isAvailable) {
-                      ipadNav.showCommunityPost(post.id, { drillFrom: 'home' });
-                      return;
-                    }
-                    router.push(`/community/${encodeURIComponent(post.id)}`);
-                  }}
-                />
-              );
-            })}
-          </View>
-        ) : (
-          <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
-        )}
-      </View>
-    ),
-    [boardPosts, locale, router, styles, t, theme],
-  );
-
   return (
     <>
       <View style={styles.root}>
@@ -1001,7 +836,7 @@ export function HomeFocusContent({
       <WebWheelScrollView
         ref={scrollRef as never}
         scrollResetKey={scrollResetKey}
-        contentRevision={[issues, briefings, todayBriefing, etfInsight, calendarEvents, boardPosts, loading]}
+        contentRevision={[issues, briefings, todayBriefing, etfInsight, calendarEvents, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -1021,72 +856,30 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          {todayBriefing ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('ipadHomeTitle')}
-                badge={<AiBadge />}
-                onPress={openTodayBriefing}
-                accessibilityLabel={t('commonViewAll')}
-              />
-              {renderTodayBriefingCard(todayBriefing)}
-            </View>
-          ) : null}
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={heroSectionTitle}
+              badge={<AiBadge />}
+              onPress={homeHero ? openHero : undefined}
+              accessibilityLabel={homeHero ? t('commonViewAll') : undefined}
+            />
+            {renderHeroCard()}
+          </View>
 
           <View style={styles.section}>
             <HomeSectionHeader
-              title={t('newsIssuesTitle')}
-              badge={<AiBadge />}
-              onPress={() => openIssue()}
+              title={t('ipadHomeCalendarTitle')}
+              onPress={openCalendar}
               accessibilityLabel={t('commonViewAll')}
             />
-            {homeIssues.length > 0 ? (
-              renderIssueCard(homeIssues)
+            {homeCalendarChips.length > 0 ? (
+              renderCalendarChips()
             ) : (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+                <Text style={styles.emptyText}>{t('ipadHomeCalendarEmpty')}</Text>
               </View>
             )}
           </View>
-
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('ipadHomeSignalTitle')}
-              badge={<AiBadge />}
-              onPress={homeBriefings.length > 0 ? openSignal : undefined}
-              accessibilityLabel={homeBriefings.length > 0 ? t('commonViewAll') : undefined}
-            />
-            {homeBriefings.length > 0 ? (
-              renderSignalCard(homeBriefings)
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('homeFocusSignalEmpty')}</Text>
-              </View>
-            )}
-          </View>
-
-          {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('homeEtfInsightTitle')}
-                badge={<AiBadge />}
-                onPress={openEtfInsightsList}
-                accessibilityLabel={t('commonViewAll')}
-              />
-              {renderEtfInsightCard(etfInsight)}
-            </View>
-          ) : null}
-
-          {selectedIsExactToday ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('screenBoard')}
-                onPress={openBoard}
-                accessibilityLabel={t('commonViewAll')}
-              />
-              {renderBoardCard()}
-            </View>
-          ) : null}
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
@@ -1147,31 +940,30 @@ export function HomeFocusContent({
             </View>
           ) : null}
 
+          {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('homeEtfInsightTitle')}
+                badge={<AiBadge />}
+                onPress={openEtfInsightsList}
+                accessibilityLabel={t('commonViewAll')}
+              />
+              {renderEtfSectionBody()}
+            </View>
+          ) : null}
+
           <View style={styles.section}>
             <HomeSectionHeader
-              title={t('ipadHomeCalendarTitle')}
-              onPress={openCalendar}
+              title={t('newsIssuesTitle')}
+              badge={<AiBadge />}
+              onPress={() => openIssue()}
               accessibilityLabel={t('commonViewAll')}
             />
-            {visibleCalendarEvents.length > 0 ? (
-              <>
-                {renderCalendarCard(visibleCalendarEvents)}
-                {hiddenCalendarCount > 0 ? (
-                  <Pressable
-                    onPress={openCalendar}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
-                    style={({ pressed }) => [styles.calendarMoreRow, pressed && styles.pressed]}>
-                    <Text style={styles.calendarMoreText}>
-                      {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
-                    </Text>
-                    <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
-                  </Pressable>
-                ) : null}
-              </>
+            {homeIssues.length > 0 ? (
+              renderIssueCard(homeIssues)
             ) : (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('ipadHomeCalendarEmpty')}</Text>
+                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
               </View>
             )}
           </View>
@@ -1186,13 +978,6 @@ export function HomeFocusContent({
         digestSummary={digestSheetSummary}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
-      />
-      <MarketBriefingSheet
-        visible={briefingSheet != null}
-        briefing={briefingSheet}
-        title={briefingSheetTitle}
-        sessionLabel={briefingSheetSessionLabel}
-        onClose={closeBriefingSheet}
       />
       <EtfInsightSheet
         visible={etfInsightSheetOpen && etfInsight != null}
@@ -1270,12 +1055,6 @@ function makeStyles(
     heroCardSummary: {
       minHeight: 0,
     },
-    issueRowTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: COMFORT_GAP_SM,
-    },
     issueGroupList: {
       gap: 0,
     },
@@ -1284,46 +1063,12 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
-    issueGroupItemBorder: cardListRowSeparatorStyle(theme),
     issueGroupTitle: {
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
-    calendarSourceFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 2,
-    },
-    issueGroupSummary: {
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
-      marginTop: 1,
-    },
-    overviewMiniList: {
-      gap: 2,
-      marginTop: 2,
-    },
-    issueGroupMetaText: {
-      flexShrink: 0,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    issueInlineMetaText: {
-      minWidth: 0,
-      flexShrink: 1,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    /** 헤더↔본문 — 전 섹션 동일 (예전 heroBlock SM과 맞춤) */
     section: {
       gap: COMFORT_GAP_SM,
     },
@@ -1347,31 +1092,9 @@ function makeStyles(
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
     },
-    boardEmptyText: {
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.bodyWeight,
-      color: theme.textDim,
-      marginTop: 4,
-    },
-    boardFooterLead: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
     boardSourceMark: {
       borderWidth: 0,
       backgroundColor: 'transparent',
-    },
-    boardSourceLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
     },
     quoteTileContent: {
       flex: 1,
@@ -1395,41 +1118,11 @@ function makeStyles(
       gap: 2,
       alignItems: 'flex-end',
     },
-    quoteRow: {
-      minHeight: 72,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: COMFORT_GAP_MD,
-      paddingHorizontal: 14,
-      paddingVertical: COMFORT_PADDING_ROW_V,
-    },
-    rowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    quoteNameCol: {
-      flex: 1,
-      minWidth: 0,
-    },
     quoteSymbol: {
       fontSize: ft.ff(14),
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    quoteName: {
-      marginTop: 2,
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    priceBox: {
-      minWidth: 88,
-      borderRadius: UI_RADIUS_CARD,
-      paddingHorizontal: 10,
-      paddingVertical: 10,
-      alignItems: 'flex-end',
     },
     priceText: {
       fontSize: ft.ff(12),
@@ -1449,50 +1142,27 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
-    calendarPillRow: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexGrow: 1,
+    calendarChipRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      flexWrap: 'wrap',
       gap: COMFORT_GAP_SM,
     },
-    calendarDatePill: {
+    calendarChip: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.greenDim,
-      color: theme.green,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    calendarTypePill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+      maxWidth: '100%',
+    },
+    calendarChipText: {
       fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    calendarMoreRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: COMFORT_GAP_SM,
-      paddingTop: 2,
-    },
-    calendarMoreText: {
-      fontSize: ft.ff(12),
       lineHeight: sf(16),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

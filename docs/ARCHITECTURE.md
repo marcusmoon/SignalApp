@@ -20,7 +20,7 @@
 
 | 탭 | 화면 | 역할 |
 |---|---|---|
-| 홈 | `app/(tabs)/home.tsx` | 마감·뉴스·시장 브리핑·(7일 이내) ETF 브리핑·관심 종목 (공시 흐름은 더보기/공시 탭) |
+| 홈 | `app/(tabs)/home.tsx` | 히어로(오늘 정리/장중 브리핑)·일정 칩·(오늘) 관심 종목·(7일 이내) 섹터 흐름·뉴스 (게시판·공시 흐름은 더보기/공시) |
 | 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·IT·YouTube 피드 (`YoutubeFeedPanel` 공유) |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
 | 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |

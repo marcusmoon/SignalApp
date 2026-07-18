@@ -44,6 +44,8 @@ export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
   date: string;
   digestId?: string | null;
+  /** 홈 섹션 `>` 드릴 — 상단 날짜피커 숨김 */
+  hideDateNavigator?: boolean;
 };
 export type IpadDisclosureFlowPaneParams = {
   date: string;
@@ -53,6 +55,8 @@ export type IpadDisclosureFlowPaneParams = {
 export type IpadMarketBriefingPaneParams = {
   session?: SignalSessionKey;
   date?: string;
+  /** 홈 섹션 `>` 드릴 — 상단 날짜피커 숨김 */
+  hideDateNavigator?: boolean;
 };
 
 export type WidePaneDrillFrom =
@@ -287,6 +291,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
             category: parseNewsIssuesCategory(p.category),
             date,
             digestId: p.digestId ?? null,
+            hideDateNavigator: p.from === 'home',
           });
         }
         return;
@@ -313,6 +318,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         setMarketBriefingParams({
           session: parseSignalSessionParam(p.session),
           date: parseDateParam(p.date),
+          hideDateNavigator: p.from === 'home',
         });
         return;
       }
@@ -600,14 +606,20 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showNewsIssues = useCallback(
     (next: IpadNewsIssuesPaneParams, options?: WidePaneDrillOptions) => {
-      setNewsIssuesParams(next);
+      const fromHome = options?.drillFrom === 'home' || next.hideDateNavigator === true;
+      const paneParams: IpadNewsIssuesPaneParams = {
+        ...next,
+        hideDateNavigator: fromHome,
+      };
+      setNewsIssuesParams(paneParams);
       if (useTwoPane) {
         beginWideOverlay(
           'news-issues',
           {
-            category: next.category,
-            date: next.date,
-            ...(next.digestId ? { digestId: next.digestId } : {}),
+            category: paneParams.category,
+            date: paneParams.date,
+            ...(paneParams.digestId ? { digestId: paneParams.digestId } : {}),
+            ...(fromHome ? { from: 'home' } : {}),
           },
           options?.drillFrom,
         );
@@ -617,9 +629,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       router.navigate({
         pathname: '/news-issues',
         params: {
-          category: next.category,
-          date: next.date,
-          ...(next.digestId ? { digestId: next.digestId } : null),
+          category: paneParams.category,
+          date: paneParams.date,
+          ...(paneParams.digestId ? { digestId: paneParams.digestId } : null),
+          ...(fromHome ? { from: 'home' } : null),
         },
       } as never);
     },
@@ -707,11 +720,13 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showMarketBriefing = useCallback(
     (session?: SignalSessionKey, date?: string, options?: WidePaneDrillOptions) => {
+      const fromHome = options?.drillFrom === 'home';
       if (session) pendingSignalSessionRef.current = session;
       if (date) pendingSignalDateRef.current = date;
       setMarketBriefingParams({
         ...(session ? { session } : null),
         ...(date ? { date } : null),
+        hideDateNavigator: fromHome,
       });
       if (useTwoPane) {
         beginWideOverlay(
@@ -719,6 +734,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           {
             ...(session ? { session } : null),
             ...(date ? { date } : null),
+            ...(fromHome ? { from: 'home' } : null),
           },
           options?.drillFrom,
         );
@@ -729,6 +745,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: {
           ...(session ? { session } : null),
           ...(date ? { date } : null),
+          ...(fromHome ? { from: 'home' } : null),
         },
       } as never);
     },

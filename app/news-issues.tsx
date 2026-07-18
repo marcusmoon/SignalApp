@@ -105,6 +105,8 @@ type NewsIssuesContentProps = {
   initialDate?: string;
   initialDigestId?: string | null;
   onBack?: () => void;
+  /** 홈 섹션 `>` 드릴 — 선택일이 고정이므로 날짜피커 숨김 */
+  hideDateNavigator?: boolean;
 };
 
 export function NewsIssuesContent({
@@ -113,6 +115,7 @@ export function NewsIssuesContent({
   initialDate = toYmd(new Date()),
   initialDigestId = null,
   onBack,
+  hideDateNavigator = false,
 }: NewsIssuesContentProps) {
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -258,20 +261,22 @@ export function NewsIssuesContent({
       <View style={[styles.pageColumn, isWide && styles.pageColumnWide]}>
         {onBack ? <WideSubpaneHeader title={t('newsIssuesTitle')} onBack={onBack} /> : null}
         <View style={[styles.topFixed, isWide && styles.topFixedWide]}>
-          <SignalDateNavigator
-            label={formatDateLabel(selectedYmd, locale)}
-            previousA11y={t('insightDatePrevious')}
-            nextA11y={t('insightDateNext')}
-            labelA11y={t('insightOpenCalendar')}
-            todayLabel={t('insightCalendarToday')}
-            onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
-            onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
-            onPressLabel={openDatePicker}
-            onToday={() => onPickDate(todayYmd)}
-            showToday={selectedYmd !== todayYmd}
-            nextDisabled={selectedYmd >= todayYmd}
-            style={styles.dateNavigator}
-          />
+          {hideDateNavigator ? null : (
+            <SignalDateNavigator
+              label={formatDateLabel(selectedYmd, locale)}
+              previousA11y={t('insightDatePrevious')}
+              nextA11y={t('insightDateNext')}
+              labelA11y={t('insightOpenCalendar')}
+              todayLabel={t('insightCalendarToday')}
+              onPrevious={() => onPickDate(shiftYmd(selectedYmd, -1))}
+              onNext={() => onPickDate(shiftYmd(selectedYmd, 1))}
+              onPressLabel={openDatePicker}
+              onToday={() => onPickDate(todayYmd)}
+              showToday={selectedYmd !== todayYmd}
+              nextDisabled={selectedYmd >= todayYmd}
+              style={styles.dateNavigator}
+            />
+          )}
           <View style={styles.segment}>
             {NEWS_ISSUES_CATEGORY_ORDER.map((key) => {
               const active = category === key;
@@ -374,7 +379,7 @@ export function NewsIssuesContent({
   return (
     <>
       {body}
-      {datePickerSheet}
+      {hideDateNavigator ? null : datePickerSheet}
       <DigestSourcesSheet
         visible={sourcesDigestId != null}
         digestTitle={sourcesDigest?.title ?? ''}
@@ -393,12 +398,18 @@ function firstStringParam(value: string | string[] | undefined): string | null {
 }
 
 export default function NewsIssuesScreen() {
-  const params = useLocalSearchParams<{ category?: string; date?: string; digestId?: string }>();
+  const params = useLocalSearchParams<{
+    category?: string;
+    date?: string;
+    digestId?: string;
+    from?: string;
+  }>();
   const { useTwoPane } = useResponsiveLayout();
   const { t } = useLocale();
   const initialCategory = parseCategory(params.category);
   const initialDate = parseDateParam(params.date);
   const initialDigestId = firstStringParam(params.digestId);
+  const fromHome = firstStringParam(params.from) === 'home';
 
   if (useTwoPane) {
     return (
@@ -408,6 +419,7 @@ export default function NewsIssuesScreen() {
           category: initialCategory,
           date: initialDate,
           ...(initialDigestId ? { digestId: initialDigestId } : {}),
+          ...(fromHome ? { from: 'home' } : {}),
         }}
       />
     );
@@ -419,6 +431,7 @@ export default function NewsIssuesScreen() {
       initialCategory={initialCategory}
       initialDate={initialDate}
       initialDigestId={initialDigestId}
+      hideDateNavigator={fromHome}
     />
   );
 

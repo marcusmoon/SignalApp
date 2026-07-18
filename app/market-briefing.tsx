@@ -14,9 +14,14 @@ export default function MarketBriefingScreen() {
   const { t } = useLocale();
   const router = useRouter();
   const { useTwoPane } = useResponsiveLayout();
-  const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
+  const routeParams = useLocalSearchParams<{
+    session?: string | string[];
+    date?: string | string[];
+    from?: string | string[];
+  }>();
   const session = firstRouteParam(routeParams.session) || undefined;
   const date = firstRouteParam(routeParams.date) || undefined;
+  const fromHome = firstRouteParam(routeParams.from) === 'home';
 
   if (useTwoPane) {
     return (
@@ -25,6 +30,7 @@ export default function MarketBriefingScreen() {
         params={{
           ...(session ? { session } : null),
           ...(date ? { date } : null),
+          ...(fromHome ? { from: 'home' } : null),
         }}
       />
     );
@@ -40,7 +46,7 @@ export default function MarketBriefingScreen() {
             headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
           }}
         />
-        <SignalScreen />
+        <SignalScreen hideDateNavigator={fromHome} />
       </BottomTabBarHeightContext.Provider>
     </PhoneMoreStackChromeProvider>
   );

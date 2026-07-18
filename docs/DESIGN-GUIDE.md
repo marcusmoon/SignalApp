@@ -153,8 +153,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 워치리스트 | **관심 종목** | quotes watchlist |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
 - **홈 섹션 순서**
-  - **오늘**: 히어로 1장 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름 → 뉴스 흐름
-  - **과거**: 히어로 1장 → 일정 칩(선택일) → (조건부) 섹터 흐름 → 뉴스 흐름 · 관심 종목·게시판 숨김
+  - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → 관심 종목 → (조건부) 섹터 흐름
+  - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → (조건부) 섹터 흐름 · 관심 종목·게시판 숨김
   - **관심 종목 `>`**: `/watchlist` 드릴 — 관심 세그먼트만 + 상단 백 (시세 탭 전체로 가지 않음)
 - **장중 브리핑·뉴스 흐름 `>`** (홈): `from=home` — 홈 선택일 고정, **날짜피커 숨김** (회차/카테고리 세그먼트는 유지). 알림·뉴스 탭 진입은 날짜피커 유지
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight

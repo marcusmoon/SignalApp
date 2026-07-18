@@ -50,19 +50,23 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
     "배당·방어 테마는 상대적으로 유출 또는 정체입니다."
   ],
   "themes": [
-    { "label": "AI / 반도체", "changePercent": 1.8 },
-    { "label": "배당", "changePercent": -0.4 }
+    {
+      "name": "반도체 급락 심화",
+      "rank": 1,
+      "momentum": "하락",
+      "etfs": ["SMH", "091160.KS"],
+      "summary": "미국·한국 반도체 ETF 동반 약세."
+    }
   ],
-  "flowHighlights": [
-    { "label": "SOXX", "value": "+120M" },
-    { "label": "XLE", "value": "-45M" }
-  ],
+  "flowHighlights": [],
   "heatmap": [
-    { "symbol": "SMH", "changePercent": 2.1 },
-    { "symbol": "XLU", "changePercent": -0.6 }
+    { "etf": "XLE", "sector": "에너지", "trend": "▲", "changePercent": 1.16 },
+    { "etf": "SMH", "sector": "반도체", "trend": "▽", "changePercent": -2.18 }
   ],
   "rotation": {
-    "summary": "성장·테마로 로테이션이 이어졌습니다."
+    "from": "반도체·성장주",
+    "to": "에너지·안전자산",
+    "confidence": "high"
   },
   "sourceRefs": [
     {

@@ -382,6 +382,7 @@ export function NewsIssuesContent({
       {hideDateNavigator ? null : datePickerSheet}
       <DigestSourcesSheet
         visible={sourcesDigestId != null}
+        kicker={t('newsIssuesTitle')}
         digestTitle={sourcesDigest?.title ?? ''}
         digestSummary={sourcesDigest?.summary?.trim() || undefined}
         rows={sourceRows}

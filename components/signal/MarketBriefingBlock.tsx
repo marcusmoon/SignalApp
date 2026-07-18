@@ -5,7 +5,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
-import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -102,21 +102,12 @@ function CompanyHighlightRow({
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
       <View style={styles.companyTopRow}>
-        <View
-          style={[
-            styles.companyIdentity,
-            showCompanyName ? styles.companyIdentityKr : null,
-          ]}>
-          <SymbolLogo symbol={item.symbol} size={20} />
-          <Text
-            style={[
-              styles.companyIdentityLabel,
-              showCompanyName ? styles.companyIdentityName : styles.companyIdentityTicker,
-            ]}
-            numberOfLines={1}>
-            {identityLabel}
-          </Text>
-        </View>
+        <SymbolIdentityChip
+          symbol={item.symbol}
+          label={identityLabel}
+          labelKind={showCompanyName ? 'name' : 'ticker'}
+          expandable={showCompanyName}
+        />
         {hasPrice || hasChange ? (
           <View style={styles.companyQuoteInline}>
             {hasPrice ? (
@@ -459,37 +450,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'space-between',
       gap: 10,
       minWidth: 0,
-    },
-    companyIdentity: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexShrink: 0,
-      minWidth: 72,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
-    },
-    companyIdentityKr: {
-      flexShrink: 1,
-      minWidth: 56,
-      maxWidth: '58%',
-    },
-    companyIdentityLabel: {
-      fontSize: ft.ff(12),
-      letterSpacing: -0.1,
-      flexShrink: 1,
-      minWidth: 0,
-    },
-    companyIdentityTicker: {
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      fontVariant: ['tabular-nums'],
-    },
-    companyIdentityName: {
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
     },
     companyQuoteInline: {
       flexDirection: 'row',

@@ -6,8 +6,8 @@ import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/C
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import { SymbolLinkedTintedText } from '@/components/signal/SymbolLinkedTintedText';
-import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -282,23 +282,17 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                   style={[styles.flowRow, index < flows.length - 1 && styles.listRowBordered]}>
                   <View style={styles.flowTopRow}>
                     {flow.etf ? (
-                      <Pressable
+                      <SymbolIdentityChip
+                        symbol={flow.etf}
+                        label={ticker}
+                        labelKind="ticker"
                         onPress={openSymbol}
-                        style={({ pressed }) => [
-                          styles.themeIdentity,
-                          pressed && styles.themeIdentityPressed,
-                        ]}
-                        accessibilityRole="link"
                         accessibilityLabel={
                           korea
                             ? t('quotesNaverFinanceA11y', { symbol: ticker })
                             : t('quotesYahooFinanceA11y', { symbol: ticker })
-                        }>
-                        <SymbolLogo symbol={flow.etf} size={20} />
-                        <Text style={styles.themeIdentityTicker} numberOfLines={1}>
-                          {ticker}
-                        </Text>
-                      </Pressable>
+                        }
+                      />
                     ) : (
                       <Text style={styles.themeNameFallback} numberOfLines={1}>
                         {flow.signal}
@@ -319,7 +313,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                       disabled={!openSource}
                       style={({ pressed }) => [
                         styles.flowSourceBtn,
-                        pressed && openSource ? styles.themeIdentityPressed : null,
+                        pressed && openSource ? styles.flowSourcePressed : null,
                       ]}
                       accessibilityRole={openSource ? 'link' : 'text'}
                       accessibilityLabel={
@@ -497,29 +491,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
-    themeIdentity: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexShrink: 0,
-      minWidth: 72,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      backgroundColor: theme.bg,
-    },
-    themeIdentityPressed: {
-      opacity: 0.72,
-    },
-    themeIdentityTicker: {
-      fontSize: ft.ff(12),
-      letterSpacing: -0.1,
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      fontVariant: ['tabular-nums'],
-      flexShrink: 1,
-      minWidth: 0,
-    },
     themeMomentum: {
       fontSize: ft.ff(12),
       lineHeight: sf(16),
@@ -562,6 +533,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     flowSourceBtn: {
       alignSelf: 'flex-start',
       marginTop: 2,
+    },
+    flowSourcePressed: {
+      opacity: 0.72,
     },
     flowSourceText: {
       fontSize: ft.ff(12),

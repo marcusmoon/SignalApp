@@ -108,9 +108,9 @@ export async function fetchSignalEtfInsightById(
 }
 
 /**
- * 홈용: 선택 날짜의 인사이트.
+ * 홈용: 선택 날짜의 ETF 브리핑.
  * 1) insightDate 정확 일치
- * 2) 없으면 최신 N건 중 insightDate ≤ 선택일 (장중/전일 마감 인사이트 노출)
+ * 2) 없으면 최신 N건 중 insightDate ≤ 선택일 (장중/전일 마감 브리핑 노출)
  */
 export async function fetchSignalEtfInsightForDate(
   date: string,

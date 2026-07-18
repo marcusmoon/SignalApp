@@ -437,7 +437,7 @@ export function HomeFocusContent({
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
 
-      /** Wave 1 — above-the-fold: briefing, issues, market briefings, ETF insight, watchlist quotes. */
+      /** Wave 1 — above-the-fold: briefing, issues, market briefings, ETF briefing, watchlist quotes. */
       const [todayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),

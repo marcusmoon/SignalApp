@@ -605,7 +605,7 @@ export const ko = {
   alertsDeleteAllConfirmTitle: '알림을 모두 삭제할까요?',
   alertsDeleteAllConfirmBody: '목록에 있는 알림이 모두 지워집니다. 새 알림은 계속 받을 수 있습니다.',
   alertsLoginRequiredTitle: '알림은 로그인 후 확인할 수 있어요',
-  alertsLoginRequiredBody: '사용자 기반 알림함과 푸시 발송을 위해 계정 정보가 필요합니다. 로그인하면 이후 공지, 관심종목 알림, 인사이트 알림이 이 계정 기준으로 쌓입니다.',
+  alertsLoginRequiredBody: '사용자 기반 알림함과 푸시 발송을 위해 계정 정보가 필요합니다. 로그인하면 이후 공지, 관심종목 알림, 브리핑 알림이 이 계정 기준으로 쌓입니다.',
   alertsLoginRequiredButton: '내정보로 이동',
 
   localeNameKo: '한국어',

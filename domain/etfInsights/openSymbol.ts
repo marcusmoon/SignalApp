@@ -23,7 +23,7 @@ export function etfInsightDisplayTicker(symbol: string): string {
 }
 
 /**
- * ETF 인사이트 종목 외부 링크 — 국내 Naver, 해외 Yahoo (시세 탭과 동일).
+ * ETF 브리핑 종목 외부 링크 — 국내 Naver, 해외 Yahoo (시세 탭과 동일).
  */
 export function openEtfInsightSymbol(symbol: string, market?: string | null): void {
   const trimmed = String(symbol || '').trim();

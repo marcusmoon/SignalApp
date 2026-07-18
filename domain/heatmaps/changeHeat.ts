@@ -1,4 +1,4 @@
-/** Shared change-heatmap color math (market briefing sectors · ETF insight). */
+/** Shared change-heatmap color math (market briefing sectors · ETF briefing). */
 
 export function formatHeatChangePct(pct: number | null | undefined): string {
   if (pct == null || !Number.isFinite(pct)) return '—';

@@ -1,4 +1,4 @@
-/** ETF insight `flowHighlights` — production shape + legacy fallbacks. */
+/** ETF briefing `flowHighlights` — production shape + legacy fallbacks. */
 
 export type EtfFlowHighlight = {
   key: string;

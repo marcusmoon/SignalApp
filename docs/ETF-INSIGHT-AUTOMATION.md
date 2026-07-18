@@ -89,7 +89,7 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
       "publishedAt": "2026-07-18T05:00:00Z"
     }
   ],
-  "pushTitle": "ETF 인사이트 도착",
+  "pushTitle": "ETF 브리핑 도착",
   "pushBody": "반도체·AI ETF로 자금이 재집중됐습니다"
 }
 ```

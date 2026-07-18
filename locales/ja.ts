@@ -608,7 +608,7 @@ export const ja = {
   alertsDeleteAllConfirmTitle: '通知をすべて削除しますか？',
   alertsDeleteAllConfirmBody: '一覧の通知がすべて消えます。新しい通知は引き続き受け取れます。',
   alertsLoginRequiredTitle: '通知はログイン後に確認できます',
-  alertsLoginRequiredBody: 'ユーザー別通知ボックスとプッシュ配信にはアカウント情報が必要です。お知らせ、ウォッチリスト通知、インサイト通知はこのアカウント基準で保存されます。',
+  alertsLoginRequiredBody: 'ユーザー別通知ボックスとプッシュ配信にはアカウント情報が必要です。お知らせ、ウォッチリスト通知、ブリーフィング通知はこのアカウント基準で保存されます。',
   alertsLoginRequiredButton: 'マイ情報へ',
 
   localeNameKo: '한국어',

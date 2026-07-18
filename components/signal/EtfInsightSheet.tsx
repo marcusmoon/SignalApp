@@ -24,7 +24,7 @@ type Props = {
   onClose: () => void;
 };
 
-/** 홈 ETF 인사이트 카드 → 바텀시트 (MarketBriefingSheet와 동일 셸) */
+/** 홈 ETF 브리핑 카드 → 바텀시트 (MarketBriefingSheet와 동일 셸) */
 export function EtfInsightSheet({ visible, insight, onClose }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();

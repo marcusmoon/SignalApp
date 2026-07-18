@@ -98,7 +98,7 @@ export type SignalApiMarketBriefingSector = {
   changePercent?: number | null;
   /** 대표 심볼(섹터 ETF 등) — 탭 시 Yahoo/Naver */
   symbol?: string | null;
-  /** `symbol` 별칭 (ETF 인사이트 heatmap 필드와 맞춤) */
+  /** `symbol` 별칭 (ETF 브리핑 heatmap 필드와 맞춤) */
   etf?: string | null;
 };
 
@@ -162,7 +162,7 @@ export type SignalApiEtfInsightSourceRef = {
   publishedAt?: string | null;
 };
 
-/** ETF 인사이트 — 외부 ingest(`POST /v1/etf-insights/ingest`) 후 홈에 노출 */
+/** ETF 브리핑 — 외부 ingest(`POST /v1/etf-insights/ingest`) 후 홈에 노출 */
 export type SignalApiEtfInsight = {
   id: string;
   period: string;

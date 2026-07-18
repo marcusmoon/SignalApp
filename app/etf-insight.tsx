@@ -6,7 +6,7 @@ import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRe
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
-/** 홈 카드 / 리스트 행 → ETF 인사이트 상세 */
+/** 홈 카드 / 리스트 행 → ETF 브리핑 상세 */
 export default function EtfInsightScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const params = useLocalSearchParams<{ id?: string | string[]; date?: string | string[] }>();

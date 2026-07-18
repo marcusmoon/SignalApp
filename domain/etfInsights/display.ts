@@ -1,4 +1,4 @@
-/** ETF insight payload helpers — matches ingest shape from production. */
+/** ETF briefing payload helpers — matches ingest shape from production. */
 
 export function etfInsightItemLabel(item: unknown): string {
   if (typeof item === 'string') return item.trim();

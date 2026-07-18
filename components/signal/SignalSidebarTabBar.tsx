@@ -75,18 +75,18 @@ const SIDEBAR_TABS: TabDef[] = [
     labelId: 'tabYoutube',
   },
   {
-    name: 'board',
-    route: '/(tabs)/board',
-    iconOutline: 'chatbubbles-outline',
-    iconFilled: 'chatbubbles',
-    labelId: 'screenBoard',
-  },
-  {
     name: 'it-news',
     route: '/(tabs)/it-news',
     iconOutline: 'hardware-chip-outline',
     iconFilled: 'hardware-chip',
     labelId: 'tabItNews',
+  },
+  {
+    name: 'board',
+    route: '/(tabs)/board',
+    iconOutline: 'chatbubbles-outline',
+    iconFilled: 'chatbubbles',
+    labelId: 'screenBoard',
   },
   {
     name: 'account',

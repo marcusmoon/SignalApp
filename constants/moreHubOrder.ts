@@ -4,8 +4,8 @@ export type MoreHubRouteKey = 'board' | 'disclosures' | 'youtube' | 'itNews' | '
 /** 투자 캘린더·홈·설정은 메인 탭/내정보 — 더보기 허브에는 두지 않음 */
 export const MORE_HUB_ROUTE_ORDER_DEFAULT: MoreHubRouteKey[] = [
   'account',
-  'itNews',
   'disclosures',
+  'itNews',
   'board',
   'youtube',
 ];

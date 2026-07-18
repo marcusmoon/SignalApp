@@ -44,11 +44,19 @@ function normalizeBriefingPayload(input) {
     headline,
     summary,
     overview: cleanArray(input?.overview).map(cleanText).filter(Boolean).slice(0, 8),
-    sectors: cleanArray(input?.sectors).slice(0, 12).map((s) => ({
-      name: cleanText(s?.name),
-      trend: cleanText(s?.trend),
-      summary: cleanText(s?.summary),
-    })).filter((s) => s.name),
+    sectors: cleanArray(input?.sectors).slice(0, 12).map((s) => {
+      const changeRaw = s?.changePercent;
+      const changePercent =
+        typeof changeRaw === 'number' && Number.isFinite(changeRaw) ? changeRaw : null;
+      const symbol = cleanText(s?.symbol) || cleanText(s?.etf) || null;
+      return {
+        name: cleanText(s?.name),
+        trend: cleanText(s?.trend),
+        summary: cleanText(s?.summary),
+        ...(changePercent != null ? { changePercent } : {}),
+        ...(symbol ? { symbol, etf: symbol } : {}),
+      };
+    }).filter((s) => s.name),
     companies: cleanArray(input?.companies).slice(0, 12),
     macro: cleanArray(input?.macro).slice(0, 8),
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),

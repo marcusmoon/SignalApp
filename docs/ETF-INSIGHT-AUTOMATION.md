@@ -7,7 +7,8 @@ ETF 인사이트는 외부 에이전트가 Signal Server에 적재한 뒤, 앱 �
 - 위치: **시장 브리핑 아래 · 공시 플로우 위**
 - 홈 카드: 날짜별 단일 카드 → **바텀시트** (`EtfInsightSheet` + `EtfInsightBlock`)
 - 섹션 헤더 `>`: 리스트(`/etf-insights`) → 행 탭 시 전체 상세(`/etf-insight`)
-- 본문: 시황 브리핑과 동일 — lead(summary·로테이션·핵심 포인트) · 히트맵 · 테마 · 수급 · 출처
+- 본문: 시황 브리핑과 **보완** — lead · **히트맵**(브리핑 sectors와 동일 그리드) · **테마**(브리핑 companies와 동일 플로우: 로고 칩·모멘텀·요약) · 수급 · 출처
+- 역할 분담 표: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 시장 브리핑 ↔ ETF 인사이트 보완 모델
 - 홈 조회: 선택일 `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일`인 최신 1건
 - UTC 규칙은 [DATE-TIME.md](./DATE-TIME.md).
 

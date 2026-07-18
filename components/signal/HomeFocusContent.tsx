@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 
 import {
-  COMFORT_GAP_LG,
   COMFORT_GAP_MD,
   COMFORT_GAP_PAGE,
   COMFORT_GAP_SM,
@@ -25,10 +24,7 @@ import {
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
-import {
-  UI_FONT_WEIGHT_EMPHASIS,
-  UI_FONT_WEIGHT_SECTION,
-} from '@/constants/uiFontWeight';
+import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
@@ -1112,37 +1108,35 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          <View style={styles.heroStack}>
-            {todayBriefing ? (
-              <View style={styles.heroBlock}>
-                <HomeSectionHeader
-                  title={t('ipadHomeTitle')}
-                  badge={<AiBadge />}
-                  onPress={openTodayBriefing}
-                  accessibilityLabel={t('commonViewAll')}
-                />
-                {renderTodayBriefingCard(todayBriefing)}
-              </View>
-            ) : null}
-
-            <View style={[styles.heroBlock, styles.heroBlockCompact]}>
+          {todayBriefing ? (
+            <View style={styles.section}>
               <HomeSectionHeader
-                title={t('newsIssuesTitle')}
+                title={t('ipadHomeTitle')}
                 badge={<AiBadge />}
-                onPress={() => openIssue()}
+                onPress={openTodayBriefing}
                 accessibilityLabel={t('commonViewAll')}
               />
-              {homeIssues.length > 0 ? (
-                renderIssueCard(homeIssues)
-              ) : (
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
-                </View>
-              )}
+              {renderTodayBriefingCard(todayBriefing)}
             </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('newsIssuesTitle')}
+              badge={<AiBadge />}
+              onPress={() => openIssue()}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {homeIssues.length > 0 ? (
+              renderIssueCard(homeIssues)
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+              </View>
+            )}
           </View>
 
-          <View style={[styles.section, styles.heroBlockCompact]}>
+          <View style={styles.section}>
             <HomeSectionHeader
               title={t('ipadHomeSignalTitle')}
               badge={<AiBadge />}
@@ -1153,9 +1147,7 @@ export function HomeFocusContent({
               renderSignalCard(homeBriefings)
             ) : (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>
-                  {t('homeFocusSignalEmpty')}
-                </Text>
+                <Text style={styles.emptyText}>{t('homeFocusSignalEmpty')}</Text>
               </View>
             )}
           </View>
@@ -1205,57 +1197,61 @@ export function HomeFocusContent({
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
-                <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
-                <View style={styles.quoteGrid}>
-                  {quotes.length === 0 ? (
-                    <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
-                  ) : (
-                    quotes.slice(0, watchlistDisplayCount).map((row, index) => {
-                      const pct = row.quote?.changePercent;
-                      const hasPct = typeof pct === 'number' && Number.isFinite(pct);
-                      const up = hasPct && pct >= 0;
-                      const hasQuote = Boolean(row.quote);
-                      return (
-                        <Pressable
-                          key={`${row.symbol}-${index}`}
-                          onPress={() => openSymbolDetail(row.symbol)}
-                          accessibilityRole="button"
-                          accessibilityLabel={row.symbol}
-                          style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
-                          <View style={styles.quoteTileContent}>
-                            <View style={styles.quoteTileLead}>
-                              <SymbolLogo symbol={row.symbol} size={22} />
-                              <Text style={styles.quoteSymbol} numberOfLines={1}>
-                                {row.symbol}
-                              </Text>
-                            </View>
-                            <View style={styles.quoteTileFooter}>
-                              {hasQuote ? (
-                                <>
-                                  <Text style={styles.priceText} numberOfLines={1}>
-                                    {formatPrice(row)}
-                                  </Text>
-                                  <Text
-                                    style={[
-                                      styles.changeText,
-                                      { color: up ? quoteChange.colors.up : quoteChange.colors.down },
-                                    ]}>
-                                    {formatQuoteDpPct(pct)}
-                                  </Text>
-                                </>
-                              ) : (
-                                <Text style={styles.quotePendingText} numberOfLines={2}>
-                                  {t('quotesPending')}
-                                </Text>
-                              )}
-                            </View>
+              <HomeSectionHeader
+                title={t('homeFocusWatchTitle')}
+                onPress={openQuotes}
+                accessibilityLabel={t('commonViewAll')}
+              />
+              <View style={styles.quoteGrid}>
+                {quotes.length === 0 ? (
+                  <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
+                ) : (
+                  quotes.slice(0, watchlistDisplayCount).map((row, index) => {
+                    const pct = row.quote?.changePercent;
+                    const hasPct = typeof pct === 'number' && Number.isFinite(pct);
+                    const up = hasPct && pct >= 0;
+                    const hasQuote = Boolean(row.quote);
+                    return (
+                      <Pressable
+                        key={`${row.symbol}-${index}`}
+                        onPress={() => openSymbolDetail(row.symbol)}
+                        accessibilityRole="button"
+                        accessibilityLabel={row.symbol}
+                        style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
+                        <View style={styles.quoteTileContent}>
+                          <View style={styles.quoteTileLead}>
+                            <SymbolLogo symbol={row.symbol} size={22} />
+                            <Text style={styles.quoteSymbol} numberOfLines={1}>
+                              {row.symbol}
+                            </Text>
                           </View>
-                        </Pressable>
-                      );
-                    })
-                  )}
-                </View>
+                          <View style={styles.quoteTileFooter}>
+                            {hasQuote ? (
+                              <>
+                                <Text style={styles.priceText} numberOfLines={1}>
+                                  {formatPrice(row)}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.changeText,
+                                    { color: up ? quoteChange.colors.up : quoteChange.colors.down },
+                                  ]}>
+                                  {formatQuoteDpPct(pct)}
+                                </Text>
+                              </>
+                            ) : (
+                              <Text style={styles.quotePendingText} numberOfLines={2}>
+                                {t('quotesPending')}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+                )}
               </View>
+            </View>
           ) : null}
 
           <View style={styles.section}>
@@ -1357,27 +1353,6 @@ function makeStyles(
       alignItems: 'center',
       justifyContent: 'center',
     },
-    heroStack: {
-      gap: COMFORT_GAP_LG,
-    },
-    heroBlock: {
-      gap: COMFORT_GAP_SM,
-    },
-    heroBlockCompact: {
-      gap: COMFORT_GAP_SM,
-    },
-    heroHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      gap: COMFORT_GAP_SM,
-    },
-    heroKicker: {
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: UI_FONT_WEIGHT_SECTION,
-      color: theme.text,
-    },
     heroCard: {
       position: 'relative',
       borderRadius: UI_RADIUS_CARD_LG,
@@ -1455,8 +1430,9 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
+    /** 헤더↔본문 — 전 섹션 동일 (예전 heroBlock SM과 맞춤) */
     section: {
-      gap: COMFORT_GAP_LG,
+      gap: COMFORT_GAP_SM,
     },
     quoteGrid: {
       flexDirection: 'row',

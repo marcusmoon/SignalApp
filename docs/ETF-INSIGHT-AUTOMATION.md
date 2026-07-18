@@ -100,7 +100,9 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 
 `id`와 `title`은 필수. `period` 기본값은 `daily`. `insightDate`가 없으면 `publishedAt`의 UTC 날짜를 쓴다.
 
-앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·테마·수급 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
+앱 히트맵은 `changePercent`로 색을 칠한 3열 그리드로 그린다. 셀·수급 티커 탭 시 국내(`market: "kr"` 또는 `*.KS`/`*.KQ`/6자리)는 네이버 금융, 그 외는 Yahoo Finance로 연다.
+
+**themes UI**: 테마명·모멘텀·요약만 표시(로고·하단 티커 목록 없음). `etfs`(및 히트맵 티커)가 요약 문장에 그대로 들어가면 앱이 본문에서 링크로 열어 준다. 한글 종목명만 있고 티커가 없으면 링크되지 않으므로, 클릭 유도가 필요하면 요약에 티커를 함께 쓴다.
 
 ### flowHighlights 권장 필드
 

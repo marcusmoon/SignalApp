@@ -926,13 +926,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       height: '100%',
     },
-    boardSubRows: {
-      marginTop: 4,
-      gap: 0,
-    },
-    boardSubLabel: {
-      paddingLeft: 10,
-    },
   });
 }
 
@@ -2043,20 +2036,6 @@ clearCalendarCache();
               ) : (
                 <>
                   <View style={[styles.limitRow, { marginTop: 8 }]}>
-                    <Text style={styles.prefLabel}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
-                    <Pressable
-                      onPress={() => setCountPicker({ kind: 'home', field: 'newsFlow' })}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsHomeNewsFlowDisplayValue', {
-                        count: String(homeNewsFlowDisplayCount),
-                      })}>
-                      <Text style={styles.limitPickerTriggerText}>{homeNewsFlowDisplayCount}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.limitRow}>
                     <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
                     <Pressable
                       onPress={() => setCountPicker({ kind: 'home', field: 'watchlist' })}
@@ -2066,6 +2045,20 @@ clearCalendarCache();
                         count: String(homeWatchlistDisplayCount),
                       })}>
                       <Text style={styles.limitPickerTriggerText}>{homeWatchlistDisplayCount}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
+                    <Pressable
+                      onPress={() => setCountPicker({ kind: 'home', field: 'newsFlow' })}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsHomeNewsFlowDisplayValue', {
+                        count: String(homeNewsFlowDisplayCount),
+                      })}>
+                      <Text style={styles.limitPickerTriggerText}>{homeNewsFlowDisplayCount}</Text>
                       <FontAwesome name="chevron-down" size={14} color={theme.green} />
                     </Pressable>
                   </View>

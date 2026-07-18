@@ -35,7 +35,9 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
+  HOME_SIGNAL_SESSIONS,
   type HomeDigestCategory,
+  type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
 import { newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
@@ -43,9 +45,6 @@ import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayou
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
-import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
-import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
-import { TodayBriefingSheet } from '@/components/signal/TodayBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import {
@@ -220,13 +219,11 @@ function formatPrice(row: QuoteRow): string {
   return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
 }
 
-/** 장중 브리핑 시트·히어로 카드용 한 줄 제목 */
-function briefingHomeTitle(row: SignalApiMarketBriefing): string {
-  const headline = String(row.headline || '').trim();
-  if (headline) return headline;
-  const summary = String(row.summary || '').trim();
-  if (summary) return summary;
-  return row.overview[0] || '';
+function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessionKey | undefined {
+  if (!row) return undefined;
+  return HOME_SIGNAL_SESSIONS.find(
+    (session) => session.market === row.market && session.session === row.session,
+  )?.key;
 }
 
 function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
@@ -304,9 +301,6 @@ export function HomeFocusContent({
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
-  const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
-  const [todayBriefingSheet, setTodayBriefingSheet] = useState<SignalApiTodayBriefing | null>(null);
-  const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
 
   const homeHero = useMemo(
     () => selectHomeHeroBriefing({ selectedYmd, todayYmd, todayBriefing, briefings }),
@@ -538,28 +532,6 @@ export function HomeFocusContent({
     setDigestSheet({ kind: 'news', row });
   }, []);
 
-  const openSignalSheet = useCallback((row: SignalApiMarketBriefing) => {
-    setBriefingSheet(row);
-  }, []);
-
-  const closeBriefingSheet = useCallback(() => {
-    setBriefingSheet(null);
-  }, []);
-
-  const briefingSheetTitle = useMemo(
-    () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
-    [briefingSheet],
-  );
-
-  const openEtfInsightSheet = useCallback(() => {
-    if (!etfInsight) return;
-    setEtfInsightSheetOpen(true);
-  }, [etfInsight]);
-
-  const closeEtfInsightSheet = useCallback(() => {
-    setEtfInsightSheetOpen(false);
-  }, []);
-
   const openSymbolDetail = useCallback(
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
@@ -601,22 +573,51 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
-  const openTodayBriefingSheet = useCallback((row: SignalApiTodayBriefing) => {
-    setTodayBriefingSheet(row);
-  }, []);
-
-  const closeTodayBriefingSheet = useCallback(() => {
-    setTodayBriefingSheet(null);
-  }, []);
-
+  /** 히어로·섹터 흐름 — 긴 본문은 상세 화면 (뉴스는 시트 유지) */
   const openHero = useCallback(() => {
     if (!homeHero) return;
     if (homeHero.kind === 'today') {
-      openTodayBriefingSheet(homeHero.briefing);
+      const date =
+        String(homeHero.briefing.briefingDate || '').slice(0, 10) || selectedYmd;
+      if (ipadNav.isAvailable) {
+        ipadNav.showTodayBriefing(date, { drillFrom: 'home' });
+        return;
+      }
+      router.push({ pathname: '/today-briefing', params: { date } } as never);
       return;
     }
-    openSignalSheet(homeHero.briefing);
-  }, [homeHero, openSignalSheet, openTodayBriefingSheet]);
+    const session = signalSessionKeyForBriefing(homeHero.briefing);
+    if (ipadNav.isAvailable) {
+      ipadNav.showMarketBriefing(session, selectedYmd, { drillFrom: 'home' });
+      return;
+    }
+    router.push({
+      pathname: '/market-briefing',
+      params: {
+        date: selectedYmd,
+        from: 'home',
+        ...(session ? { session } : null),
+      },
+    } as never);
+  }, [homeHero, ipadNav, router, selectedYmd]);
+
+  const openEtfInsightDetail = useCallback(() => {
+    if (!etfInsight?.id) return;
+    if (ipadNav.isAvailable) {
+      ipadNav.showEtfInsight(etfInsight.id, {
+        drillFrom: 'home',
+        ...(etfInsight.insightDate ? { date: etfInsight.insightDate } : null),
+      });
+      return;
+    }
+    router.push({
+      pathname: '/etf-insight',
+      params: {
+        id: etfInsight.id,
+        ...(etfInsight.insightDate ? { date: etfInsight.insightDate } : null),
+      },
+    } as never);
+  }, [etfInsight, ipadNav, router]);
 
   const renderHeroCard = useCallback(() => {
     if (!homeHero) return null;
@@ -672,7 +673,7 @@ export function HomeFocusContent({
       const previewText = bodyText && bodyText !== leadText ? bodyText : '';
       return (
         <Pressable
-          onPress={openEtfInsightSheet}
+          onPress={openEtfInsightDetail}
           accessibilityRole="button"
           accessibilityLabel={t('homeEtfInsightTitle')}
           style={({ pressed }) => [
@@ -697,7 +698,7 @@ export function HomeFocusContent({
         </Pressable>
       );
     },
-    [openEtfInsightSheet, showIssueSummary, styles, t],
+    [openEtfInsightDetail, showIssueSummary, styles, t],
   );
 
   const renderEtfSectionBody = useCallback(() => {
@@ -705,7 +706,7 @@ export function HomeFocusContent({
     if (etfHeatmapCells.length > 0) {
       return (
         <Pressable
-          onPress={openEtfInsightSheet}
+          onPress={openEtfInsightDetail}
           accessibilityRole="button"
           accessibilityLabel={t('homeEtfInsightTitle')}
           style={({ pressed }) => [
@@ -726,7 +727,7 @@ export function HomeFocusContent({
   }, [
     etfHeatmapCells,
     etfInsight,
-    openEtfInsightSheet,
+    openEtfInsightDetail,
     quoteChange.convention,
     renderEtfInsightCard,
     scaleFont,
@@ -916,22 +917,6 @@ export function HomeFocusContent({
         digestSummary={digestSheetSummary}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
-      />
-      <MarketBriefingSheet
-        visible={briefingSheet != null}
-        briefing={briefingSheet}
-        title={briefingSheetTitle}
-        onClose={closeBriefingSheet}
-      />
-      <TodayBriefingSheet
-        visible={todayBriefingSheet != null}
-        briefing={todayBriefingSheet}
-        onClose={closeTodayBriefingSheet}
-      />
-      <EtfInsightSheet
-        visible={etfInsightSheetOpen && etfInsight != null}
-        insight={etfInsight}
-        onClose={closeEtfInsightSheet}
       />
     </>
   );

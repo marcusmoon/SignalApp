@@ -6,8 +6,10 @@ export type BriefingSectorHeatCell = {
   name: string;
   symbol: string | null;
   changePercent: number | null;
-  /** 표시용 등락(수치 없으면 trend soft) */
+  /** 채색용 등락(수치 없으면 trend soft) */
   heatPercent: number | null;
+  /** 원본 trend (수치 없을 때 칩 라벨) */
+  trend: string | null;
   summary: string;
 };
 
@@ -108,14 +110,16 @@ export function briefingSectorHeatCells(
     const hint = parseSectorSummaryQuoteHint(summary);
     const symbol =
       String(sector?.symbol || sector?.etf || '').trim().toUpperCase() || hint.symbol;
+    const trend = String(sector?.trend || '').trim() || null;
     const changePercent = firstFiniteNumber(sector?.changePercent, hint.changePercent);
-    const heatPercent = changePercent ?? trendToSoftChangePercent(sector?.trend);
+    const heatPercent = changePercent ?? trendToSoftChangePercent(trend);
     cells.push({
       key: `${briefingId}-sector-${name}-${index}`,
       name,
       symbol,
       changePercent,
       heatPercent,
+      trend,
       summary,
     });
   }

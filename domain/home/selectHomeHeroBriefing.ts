@@ -62,13 +62,31 @@ function findMarketBriefing(
   );
 }
 
+/** 오늘 정리에 읽을 본문이 있을 때만 히어로 후보. */
+export function hasTodayBriefingContent(briefing: SignalApiTodayBriefing | null | undefined): boolean {
+  if (!briefing) return false;
+  if (briefing.headline?.trim()) return true;
+  if (briefing.summary?.trim()) return true;
+  if (Array.isArray(briefing.keyPoints) && briefing.keyPoints.some((p) => String(p || '').trim())) {
+    return true;
+  }
+  return false;
+}
+
+function usableTodayBriefing(
+  todayBriefing: SignalApiTodayBriefing | null,
+): SignalApiTodayBriefing | null {
+  return hasTodayBriefingContent(todayBriefing) ? todayBriefing : null;
+}
+
 function resolveTarget(
   target: HeroTarget,
   todayBriefing: SignalApiTodayBriefing | null,
   briefings: SignalApiMarketBriefing[],
 ): HomeHeroSelection | null {
   if (target === 'today') {
-    return todayBriefing ? { kind: 'today', briefing: todayBriefing } : null;
+    const row = usableTodayBriefing(todayBriefing);
+    return row ? { kind: 'today', briefing: row } : null;
   }
   const row = findMarketBriefing(briefings, target.market, target.session);
   if (!row) return null;
@@ -88,13 +106,14 @@ function latestPublishedHero(
 ): HomeHeroSelection | null {
   type Candidate = { at: string; hero: HomeHeroSelection };
   const candidates: Candidate[] = [];
-  if (todayBriefing) {
+  const usableToday = usableTodayBriefing(todayBriefing);
+  if (usableToday) {
     candidates.push({
       at: publishedSortKey(
-        todayBriefing.publishedAt || todayBriefing.generatedAt || todayBriefing.updatedAt,
-        todayBriefing.briefingDate,
+        usableToday.publishedAt || usableToday.generatedAt || usableToday.updatedAt,
+        usableToday.briefingDate,
       ),
-      hero: { kind: 'today', briefing: todayBriefing },
+      hero: { kind: 'today', briefing: usableToday },
     });
   }
   for (const row of briefings) {

@@ -71,6 +71,6 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 
 ## 앱 UI
 
-- 홈 히어로: KST 23:00 이후(및 과거일 우선)에 `today_briefings`를 「오늘 정리」로 노출. 그 전에는 장중 브리핑 회차가 히어로. 선택 로직은 `domain/home/selectHomeHeroBriefing.ts`.
+- 홈 히어로: KST 23:00 이후(및 과거일 우선)에 `today_briefings`를 「오늘 정리」로 노출. **본문(headline·summary·keyPoints)이 있을 때만**. 없거나 비면 히어로에서 빼고 장중 회차로 폴백(또는 섹션 숨김). 그 전에는 장중 브리핑 회차가 히어로. 선택 로직은 `domain/home/selectHomeHeroBriefing.ts`.
 - 홈·상세: `components/signal/HomeFocusContent.tsx`, `app/today-briefing.tsx` — Stack 제목 「오늘 정리」, 날짜는 헤더 아래 `dateBar`.
 - 레이아웃·여백: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)

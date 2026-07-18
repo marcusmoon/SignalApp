@@ -157,8 +157,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   |---|---|---|---|
   | Lead | summary · overview | summary · rotation · key points | lead panel |
   | 시각 펄스 | **sectors → 히트맵** | **heatmap → 히트맵** | `ChangeHeatmapGrid` |
-  | 섹터/테마 내러티브 | 히트맵 아래 **왜(why)만** — 시세·등락 프리앰블 제거, 제목→본문→메타 티커 | **themes**: 제목·모멘텀 → 요약 → 푸터 메타 티커 | `HomeDigestFeedRow` 순서 |
-  | 종목/수급 플로우 | **companies** (개별 종목 스토리 — 섹터 why와 역할 분리) | **flowHighlights** | 동일 row 밀도 |
+  | 섹터/테마 내러티브 | 히트맵 아래 **왜(why)만** | **themes** ≈ **companies**: `[로고·테마명]` \| 모멘텀 → 요약 → 메타 티커 | 동일 row 밀도 |
+  | 종목/수급 플로우 | **companies** (로고·호가·요약) | **flowHighlights** | 동일 row 밀도 |
   | 맥락 | macro · sources | sources | — |
   - **섹터 중복 방지**: 히트맵 = name·%·(symbol) 펄스. 아래 행 = 히트맵에 없는 해석 문장만. trend/%/시세 나열은 아래 행에 반복하지 않음 (`stripSectorSummaryQuotePreamble`)
   - 왜 문장이 없으면 해당 섹터는 히트맵만 표시 (빈 중복 행 금지)

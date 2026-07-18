@@ -47,6 +47,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { EtfInsightSheet } from '@/components/signal/EtfInsightSheet';
+import { MarketBriefingSheet } from '@/components/signal/MarketBriefingSheet';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import {
@@ -228,6 +229,15 @@ function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessi
   )?.key;
 }
 
+/** 장중 브리핑 시트·히어로 카드용 한 줄 제목 */
+function briefingHomeTitle(row: SignalApiMarketBriefing): string {
+  const headline = String(row.headline || '').trim();
+  if (headline) return headline;
+  const summary = String(row.summary || '').trim();
+  if (summary) return summary;
+  return row.overview[0] || '';
+}
+
 function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
   return [...rows].sort(
     (a, b) =>
@@ -303,6 +313,7 @@ export function HomeFocusContent({
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
+  const [briefingSheet, setBriefingSheet] = useState<SignalApiMarketBriefing | null>(null);
   const [etfInsightSheetOpen, setEtfInsightSheetOpen] = useState(false);
 
   const homeHero = useMemo(
@@ -576,6 +587,28 @@ export function HomeFocusContent({
     [ipadNav, router, selectedYmd],
   );
 
+  const openSignalSheet = useCallback((row: SignalApiMarketBriefing) => {
+    setBriefingSheet(row);
+  }, []);
+
+  const closeBriefingSheet = useCallback(() => {
+    setBriefingSheet(null);
+  }, []);
+
+  const briefingSheetTitle = useMemo(
+    () => (briefingSheet ? briefingHomeTitle(briefingSheet) : ''),
+    [briefingSheet],
+  );
+
+  const briefingSheetSessionLabel = useMemo(() => {
+    if (!briefingSheet) return undefined;
+    const session = HOME_SIGNAL_SESSIONS.find(
+      (candidate) =>
+        candidate.market === briefingSheet.market && candidate.session === briefingSheet.session,
+    );
+    return session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle');
+  }, [briefingSheet, t]);
+
   const openEtfInsightsList = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showEtfInsights({ drillFrom: 'home' });
@@ -654,6 +687,15 @@ export function HomeFocusContent({
   }, [ipadNav, router, selectedYmd]);
 
   const openHero = useCallback(() => {
+    if (!homeHero) return;
+    if (homeHero.kind === 'today') {
+      openTodayBriefing();
+      return;
+    }
+    openSignalSheet(homeHero.briefing);
+  }, [homeHero, openSignalSheet, openTodayBriefing]);
+
+  const openHeroSection = useCallback(() => {
     if (!homeHero) return;
     if (homeHero.kind === 'today') {
       openTodayBriefing();
@@ -875,7 +917,7 @@ export function HomeFocusContent({
             <HomeSectionHeader
               title={heroSectionTitle}
               badge={<AiBadge />}
-              onPress={homeHero ? openHero : undefined}
+              onPress={homeHero ? openHeroSection : undefined}
               accessibilityLabel={homeHero ? t('commonViewAll') : undefined}
             />
             {renderHeroCard()}
@@ -989,6 +1031,13 @@ export function HomeFocusContent({
         digestSummary={digestSheetSummary}
         rows={digestSheetRows}
         onClose={closeDigestSheet}
+      />
+      <MarketBriefingSheet
+        visible={briefingSheet != null}
+        briefing={briefingSheet}
+        title={briefingSheetTitle}
+        sessionLabel={briefingSheetSessionLabel}
+        onClose={closeBriefingSheet}
       />
       <EtfInsightSheet
         visible={etfInsightSheetOpen && etfInsight != null}

@@ -384,10 +384,26 @@ const cellStyles = StyleSheet.create({
   },
 });
 
-export function SumTrailGame({ wide = false }: { wide?: boolean }) {
+export function SumTrailGame({
+  wide = false,
+  split = false,
+  viewportHeight = 800,
+}: {
+  wide?: boolean;
+  split?: boolean;
+  viewportHeight?: number;
+}) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
+  const boardMax = split
+    ? Math.max(360, Math.min(560, Math.floor(viewportHeight * 0.62)))
+    : wide
+      ? 480
+      : 360;
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, wide, split, boardMax),
+    [theme, scaleFont, wide, split, boardMax],
+  );
   const [difficulty, setDifficulty] = useState<SumTrailDifficulty>('normal');
   const [state, setState] = useState<SumTrailState>(() => createSumTrailGame('normal'));
   const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
@@ -492,41 +508,33 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
     });
   }, [triggerBoardFx]);
 
-  return (
-    <View style={styles.root}>
-      <View style={styles.heroBand}>
-        <View style={styles.heroIcon}>
-          <FontAwesome name="sitemap" size={16} color={theme.green} />
-        </View>
-        <View style={styles.heroText}>
-          <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
-          <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
-        </View>
-      </View>
+  const difficultyRow = (
+    <View style={styles.diffRow}>
+      {DIFFICULTIES.map((d) => {
+        const active = difficulty === d;
+        const label =
+          d === 'easy'
+            ? t('gameSumTrailDiffEasy')
+            : d === 'normal'
+              ? t('gameSumTrailDiffNormal')
+              : t('gameSumTrailDiffHard');
+        return (
+          <Pressable
+            key={d}
+            onPress={() => onDifficulty(d)}
+            style={[styles.diffChip, active && styles.diffChipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={label}>
+            <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 
-      <View style={styles.diffRow}>
-        {DIFFICULTIES.map((d) => {
-          const active = difficulty === d;
-          const label =
-            d === 'easy'
-              ? t('gameSumTrailDiffEasy')
-              : d === 'normal'
-                ? t('gameSumTrailDiffNormal')
-                : t('gameSumTrailDiffHard');
-          return (
-            <Pressable
-              key={d}
-              onPress={() => onDifficulty(d)}
-              style={[styles.diffChip, active && styles.diffChipActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={label}>
-              <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
+  const statsBlock = (
+    <>
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <FontAwesome name="flag" size={12} color={theme.textDim} />
@@ -573,168 +581,231 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
         </View>
         <ProgressBar progress={progress} over={over} theme={theme} />
       </View>
+    </>
+  );
 
-      <Animated.View
-        style={[
-          styles.board,
-          {
-            transform: [{ scale: boardPulse }, { translateX: boardShake }],
-            borderColor:
-              state.status === 'failed'
+  const boardNode = (
+    <Animated.View
+      style={[
+        styles.board,
+        {
+          transform: [{ scale: boardPulse }, { translateX: boardShake }],
+          borderColor:
+            state.status === 'failed'
+              ? theme.danger
+              : over
                 ? theme.danger
-                : over
-                  ? theme.danger
-                  : near
-                    ? theme.warning
-                    : theme.greenBorder,
-          },
-        ]}>
-        <BurstOverlay
-          visible={boardFx != null}
-          kind={boardFx?.kind ?? 'hit'}
-          points={boardFx?.points ?? 0}
-          theme={theme}
-          sf={scaleFont}
-          labelHit={t('gameSumTrailHitFx')}
-          labelLevel={t('gameSumTrailCleared')}
-          labelFail={t('gameSumTrailFailed')}
-          labelPoints={t('gameSumTrailHitPoints', { points: boardFx?.points ?? 0 })}
-        />
-        {state.grid.map((row, r) => (
-          <View key={`r-${r}`} style={styles.boardRow}>
-            {row.map((value, c) => {
-              const idx = pathMap.get(`${r},${c}`);
-              const selected = idx != null;
-              const empty = value <= 0;
-              const hinted =
-                !selected &&
-                state.hintCell != null &&
-                state.hintCell.r === r &&
-                state.hintCell.c === c;
-              return (
-                <BoardCell
-                  key={`c-${r}-${c}`}
-                  value={value}
-                  selected={selected}
-                  order={idx}
-                  over={over}
-                  hinted={hinted}
-                  empty={empty}
-                  disabled={empty || state.status !== 'playing'}
-                  theme={theme}
-                  sf={scaleFont}
-                  wide={wide}
-                  flashKey={selected ? flashKey : 0}
-                  onPress={() => onTapCell({ r, c })}
-                  a11yLabel={
-                    empty
-                      ? t('gameSumTrailCellEmpty')
-                      : hinted
-                        ? t('gameSumTrailHintCellA11y', { value })
-                        : idx != null
-                          ? t('gameSumTrailCellInPathA11y', { value, order: idx })
-                          : t('gameSumTrailCellA11y', { value })
-                  }
-                />
-              );
-            })}
-          </View>
-        ))}
-      </Animated.View>
+                : near
+                  ? theme.warning
+                  : theme.greenBorder,
+        },
+      ]}>
+      <BurstOverlay
+        visible={boardFx != null}
+        kind={boardFx?.kind ?? 'hit'}
+        points={boardFx?.points ?? 0}
+        theme={theme}
+        sf={scaleFont}
+        labelHit={t('gameSumTrailHitFx')}
+        labelLevel={t('gameSumTrailCleared')}
+        labelFail={t('gameSumTrailFailed')}
+        labelPoints={t('gameSumTrailHitPoints', { points: boardFx?.points ?? 0 })}
+      />
+      {state.grid.map((row, r) => (
+        <View key={`r-${r}`} style={styles.boardRow}>
+          {row.map((value, c) => {
+            const idx = pathMap.get(`${r},${c}`);
+            const selected = idx != null;
+            const empty = value <= 0;
+            const hinted =
+              !selected &&
+              state.hintCell != null &&
+              state.hintCell.r === r &&
+              state.hintCell.c === c;
+            return (
+              <BoardCell
+                key={`c-${r}-${c}`}
+                value={value}
+                selected={selected}
+                order={idx}
+                over={over}
+                hinted={hinted}
+                empty={empty}
+                disabled={empty || state.status !== 'playing'}
+                theme={theme}
+                sf={scaleFont}
+                wide={wide || split}
+                flashKey={selected ? flashKey : 0}
+                onPress={() => onTapCell({ r, c })}
+                a11yLabel={
+                  empty
+                    ? t('gameSumTrailCellEmpty')
+                    : hinted
+                      ? t('gameSumTrailHintCellA11y', { value })
+                      : idx != null
+                        ? t('gameSumTrailCellInPathA11y', { value, order: idx })
+                        : t('gameSumTrailCellA11y', { value })
+                }
+              />
+            );
+          })}
+        </View>
+      ))}
+    </Animated.View>
+  );
 
-      {state.status === 'cleared' ? (
-        <View style={styles.winBanner}>
-          <View style={styles.winHeader}>
-            <FontAwesome name="trophy" size={18} color={theme.green} />
-            <Text style={styles.winTitle}>{t('gameSumTrailCleared')}</Text>
-          </View>
-          <Text style={styles.winBody}>{t('gameSumTrailClearedBody')}</Text>
-          <Pressable
-            style={styles.primaryBtn}
-            onPress={() => {
-              clearFxTimer();
-              setBoardFx(null);
-              setState((s) => nextSumTrailLevel(s));
-            }}
-            accessibilityRole="button">
-            <Text style={styles.primaryBtnText}>{t('gameSumTrailNextLevel')}</Text>
-          </Pressable>
+  const statusOrActions =
+    state.status === 'cleared' ? (
+      <View style={styles.winBanner}>
+        <View style={styles.winHeader}>
+          <FontAwesome name="trophy" size={18} color={theme.green} />
+          <Text style={styles.winTitle}>{t('gameSumTrailCleared')}</Text>
         </View>
-      ) : state.status === 'failed' ? (
-        <View style={styles.failBanner}>
-          <View style={styles.winHeader}>
-            <FontAwesome name="times-circle" size={18} color={theme.danger} />
-            <Text style={styles.failTitle}>{t('gameSumTrailFailed')}</Text>
-          </View>
-          <Text style={styles.winBody}>{t('gameSumTrailFailedBody')}</Text>
-          <Pressable
-            style={styles.primaryBtn}
-            onPress={() => {
-              clearFxTimer();
-              setBoardFx(null);
-              setState((s) => restartSumTrailLevel(s));
-            }}
-            accessibilityRole="button">
-            <Text style={styles.primaryBtnText}>{t('gameSumTrailRestart')}</Text>
-          </Pressable>
+        <Text style={styles.winBody}>{t('gameSumTrailClearedBody')}</Text>
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() => {
+            clearFxTimer();
+            setBoardFx(null);
+            setState((s) => nextSumTrailLevel(s));
+          }}
+          accessibilityRole="button">
+          <Text style={styles.primaryBtnText}>{t('gameSumTrailNextLevel')}</Text>
+        </Pressable>
+      </View>
+    ) : state.status === 'failed' ? (
+      <View style={styles.failBanner}>
+        <View style={styles.winHeader}>
+          <FontAwesome name="times-circle" size={18} color={theme.danger} />
+          <Text style={styles.failTitle}>{t('gameSumTrailFailed')}</Text>
         </View>
-      ) : (
-        <View style={styles.actions}>
-          <Pressable
+        <Text style={styles.winBody}>{t('gameSumTrailFailedBody')}</Text>
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() => {
+            clearFxTimer();
+            setBoardFx(null);
+            setState((s) => restartSumTrailLevel(s));
+          }}
+          accessibilityRole="button">
+          <Text style={styles.primaryBtnText}>{t('gameSumTrailRestart')}</Text>
+        </Pressable>
+      </View>
+    ) : (
+      <View style={styles.actions}>
+        <Pressable
+          style={[
+            styles.secondaryBtn,
+            styles.hintBtn,
+            state.hintsRemaining <= 0 && styles.hintBtnDisabled,
+          ]}
+          onPress={onHint}
+          disabled={state.hintsRemaining <= 0}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameSumTrailHintA11y', { count: state.hintsRemaining })}>
+          <FontAwesome
+            name="lightbulb-o"
+            size={14}
+            color={state.hintsRemaining > 0 ? theme.warning : theme.textDim}
+          />
+          <Text
             style={[
-              styles.secondaryBtn,
-              styles.hintBtn,
-              state.hintsRemaining <= 0 && styles.hintBtnDisabled,
-            ]}
-            onPress={onHint}
-            disabled={state.hintsRemaining <= 0}
-            accessibilityRole="button"
-            accessibilityLabel={t('gameSumTrailHintA11y', { count: state.hintsRemaining })}>
-            <FontAwesome
-              name="lightbulb-o"
-              size={14}
-              color={state.hintsRemaining > 0 ? theme.warning : theme.textDim}
-            />
-            <Text
-              style={[
-                styles.secondaryBtnText,
-                state.hintsRemaining > 0 ? styles.hintBtnText : styles.hintBtnTextDisabled,
-              ]}>
-              {t('gameSumTrailHint', { count: state.hintsRemaining })}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={() => setState((s) => undoSumTrailPath(s))}
-            accessibilityRole="button">
-            <Text style={styles.secondaryBtnText}>{t('gameSumTrailUndo')}</Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={() => setState((s) => clearSumTrailPath(s))}
-            accessibilityRole="button">
-            <Text style={styles.secondaryBtnText}>{t('gameSumTrailClearPath')}</Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={() => {
-              clearFxTimer();
-              setBoardFx(null);
-              setState((s) => restartSumTrailLevel(s));
-            }}
-            accessibilityRole="button">
-            <Text style={styles.secondaryBtnText}>{t('gameSumTrailRestart')}</Text>
-          </Pressable>
+              styles.secondaryBtnText,
+              state.hintsRemaining > 0 ? styles.hintBtnText : styles.hintBtnTextDisabled,
+            ]}>
+            {t('gameSumTrailHint', { count: state.hintsRemaining })}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={styles.secondaryBtn}
+          onPress={() => setState((s) => undoSumTrailPath(s))}
+          accessibilityRole="button">
+          <Text style={styles.secondaryBtnText}>{t('gameSumTrailUndo')}</Text>
+        </Pressable>
+        <Pressable
+          style={styles.secondaryBtn}
+          onPress={() => setState((s) => clearSumTrailPath(s))}
+          accessibilityRole="button">
+          <Text style={styles.secondaryBtnText}>{t('gameSumTrailClearPath')}</Text>
+        </Pressable>
+        <Pressable
+          style={styles.secondaryBtn}
+          onPress={() => {
+            clearFxTimer();
+            setBoardFx(null);
+            setState((s) => restartSumTrailLevel(s));
+          }}
+          accessibilityRole="button">
+          <Text style={styles.secondaryBtnText}>{t('gameSumTrailRestart')}</Text>
+        </Pressable>
+      </View>
+    );
+
+  if (split) {
+    return (
+      <View style={styles.splitRoot}>
+        <View style={styles.boardColumn}>{boardNode}</View>
+        <View style={styles.sideColumn}>
+          <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
+          <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
+          {difficultyRow}
+          {statsBlock}
+          {statusOrActions}
         </View>
-      )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      <View style={styles.heroBand}>
+        <View style={styles.heroIcon}>
+          <FontAwesome name="sitemap" size={16} color={theme.green} />
+        </View>
+        <View style={styles.heroText}>
+          <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
+          <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
+        </View>
+      </View>
+      {difficultyRow}
+      {statsBlock}
+      {boardNode}
+      {statusOrActions}
     </View>
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
+
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  wide: boolean,
+  split: boolean,
+  boardMax: number,
+) {
   return StyleSheet.create({
     root: {
       gap: wide ? 16 : 14,
+    },
+    splitRoot: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 24,
+      flex: 1,
+      minHeight: boardMax + 24,
+    },
+    boardColumn: {
+      flex: 1.15,
+      minWidth: 320,
+      maxWidth: boardMax + 40,
+      alignItems: 'center',
+    },
+    sideColumn: {
+      flex: 1,
+      minWidth: 280,
+      maxWidth: 420,
+      gap: 14,
+      paddingTop: 4,
     },
     heroBand: {
       flexDirection: 'row',
@@ -857,7 +928,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
     board: {
       alignSelf: 'center',
       width: '100%',
-      maxWidth: wide ? 480 : 360,
+      maxWidth: boardMax,
       gap: wide ? 8 : 6,
       padding: wide ? 14 : 10,
       borderRadius: UI_RADIUS_CARD_LG,

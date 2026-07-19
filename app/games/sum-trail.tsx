@@ -9,6 +9,7 @@ import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOpt
 import {
   APP_CONTENT_MAX_WIDTH,
   APP_WIDE_CONTENT_MAX_WIDTH,
+  SIDEBAR_WIDTH,
   wideContentFill,
 } from '@/constants/responsiveLayout';
 import {
@@ -34,9 +35,14 @@ export function SumTrailContent({ embedded = false, onBack }: SumTrailScreenCont
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
-  const { useTwoPane } = useResponsiveLayout();
+  const { useTwoPane, width, height, isLandscape } = useResponsiveLayout();
   const wide = embedded || useTwoPane;
-  const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
+  /** 가로·넓은 pane에서는 보드|조작 2열 */
+  const split = wide && (isLandscape || width - SIDEBAR_WIDTH >= 900);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, wide, split),
+    [theme, scaleFont, wide, split],
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -51,11 +57,16 @@ export function SumTrailContent({ embedded = false, onBack }: SumTrailScreenCont
               ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
               : stackScreenScrollBottomPadding(insets.bottom),
             paddingHorizontal: wide ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
+            ...(split ? { flexGrow: 1 } : null),
           },
         ]}
         keyboardShouldPersistTaps="handled">
         <View style={styles.inner}>
-          <SumTrailGame wide={wide} />
+          <SumTrailGame
+            wide={wide}
+            split={split}
+            viewportHeight={height}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -71,7 +82,13 @@ export default function SumTrailScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false, animation: 'none' }} />
-        <SumTrailContent embedded onBack={() => router.back()} />
+        <SumTrailContent
+          embedded
+          onBack={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/game-center' as never);
+          }}
+        />
       </>
     );
   }
@@ -89,7 +106,7 @@ export default function SumTrailScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, _sf: (n: number) => number, wide: boolean) {
+function makeStyles(theme: AppTheme, _sf: (n: number) => number, wide: boolean, split: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     scroll: {
@@ -106,8 +123,9 @@ function makeStyles(theme: AppTheme, _sf: (n: number) => number, wide: boolean) 
     },
     inner: {
       width: '100%',
-      maxWidth: wide ? 560 : APP_CONTENT_MAX_WIDTH,
+      maxWidth: wide ? (split ? APP_WIDE_CONTENT_MAX_WIDTH : 720) : APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+      flex: split ? 1 : undefined,
     },
   });
 }

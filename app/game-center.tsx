@@ -5,7 +5,6 @@ import { Stack, useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import {
   APP_CONTENT_MAX_WIDTH,
@@ -16,11 +15,12 @@ import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
+import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -46,36 +46,50 @@ const GAMES: GameCard[] = [
 ];
 
 export type GameHubContentProps = {
-  embedded?: boolean;
-  onBack?: () => void;
+  /** iPad·와이드 사이드바 루트 (백 헤더 없음) */
+  wideRoot?: boolean;
 };
 
 /** 더보기·사이드바 → 게임 허브 */
-export function GameHubContent({ embedded = false, onBack }: GameHubContentProps) {
+export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { useTwoPane } = useResponsiveLayout();
-  const wide = embedded || useTwoPane;
-  const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
+  const { useTwoPane, width } = useResponsiveLayout();
+  const wide = wideRoot || useTwoPane;
+  const columns = wide ? (width >= 1200 ? 3 : 2) : 1;
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, wide, columns),
+    [theme, scaleFont, wide, columns],
+  );
 
   return (
-    <SafeAreaView style={styles.safe} edges={wide ? [] : []}>
-      {onBack ? <WideSubpaneHeader title={t('screenGameCenter')} onBack={onBack} /> : null}
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: wide ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP,
+            paddingTop: wide
+              ? wideRoot
+                ? SCREEN_WIDE_CONTENT_PADDING_TOP
+                : SCREEN_EMBEDDED_WIDE_PADDING_TOP
+              : SCREEN_LIST_CONTENT_PADDING_TOP,
             paddingBottom: wide
               ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
               : stackScreenScrollBottomPadding(insets.bottom),
             paddingHorizontal: wide ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
           },
         ]}>
-        <Text style={styles.lead}>{t('gameCenterLead')}</Text>
+        {wideRoot ? (
+          <View style={styles.wideTitleBlock}>
+            <Text style={styles.wideTitle}>{t('screenGameCenter')}</Text>
+            <Text style={styles.lead}>{t('gameCenterLead')}</Text>
+          </View>
+        ) : (
+          <Text style={styles.lead}>{t('gameCenterLead')}</Text>
+        )}
         <View style={styles.grid}>
           {GAMES.map((game) => (
             <Pressable
@@ -85,7 +99,7 @@ export function GameHubContent({ embedded = false, onBack }: GameHubContentProps
               accessibilityRole="button"
               accessibilityLabel={t(game.titleId)}>
               <View style={styles.iconCircle}>
-                <FontAwesome name={game.icon} size={wide ? 22 : 20} color={theme.green} />
+                <FontAwesome name={game.icon} size={wide ? 24 : 20} color={theme.green} />
               </View>
               <View style={styles.cardText}>
                 <Text style={styles.cardTitle}>{t(game.titleId)}</Text>
@@ -109,7 +123,8 @@ export default function GameCenterScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false, animation: 'none' }} />
-        <GameHubContent embedded onBack={() => router.back()} />
+        {/* 사이드바 루트 — ETF·게시판과 같이 드릴 백 헤더 없음 */}
+        <GameHubContent wideRoot />
       </>
     );
   }
@@ -127,7 +142,7 @@ export default function GameCenterScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, columns: number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     scroll: {
@@ -138,19 +153,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
         : { maxWidth: APP_CONTENT_MAX_WIDTH, alignSelf: 'center' as const }),
     },
     scrollContent: {
-      gap: 12,
+      gap: wide ? 16 : 12,
       maxWidth: wide ? APP_WIDE_CONTENT_MAX_WIDTH : APP_CONTENT_MAX_WIDTH,
       width: '100%',
       alignSelf: 'center',
+      flexGrow: 1,
+    },
+    wideTitleBlock: {
+      gap: 6,
+      marginBottom: 4,
+    },
+    wideTitle: {
+      fontSize: sf(22),
+      lineHeight: sf(28),
+      fontWeight: '800',
+      color: theme.text,
     },
     lead: {
       fontSize: sf(14),
       lineHeight: sf(20),
       color: theme.textMuted,
-      marginBottom: 4,
+      marginBottom: wide ? 0 : 4,
     },
     grid: {
-      gap: 10,
+      gap: 12,
       ...(wide
         ? {
             flexDirection: 'row' as const,
@@ -162,18 +188,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 14,
-      borderRadius: UI_RADIUS_CARD,
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: 14,
-      paddingHorizontal: 12,
+      paddingVertical: wide ? 18 : 14,
+      paddingHorizontal: wide ? 16 : 12,
       ...(wide
         ? {
             flexGrow: 1,
-            flexBasis: 320,
-            maxWidth: '100%' as const,
-            minHeight: 88,
+            flexBasis: columns >= 3 ? '30%' : '46%',
+            maxWidth: columns >= 3 ? '32%' : '48%',
+            minHeight: 108,
           }
         : null),
     },
@@ -182,9 +208,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       borderColor: theme.greenBorder,
     },
     iconCircle: {
-      width: wide ? 44 : 40,
-      height: wide ? 44 : 40,
-      borderRadius: 10,
+      width: wide ? 48 : 40,
+      height: wide ? 48 : 40,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,
@@ -197,7 +223,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       gap: 4,
     },
     cardTitle: {
-      fontSize: sf(wide ? 16 : 15),
+      fontSize: sf(wide ? 17 : 15),
       fontWeight: '700',
       color: theme.text,
     },

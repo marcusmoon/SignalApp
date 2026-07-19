@@ -221,7 +221,7 @@ export function SignalSidebarTabBar({
       return;
     }
     if (tab.name === 'gameCenter') {
-      if (gameCenterActive) return;
+      if (pathname.startsWith('/game-center') && !pathname.startsWith('/games/')) return;
       if (ipadNav.isAvailable) {
         ipadNav.showTabs();
       }

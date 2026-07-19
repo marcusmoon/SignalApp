@@ -15,6 +15,7 @@ import {
   restartSumTrailLevel,
   tapSumTrailCell,
   undoSumTrailPath,
+  useSumTrailHint,
   type SumTrailCell,
   type SumTrailDifficulty,
   type SumTrailState,
@@ -259,6 +260,7 @@ function BoardCell({
   selected,
   order,
   over,
+  hinted,
   empty,
   disabled,
   theme,
@@ -272,6 +274,7 @@ function BoardCell({
   selected: boolean;
   order: number | undefined;
   over: boolean;
+  hinted: boolean;
   empty: boolean;
   disabled: boolean;
   theme: AppTheme;
@@ -285,10 +288,10 @@ function BoardCell({
   const tint = digitTint(theme, value);
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected && !hinted) return;
     scale.setValue(0.86);
     Animated.spring(scale, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start();
-  }, [selected, order, scale]);
+  }, [selected, order, hinted, scale]);
 
   useEffect(() => {
     if (flashKey <= 0 || !selected) return;
@@ -300,9 +303,18 @@ function BoardCell({
     return <View style={[cellStyles.cell, cellStyles.empty]} />;
   }
 
-  const bg = selected ? (over ? theme.dangerDim : theme.greenDim) : tint.bg;
-  const border = selected ? (over ? theme.danger : theme.green) : tint.border;
-  const textColor = selected ? (over ? theme.danger : theme.green) : tint.text;
+  let bg = tint.bg;
+  let border = tint.border;
+  let textColor = tint.text;
+  if (selected) {
+    bg = over ? theme.dangerDim : theme.greenDim;
+    border = over ? theme.danger : theme.green;
+    textColor = over ? theme.danger : theme.green;
+  } else if (hinted) {
+    bg = theme.warningDim;
+    border = theme.warning;
+    textColor = theme.warning;
+  }
 
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
@@ -316,6 +328,10 @@ function BoardCell({
         {selected ? (
           <View style={[cellStyles.badge, { backgroundColor: over ? theme.danger : theme.green }]}>
             <Text style={cellStyles.badgeText}>{order}</Text>
+          </View>
+        ) : hinted ? (
+          <View style={[cellStyles.badge, { backgroundColor: theme.warning }]}>
+            <FontAwesome name="lightbulb-o" size={9} color="#FFFFFF" />
           </View>
         ) : null}
       </Pressable>
@@ -423,12 +439,7 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
         if (next.clears > prev.clears || next.status === 'cleared') {
           const gained = next.score - prev.score;
           const levelClear = next.status === 'cleared';
-          void Haptics.notificationAsync(
-            levelClear
-              ? Haptics.NotificationFeedbackType.Success
-              : Haptics.NotificationFeedbackType.Success,
-          ).catch(() => {});
-          // defer fx so state commits first
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           queueMicrotask(() => triggerHitFx(gained, levelClear));
         } else if (next.path.length > prev.path.length) {
           void Haptics.selectionAsync().catch(() => {});
@@ -438,6 +449,16 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
     },
     [triggerHitFx],
   );
+
+  const onHint = useCallback(() => {
+    setState((prev) => {
+      const next = useSumTrailHint(prev);
+      if (next.hintsRemaining < prev.hintsRemaining) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -545,6 +566,11 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
               const idx = pathMap.get(`${r},${c}`);
               const selected = idx != null;
               const empty = value <= 0;
+              const hinted =
+                !selected &&
+                state.hintCell != null &&
+                state.hintCell.r === r &&
+                state.hintCell.c === c;
               return (
                 <BoardCell
                   key={`c-${r}-${c}`}
@@ -552,6 +578,7 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
                   selected={selected}
                   order={idx}
                   over={over}
+                  hinted={hinted}
                   empty={empty}
                   disabled={empty || state.status !== 'playing'}
                   theme={theme}
@@ -562,9 +589,11 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
                   a11yLabel={
                     empty
                       ? t('gameSumTrailCellEmpty')
-                      : idx != null
-                        ? t('gameSumTrailCellInPathA11y', { value, order: idx })
-                        : t('gameSumTrailCellA11y', { value })
+                      : hinted
+                        ? t('gameSumTrailHintCellA11y', { value })
+                        : idx != null
+                          ? t('gameSumTrailCellInPathA11y', { value, order: idx })
+                          : t('gameSumTrailCellA11y', { value })
                   }
                 />
               );
@@ -591,8 +620,49 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
             <Text style={styles.primaryBtnText}>{t('gameSumTrailNextLevel')}</Text>
           </Pressable>
         </View>
+      ) : state.status === 'failed' ? (
+        <View style={styles.failBanner}>
+          <View style={styles.winHeader}>
+            <FontAwesome name="times-circle" size={18} color={theme.danger} />
+            <Text style={styles.failTitle}>{t('gameSumTrailFailed')}</Text>
+          </View>
+          <Text style={styles.winBody}>{t('gameSumTrailFailedBody')}</Text>
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={() => {
+              clearFxTimer();
+              setHitFx(null);
+              setState((s) => restartSumTrailLevel(s));
+            }}
+            accessibilityRole="button">
+            <Text style={styles.primaryBtnText}>{t('gameSumTrailRestart')}</Text>
+          </Pressable>
+        </View>
       ) : (
         <View style={styles.actions}>
+          <Pressable
+            style={[
+              styles.secondaryBtn,
+              styles.hintBtn,
+              state.hintsRemaining <= 0 && styles.hintBtnDisabled,
+            ]}
+            onPress={onHint}
+            disabled={state.hintsRemaining <= 0}
+            accessibilityRole="button"
+            accessibilityLabel={t('gameSumTrailHintA11y', { count: state.hintsRemaining })}>
+            <FontAwesome
+              name="lightbulb-o"
+              size={14}
+              color={state.hintsRemaining > 0 ? theme.warning : theme.textDim}
+            />
+            <Text
+              style={[
+                styles.secondaryBtnText,
+                state.hintsRemaining > 0 ? styles.hintBtnText : styles.hintBtnTextDisabled,
+              ]}>
+              {t('gameSumTrailHint', { count: state.hintsRemaining })}
+            </Text>
+          </Pressable>
           <Pressable
             style={styles.secondaryBtn}
             onPress={() => setState((s) => undoSumTrailPath(s))}
@@ -775,11 +845,29 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       borderColor: theme.border,
       backgroundColor: theme.card,
       alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    hintBtn: {
+      borderColor: theme.warning,
+      backgroundColor: theme.warningDim,
+    },
+    hintBtnDisabled: {
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      opacity: 0.55,
     },
     secondaryBtnText: {
       fontSize: sf(13),
       fontWeight: '600',
       color: theme.text,
+    },
+    hintBtnText: {
+      color: theme.warning,
+    },
+    hintBtnTextDisabled: {
+      color: theme.textDim,
     },
     primaryBtn: {
       marginTop: 4,
@@ -802,6 +890,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
+    failBanner: {
+      gap: 6,
+      padding: 14,
+      borderRadius: UI_RADIUS_CARD_LG,
+      borderWidth: 1,
+      borderColor: theme.danger,
+      backgroundColor: theme.dangerDim,
+    },
     winHeader: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -811,6 +907,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
       fontSize: sf(16),
       fontWeight: '800',
       color: theme.green,
+    },
+    failTitle: {
+      fontSize: sf(16),
+      fontWeight: '800',
+      color: theme.danger,
     },
     winBody: {
       fontSize: sf(13),

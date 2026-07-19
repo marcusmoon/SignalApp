@@ -36,7 +36,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_SHORTCUTS_DEFAULT,
-  type HomeShortcutKey,
+  type HomeShortcut,
 } from '@/constants/homeShortcuts';
 import {
   HOME_DIGEST_CATEGORIES,
@@ -299,7 +299,9 @@ export function HomeFocusContent({
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [sectorFlowDisplayCount, setSectorFlowDisplayCount] = useState(HOME_SECTOR_FLOW_DISPLAY_DEFAULT);
-  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcutKey[]>([...HOME_SHORTCUTS_DEFAULT]);
+  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcut[]>(
+    HOME_SHORTCUTS_DEFAULT.map((row) => ({ ...row })),
+  );
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
@@ -846,7 +848,7 @@ export function HomeFocusContent({
           {homeShortcuts.length > 0 ? (
             <View style={styles.section}>
               <HomeSectionHeader title={t('homeShortcutsTitle')} />
-              <HomeShortcutsStrip keys={homeShortcuts} selectedYmd={selectedYmd} />
+              <HomeShortcutsStrip shortcuts={homeShortcuts} selectedYmd={selectedYmd} />
             </View>
           ) : null}
 

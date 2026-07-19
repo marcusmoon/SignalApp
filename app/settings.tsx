@@ -125,16 +125,31 @@ import {
   saveHomeSectorFlowDisplayCount,
 } from '@/services/homeSectorFlowDisplayPreference';
 import {
-  HOME_SHORTCUT_CATALOG,
+  HOME_SHORTCUT_OPTIONS,
   HOME_SHORTCUTS_DEFAULT,
   HOME_SHORTCUTS_MAX,
-  type HomeShortcutKey,
+  homeShortcutOptionStableId,
+  homeShortcutStableId,
+  type HomeShortcut,
+  type HomeShortcutOption,
 } from '@/constants/homeShortcuts';
-import { toggleHomeShortcut } from '@/domain/home/shortcuts';
+import {
+  homeShortcutDisplay,
+  homeShortcutOptionGroupId,
+} from '@/domain/home/shortcutDisplay';
+import {
+  addHomeCommunityPostShortcut,
+  hasHomeShortcut,
+  listHomeCommunityPostShortcuts,
+  removeHomeShortcut,
+  reorderHomeShortcuts,
+  toggleHomeShortcutOption,
+} from '@/domain/home/shortcuts';
 import {
   loadHomeShortcuts,
   saveHomeShortcuts,
 } from '@/services/homeShortcutsPreference';
+import { CommunityPostPickerSheet } from '@/components/signal/CommunityPostPickerSheet';
 import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
@@ -205,6 +220,17 @@ const NEWS_SEGMENT_ORDER_LIST_HEIGHT =
 /** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
 const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
 const QUOTES_SEGMENT_ORDER_LIST_HEIGHT = 54 * 4 + QUOTES_SEGMENT_ORDER_ROW_GAP * 3 + 20;
+const HOME_SHORTCUT_ORDER_ROW_HEIGHT = 64;
+const HOME_SHORTCUT_ORDER_ROW_GAP = 8;
+
+function homeShortcutOrderListHeight(count: number): number {
+  if (count <= 0) return 0;
+  return (
+    HOME_SHORTCUT_ORDER_ROW_HEIGHT * count +
+    HOME_SHORTCUT_ORDER_ROW_GAP * Math.max(0, count - 1) +
+    20
+  );
+}
 
 const ACCENT_LABEL: Record<AccentPresetId, MessageId> = {
   green: 'accentGreen',
@@ -1069,8 +1095,11 @@ export default function SettingsScreen({
     HOME_SECTOR_FLOW_DISPLAY_DEFAULT,
   );
   const [homeSectorFlowDisplayReady, setHomeSectorFlowDisplayReady] = useState(false);
-  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcutKey[]>([...HOME_SHORTCUTS_DEFAULT]);
+  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcut[]>(
+    HOME_SHORTCUTS_DEFAULT.map((row) => ({ ...row })),
+  );
   const [homeShortcutsReady, setHomeShortcutsReady] = useState(false);
+  const [boardPostPickerOpen, setBoardPostPickerOpen] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1340,11 +1369,60 @@ export default function SettingsScreen({
     setHomeShortcutsReady(true);
   }, []);
 
-  const onToggleHomeShortcut = useCallback(
-    (key: HomeShortcutKey, enabled: boolean) => {
-      const next = toggleHomeShortcut(homeShortcuts, key, enabled);
+  const onToggleHomeShortcutOption = useCallback(
+    (option: HomeShortcutOption, enabled: boolean) => {
+      const next = toggleHomeShortcutOption(homeShortcuts, option, enabled);
       setHomeShortcuts(next);
       void saveHomeShortcuts(next);
+    },
+    [homeShortcuts],
+  );
+
+  const onReorderHomeShortcuts = useCallback((nextList: HomeShortcut[]) => {
+    const next = reorderHomeShortcuts(nextList);
+    setHomeShortcuts(next);
+    void saveHomeShortcuts(next);
+  }, []);
+
+  const onRemoveHomeShortcutRow = useCallback(
+    (shortcut: HomeShortcut) => {
+      const next = removeHomeShortcut(homeShortcuts, shortcut);
+      setHomeShortcuts(next);
+      void saveHomeShortcuts(next);
+    },
+    [homeShortcuts],
+  );
+
+  const homeBoardPostShortcuts = useMemo(
+    () => listHomeCommunityPostShortcuts(homeShortcuts),
+    [homeShortcuts],
+  );
+
+  const homeShortcutOptionGroups = useMemo(() => {
+    const groups: {
+      id: 'board' | 'quotes' | 'news' | 'other';
+      titleId: MessageId;
+      options: HomeShortcutOption[];
+    }[] = [
+      { id: 'board', titleId: 'screenBoard', options: [] },
+      { id: 'quotes', titleId: 'tabQuotes', options: [] },
+      { id: 'news', titleId: 'tabNews', options: [] },
+      { id: 'other', titleId: 'settingsHomeShortcutGroupOther', options: [] },
+    ];
+    for (const option of HOME_SHORTCUT_OPTIONS) {
+      const groupId = homeShortcutOptionGroupId(option);
+      const group = groups.find((row) => row.id === groupId);
+      group?.options.push(option);
+    }
+    return groups;
+  }, []);
+
+  const onAddHomeBoardPost = useCallback(
+    (post: { id: string; title: string; source: string }) => {
+      const next = addHomeCommunityPostShortcut(homeShortcuts, post);
+      setHomeShortcuts(next);
+      void saveHomeShortcuts(next);
+      setBoardPostPickerOpen(false);
     },
     [homeShortcuts],
   );
@@ -2087,46 +2165,154 @@ clearCalendarCache();
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
-              {!homeNewsFlowDisplayReady ||
-              !homeWatchlistDisplayReady ||
-              !homeSectorFlowDisplayReady ||
-              !homeShortcutsReady ? (
+              <Text style={styles.displayCardKicker}>{t('settingsHomeShortcutsSection')}</Text>
+              <Text style={styles.prefHint}>
+                {t('settingsHomeShortcutsHint', { count: String(HOME_SHORTCUTS_MAX) })}
+              </Text>
+              {!homeShortcutsReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
                   <Text style={[styles.prefLabel, { marginTop: 10 }]}>
-                    {t('settingsHomeShortcutsSection')}
+                    {t('settingsHomeShortcutsOrderSection')}
                   </Text>
-                  <Text style={styles.prefHint}>
-                    {t('settingsHomeShortcutsHint', { count: String(HOME_SHORTCUTS_MAX) })}
+                  <Text style={styles.prefHint}>{t('settingsHomeShortcutsOrderHint')}</Text>
+                  {homeShortcuts.length === 0 ? (
+                    <Text style={[styles.muted, { marginTop: 8 }]}>
+                      {t('settingsHomeShortcutsEmpty')}
+                    </Text>
+                  ) : (
+                    <View style={[styles.quotesSegmentOrderListWrap, { marginTop: 8 }]}>
+                      <DraggableFlatList
+                        data={homeShortcuts}
+                        scrollEnabled={false}
+                        removeClippedSubviews={false}
+                        style={{ height: homeShortcutOrderListHeight(homeShortcuts.length) }}
+                        containerStyle={{ flexGrow: 0 }}
+                        contentContainerStyle={styles.quotesSegmentOrderListContent}
+                        keyExtractor={(item) => homeShortcutStableId(item)}
+                        onDragEnd={({ data }) => onReorderHomeShortcuts(data)}
+                        renderItem={({ item, drag, isActive, getIndex }) => {
+                          const idx = getIndex() ?? 0;
+                          const isLast = idx === homeShortcuts.length - 1;
+                          const display = homeShortcutDisplay(item, t);
+                          return (
+                            <ScaleDecorator>
+                              <View
+                                style={[
+                                  styles.segmentOrderRow,
+                                  !isLast && styles.segmentOrderRowGap,
+                                  isActive && styles.segmentOrderRowActive,
+                                ]}>
+                                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                                  <Text style={styles.segmentOrderLabel} numberOfLines={1}>
+                                    {display.groupLabel || display.label}
+                                  </Text>
+                                  {display.detailLabel ? (
+                                    <Text
+                                      style={[styles.prefHint, { marginTop: 2 }]}
+                                      numberOfLines={1}>
+                                      {display.detailLabel}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                                <Pressable
+                                  onPress={() => onRemoveHomeShortcutRow(item)}
+                                  hitSlop={8}
+                                  style={{ marginRight: 8 }}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={t('settingsHomeShortcutRemove')}>
+                                  <FontAwesome name="times-circle" size={18} color={theme.textDim} />
+                                </Pressable>
+                                <GHPressable
+                                  style={styles.segmentOrderDragHandle}
+                                  {...(Platform.OS === 'web'
+                                    ? { onPressIn: drag }
+                                    : { onLongPress: drag, delayLongPress: 200 })}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={t('settingsHomeShortcutDragHandleA11y', {
+                                    name: display.label,
+                                  })}>
+                                  <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                                </GHPressable>
+                              </View>
+                            </ScaleDecorator>
+                          );
+                        }}
+                      />
+                    </View>
+                  )}
+
+                  <Text style={[styles.prefLabel, { marginTop: 14 }]}>
+                    {t('settingsHomeShortcutsAddSection')}
                   </Text>
-                  {HOME_SHORTCUT_CATALOG.map((item) => {
-                    const enabled = homeShortcuts.includes(item.key);
-                    const atMax = homeShortcuts.length >= HOME_SHORTCUTS_MAX && !enabled;
-                    return (
-                      <View key={item.key} style={[styles.prefRow, { marginTop: 8 }]}>
-                        <Text style={[styles.prefLabel, atMax && { color: theme.textDim }]}>
-                          {t(item.titleId)}
-                        </Text>
-                        <Switch
-                          value={enabled}
-                          disabled={atMax}
-                          onValueChange={(v) => onToggleHomeShortcut(item.key, v)}
-                          trackColor={{ false: theme.border, true: theme.green + '88' }}
-                          thumbColor={enabled ? theme.green : theme.textDim}
-                        />
-                      </View>
-                    );
-                  })}
+                  <Text style={styles.prefHint}>{t('settingsHomeShortcutsAddHint')}</Text>
+                  {homeShortcutOptionGroups.map((group) => (
+                    <View key={group.id} style={{ marginTop: 10 }}>
+                      <Text style={styles.displayCardKicker}>{t(group.titleId)}</Text>
+                      {group.options.map((option) => {
+                        const enabled = hasHomeShortcut(homeShortcuts, option);
+                        const atMax = homeShortcuts.length >= HOME_SHORTCUTS_MAX && !enabled;
+                        const display = homeShortcutDisplay(option, t);
+                        return (
+                          <View
+                            key={homeShortcutOptionStableId(option)}
+                            style={[styles.prefRow, { marginTop: 8 }]}>
+                            <Text
+                              style={[styles.prefLabel, atMax && { color: theme.textDim }]}
+                              numberOfLines={1}>
+                              {display.detailLabel || display.label}
+                            </Text>
+                            <Switch
+                              value={enabled}
+                              disabled={atMax}
+                              onValueChange={(v) => onToggleHomeShortcutOption(option, v)}
+                              trackColor={{ false: theme.border, true: theme.green + '88' }}
+                              thumbColor={enabled ? theme.green : theme.textDim}
+                            />
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+
+                  <Text style={[styles.prefLabel, { marginTop: 14 }]}>
+                    {t('settingsHomeBoardPostsSection')}
+                  </Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeBoardPostsHint')}</Text>
+                  <Pressable
+                    onPress={() => setBoardPostPickerOpen(true)}
+                    disabled={homeShortcuts.length >= HOME_SHORTCUTS_MAX}
+                    style={({ pressed }) => [
+                      styles.cacheClearBtn,
+                      { marginTop: 10 },
+                      (homeShortcuts.length >= HOME_SHORTCUTS_MAX || pressed) && { opacity: 0.7 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: homeShortcuts.length >= HOME_SHORTCUTS_MAX }}
+                    accessibilityLabel={t('settingsHomeBoardPostAdd')}>
+                    <Text style={styles.cacheClearBtnText}>{t('settingsHomeBoardPostAdd')}</Text>
+                  </Pressable>
+
                   {homeShortcuts.length >= HOME_SHORTCUTS_MAX ? (
                     <Text style={[styles.prefHint, { marginTop: 6 }]}>
                       {t('settingsHomeShortcutsMaxHint', { count: String(HOME_SHORTCUTS_MAX) })}
                     </Text>
                   ) : null}
+                </>
+              )}
+            </View>
 
-                  <View style={[styles.limitRow, { marginTop: 14 }]}>
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
+              {!homeNewsFlowDisplayReady ||
+              !homeWatchlistDisplayReady ||
+              !homeSectorFlowDisplayReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={[styles.limitRow, { marginTop: 8 }]}>
                     <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
                     <Pressable
                       onPress={() => setCountPicker({ kind: 'home', field: 'watchlist' })}
@@ -2170,6 +2356,14 @@ clearCalendarCache();
                 </>
               )}
             </View>
+
+            <CommunityPostPickerSheet
+              visible={boardPostPickerOpen}
+              onDismiss={() => setBoardPostPickerOpen(false)}
+              onSelect={onAddHomeBoardPost}
+              bottomInset={insets.bottom}
+              excludeIds={homeBoardPostShortcuts.map((post) => post.id)}
+            />
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>

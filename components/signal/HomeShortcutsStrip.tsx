@@ -4,13 +4,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
-  HOME_SHORTCUT_CATALOG,
-  type HomeShortcutKey,
+  homeShortcutStableId,
+  type HomeShortcut,
 } from '@/constants/homeShortcuts';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { homeShortcutDisplay } from '@/domain/home/shortcutDisplay';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -18,7 +19,7 @@ const GRID_GAP = 8;
 const TILE_MIN_HEIGHT = 58;
 
 type Props = {
-  keys: HomeShortcutKey[];
+  shortcuts: HomeShortcut[];
   selectedYmd: string;
 };
 
@@ -29,7 +30,7 @@ function resolveColumns(count: number, useTwoPane: boolean, containerWidth: numb
   return Math.min(2, count);
 }
 
-export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
+export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -39,8 +40,17 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const items = useMemo(
-    () => HOME_SHORTCUT_CATALOG.filter((row) => keys.includes(row.key)),
-    [keys],
+    () =>
+      shortcuts.map((shortcut) => {
+        const display = homeShortcutDisplay(shortcut, t);
+        return {
+          id: homeShortcutStableId(shortcut),
+          shortcut,
+          icon: display.icon,
+          label: display.label,
+        };
+      }),
+    [shortcuts, t],
   );
 
   const columns = useMemo(
@@ -54,24 +64,30 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
   }, [columns, containerWidth]);
 
   const openShortcut = useCallback(
-    (key: HomeShortcutKey) => {
-      switch (key) {
+    (shortcut: HomeShortcut) => {
+      switch (shortcut.type) {
         case 'board':
           if (ipadNav.isAvailable) {
-            ipadNav.showBoard({ drillFrom: 'home' });
+            ipadNav.showBoard({
+              drillFrom: 'home',
+              ...(shortcut.source !== 'all' ? { source: shortcut.source } : null),
+            });
             return;
           }
-          router.navigate('/(tabs)/board' as never);
+          router.navigate({
+            pathname: '/(tabs)/board',
+            params: shortcut.source !== 'all' ? { source: shortcut.source } : {},
+          } as never);
           return;
         case 'quotes':
           if (ipadNav.isAvailable) ipadNav.showTabs();
-          router.navigate('/(tabs)/quotes' as never);
+          router.navigate({
+            pathname: '/(tabs)/quotes',
+            params: { segment: shortcut.segment },
+          } as never);
           return;
         case 'news':
-          ipadNav.showNewsTab('global');
-          return;
-        case 'newsIt':
-          ipadNav.showNewsTab('it');
+          ipadNav.showNewsTab(shortcut.segment);
           return;
         case 'calendar':
           if (ipadNav.isAvailable) {
@@ -104,6 +120,13 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
           }
           router.navigate({ pathname: '/settings', params: { tab: 'display' } } as never);
           return;
+        case 'communityPost':
+          if (ipadNav.isAvailable) {
+            ipadNav.showCommunityPost(shortcut.id, { drillFrom: 'home' });
+            return;
+          }
+          router.push(`/community/${encodeURIComponent(shortcut.id)}` as never);
+          return;
         default:
           return;
       }
@@ -122,18 +145,18 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
       }}>
       {items.map((item) => (
         <Pressable
-          key={item.key}
-          onPress={() => openShortcut(item.key)}
+          key={item.id}
+          onPress={() => openShortcut(item.shortcut)}
           accessibilityRole="button"
-          accessibilityLabel={t(item.titleId)}
+          accessibilityLabel={item.label}
           style={({ pressed }) => [
             styles.tile,
             tileWidth != null ? { width: tileWidth } : styles.tileFallback,
             pressed && styles.tilePressed,
           ]}>
           <FontAwesome name={item.icon} size={scaleFont(17)} color={theme.green} />
-          <Text style={styles.label} numberOfLines={1}>
-            {t(item.titleId)}
+          <Text style={styles.label} numberOfLines={2}>
+            {item.label}
           </Text>
         </Pressable>
       ))}

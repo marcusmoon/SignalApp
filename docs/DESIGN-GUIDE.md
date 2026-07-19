@@ -169,7 +169,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 관심 종목 → (조건부) 섹터 흐름
   - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 관심 종목 숨김
-  - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스·IT 뉴스·일정·ETF·공시·설정 중 선택(기본 보드·시세·뉴스·일정, 최대 6). My info → 표시 → 홈에서 토글. 빈 선택이면 섹션 숨김
+  - **홈 바로가기** (`HomeShortcutsStrip`): 보드(전체/세이브/미주미)·시세 세그먼트·뉴스 세그먼트를 **여러 개** 둘 수 있고 순서 변경 가능. 개별 게시글·일정·ETF·공시·설정도 추가. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
@@ -197,7 +197,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
-- 홈 노출: My info → 표시 → **홈** — **바로가기** 토글(최대 6) · **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스 흐름** 개수. 히어로·일정 칩은 자동
+- 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름). 히어로·일정 칩은 자동
 - 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)

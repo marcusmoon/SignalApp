@@ -152,6 +152,12 @@ export const ja = {
   gameSumTrailKicker: '経路で合計を合わせる',
   gameSumTrailBlurb:
     '隣り合うマスをつないで経路を作ります。合計が目標と一致すると消え、上の数字が落ちます。規定回数クリアでレベルクリア。',
+  gameSumTrailHowTo: '遊び方',
+  gameSumTrailHelpExpandA11y: '説明を開く',
+  gameSumTrailHelpCollapseA11y: '説明を閉じる',
+  gameSumTrailHelpHide: '非表示',
+  gameSumTrailHelpHideA11y: '説明を非表示',
+  gameSumTrailHelpShowA11y: '説明を表示',
   gameSumTrailDiffEasy: 'かんたん',
   gameSumTrailDiffNormal: 'ふつう',
   gameSumTrailDiffHard: 'むずかしい',

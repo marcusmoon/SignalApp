@@ -20,6 +20,12 @@ import {
   type SumTrailDifficulty,
   type SumTrailState,
 } from '@/domain/games/sumTrail';
+import {
+  loadSumTrailHelpMode,
+  saveSumTrailHelpMode,
+  SUM_TRAIL_HELP_DEFAULT,
+  type SumTrailHelpMode,
+} from '@/services/sumTrailHelpPreference';
 
 const DIFFICULTIES: SumTrailDifficulty[] = ['easy', 'normal', 'hard'];
 
@@ -395,22 +401,40 @@ export function SumTrailGame({
 }) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
+  /** 폰: 보드 우선 · 와이드 세로: 여유 · 스플릿: 사이드 열 */
+  const compact = !wide && !split;
   const boardMax = split
     ? Math.max(360, Math.min(560, Math.floor(viewportHeight * 0.62)))
     : wide
       ? 480
-      : 360;
+      : Math.max(300, Math.min(392, Math.floor(viewportHeight * 0.42)));
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, wide, split, boardMax),
-    [theme, scaleFont, wide, split, boardMax],
+    () => makeStyles(theme, scaleFont, wide, split, compact, boardMax),
+    [theme, scaleFont, wide, split, compact, boardMax],
   );
   const [difficulty, setDifficulty] = useState<SumTrailDifficulty>('normal');
   const [state, setState] = useState<SumTrailState>(() => createSumTrailGame('normal'));
   const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
   const [flashKey, setFlashKey] = useState(0);
+  const [helpMode, setHelpMode] = useState<SumTrailHelpMode>(SUM_TRAIL_HELP_DEFAULT);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardPulse = useRef(new Animated.Value(1)).current;
   const boardShake = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSumTrailHelpMode().then((mode) => {
+      if (!cancelled) setHelpMode(mode);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setHelp = useCallback((mode: SumTrailHelpMode) => {
+    setHelpMode(mode);
+    void saveSumTrailHelpMode(mode);
+  }, []);
 
   const pathMap = useMemo(() => pathIndexMap(state.path), [state.path]);
   const sum = currentPathSum(state);
@@ -530,7 +554,66 @@ export function SumTrailGame({
           </Pressable>
         );
       })}
+      {!split && helpMode === 'hidden' ? (
+        <Pressable
+          onPress={() => setHelp('collapsed')}
+          style={styles.helpShowBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameSumTrailHelpShowA11y')}>
+          <FontAwesome name="question-circle" size={16} color={theme.green} />
+        </Pressable>
+      ) : null}
     </View>
+  );
+
+  const helpBand =
+    split || helpMode === 'hidden' ? null : (
+      <View style={[styles.heroBand, helpMode === 'collapsed' && styles.heroBandCollapsed]}>
+        <Pressable
+          onPress={() => setHelp(helpMode === 'expanded' ? 'collapsed' : 'expanded')}
+          style={styles.helpToggle}
+          accessibilityRole="button"
+          accessibilityLabel={
+            helpMode === 'expanded' ? t('gameSumTrailHelpCollapseA11y') : t('gameSumTrailHelpExpandA11y')
+          }
+          accessibilityState={{ expanded: helpMode === 'expanded' }}>
+          <View style={styles.heroIcon}>
+            <FontAwesome name="sitemap" size={compact ? 14 : 16} color={theme.green} />
+          </View>
+          <View style={styles.heroText}>
+            <View style={styles.helpTitleRow}>
+              <Text style={styles.kicker} numberOfLines={1}>
+                {helpMode === 'collapsed' ? t('gameSumTrailHowTo') : t('gameSumTrailKicker')}
+              </Text>
+              <FontAwesome
+                name={helpMode === 'expanded' ? 'chevron-up' : 'chevron-down'}
+                size={11}
+                color={theme.green}
+              />
+            </View>
+            {helpMode === 'expanded' ? <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text> : null}
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => setHelp('hidden')}
+          style={styles.helpHideBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameSumTrailHelpHideA11y')}>
+          {helpMode === 'expanded' && !compact ? (
+            <Text style={styles.helpHideText}>{t('gameSumTrailHelpHide')}</Text>
+          ) : (
+            <FontAwesome name="times" size={12} color={theme.textDim} />
+          )}
+        </Pressable>
+      </View>
+    );
+
+  const splitHelp = (
+    <>
+      <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
+      <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
+    </>
   );
 
   const statsBlock = (
@@ -746,8 +829,7 @@ export function SumTrailGame({
       <View style={styles.splitRoot}>
         <View style={styles.boardColumn}>{boardNode}</View>
         <View style={styles.sideColumn}>
-          <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
-          <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
+          {splitHelp}
           {difficultyRow}
           {statsBlock}
           {statusOrActions}
@@ -758,15 +840,7 @@ export function SumTrailGame({
 
   return (
     <View style={styles.root}>
-      <View style={styles.heroBand}>
-        <View style={styles.heroIcon}>
-          <FontAwesome name="sitemap" size={16} color={theme.green} />
-        </View>
-        <View style={styles.heroText}>
-          <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
-          <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
-        </View>
-      </View>
+      {helpBand}
       {difficultyRow}
       {statsBlock}
       {boardNode}
@@ -781,11 +855,13 @@ function makeStyles(
   sf: (n: number) => number,
   wide: boolean,
   split: boolean,
+  compact: boolean,
   boardMax: number,
 ) {
+  const gap = compact ? 10 : wide ? 16 : 14;
   return StyleSheet.create({
     root: {
-      gap: wide ? 16 : 14,
+      gap,
     },
     splitRoot: {
       flexDirection: 'row',
@@ -809,17 +885,59 @@ function makeStyles(
     },
     heroBand: {
       flexDirection: 'row',
-      gap: 12,
+      gap: compact ? 8 : 12,
       alignItems: 'flex-start',
-      padding: wide ? 16 : 12,
+      padding: compact ? 8 : wide ? 16 : 12,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
+    heroBandCollapsed: {
+      paddingVertical: compact ? 6 : 8,
+      alignItems: 'center',
+    },
+    helpToggle: {
+      flex: 1,
+      flexDirection: 'row',
+      gap: compact ? 8 : 12,
+      alignItems: 'flex-start',
+      minWidth: 0,
+    },
+    helpTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'nowrap',
+    },
+    helpHideBtn: {
+      minWidth: 28,
+      height: 28,
+      paddingHorizontal: 6,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: compact ? 0 : 2,
+    },
+    helpHideText: {
+      fontSize: sf(11),
+      fontWeight: '600',
+      color: theme.textDim,
+    },
+    helpShowBtn: {
+      width: compact ? 34 : 38,
+      height: compact ? 34 : 38,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 'auto',
+    },
     heroIcon: {
-      width: 32,
-      height: 32,
+      width: compact ? 28 : 32,
+      height: compact ? 28 : 32,
       borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
@@ -830,26 +948,29 @@ function makeStyles(
     heroText: {
       flex: 1,
       gap: 4,
+      minWidth: 0,
     },
     kicker: {
-      fontSize: sf(13),
+      fontSize: sf(compact ? 12 : 13),
       fontWeight: '700',
       color: theme.green,
       letterSpacing: 0.3,
+      flexShrink: 1,
     },
     blurb: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
+      fontSize: sf(compact ? 12 : 13),
+      lineHeight: sf(compact ? 17 : 18),
       color: theme.textMuted,
     },
     diffRow: {
       flexDirection: 'row',
-      gap: 8,
+      gap: compact ? 6 : 8,
       flexWrap: 'wrap',
+      alignItems: 'center',
     },
     diffChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: compact ? 10 : 12,
+      paddingVertical: compact ? 7 : 8,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -860,7 +981,7 @@ function makeStyles(
       backgroundColor: theme.greenDim,
     },
     diffChipText: {
-      fontSize: sf(13),
+      fontSize: sf(compact ? 12 : 13),
       fontWeight: '600',
       color: theme.textMuted,
     },
@@ -869,7 +990,7 @@ function makeStyles(
     },
     statsRow: {
       flexDirection: 'row',
-      gap: 8,
+      gap: compact ? 6 : 8,
     },
     statBox: {
       flex: 1,
@@ -877,8 +998,8 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: wide ? 14 : 10,
-      paddingHorizontal: 8,
+      paddingVertical: compact ? 8 : wide ? 14 : 10,
+      paddingHorizontal: compact ? 6 : 8,
       alignItems: 'center',
       gap: 2,
     },
@@ -895,22 +1016,22 @@ function makeStyles(
       backgroundColor: theme.dangerDim,
     },
     statLabel: {
-      fontSize: sf(11),
+      fontSize: sf(compact ? 10 : 11),
       fontWeight: '600',
       color: theme.textDim,
     },
     statValue: {
-      fontSize: sf(wide ? 20 : 18),
+      fontSize: sf(compact ? 16 : wide ? 20 : 18),
       fontWeight: '700',
       color: theme.text,
     },
     statValueFocus: {
-      fontSize: sf(wide ? 26 : 22),
+      fontSize: sf(compact ? 20 : wide ? 26 : 22),
       fontWeight: '800',
       color: theme.green,
     },
     progressBlock: {
-      gap: 6,
+      gap: compact ? 4 : 6,
     },
     progressRow: {
       flexDirection: 'row',
@@ -918,7 +1039,7 @@ function makeStyles(
       alignItems: 'center',
     },
     progressText: {
-      fontSize: sf(13),
+      fontSize: sf(compact ? 12 : 13),
       fontWeight: '600',
       color: theme.textMuted,
     },
@@ -929,8 +1050,8 @@ function makeStyles(
       alignSelf: 'center',
       width: '100%',
       maxWidth: boardMax,
-      gap: wide ? 8 : 6,
-      padding: wide ? 14 : 10,
+      gap: compact ? 5 : wide ? 8 : 6,
+      padding: compact ? 8 : wide ? 14 : 10,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1.5,
       backgroundColor: theme.bgElevated,
@@ -939,18 +1060,18 @@ function makeStyles(
     },
     boardRow: {
       flexDirection: 'row',
-      gap: wide ? 8 : 6,
+      gap: compact ? 5 : wide ? 8 : 6,
     },
     actions: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: compact ? 6 : 8,
     },
     secondaryBtn: {
       flexGrow: 1,
-      minWidth: 96,
-      paddingVertical: 12,
-      paddingHorizontal: 12,
+      minWidth: compact ? 88 : 96,
+      paddingVertical: compact ? 10 : 12,
+      paddingHorizontal: compact ? 10 : 12,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -970,7 +1091,7 @@ function makeStyles(
       opacity: 0.55,
     },
     secondaryBtnText: {
-      fontSize: sf(13),
+      fontSize: sf(compact ? 12 : 13),
       fontWeight: '600',
       color: theme.text,
     },
@@ -982,7 +1103,7 @@ function makeStyles(
     },
     primaryBtn: {
       marginTop: 4,
-      paddingVertical: 14,
+      paddingVertical: compact ? 12 : 14,
       paddingHorizontal: 16,
       borderRadius: UI_RADIUS_CARD,
       backgroundColor: theme.green,
@@ -995,7 +1116,7 @@ function makeStyles(
     },
     winBanner: {
       gap: 6,
-      padding: 14,
+      padding: compact ? 12 : 14,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -1003,7 +1124,7 @@ function makeStyles(
     },
     failBanner: {
       gap: 6,
-      padding: 14,
+      padding: compact ? 12 : 14,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.danger,
@@ -1025,8 +1146,8 @@ function makeStyles(
       color: theme.danger,
     },
     winBody: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
+      fontSize: sf(compact ? 12 : 13),
+      lineHeight: sf(compact ? 17 : 18),
       color: theme.textMuted,
     },
   });

@@ -57,7 +57,7 @@ import {
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
-import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import { useFeedUnreadCheckIntervalMs, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
@@ -139,6 +139,7 @@ export default function SignalScreen({
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const paneActive = embedded || isFocused;
+  const feedUnreadCheckMs = useFeedUnreadCheckIntervalMs();
   const { useTwoPane } = useResponsiveLayout();
   const stackChrome = usePhoneMoreStackChrome();
   const ipadNav = useIpadSidebarNavActions();
@@ -302,7 +303,6 @@ export default function SignalScreen({
     if (!paneActive) return;
     if (selectedYmd < todayYmd) return;
     if (!hasSignalApi()) return;
-    const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
@@ -322,9 +322,9 @@ export default function SignalScreen({
         /* ignore polling errors */
       }
     };
-    const id = setInterval(() => void poll(), POLL_MS);
+    const id = setInterval(() => void poll(), feedUnreadCheckMs);
     return () => clearInterval(id);
-  }, [paneActive, locale, markTabHasNewContent, selectedYmd, todayYmd]);
+  }, [feedUnreadCheckMs, paneActive, locale, markTabHasNewContent, selectedYmd, todayYmd]);
 
   useEffect(() => {
     if (selectedYmd < todayYmd) {

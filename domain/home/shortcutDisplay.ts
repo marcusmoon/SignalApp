@@ -1,22 +1,67 @@
 import type { ComponentProps } from 'react';
 import type FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import { COMMUNITY_SOURCE_ALL } from '@/constants/communitySources';
 import {
   HOME_SHORTCUT_TYPE_ICON,
   type HomeShortcut,
   type HomeShortcutOption,
 } from '@/constants/homeShortcuts';
-import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { COMMUNITY_SOURCE_ALL } from '@/constants/communitySources';
+import type { NewsSegmentKey } from '@/constants/newsSegment';
 import type { QuoteSegmentKey } from '@/domain/quotes/constants';
 import type { MessageId } from '@/locales/messages';
 
-const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
+/**
+ * 홈 바로가기 타일 라벨 규칙
+ *
+ * 1. 한 줄 (`HomeShortcutsStrip` numberOfLines=1).
+ * 2. 리프(일정·ETF·공시·설정) → 이름만.
+ * 3. 그룹 기본(보드 all) → 상위만 (`게시판`).
+ * 4. 그 외 그룹 → `상위·하위` (중점, 공백 없음).
+ * 5. 하위는 탭 정식명이 아니라 홈 전용 짧은 표기(`homeShortcut*`).
+ * 6. 결합 길이가 예산을 넘으면 하위만 (아이콘이 상위 역할).
+ *    - 라틴 문자 포함: 12 / 그 외(한글·가나 등): 8
+ */
+
+const QUOTE_SEGMENT_FORMAL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
   popular: 'quotesSegmentPopular',
   mcap: 'quotesSegmentMcap',
   coin: 'quotesSegmentCoin',
+};
+
+/** 홈 타일용 시세 하위 (탭의 「인기순」등보다 짧게) */
+const QUOTE_SEGMENT_HOME: Record<QuoteSegmentKey, MessageId> = {
+  watch: 'homeTileQuotesWatch',
+  popular: 'homeTileQuotesPopular',
+  mcap: 'homeTileQuotesMcap',
+  coin: 'homeTileQuotesCoin',
+};
+
+const NEWS_SEGMENT_FORMAL: Record<NewsSegmentKey, MessageId> = {
+  global: 'feedSegmentGlobal',
+  korea: 'feedSegmentKorea',
+  crypto: 'feedSegmentCrypto',
+  it: 'feedSegmentIt',
+  video: 'feedSegmentVideo',
+};
+
+const NEWS_SEGMENT_HOME: Record<NewsSegmentKey, MessageId> = {
+  global: 'homeTileNewsGlobal',
+  korea: 'homeTileNewsKorea',
+  crypto: 'homeTileNewsCrypto',
+  it: 'homeTileNewsIt',
+  video: 'homeTileNewsVideo',
+};
+
+const BOARD_CHILD_HOME: Record<'save_user_news' | 'naver_likeusstock_free', MessageId> = {
+  save_user_news: 'homeTileBoardSave',
+  naver_likeusstock_free: 'homeTileBoardNaver',
+};
+
+const BOARD_CHILD_FORMAL: Record<'save_user_news' | 'naver_likeusstock_free', MessageId> = {
+  save_user_news: 'communitySourceSaveUserNews',
+  naver_likeusstock_free: 'communitySourceNaverLikeusstock',
 };
 
 const SIMPLE_TITLE: Record<'calendar' | 'etf' | 'disclosures' | 'settings', MessageId> = {
@@ -38,11 +83,22 @@ export type HomeShortcutDisplay = {
   label: string;
   /** 설정 목록용 상위 라벨 */
   groupLabel?: string;
-  /** 설정 목록용 하위 라벨 */
+  /** 설정 목록용 하위 라벨(탭 정식명) */
   detailLabel?: string;
 };
 
 type Translate = (id: MessageId, vars?: Record<string, string | number>) => string;
+
+/** 상위·하위 결합. 길면 하위만. */
+export function homeShortcutCompoundLabel(parent: string, child: string): string {
+  const p = parent.trim();
+  const c = child.trim();
+  if (!c) return p;
+  if (!p) return c;
+  const joined = `${p}·${c}`;
+  const budget = /[A-Za-z]/.test(joined) ? 12 : 8;
+  return joined.length <= budget ? joined : c;
+}
 
 export function homeShortcutDisplay(
   shortcut: HomeShortcut | HomeShortcutOption,
@@ -50,7 +106,6 @@ export function homeShortcutDisplay(
 ): HomeShortcutDisplay {
   if (shortcut.type === 'board') {
     const group = t(GROUP_TITLE.board);
-    // 타일 라벨: all → 상위명(게시판). 그 외 → 하위 채널명만(세이브·미주미).
     if (shortcut.source === COMMUNITY_SOURCE_ALL) {
       return {
         icon: HOME_SHORTCUT_TYPE_ICON.board,
@@ -59,32 +114,34 @@ export function homeShortcutDisplay(
         detailLabel: t('communitySourceAll'),
       };
     }
-    const detail = t(communitySourceLabelId(shortcut.source));
+    const childKey = BOARD_CHILD_HOME[shortcut.source];
+    const formalKey = BOARD_CHILD_FORMAL[shortcut.source];
+    const detailShort = t(childKey);
     return {
       icon: HOME_SHORTCUT_TYPE_ICON.board,
-      label: detail,
+      label: homeShortcutCompoundLabel(group, detailShort),
       groupLabel: group,
-      detailLabel: detail,
+      detailLabel: t(formalKey),
     };
   }
 
   if (shortcut.type === 'quotes') {
-    const detail = t(QUOTE_SEGMENT_LABEL[shortcut.segment]);
+    const group = t(GROUP_TITLE.quotes);
     return {
       icon: HOME_SHORTCUT_TYPE_ICON.quotes,
-      label: `${t(GROUP_TITLE.quotes)} · ${detail}`,
-      groupLabel: t(GROUP_TITLE.quotes),
-      detailLabel: detail,
+      label: homeShortcutCompoundLabel(group, t(QUOTE_SEGMENT_HOME[shortcut.segment])),
+      groupLabel: group,
+      detailLabel: t(QUOTE_SEGMENT_FORMAL[shortcut.segment]),
     };
   }
 
   if (shortcut.type === 'news') {
-    const detail = t(NEWS_SEGMENT_LABEL[shortcut.segment]);
+    const group = t(GROUP_TITLE.news);
     return {
       icon: HOME_SHORTCUT_TYPE_ICON.news,
-      label: `${t(GROUP_TITLE.news)} · ${detail}`,
-      groupLabel: t(GROUP_TITLE.news),
-      detailLabel: detail,
+      label: homeShortcutCompoundLabel(group, t(NEWS_SEGMENT_HOME[shortcut.segment])),
+      groupLabel: group,
+      detailLabel: t(NEWS_SEGMENT_FORMAL[shortcut.segment]),
     };
   }
 

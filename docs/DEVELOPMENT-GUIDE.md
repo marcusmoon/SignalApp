@@ -86,16 +86,17 @@ UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 섹션. 구현 위치:
 | 역할 | 경로 |
 |---|---|
 | 모델·기본값·최대 6 | `constants/homeShortcuts.ts` · `domain/home/shortcuts.ts` |
-| 타일·설정 라벨 | `domain/home/shortcutDisplay.ts` |
+| 타일·설정 라벨 | `domain/home/shortcutDisplay.ts` (`homeShortcutCompoundLabel`) |
+| 홈 타일 짧은 하위 문구 | `locales/*` `homeTile*` (탭 `quotesSegment*` / `feedSegment*`와 분리) |
 | 저장 | `services/homeShortcutsPreference.ts` (`@signal/home_shortcuts_v2`) |
-| 홈 스트립 | `components/signal/HomeShortcutsStrip.tsx` |
-| 설정 UI | `app/settings.tsx` 표시 탭 — **홈 바로가기** 카드(개수 카드와 분리) |
+| 홈 스트립 | `components/signal/HomeShortcutsStrip.tsx` (라벨 `numberOfLines={1}`) |
+| 설정 UI | `app/settings.tsx` 표시 탭 — **홈 바로가기** 카드(개수 카드와 분리). 목록은 상위+정식 하위명 |
 
 내비 (`showBoard` / `showWatchlist` / `showNewsFeed`, `drillFrom: 'home'`):
 
 - **폰**: `/more-board?lock=1` · `/watchlist` · `/home-news` (Stack 백).
 - **wide**: overlay + `WideSubpaneHeader`. 보드 숏컷은 `boardSourceLocked` / `BoardContent.lockedSource` — 채널 세그먼트·사이드바 서브탭 숨김.
-- 보드 라벨: `all` → `screenBoard`(게시판), 채널 → 하위명만 (`homeShortcutDisplay`).
+- **타일 라벨**: 기본(all)→상위만, 그 외→`상위·하위`(짧은 `homeTile*`). 규칙 상세는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 바로가기.
 
 ## 외부 링크
 

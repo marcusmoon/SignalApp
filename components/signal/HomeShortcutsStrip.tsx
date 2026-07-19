@@ -140,7 +140,7 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
             pressed && styles.tilePressed,
           ]}>
           <FontAwesome name={item.icon} size={scaleFont(17)} color={theme.green} />
-          <Text style={styles.label} numberOfLines={2}>
+          <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
             {item.label}
           </Text>
         </Pressable>

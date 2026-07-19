@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
@@ -904,22 +904,20 @@ export function LegacyNewsFeedScreen({
             <View style={styles.topFixedSubmenu}>
               <View style={styles.segment}>
                 {segmentOrder.map((key) => (
-                  <Fragment key={key}>
-                    {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                    <Pressable
-                      onPress={() => onPickSegment(key)}
-                      style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: segment === key }}>
-                      <Text
-                        style={[styles.segText, segment === key && styles.segTextActive]}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.85}>
-                        {t(NEWS_SEGMENT_LABEL[key])}
-                      </Text>
-                    </Pressable>
-                  </Fragment>
+                  <Pressable
+                    key={key}
+                    onPress={() => onPickSegment(key)}
+                    style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: segment === key }}>
+                    <Text
+                      style={[styles.segText, segment === key && styles.segTextActive]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}>
+                      {t(NEWS_SEGMENT_LABEL[key])}
+                    </Text>
+                  </Pressable>
                 ))}
               </View>
             </View>

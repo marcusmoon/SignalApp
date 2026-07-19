@@ -209,14 +209,23 @@ const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
   custom: 'settingsSignalServerModeCustom',
 };
 
-/** 뉴스 세그먼트 순서 목록 높이 */
-const NEWS_SEGMENT_ORDER_ROW_GAP = 8;
-const NEWS_SEGMENT_ORDER_LIST_HEIGHT =
-  54 * NEWS_SEGMENT_ORDER.length + NEWS_SEGMENT_ORDER_ROW_GAP * Math.max(0, NEWS_SEGMENT_ORDER.length - 1) + 20;
+/**
+ * 세그먼트 순서 DraggableFlatList 높이.
+ * 행은 padding·border·sf() 라벨·드래그 핸들로 54px를 넘을 수 있어 여유를 둔다.
+ */
+const SEGMENT_ORDER_ROW_GAP = 8;
+const SEGMENT_ORDER_ROW_HEIGHT = 60;
+/** FlatList viewport / content padding — 마지막 행이 잘리지 않게 */
+const SEGMENT_ORDER_LIST_EXTRA = 36;
 
-/** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
-const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
-const QUOTES_SEGMENT_ORDER_LIST_HEIGHT = 54 * 4 + QUOTES_SEGMENT_ORDER_ROW_GAP * 3 + 20;
+const NEWS_SEGMENT_ORDER_LIST_HEIGHT =
+  SEGMENT_ORDER_ROW_HEIGHT * NEWS_SEGMENT_ORDER.length +
+  SEGMENT_ORDER_ROW_GAP * Math.max(0, NEWS_SEGMENT_ORDER.length - 1) +
+  SEGMENT_ORDER_LIST_EXTRA;
+
+const QUOTES_SEGMENT_ORDER_ROW_GAP = SEGMENT_ORDER_ROW_GAP;
+const QUOTES_SEGMENT_ORDER_LIST_HEIGHT =
+  SEGMENT_ORDER_ROW_HEIGHT * 4 + QUOTES_SEGMENT_ORDER_ROW_GAP * 3 + SEGMENT_ORDER_LIST_EXTRA;
 const HOME_SHORTCUT_ORDER_ROW_HEIGHT = 64;
 const HOME_SHORTCUT_ORDER_ROW_GAP = 8;
 
@@ -789,7 +798,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 2,
     },
     quotesSegmentOrderListContent: {
-      paddingBottom: 8,
+      paddingBottom: 12,
     },
     quotesChangeColorSegment: {
       flexDirection: 'column',
@@ -1781,42 +1790,6 @@ clearCalendarCache();
                   </View>
                 </View>
               )}
-
-              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
-                {t('settingsNewsUnreadCheckKicker')}
-              </Text>
-              <Text style={styles.prefHint}>{t('settingsNewsUnreadCheckHint')}</Text>
-              {!newsUnreadIntervalReady ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
-                  {NEWS_UNREAD_CHECK_INTERVAL_OPTIONS.map((minutes) => (
-                    <Pressable
-                      key={minutes}
-                      onPress={() => {
-                        setNewsUnreadCheckMinutes(minutes);
-                        void saveNewsUnreadCheckIntervalMinutes(minutes);
-                      }}
-                      style={[
-                        styles.langSegment,
-                        newsUnreadCheckMinutes === minutes && styles.langSegmentActive,
-                      ]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: newsUnreadCheckMinutes === minutes }}
-                      accessibilityLabel={t('settingsNewsUnreadCheckOption', {
-                        minutes: String(minutes),
-                      })}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          newsUnreadCheckMinutes === minutes && styles.langSegmentTextActive,
-                        ]}>
-                        {t('settingsNewsUnreadCheckOption', { minutes: String(minutes) })}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
             </View>
           </>
         ) : null}
@@ -2088,6 +2061,42 @@ clearCalendarCache();
                           tabBarOpacityLevel === level && styles.langSegmentTextActive,
                         ]}>
                         {tabBarOpacityPercent(level)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsUnreadCheckKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsUnreadCheckHint')}</Text>
+              {!newsUnreadIntervalReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
+                  {NEWS_UNREAD_CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                    <Pressable
+                      key={minutes}
+                      onPress={() => {
+                        setNewsUnreadCheckMinutes(minutes);
+                        void saveNewsUnreadCheckIntervalMinutes(minutes);
+                      }}
+                      style={[
+                        styles.langSegment,
+                        newsUnreadCheckMinutes === minutes && styles.langSegmentActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: newsUnreadCheckMinutes === minutes }}
+                      accessibilityLabel={t('settingsNewsUnreadCheckOption', {
+                        minutes: String(minutes),
+                      })}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          newsUnreadCheckMinutes === minutes && styles.langSegmentTextActive,
+                        ]}>
+                        {t('settingsNewsUnreadCheckOption', { minutes: String(minutes) })}
                       </Text>
                     </Pressable>
                   ))}

@@ -58,18 +58,21 @@
 
 ### 바텀 시트 (`constants/bottomSheetLayout.ts`)
 
-slide-up Modal 시트(홈 뉴스 다이제스트·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 70%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
+slide-up Modal 시트(다이제스트 스트립 「출처」·퀵 설정·필터·날짜 선택 등)는 **뷰포트 높이의 70%를 넘지 않는다** (`BOTTOM_SHEET_MAX_HEIGHT`). 본문은 시트 안 `ScrollView` + `BOTTOM_SHEET_SCROLL_STYLE`로 스크롤한다.
 
 ### 시트 vs 상세 화면
 
 | 진입 | UI | 이유 |
 |---|---|---|
-| 홈 뉴스 흐름 행 · 목록 행(뉴스/공시) | 바텀 시트 | 짧은 다이제스트 연속 훑기 |
+| 홈 뉴스 흐름 행 · 뉴스/공시 목록 행 | **단건 상세** (`/news-digest` · `/disclosure-digest`) | 탭한 그 항목의 본문·출처 |
 | 홈 히어로(오늘 정리·장중) · 섹터 흐름 카드 | **상세** (`/today-briefing` · `/market-briefing` · `/etf-insight`) | 긴 본문 — 시트 70% 스크롤 지양 |
 | 홈 섹션 `>` | 없음 | 목록·탭은 시장·시세·더보기·사이드바 |
 | 알림함·푸시 | **단건 상세** (날짜바·회차 세그먼트·Stack 제목 없음 — 뒤로만 + 본문) | 알림이 가리킨 그 정보만 |
+| 다이제스트 스트립 「출처」·퀵 설정·필터·날짜 | 바텀 시트 | 짧은 보조 UI |
 
-레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 rewrite한다.
+레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 redirect한다.
+
+**단건 상세 공통 셸** (`BriefingDetailShell`): Stack 제목·`dateBar` 없음 → chevron 뒤로 + 본문 헤드라인 + leadPanel(초록 tint) + `sectionFeedCard` 섹션. 오늘 정리·장중·ETF·뉴스/공시 다이제스트가 동일 뼈대.
 
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 
@@ -169,8 +172,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
-- **히어로 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` (알림과 동일 상세). 뉴스 흐름 행만 시트
-- **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF 바텀시트
+- **히어로·뉴스·ETF 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` · 뉴스 행 → `/news-digest` · 섹터 흐름 → `/etf-insight` (알림과 동일 단건 상세)
+- **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF/뉴스 바텀시트
 - **일정 칩**: 뉴스 흐름 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
@@ -195,7 +198,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 노출 개수: My info → 표시 → **홈** 스크롤 피커. **관심 종목**(오늘만) · **섹터 흐름**(기본 6, 3–12) · **뉴스 흐름** 조절. 히어로·일정은 자동 (장중 브리핑 목록·게시판 피커 없음)
 - 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
-- 상세(`MarketBriefingBlock`·`TodayBriefingBlock`·시트·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
+- 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
@@ -232,12 +235,16 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **Wide 우측 pane**: 좌측 사이드바·상단 `SignalHeader` 고정, 우측만 페이지 교체. 드릴인 시에만 `WideSubpaneHeader`. 상세는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#wide-우측-pane-내비-ipad--넓은-웹).
 - **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만, iPhone).
 
-### 오늘 정리 상세
+### 브리핑·다이제스트 단건 상세
 
-`app/today-briefing.tsx` — 홈 히어로 · 알림·푸시.
+공통: `BriefingDetailShell` — Stack 제목·`dateBar` 없음(뒤로만). 본문 헤드라인이 제목.
 
-- Stack 제목·`dateBar` 없음 (뒤로만). 본문 헤드라인이 제목
-- 본문: 헤드라인 · 요약 · 핵심 포인트 · 출처
+| 화면 | 진입 | 본문 블록 |
+|---|---|---|
+| 오늘 정리 | 홈 히어로 · 알림 | `TodayBriefingBlock` — lead(요약) · 핵심 포인트 · 출처 |
+| 장중 브리핑 | 홈 히어로 · 알림 (`/market-briefing`) | `MarketBriefingDetailContent` → `MarketBriefingBlock` (시장 탭 허브와 분리) |
+| ETF | 홈·리스트 · 알림 | `EtfInsightBlock` |
+| 뉴스/공시 다이제스트 | 홈 뉴스 · 목록 · 알림 | `DigestDetailContent` — lead(요약) · 출처 |
 
 ### 종목 상세 바로가기
 
@@ -257,7 +264,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 컴포넌트 | 용도 |
 |---|---|
 | `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드 · More settings) |
-| `QuickSettingsSheet` / `DigestSourcesSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% |
+| `BriefingDetailShell` | 단건 브리핑·다이제스트 상세 공통 셸 (뒤로 + 헤드라인 + 본문) |
+| `QuickSettingsSheet` / `DigestSourcesSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% (스트립 출처·퀵 설정 등) |
 | `ItNewsFeedPanel` | IT 뉴스 리스트 (`category=it`) |
 | `WideSubpaneHeader` | wide 우측 pane **드릴인** — chevron + 제목 (`PhoneHeaderBackButton`) |
 | `SignalFloatingTabBar` | iPhone 하단 탭 |

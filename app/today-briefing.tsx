@@ -1,30 +1,16 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
+import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { TodayBriefingBlock } from '@/components/signal/TodayBriefingBlock';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
-import {
-  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-} from '@/constants/screenLayout';
-import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
-import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
-import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { toYmd } from '@/utils/date';
 
 function parseDateParam(value: unknown): string {
@@ -49,33 +35,30 @@ export type TodayBriefingContentProps = {
 };
 
 export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBriefingContentProps) {
-  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, embedded), [theme, scaleFont, feedTypo, embedded]);
   const [item, setItem] = useState<SignalApiTodayBriefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { ref: scrollRef } = useScrollToTopOnChange([date], { resyncDeps: [item, loading] });
-  const scrollResetKey = date;
-
-
-  const load = useCallback(async (forceRefresh?: boolean) => {
-    if (!hasSignalApi()) {
-      setItem(null);
-      setError(t('errorSignalApiShort'));
-      setLoading(false);
-      return;
-    }
-    setError(null);
-    try {
-      setItem(await fetchTodayBriefingWithFallback(date, locale, signalCacheMode(forceRefresh)));
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'todayBriefingLoadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [date, locale, t]);
+  const load = useCallback(
+    async (forceRefresh?: boolean) => {
+      if (!hasSignalApi()) {
+        setItem(null);
+        setError(t('errorSignalApiShort'));
+        setLoading(false);
+        return;
+      }
+      setError(null);
+      try {
+        setItem(await fetchTodayBriefingWithFallback(date, locale, signalCacheMode(forceRefresh)));
+      } catch (e) {
+        setError(formatSignalApiError(e, t, 'todayBriefingLoadError'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [date, locale, t],
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -91,51 +74,28 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
     }
   }, [load]);
 
-  const leadText = item?.headline?.trim() || item?.summary?.trim() || '';
-  const bodyText = item?.summary?.trim() || '';
+  const headline = item?.headline?.trim() || item?.summary?.trim() || item?.title?.trim() || '';
 
   return (
-    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
-      {/* 단건 상세 — Stack 제목·dateBar 없음. 뒤로만 */}
-      {!embedded ? <Stack.Screen options={{ title: '' }} /> : null}
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      ) : (
-        <WebWheelScrollView
-          ref={scrollRef as never}
-          scrollResetKey={scrollResetKey}
-          contentRevision={item}
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
-          {onBack ? <WideSubpaneHeader onBack={onBack} /> : null}
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          {!error && !item ? (
-            <Text style={styles.emptyText}>{t('todayBriefingEmpty')}</Text>
-          ) : null}
-
-          {item ? (
-            <>
-              <View style={styles.heroCard}>
-                {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
-              </View>
-              <TodayBriefingBlock
-                briefing={item}
-                titleText={leadText}
-                showSummary={Boolean(bodyText && bodyText !== leadText)}
-              />
-            </>
-          ) : null}
-        </WebWheelScrollView>
-      )}
-    </SafeAreaView>
+    <BriefingDetailShell
+      embedded={embedded}
+      onBack={onBack}
+      loading={loading}
+      refreshing={refreshing}
+      onRefresh={() => void onRefresh()}
+      error={error}
+      emptyText={!error && !item ? t('todayBriefingEmpty') : null}
+      headline={item ? headline : null}
+      scrollResetKey={date}
+      contentRevision={item}>
+      {item ? (
+        <TodayBriefingBlock
+          briefing={item}
+          titleText={headline}
+          showSummary={Boolean(item.summary?.trim() && item.summary.trim() !== headline)}
+        />
+      ) : null}
+    </BriefingDetailShell>
   );
 }
 
@@ -149,75 +109,4 @@ export default function TodayBriefingScreen() {
   }
 
   return <TodayBriefingContent date={date} />;
-}
-
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  ft: FeedContentTypography,
-  embedded: boolean,
-) {
-  return StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: theme.bg,
-    },
-    scroll: {
-      flex: 1,
-    },
-    content: {
-      flexGrow: 1,
-      paddingHorizontal: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
-      paddingTop: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : 14,
-      paddingBottom: 28,
-      gap: 14,
-      maxWidth: embedded ? APP_WIDE_CONTENT_MAX_WIDTH : APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      width: '100%',
-    },
-    loadingWrap: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    errorBox: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.danger,
-      backgroundColor: theme.dangerDim,
-      padding: 12,
-    },
-    errorText: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '600',
-      color: theme.danger,
-    },
-    emptyText: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(19),
-      fontWeight: ft.bodyWeight,
-      color: theme.textDim,
-      textAlign: 'center',
-      paddingVertical: 24,
-    },
-    heroCard: {
-      position: 'relative',
-      overflow: 'hidden',
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingLeft: 18,
-      paddingRight: 14,
-      paddingVertical: 14,
-      gap: 16,
-    },
-    headline: {
-      fontSize: ft.ff(17),
-      lineHeight: sf(25),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-    },
-  });
 }

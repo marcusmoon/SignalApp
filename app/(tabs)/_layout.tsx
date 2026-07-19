@@ -32,13 +32,13 @@ import { TermsContent } from '@/app/terms';
 import { TodayBriefingContent } from '@/app/today-briefing';
 import { DigestDetailContent } from '@/components/signal/DigestDetailContent';
 import { EtfInsightDetailContent } from '@/components/signal/EtfInsightDetailContent';
+import { MarketBriefingDetailContent } from '@/components/signal/MarketBriefingDetailContent';
 import { EtfInsightsListContent } from '@/app/etf-insights';
 import { CommunityPostContent } from '@/app/community/[id]';
 import { SymbolDetailContent } from '@/app/symbol/[ticker]';
 import { BoardContent } from '@/components/community/BoardContent';
 import { QuotesContent } from '@/components/quotes/QuotesContent';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
-import SignalScreen from '@/app/(tabs)/signal';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useIpadSidebarNavActions, useIpadSidebarNavState } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -474,16 +474,12 @@ function IpadWideTabLayout({
             ) : contentPane === 'todayBriefing' && todayBriefingDate ? (
               <TodayBriefingContent embedded date={todayBriefingDate} onBack={subpaneBack} />
             ) : contentPane === 'marketBriefing' ? (
-              <BottomTabBarHeightContext.Provider value={0}>
-                <SignalScreen
-                  embedded
-                  onBack={subpaneBack}
-                  initialSession={marketBriefingParams?.session ?? null}
-                  initialDate={marketBriefingParams?.date ?? null}
-                  hideDateNavigator={marketBriefingParams?.hideDateNavigator === true}
-                  hideSessionSegments={marketBriefingParams?.hideSessionSegments === true}
-                />
-              </BottomTabBarHeightContext.Provider>
+              <MarketBriefingDetailContent
+                embedded
+                session={marketBriefingParams?.session ?? null}
+                date={marketBriefingParams?.date ?? null}
+                onBack={subpaneBack}
+              />
             ) : contentPane === 'etfInsights' ? (
               <EtfInsightsListContent embedded onBack={subpaneBack} />
             ) : contentPane === 'etfInsight' ? (

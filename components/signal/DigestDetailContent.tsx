@@ -1,28 +1,15 @@
-import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
-import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
 import type { DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
-import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { COMFORT_GAP_LG, COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
-import {
-  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
-  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { fetchSignalDisclosureDigestById } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -52,20 +39,15 @@ export function DigestDetailContent({
 }: DigestDetailContentProps) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, embedded),
-    [theme, scaleFont, feedTypo, embedded],
-  );
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [newsItem, setNewsItem] = useState<SignalApiNewsDigestItem | null>(null);
   const [disclosureItem, setDisclosureItem] = useState<SignalApiDisclosureDigestItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const titleKey = kind === 'news' ? 'newsIssuesTitle' : 'disclosureFlowTitle';
   const emptyKey = kind === 'news' ? 'newsDigestEmpty' : 'disclosureDigestEmpty';
   const loadErrorKey = kind === 'news' ? 'newsIssuesLoadError' : 'disclosureFlowLoadError';
   const item = kind === 'news' ? newsItem : disclosureItem;
-  const { ref: scrollRef } = useScrollToTopOnChange([kind, id], { resyncDeps: [item, loading] });
   const scrollResetKey = `${kind}|${id || ''}`;
 
   const load = useCallback(
@@ -130,155 +112,110 @@ export function DigestDetailContent({
 
   const headline = item?.title?.trim() || '';
   const summary = item?.summary?.trim() || '';
+  const summaryBody = summary && summary !== headline ? summary : '';
 
   return (
-    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
-      {/* 단건 상세 — Stack 제목·dateBar 없음 (뒤로만). 본문 헤드라인이 제목 역할 */}
-      {!embedded ? <Stack.Screen options={{ title: '' }} /> : null}
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      ) : (
-        <WebWheelScrollView
-          ref={scrollRef as never}
-          scrollResetKey={scrollResetKey}
-          contentRevision={item}
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
-          {onBack ? <WideSubpaneHeader onBack={onBack} /> : null}
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+    <BriefingDetailShell
+      embedded={embedded}
+      onBack={onBack}
+      loading={loading}
+      refreshing={refreshing}
+      onRefresh={() => void onRefresh()}
+      error={error}
+      emptyText={!error && !item ? t(emptyKey) : null}
+      headline={item ? headline : null}
+      scrollResetKey={scrollResetKey}
+      contentRevision={item}>
+      {item ? (
+        <View style={styles.root}>
+          {summaryBody ? (
+            <View style={styles.leadPanel}>
+              <ChangeTintedText style={styles.summary}>{summaryBody}</ChangeTintedText>
             </View>
           ) : null}
 
-          {!error && !item ? <Text style={styles.emptyText}>{t(emptyKey)}</Text> : null}
-
-          {item ? (
-            <>
-              <View style={styles.section}>
-                <HomeSectionHeader title={headline || t(titleKey)} showChevron={false} />
-                {summary ? (
-                  <View style={styles.feedCard}>
-                    <Text style={styles.summary}>{summary}</Text>
-                  </View>
-                ) : null}
+          {sourceRows.length > 0 ? (
+            <View style={styles.sectionWrap}>
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>{t('feedDigestSourcesTitle')}</Text>
               </View>
-
-              {sourceRows.length > 0 ? (
-                <View style={styles.section}>
-                  <HomeSectionHeader title={t('feedDigestSourcesTitle')} showChevron={false} />
-                  <View style={[styles.feedCard, styles.feedCardCompact]}>
-                    <View style={styles.sourceList}>
-                      {sourceRows.map((row, index) => {
-                        const refUrl = row.url || undefined;
-                        return (
-                          <HomeDigestFeedRow
-                            key={row.key}
-                            title={row.title}
-                            titleLines={3}
-                            trailText={row.subtitle?.trim() || null}
-                            timeLabel={row.timeLabel?.trim() || null}
-                            sourceEntries={row.sourceEntries}
-                            bordered={index < sourceRows.length - 1}
-                            onPress={
-                              refUrl
-                                ? () => {
-                                    void Linking.openURL(refUrl).catch(() => null);
-                                  }
-                                : undefined
+              <View style={styles.sectionFeedCard}>
+                {sourceRows.map((row, index) => {
+                  const refUrl = row.url || undefined;
+                  return (
+                    <HomeDigestFeedRow
+                      key={row.key}
+                      title={row.title}
+                      titleLines={3}
+                      trailText={row.subtitle?.trim() || null}
+                      timeLabel={row.timeLabel?.trim() || null}
+                      sourceEntries={row.sourceEntries}
+                      bordered={index < sourceRows.length - 1}
+                      onPress={
+                        refUrl
+                          ? () => {
+                              void Linking.openURL(refUrl).catch(() => null);
                             }
-                          />
-                        );
-                      })}
-                    </View>
-                  </View>
-                </View>
-              ) : null}
-            </>
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </View>
+            </View>
           ) : null}
-        </WebWheelScrollView>
-      )}
-    </SafeAreaView>
+        </View>
+      ) : null}
+    </BriefingDetailShell>
   );
 }
 
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  ft: FeedContentTypography,
-  embedded: boolean,
-) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const leadTint =
+    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}0A` : theme.bgElevated;
   return StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: theme.bg,
+    root: {
+      gap: 20,
     },
-    scroll: {
-      flex: 1,
-    },
-    content: {
-      flexGrow: 1,
-      paddingHorizontal: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
-      paddingTop: embedded ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : 14,
-      paddingBottom: 28,
-      gap: COMFORT_GAP_LG,
-      maxWidth: embedded ? APP_WIDE_CONTENT_MAX_WIDTH : APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      width: '100%',
-    },
-    loadingWrap: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    errorBox: {
+    leadPanel: {
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: theme.danger,
-      backgroundColor: theme.dangerDim,
-      padding: 12,
-    },
-    errorText: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '600',
-      color: theme.danger,
-    },
-    emptyText: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(19),
-      fontWeight: ft.bodyWeight,
-      color: theme.textDim,
-      textAlign: 'center',
-      paddingVertical: 24,
-    },
-    section: {
-      gap: COMFORT_GAP_SM,
-    },
-    feedCard: {
-      borderRadius: UI_RADIUS_CARD_LG,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingHorizontal: 12,
-      paddingVertical: COMFORT_PADDING_ROW_V,
-      overflow: 'hidden',
-    },
-    feedCardCompact: {
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      borderColor: theme.greenBorder,
+      backgroundColor: leadTint,
+      padding: ft.pad(16),
+      gap: 14,
     },
     summary: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(19),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
+      fontSize: ft.signalBodyFont(15),
+      lineHeight: sf(23),
+      fontWeight: ft.signalBodyWeight,
+      color: theme.text,
     },
-    sourceList: {
-      gap: 0,
+    sectionWrap: {
+      gap: 16,
+    },
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    sectionTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.signalTitleFont(16),
+      fontWeight: ft.titleWeight,
+      letterSpacing: -0.15,
+      color: theme.text,
+    },
+    sectionFeedCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      overflow: 'hidden',
     },
   });
 }

@@ -43,8 +43,6 @@ import { newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
-import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import {
@@ -87,7 +85,7 @@ import type {
   SignalApiNewsDigestItem,
   SignalApiTodayBriefing,
 } from '@/integrations/signal-api/types';
-import type { AppLocale, MessageId } from '@/locales/messages';
+import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import {
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
@@ -270,7 +268,6 @@ export function HomeFocusContent({
   showIssueSummary = false,
   onPullRefreshReady,
 }: HomeFocusContentProps) {
-  type HomeDigestSheetState = { kind: 'news'; row: IssueRow };
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
@@ -300,8 +297,6 @@ export function HomeFocusContent({
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [digestSheet, setDigestSheet] = useState<HomeDigestSheetState | null>(null);
-
   const homeHero = useMemo(
     () => selectHomeHeroBriefing({ selectedYmd, todayYmd, todayBriefing, briefings }),
     [selectedYmd, todayYmd, todayBriefing, briefings],
@@ -528,9 +523,18 @@ export function HomeFocusContent({
     };
   }, [reloadHomeDisplayPrefs]);
 
-  const openIssueSheet = useCallback((row: IssueRow) => {
-    setDigestSheet({ kind: 'news', row });
-  }, []);
+  const openIssueDetail = useCallback(
+    (row: IssueRow) => {
+      const id = String(row.item.id || '').trim();
+      if (!id) return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showNewsDigest(id, { drillFrom: 'home' });
+        return;
+      }
+      router.push({ pathname: '/news-digest', params: { id } } as never);
+    },
+    [ipadNav, router],
+  );
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -545,26 +549,6 @@ export function HomeFocusContent({
     [ipadNav, router],
   );
 
-  const closeDigestSheet = useCallback(() => {
-    setDigestSheet(null);
-  }, []);
-
-  const digestSheetTitle = useMemo(() => {
-    if (!digestSheet) return '';
-    return digestSheet.row.item.title;
-  }, [digestSheet]);
-
-  const digestSheetSummary = useMemo(() => {
-    if (!digestSheet) return undefined;
-    const summary = digestSheet.row.item.summary?.trim();
-    return summary || undefined;
-  }, [digestSheet]);
-
-  const digestSheetRows = useMemo(() => {
-    if (!digestSheet) return [];
-    return newsDigestSourceSheetRows(digestSheet.row.item, locale as AppLocale);
-  }, [digestSheet, locale]);
-
   const openCalendar = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showCalendar({ drillFrom: 'home' });
@@ -573,7 +557,7 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
-  /** 히어로·섹터 흐름 — 긴 본문은 상세 화면 (뉴스는 시트 유지) */
+  /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
   const openHero = useCallback(() => {
     if (!homeHero) return;
     if (homeHero.kind === 'today') {
@@ -754,7 +738,7 @@ export function HomeFocusContent({
                 summary={null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
-                onPress={() => openIssueSheet(row)}
+                onPress={() => openIssueDetail(row)}
                 footerLead={
                   <View
                     accessible
@@ -773,7 +757,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openIssueSheet, showIssueSummary, styles, locale, t, theme],
+    [openIssueDetail, showIssueSummary, styles, locale, t, theme],
   );
 
   return (
@@ -910,14 +894,6 @@ export function HomeFocusContent({
         </WebWheelScrollView>
       </View>
       {datePickerSheet}
-      <DigestSourcesSheet
-        visible={digestSheet != null}
-        kicker={t('newsIssuesTitle')}
-        digestTitle={digestSheetTitle}
-        digestSummary={digestSheetSummary}
-        rows={digestSheetRows}
-        onClose={closeDigestSheet}
-      />
     </>
   );
 }

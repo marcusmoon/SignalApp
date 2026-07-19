@@ -25,7 +25,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 |---|---|
 | 게임 허브 화면 | `app/game-center.tsx` (`GameHubContent`) |
 | 개별 게임 화면 | `app/games/<game-id>.tsx` |
-| 게임 UI | `components/games/` (`SumTrailGame`, `SumTrailHelpSheet`) |
+| 게임 UI | `components/games/` (`SumTrailGame`, `SumTrailHelpSheet`, `SudokuGame`, `SudokuHelpSheet`) |
 | 규칙·순수 로직 | `domain/games/<gameId>/` |
 | 허브 타일 메타 | `app/(tabs)/more.tsx` `HUB_META.gameCenter` |
 | 사이드바 | `components/signal/SignalSidebarTabBar.tsx` |
@@ -68,6 +68,26 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 - 힌트 추가 충전을 **포인트/재화로 구매**
 - 일일 힌트 리필·광고 시청 리워드와 연동 가능
 
+## 스도쿠 (Sudoku)
+
+클래식 9×9 숫자 퍼즐. 행·열·3×3 박스에 1–9가 겹치지 않게 채운다.
+
+| 항목 | 값 |
+|---|---|
+| 라우트 | `/games/sudoku` |
+| 로직 | `domain/games/sudoku/sudoku.ts` |
+| UI | `components/games/SudokuGame.tsx` |
+| 난이도 | `easy`(≈40 힌트칸) · `normal`(≈32) · `hard`(≈26) |
+| 조작 | 칸 선택 · 1–9 패드 · 지우기 · Undo · **힌트** · 다시 · 새 게임 |
+| 힌트 | 쉬움 3 / 보통 2 / 어려움 1회. 빈칸(또는 틀린 칸)에 정답 채움 |
+| 실수 | 정답과 다른 숫자 입력 시 카운트. 행·열·박스 충돌은 빨간 강조 |
+| 레이아웃 | 합 트레일과 동일 — 폰 fill · `?` 바텀 시트 · 와이드 가로 2열 |
+
+### 후속 (미구현)
+
+- 메모(연필) 모드
+- 힌트 포인트 구매
+
 ## UI 규칙
 
 - 테마 hex 직접 사용 금지 — `theme` / `scaleFont`만
@@ -83,4 +103,4 @@ npm test          # domain/games 포함
 npm run typecheck
 ```
 
-수동: 더보기·사이드바 → 게임 → 합 트레일에서 난이도 전환·경로 합 맞춤·레벨 클리어·와이드 레이아웃을 확인한다.
+수동: 더보기·사이드바 → 게임 → 합 트레일·스도쿠에서 난이도 전환·클리어·와이드 레이아웃을 확인한다.

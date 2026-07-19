@@ -1,13 +1,19 @@
 /**
- * More 허브 타일 순서 정규화 — ETF를 게시판 앞에 삽입 · 레거시 키 마이그레이션.
+ * More 허브 타일 순서 정규화 — ETF·게임센터 삽입 · 레거시 키 마이그레이션.
  */
 
-export type MoreHubRouteKeyNormalized = 'account' | 'disclosures' | 'etfBriefing' | 'board';
+export type MoreHubRouteKeyNormalized =
+  | 'account'
+  | 'disclosures'
+  | 'etfBriefing'
+  | 'gameCenter'
+  | 'board';
 
 export const MORE_HUB_ROUTE_ORDER_DEFAULT_NORMALIZED: MoreHubRouteKeyNormalized[] = [
   'account',
   'disclosures',
   'etfBriefing',
+  'gameCenter',
   'board',
 ];
 
@@ -18,11 +24,30 @@ function migrateHubKey(raw: unknown): MoreHubRouteKeyNormalized | null {
     raw === 'account' ||
     raw === 'disclosures' ||
     raw === 'etfBriefing' ||
+    raw === 'gameCenter' ||
     raw === 'board'
   ) {
     return raw;
   }
   return null;
+}
+
+/** 빠진 키를 기본 순서 기준으로 끼워 넣는다. */
+function insertMissingKey(
+  out: MoreHubRouteKeyNormalized[],
+  seen: Set<MoreHubRouteKeyNormalized>,
+  key: MoreHubRouteKeyNormalized,
+): void {
+  if (seen.has(key)) return;
+  if (key === 'etfBriefing' || key === 'gameCenter') {
+    const boardIdx = out.indexOf('board');
+    if (boardIdx >= 0) out.splice(boardIdx, 0, key);
+    else out.push(key);
+    seen.add(key);
+    return;
+  }
+  out.push(key);
+  seen.add(key);
 }
 
 export function normalizeMoreHubOrderRaw(raw: unknown): MoreHubRouteKeyNormalized[] {
@@ -39,16 +64,7 @@ export function normalizeMoreHubOrderRaw(raw: unknown): MoreHubRouteKeyNormalize
     }
   }
   for (const k of defaults) {
-    if (seen.has(k)) continue;
-    if (k === 'etfBriefing') {
-      const boardIdx = out.indexOf('board');
-      if (boardIdx >= 0) out.splice(boardIdx, 0, k);
-      else out.push(k);
-      seen.add(k);
-      continue;
-    }
-    out.push(k);
-    seen.add(k);
+    insertMissingKey(out, seen, k);
   }
   return out;
 }

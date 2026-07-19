@@ -1,5 +1,5 @@
 /**
- * More 허브 순서 — ETF를 게시판 앞에 삽입 · 레거시 키.
+ * More 허브 순서 — ETF·게임센터 삽입 · 레거시 키.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -18,23 +18,31 @@ describe('normalizeMoreHubOrderRaw', () => {
   it('migrates todayBriefing → disclosures and drops settings', () => {
     assert.deepEqual(
       normalizeMoreHubOrderRaw(['account', 'todayBriefing', 'board', 'settings']),
-      ['account', 'disclosures', 'etfBriefing', 'board'],
+      ['account', 'disclosures', 'etfBriefing', 'gameCenter', 'board'],
     );
   });
 
-  it('inserts etfBriefing before board when missing (regression: ETF after board)', () => {
+  it('inserts etfBriefing and gameCenter before board when missing', () => {
     assert.deepEqual(normalizeMoreHubOrderRaw(['account', 'disclosures', 'board']), [
       'account',
       'disclosures',
       'etfBriefing',
+      'gameCenter',
       'board',
     ]);
   });
 
-  it('preserves custom order when etfBriefing already present', () => {
+  it('inserts gameCenter before board when only gameCenter missing', () => {
     assert.deepEqual(
-      normalizeMoreHubOrderRaw(['account', 'board', 'etfBriefing', 'disclosures']),
-      ['account', 'board', 'etfBriefing', 'disclosures'],
+      normalizeMoreHubOrderRaw(['account', 'disclosures', 'etfBriefing', 'board']),
+      ['account', 'disclosures', 'etfBriefing', 'gameCenter', 'board'],
+    );
+  });
+
+  it('preserves custom order when gameCenter already present', () => {
+    assert.deepEqual(
+      normalizeMoreHubOrderRaw(['account', 'gameCenter', 'board', 'etfBriefing', 'disclosures']),
+      ['account', 'gameCenter', 'board', 'etfBriefing', 'disclosures'],
     );
   });
 });

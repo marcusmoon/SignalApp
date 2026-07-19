@@ -21,6 +21,7 @@
 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
 | [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
 | [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) | ETF 브리핑 ingest·홈 노출 |
+| [GAME-CENTER.md](./GAME-CENTER.md) | 더보기 게임센터·미니게임 개발 |
 | [EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md) | Expo/EAS·Xcode 빌드 |
 | [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |
 | [SIGNAL-ADMIN-UIUX.md](./SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |
@@ -115,6 +116,7 @@ npm run verify   # tsc + domain unit tests (CI)
 | 게시판 | `app/(tabs)/board.tsx`, `app/more-board.tsx`, `components/community/BoardContent.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
+| 게임센터 | `app/game-center.tsx`, `app/games/sum-trail.tsx`, `domain/games/sumTrail/` — [GAME-CENTER.md](./GAME-CENTER.md) |
 | 유튜브 | `app/(tabs)/youtube.tsx` |
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
 | 알림함 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |

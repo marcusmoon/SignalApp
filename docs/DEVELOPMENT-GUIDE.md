@@ -40,7 +40,8 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/briefings/publishedIso` | 브리핑 상세 발행 시각 체인 |
 | `domain/digests/createdAt` | 다이제스트 시각 fallback |
 | `domain/etfInsights/etfHomeVisibilityRules` | ETF 홈 7일 게이트 |
-| `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF→게시판 앞 삽입 |
+| `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF·게임센터→게시판 앞 삽입 |
+| `domain/games/sumTrail` | 합 트레일 퍼즐 로직 — [GAME-CENTER.md](./GAME-CENTER.md) |
 | `domain/news/feedFilters` | 뉴스 URL 중복 제거 · 페이지네이션 전진 |
 | `domain/quotes/tintSignedChangeInText` | 본문 부호/% 틴트 · 비변동 % 제외 |
 | `domain/heatmaps/changeHeat` | 히트맵 채색 강도 |
@@ -274,7 +275,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 공시 | `app/(tabs)/disclosures.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 코인 로고는 `/v1/coins` `imageUrl`([종목 로고](#종목-로고)). 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
 | 종목 로고 | `components/signal/SymbolLogo.tsx`, `services/symbolLogo.ts` — [종목 로고](#종목-로고) · [SERVER.md](./SERVER.md) |
-| 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
+| 더보기 | `app/(tabs)/more.tsx`, `app/game-center.tsx`, `app/games/sum-trail.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
 | IT 뉴스 | `app/(tabs)/it-news.tsx`, `app/more-it-news.tsx`, `components/news/ItNewsFeedPanel.tsx` — `GET /v1/news?category=it` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` (푸시 딥링크) |
 | 뉴스·공시 다이제스트 상세 | `app/news-digest.tsx` · `app/disclosure-digest.tsx` (알림·푸시) |

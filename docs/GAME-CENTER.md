@@ -59,6 +59,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | 실패 | 합이 목표를 **초과**하거나, 목표에 도달하기 전에 **둘 칸이 없으면** `failed`. 실패 버스트·보드 흔들림·에러 햅틱 |
 | 연출 | 숫자 구간별 타일 색 · 합 진행 바 · 목표 근접(경고)/초과(위험) 틴트 · 맞춤·레벨 클리어 버스트 오버레이 |
 | 와이드 | 사이드바 루트(백 없음) · 가로/넓은 pane에서 보드\|조작 2열 · 보드 크기 viewport 연동 |
+| 폰 | 보드 우선 컴팩트 여백. 설명은 **접기(기본) / 펼치기 / 숨기기**(난이도 옆 `?`로 복원). `services/sumTrailHelpPreference` |
 
 생성 시 시드로 유효 경로를 하나 골라 목표를 정한다 (`pickTarget`). 보드가 비거나 다음 목표를 못 고르면 레벨 클리어로 처리한다.
 
@@ -71,7 +72,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 
 - 테마 hex 직접 사용 금지 — `theme` / `scaleFont`만
 - 카드·보드는 `UI_RADIUS_CARD` · `UI_RADIUS_CARD_LG`
-- 폰: `APP_CONTENT_MAX_WIDTH` + `stackScreenScrollBottomPadding`
+- 폰: `APP_CONTENT_MAX_WIDTH` + `stackScreenScrollBottomPadding` · 합 트레일 설명 접기/숨김
 - 와이드: `APP_WIDE_CONTENT_MAX_WIDTH` / `wideContentFill` + `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 - 햅틱은 선택(`expo-haptics`). 실패해도 무시
 

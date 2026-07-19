@@ -6,6 +6,6 @@ export const MORE_HUB_ROUTE_ORDER_DEFAULT: MoreHubRouteKey[] = [
   'account',
   'disclosures',
   'etfBriefing',
-  'gameCenter',
   'board',
+  'gameCenter',
 ];

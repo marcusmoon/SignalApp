@@ -82,6 +82,13 @@ const SIDEBAR_TABS: TabDef[] = [
     labelId: 'screenBoard',
   },
   {
+    name: 'gameCenter',
+    route: '/game-center',
+    iconOutline: 'game-controller-outline',
+    iconFilled: 'game-controller',
+    labelId: 'screenGameCenter',
+  },
+  {
     name: 'account',
     route: '/account',
     iconOutline: 'person-circle-outline',
@@ -157,7 +164,10 @@ export function SignalSidebarTabBar({
     ipadState.contentPane === 'etfInsights' || ipadState.contentPane === 'etfInsight';
   const boardActive =
     ipadState.contentPane === 'board' || ipadState.contentPane === 'community';
-  const homeActive = ipadState.isHomePaneActive && !accountActive && !etfActive && !boardActive;
+  const gameCenterActive =
+    pathname.startsWith('/game-center') || pathname.startsWith('/games/');
+  const homeActive =
+    ipadState.isHomePaneActive && !accountActive && !etfActive && !boardActive && !gameCenterActive;
 
   const activeTabName = accountActive
     ? 'account'
@@ -165,15 +175,18 @@ export function SignalSidebarTabBar({
       ? 'etfBriefing'
       : boardActive
         ? 'board'
-        : homeActive
-          ? null
-          : SIDEBAR_TABS.find(
-              (tab) =>
-                tab.name !== 'account' &&
-                tab.name !== 'etfBriefing' &&
-                tab.name !== 'board' &&
-                (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
-            )?.name ?? 'news';
+        : gameCenterActive
+          ? 'gameCenter'
+          : homeActive
+            ? null
+            : SIDEBAR_TABS.find(
+                (tab) =>
+                  tab.name !== 'account' &&
+                  tab.name !== 'etfBriefing' &&
+                  tab.name !== 'board' &&
+                  tab.name !== 'gameCenter' &&
+                  (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
+              )?.name ?? 'news';
 
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
@@ -205,6 +218,14 @@ export function SignalSidebarTabBar({
         return;
       }
       router.navigate('/(tabs)/board' as never);
+      return;
+    }
+    if (tab.name === 'gameCenter') {
+      if (gameCenterActive) return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showTabs();
+      }
+      router.navigate('/game-center' as never);
       return;
     }
     if (activeTabName === tab.name) {
@@ -330,6 +351,7 @@ export function SignalSidebarTabBar({
                 tab.name !== 'youtube' &&
                 tab.name !== 'account' &&
                 tab.name !== 'etfBriefing' &&
+                tab.name !== 'gameCenter' &&
                 subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
                     {subTabs.map((sub) => {

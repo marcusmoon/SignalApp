@@ -169,7 +169,10 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 관심 종목 → (조건부) 섹터 흐름
   - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 관심 종목 숨김
-  - **홈 바로가기** (`HomeShortcutsStrip`): 보드(전체/세이브/미주미)·시세 세그먼트·뉴스 세그먼트를 **여러 개** 둘 수 있고 순서 변경 가능. 일정·ETF·공시·설정도 추가. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김. **탭 루트로 전환하지 않음** — 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`. 보드 숏컷 라벨: 전체→「게시판」, 채널→하위명만. 숏컷 진입 시 상단 채널 메뉴(전체/세이브/미주미) 숨김·소스 고정(More·탭 보드는 메뉴 유지)
+  - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·ETF·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
+    - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
+    - **보드 타일 라벨** (`homeShortcutDisplay`): 전체(`all`) → 상위명「게시판」. 세이브·미주미 → **하위 채널명만**.
+    - **보드 숏컷 진입**: 상단 채널 메뉴(전체/세이브/미주미) **숨김** · `lockedSource`로 소스 고정. 헤더 제목도 라벨과 동일(전체→게시판, 채널→채널명). More·탭·사이드바 보드는 채널 메뉴 **유지**.
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
@@ -220,9 +223,10 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 끝 refresh 타일: `DigestRefreshTail`
 - 출처: 카드 우측 「출처」→ `DigestSourcesSheet` (인라인 펼치기 금지)
 
-### 홈 게시판 (Board)
+### 게시판 (Board)
 
-- 최근 글 목록 또는 빈 상태 문구 (출처 숏컷 없음)
+- **탭·More·사이드바**: 상단 채널 세그먼트(전체/세이브/미주미)로 소스 전환. wide는 사이드바 서브탭.
+- **홈 바로가기 드릴**: 채널 메뉴 없음·소스 고정(`BoardContent` `lockedSource`). 목록만 표시.
 
 ### 더보기 · My info
 

@@ -107,10 +107,11 @@ npx tsc --noEmit
 | 기능 | 파일 |
 |---|---|
 | 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
+| 홈 바로가기 | `components/signal/HomeShortcutsStrip.tsx`, `constants/homeShortcuts.ts`, `domain/home/shortcutDisplay.ts` |
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx`, `components/signal/NewsCard.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
-| 게시판 | `app/(tabs)/board.tsx` |
+| 게시판 | `app/(tabs)/board.tsx`, `app/more-board.tsx`, `components/community/BoardContent.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |

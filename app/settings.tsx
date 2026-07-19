@@ -138,9 +138,7 @@ import {
   homeShortcutOptionGroupId,
 } from '@/domain/home/shortcutDisplay';
 import {
-  addHomeCommunityPostShortcut,
   hasHomeShortcut,
-  listHomeCommunityPostShortcuts,
   removeHomeShortcut,
   reorderHomeShortcuts,
   toggleHomeShortcutOption,
@@ -149,7 +147,6 @@ import {
   loadHomeShortcuts,
   saveHomeShortcuts,
 } from '@/services/homeShortcutsPreference';
-import { CommunityPostPickerSheet } from '@/components/signal/CommunityPostPickerSheet';
 import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
@@ -1099,7 +1096,6 @@ export default function SettingsScreen({
     HOME_SHORTCUTS_DEFAULT.map((row) => ({ ...row })),
   );
   const [homeShortcutsReady, setHomeShortcutsReady] = useState(false);
-  const [boardPostPickerOpen, setBoardPostPickerOpen] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1393,11 +1389,6 @@ export default function SettingsScreen({
     [homeShortcuts],
   );
 
-  const homeBoardPostShortcuts = useMemo(
-    () => listHomeCommunityPostShortcuts(homeShortcuts),
-    [homeShortcuts],
-  );
-
   const homeShortcutOptionGroups = useMemo(() => {
     const groups: {
       id: 'board' | 'quotes' | 'news' | 'other';
@@ -1416,16 +1407,6 @@ export default function SettingsScreen({
     }
     return groups;
   }, []);
-
-  const onAddHomeBoardPost = useCallback(
-    (post: { id: string; title: string; source: string }) => {
-      const next = addHomeCommunityPostShortcut(homeShortcuts, post);
-      setHomeShortcuts(next);
-      void saveHomeShortcuts(next);
-      setBoardPostPickerOpen(false);
-    },
-    [homeShortcuts],
-  );
 
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
@@ -2276,24 +2257,6 @@ clearCalendarCache();
                     </View>
                   ))}
 
-                  <Text style={[styles.prefLabel, { marginTop: 14 }]}>
-                    {t('settingsHomeBoardPostsSection')}
-                  </Text>
-                  <Text style={styles.prefHint}>{t('settingsHomeBoardPostsHint')}</Text>
-                  <Pressable
-                    onPress={() => setBoardPostPickerOpen(true)}
-                    disabled={homeShortcuts.length >= HOME_SHORTCUTS_MAX}
-                    style={({ pressed }) => [
-                      styles.cacheClearBtn,
-                      { marginTop: 10 },
-                      (homeShortcuts.length >= HOME_SHORTCUTS_MAX || pressed) && { opacity: 0.7 },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: homeShortcuts.length >= HOME_SHORTCUTS_MAX }}
-                    accessibilityLabel={t('settingsHomeBoardPostAdd')}>
-                    <Text style={styles.cacheClearBtnText}>{t('settingsHomeBoardPostAdd')}</Text>
-                  </Pressable>
-
                   {homeShortcuts.length >= HOME_SHORTCUTS_MAX ? (
                     <Text style={[styles.prefHint, { marginTop: 6 }]}>
                       {t('settingsHomeShortcutsMaxHint', { count: String(HOME_SHORTCUTS_MAX) })}
@@ -2356,14 +2319,6 @@ clearCalendarCache();
                 </>
               )}
             </View>
-
-            <CommunityPostPickerSheet
-              visible={boardPostPickerOpen}
-              onDismiss={() => setBoardPostPickerOpen(false)}
-              onSelect={onAddHomeBoardPost}
-              bottomInset={insets.bottom}
-              excludeIds={homeBoardPostShortcuts.map((post) => post.id)}
-            />
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>

@@ -112,13 +112,6 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
           }
           router.push({ pathname: '/settings', params: { tab: 'display' } } as never);
           return;
-        case 'communityPost':
-          if (ipadNav.isAvailable) {
-            ipadNav.showCommunityPost(shortcut.id, { drillFrom: 'home' });
-            return;
-          }
-          router.push(`/community/${encodeURIComponent(shortcut.id)}` as never);
-          return;
         default:
           return;
       }

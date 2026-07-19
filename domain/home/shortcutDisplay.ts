@@ -48,19 +48,6 @@ export function homeShortcutDisplay(
   shortcut: HomeShortcut | HomeShortcutOption,
   t: Translate,
 ): HomeShortcutDisplay {
-  if (shortcut.type === 'communityPost') {
-    const title =
-      'title' in shortcut && shortcut.title?.trim()
-        ? shortcut.title.trim()
-        : t('homeShortcutBoardPost');
-    return {
-      icon: 'comment',
-      label: title,
-      groupLabel: t('screenBoard'),
-      detailLabel: title,
-    };
-  }
-
   if (shortcut.type === 'board') {
     const detail =
       shortcut.source === COMMUNITY_SOURCE_ALL

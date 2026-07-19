@@ -1,18 +1,17 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
-  HOME_SHORTCUT_CATALOG,
   homeShortcutStableId,
   type HomeShortcut,
-  type HomeShortcutCatalogKey,
 } from '@/constants/homeShortcuts';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { homeShortcutDisplay } from '@/domain/home/shortcutDisplay';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -22,13 +21,6 @@ const TILE_MIN_HEIGHT = 58;
 type Props = {
   shortcuts: HomeShortcut[];
   selectedYmd: string;
-};
-
-type StripItem = {
-  id: string;
-  shortcut: HomeShortcut;
-  icon: ComponentProps<typeof FontAwesome>['name'];
-  label: string;
 };
 
 function resolveColumns(count: number, useTwoPane: boolean, containerWidth: number): number {
@@ -47,25 +39,19 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
   const [containerWidth, setContainerWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const items = useMemo((): StripItem[] => {
-    return shortcuts.map((shortcut) => {
-      if (shortcut.type === 'communityPost') {
+  const items = useMemo(
+    () =>
+      shortcuts.map((shortcut) => {
+        const display = homeShortcutDisplay(shortcut, t);
         return {
           id: homeShortcutStableId(shortcut),
           shortcut,
-          icon: 'comment' as const,
-          label: shortcut.title?.trim() || t('homeShortcutBoardPost'),
+          icon: display.icon,
+          label: display.label,
         };
-      }
-      const meta = HOME_SHORTCUT_CATALOG.find((row) => row.key === shortcut.type);
-      return {
-        id: homeShortcutStableId(shortcut),
-        shortcut,
-        icon: meta?.icon ?? 'external-link',
-        label: meta ? t(meta.titleId) : shortcut.type,
-      };
-    });
-  }, [shortcuts, t]);
+      }),
+    [shortcuts, t],
+  );
 
   const columns = useMemo(
     () => resolveColumns(items.length, useTwoPane, containerWidth),
@@ -77,25 +63,31 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
     return (containerWidth - GRID_GAP * (columns - 1)) / columns;
   }, [columns, containerWidth]);
 
-  const openCatalog = useCallback(
-    (key: HomeShortcutCatalogKey) => {
-      switch (key) {
+  const openShortcut = useCallback(
+    (shortcut: HomeShortcut) => {
+      switch (shortcut.type) {
         case 'board':
           if (ipadNav.isAvailable) {
-            ipadNav.showBoard({ drillFrom: 'home' });
+            ipadNav.showBoard({
+              drillFrom: 'home',
+              ...(shortcut.source !== 'all' ? { source: shortcut.source } : null),
+            });
             return;
           }
-          router.navigate('/(tabs)/board' as never);
+          router.navigate({
+            pathname: '/(tabs)/board',
+            params: shortcut.source !== 'all' ? { source: shortcut.source } : {},
+          } as never);
           return;
         case 'quotes':
           if (ipadNav.isAvailable) ipadNav.showTabs();
-          router.navigate('/(tabs)/quotes' as never);
+          router.navigate({
+            pathname: '/(tabs)/quotes',
+            params: { segment: shortcut.segment },
+          } as never);
           return;
         case 'news':
-          ipadNav.showNewsTab('global');
-          return;
-        case 'newsIt':
-          ipadNav.showNewsTab('it');
+          ipadNav.showNewsTab(shortcut.segment);
           return;
         case 'calendar':
           if (ipadNav.isAvailable) {
@@ -128,26 +120,18 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
           }
           router.navigate({ pathname: '/settings', params: { tab: 'display' } } as never);
           return;
+        case 'communityPost':
+          if (ipadNav.isAvailable) {
+            ipadNav.showCommunityPost(shortcut.id, { drillFrom: 'home' });
+            return;
+          }
+          router.push(`/community/${encodeURIComponent(shortcut.id)}` as never);
+          return;
         default:
           return;
       }
     },
     [ipadNav, router, selectedYmd],
-  );
-
-  const openShortcut = useCallback(
-    (shortcut: HomeShortcut) => {
-      if (shortcut.type === 'communityPost') {
-        if (ipadNav.isAvailable) {
-          ipadNav.showCommunityPost(shortcut.id, { drillFrom: 'home' });
-          return;
-        }
-        router.push(`/community/${encodeURIComponent(shortcut.id)}` as never);
-        return;
-      }
-      openCatalog(shortcut.type);
-    },
-    [ipadNav, openCatalog, router],
   );
 
   if (items.length === 0) return null;

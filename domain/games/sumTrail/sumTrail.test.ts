@@ -14,7 +14,9 @@ import {
   fillRandomGrid,
   findPathToTarget,
   findRandomPath,
+  hasLegalExtension,
   hintsForDifficulty,
+  isPathDeadEnd,
   mulberry32,
   pathMatchesTarget,
   pathSum,
@@ -160,5 +162,40 @@ describe('sumTrail game', () => {
     assert.ok(path);
     assert.equal(pathSum(grid, path!), 6);
     assert.ok(path!.length >= 2);
+  });
+
+  it('marks dead end when over target or no extension', () => {
+    const grid = [
+      [9, 0],
+      [0, 0],
+    ];
+    assert.equal(isPathDeadEnd(grid, [{ r: 0, c: 0 }], 5), true);
+    assert.equal(hasLegalExtension(grid, [{ r: 0, c: 0 }],), false);
+
+    const open = [
+      [1, 2],
+      [3, 4],
+    ];
+    assert.equal(isPathDeadEnd(open, [{ r: 0, c: 0 }], 10), false);
+    assert.equal(hasLegalExtension(open, [{ r: 0, c: 0 }]), true);
+  });
+
+  it('fails on tap when sum exceeds target', () => {
+    let state = createSumTrailGame('easy', 7);
+    // Force a tiny board scenario via direct state
+    state = {
+      ...state,
+      grid: [
+        [9, 8],
+        [1, 2],
+      ],
+      target: 5,
+      path: [],
+      status: 'playing',
+      hintCell: null,
+    };
+    state = tapSumTrailCell(state, { r: 0, c: 0 });
+    assert.equal(state.status, 'failed');
+    assert.equal(state.path.length, 1);
   });
 });

@@ -14,8 +14,9 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 
 - 허브 키·기본 순서: `constants/moreHubOrder.ts` (`gameCenter`는 게시판 바로 뒤)
 - 저장 순서 정규화: `domain/moreHub/normalizeMoreHubOrder` — 없으면 게시판 뒤에 삽입, 예전에 앞이던 저장분도 뒤로 이동
+- iPad·와이드 웹: 사이드바 **게시판 다음** **게임** → `/game-center` (`SignalSidebarTabBar`, 루트 pane·드릴 백 없음)
+- 합 트레일 드릴: `WideSubpaneHeader` + 가로/넓은 pane **보드|조작 2열**
 - iPhone: root Stack 드릴 (`signalDrillStackOptions`)
-- iPad·와이드 웹: Stack 헤더 숨김 + `WideSubpaneHeader` · `wideContentFill` · 임베디드 여백 (`SCREEN_EMBEDDED_WIDE_*`)
 - 표시 라벨: `screenGameCenter` → **게임** / Games / ゲーム
 
 ## 디렉터리
@@ -57,7 +58,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | 힌트 | 쉬움 3 / 보통 2 / 어려움 1회. 올바른 다음 칸 강조. **추후 포인트로 추가 구매** 예정 |
 | 실패 | 합이 목표를 **초과**하거나, 목표에 도달하기 전에 **둘 칸이 없으면** `failed`. 실패 버스트·보드 흔들림·에러 햅틱 |
 | 연출 | 숫자 구간별 타일 색 · 합 진행 바 · 목표 근접(경고)/초과(위험) 틴트 · 맞춤·레벨 클리어 버스트 오버레이 |
-| 와이드 | 보드 max ~480 · 셀 타이포 확대 · 콘텐츠 컬럼 중앙 |
+| 와이드 | 사이드바 루트(백 없음) · 가로/넓은 pane에서 보드\|조작 2열 · 보드 크기 viewport 연동 |
 
 생성 시 시드로 유효 경로를 하나 골라 목표를 정한다 (`pickTarget`). 보드가 비거나 다음 목표를 못 고르면 레벨 클리어로 처리한다.
 

@@ -51,6 +51,8 @@ type Props = {
   theme: AppTheme;
   scaleFont: (n: number) => number;
   changeColorConvention: QuotesChangeColorConvention;
+  /** 셸 헤드라인으로 summary를 쓴 경우 lead 중복 숨김 */
+  omitSummary?: boolean;
 };
 
 function BriefingSection({
@@ -210,13 +212,15 @@ export function MarketBriefingBlock({
   theme,
   scaleFont,
   changeColorConvention,
+  omitSummary = false,
 }: Props) {
   const { t, locale } = useLocale();
   const { effectiveColorScheme, feedTypo } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
 
-  const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
+  const summaryText = omitSummary ? '' : briefing.summary?.trim() || '';
+  const hasLead = Boolean(summaryText) || briefing.overview.length > 0;
   const sectorFlowRows = useMemo(
     () => briefingSectorHeatCells(briefing.sectors, briefing.id),
     [briefing.id, briefing.sectors],
@@ -226,15 +230,15 @@ export function MarketBriefingBlock({
     <View style={styles.block}>
       {hasLead ? (
         <View style={styles.leadPanel}>
-          {briefing.summary ? (
+          {summaryText ? (
             <ChangeTintedText style={styles.summary}>
-              {briefing.summary}
+              {summaryText}
             </ChangeTintedText>
           ) : null}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
-              {briefing.summary ? <View style={styles.leadDivider} /> : null}
+              {summaryText ? <View style={styles.leadDivider} /> : null}
               <Text style={styles.overviewKicker}>{t('briefingDetailOverview')}</Text>
               <View style={styles.overviewList}>
                 {briefing.overview.map((line, index) => (

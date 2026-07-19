@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,8 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
-import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -33,12 +31,13 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
-import { fetchSignalNewsDigestById, fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
+import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
@@ -46,16 +45,6 @@ import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
-
-function localYmdFromDigest(item: SignalApiNewsDigestItem): string | null {
-  const iso = String(item.generatedAt || '').trim();
-  if (iso) {
-    const d = new Date(iso);
-    if (Number.isFinite(d.getTime())) return toYmd(d);
-  }
-  const dateOnly = String(item.generatedDate || '').slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
-}
 
 function parseCategory(value: unknown): NewsIssuesCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
@@ -130,6 +119,8 @@ export function NewsIssuesContent({
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
+  const router = useRouter();
+  const ipadNav = useIpadSidebarNavActions();
   const setRouteParams = useSafeSetRouteParams();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
@@ -139,11 +130,9 @@ export function NewsIssuesContent({
   const [items, setItems] = useState<SignalApiNewsDigestItem[]>([]);
   const itemsRef = useRef<SignalApiNewsDigestItem[]>([]);
   itemsRef.current = items;
-  const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
-  /** deepLink로 연 상세 — 날짜 목록 리로드 중에도 시트 유지 */
-  const [focusedDigest, setFocusedDigest] = useState<SignalApiNewsDigestItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initialDetailNavRef = useRef(false);
   const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
     resyncDeps: [items],
   });
@@ -157,23 +146,16 @@ export function NewsIssuesContent({
     setSelectedYmd(initialDate);
   }, [initialDate]);
 
-  useEffect(() => {
-    setSourcesDigestId(initialDigestId);
-    if (!initialDigestId) setFocusedDigest(null);
-  }, [initialDigestId]);
-
   const syncRoute = useCallback(
-    (next: { category?: NewsIssuesCategory; date?: string; digestId?: string | null }) => {
+    (next: { category?: NewsIssuesCategory; date?: string }) => {
       const nextCategory = next.category ?? category;
       const nextDate = next.date ?? selectedYmd;
-      const nextDigestId = next.digestId === undefined ? sourcesDigestId : next.digestId;
       setRouteParams({
         category: nextCategory === 'all' ? undefined : nextCategory,
         date: nextDate,
-        digestId: nextDigestId || undefined,
       });
     },
-    [category, sourcesDigestId, selectedYmd, setRouteParams],
+    [category, selectedYmd, setRouteParams],
   );
 
   const onPickCategory = useCallback(
@@ -194,40 +176,31 @@ export function NewsIssuesContent({
     [selectedYmd, syncRoute],
   );
 
-  const openSources = useCallback(
+  const openDetail = useCallback(
     (id: string) => {
-      const row = itemsRef.current.find((item) => item.id === id) ?? null;
-      setFocusedDigest(row);
-      setSourcesDigestId(id);
-      syncRoute({ digestId: id });
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showNewsDigest(cleanId, { drillFrom: 'newsIssues' });
+        return;
+      }
+      router.push({ pathname: '/news-digest', params: { id: cleanId } } as never);
     },
-    [syncRoute],
+    [ipadNav, router],
   );
-
-  const closeSources = useCallback(() => {
-    setSourcesDigestId(null);
-    setFocusedDigest(null);
-    syncRoute({ digestId: null });
-  }, [syncRoute]);
-
-  const sourcesDigest = useMemo(() => {
-    if (!sourcesDigestId) return null;
-    return (
-      items.find((item) => item.id === sourcesDigestId) ??
-      (focusedDigest?.id === sourcesDigestId ? focusedDigest : null)
-    );
-  }, [focusedDigest, items, sourcesDigestId]);
 
   useEffect(() => {
-    if (!sourcesDigestId) return;
-    const row = items.find((item) => item.id === sourcesDigestId);
-    if (row) setFocusedDigest(row);
-  }, [items, sourcesDigestId]);
-
-  const sourceRows = useMemo(
-    () => (sourcesDigest ? newsDigestSourceSheetRows(sourcesDigest, locale) : []),
-    [locale, sourcesDigest],
-  );
+    const id = String(initialDigestId || '').trim();
+    if (!id || initialDetailNavRef.current) return;
+    initialDetailNavRef.current = true;
+    // Deep link / legacy list?digestId= — open detail once; replace on phone so back
+    // does not return to the list URL and re-trigger this effect.
+    if (ipadNav.isAvailable) {
+      ipadNav.showNewsDigest(id, { drillFrom: 'newsIssues' });
+      return;
+    }
+    router.replace({ pathname: '/news-digest', params: { id } } as never);
+  }, [initialDigestId, ipadNav, router]);
 
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
     selectedYmd,
@@ -280,37 +253,6 @@ export function NewsIssuesContent({
   useEffect(() => {
     void load();
   }, [load]);
-
-  /** 목록 URL `digestId` — 당일 목록에 없으면 id로 가져와 시트에 쓴다 (알림은 `/news-digest` 상세) */
-  useEffect(() => {
-    const pendingId = String(sourcesDigestId || '').trim();
-    if (!pendingId || loading) return;
-    if (items.some((item) => item.id === pendingId)) return;
-    let cancelled = false;
-    void (async () => {
-      const byId = await fetchSignalNewsDigestById(pendingId, { locale }).catch(() => null);
-      if (cancelled) return;
-      if (!byId) {
-        setSourcesDigestId(null);
-        setFocusedDigest(null);
-        syncRoute({ digestId: null });
-        return;
-      }
-      setFocusedDigest(byId);
-      setItems((prev) => {
-        if (prev.some((item) => item.id === byId.id)) return prev;
-        return sortDigests([byId, ...prev]);
-      });
-      const digestDay = localYmdFromDigest(byId);
-      if (digestDay && digestDay !== selectedYmd) {
-        setSelectedYmd(digestDay);
-        syncRoute({ date: digestDay, digestId: pendingId });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [items, loading, locale, selectedYmd, sourcesDigestId, syncRoute]);
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
@@ -382,7 +324,12 @@ export function NewsIssuesContent({
                 const sourceEntries = digestSourceIconEntries(item.sourceRefs, item.sources);
                 const trailText = [item.topics[0], item.symbols[0]].filter(Boolean).join(' · ');
                 return (
-                  <View key={item.id} style={styles.card}>
+                  <Pressable
+                    key={item.id}
+                    onPress={() => openDetail(item.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('feedDigestDetailA11y')}
+                    style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
                     <HomeDigestFeedRow
                       title={item.title}
                       titleLines={2}
@@ -414,15 +361,11 @@ export function NewsIssuesContent({
                           sources: String(item.sources.length),
                         })}
                       </Text>
-                      <Pressable
-                        onPress={() => openSources(item.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('feedDigestDetailA11y')}
-                        style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}>
+                      <View style={styles.detailBtn}>
                         <FontAwesome name="info-circle" size={14} color={theme.green} />
-                      </Pressable>
+                      </View>
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -436,14 +379,6 @@ export function NewsIssuesContent({
     <>
       {body}
       {hideDateNavigator ? null : datePickerSheet}
-      <DigestSourcesSheet
-        visible={sourcesDigest != null}
-        kicker={t('newsIssuesTitle')}
-        digestTitle={sourcesDigest?.title ?? ''}
-        digestSummary={sourcesDigest?.summary?.trim() || undefined}
-        rows={sourceRows}
-        onClose={closeSources}
-      />
     </>
   );
 }
@@ -575,6 +510,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: ft.pad(14),
       gap: COMFORT_GAP_SM,
     },
+    cardPressed: {
+      opacity: 0.92,
+    },
     categoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -619,9 +557,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.greenBorder,
       flexShrink: 0,
-    },
-    detailBtnPressed: {
-      opacity: 0.88,
     },
   });
 }

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
+import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import type { AppTheme } from '@/constants/theme';
@@ -12,12 +13,12 @@ import { formatFeedItemTimeLabel } from '@/utils/date';
 
 type Props = {
   briefing: SignalApiTodayBriefing;
-  /** 시트에서는 제목이 위에 있으므로 summary만 본문으로 */
+  /** 셸 헤드라인과 같으면 summary 중복 숨김 */
   showSummary?: boolean;
   titleText?: string;
 };
 
-/** 오늘 정리 본문 — 상세 화면·바텀시트 공유 */
+/** 오늘 정리 본문 — 장중·ETF와 동일: leadPanel + sectionFeedCard */
 export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -27,14 +28,19 @@ export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: 
   const summary = briefing.summary?.trim() || '';
   const title = titleText?.trim() || lead;
   const summaryBody = showSummary && summary && summary !== title ? summary : '';
+
   return (
     <View style={styles.root}>
-      {summaryBody ? <Text style={styles.summary}>{summaryBody}</Text> : null}
+      {summaryBody ? (
+        <View style={styles.leadPanel}>
+          <ChangeTintedText style={styles.summary}>{summaryBody}</ChangeTintedText>
+        </View>
+      ) : null}
 
       {briefing.keyPoints.length > 0 ? (
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionHeading}>{t('todayBriefingKeyPoints')}</Text>
+            <Text style={styles.sectionTitle}>{t('todayBriefingKeyPoints')}</Text>
           </View>
           <View style={styles.sectionFeedCard}>
             {briefing.keyPoints.map((point, index) => (
@@ -52,7 +58,7 @@ export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: 
       {briefing.sourceRefs.length > 0 ? (
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionHeading}>{t('todayBriefingSources')}</Text>
+            <Text style={styles.sectionTitle}>{t('todayBriefingSources')}</Text>
           </View>
           <View style={styles.sectionFeedCard}>
             {briefing.sourceRefs.map((ref, index) => (
@@ -81,15 +87,25 @@ export function TodayBriefingBlock({ briefing, showSummary = true, titleText }: 
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const leadTint =
+    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}0A` : theme.bgElevated;
   return StyleSheet.create({
     root: {
+      gap: 20,
+    },
+    leadPanel: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: leadTint,
+      padding: ft.pad(16),
       gap: 14,
     },
     summary: {
       fontSize: ft.signalBodyFont(15),
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
-      color: theme.textMuted,
+      color: theme.text,
     },
     sectionWrap: {
       gap: 16,
@@ -100,7 +116,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 10,
       minWidth: 0,
     },
-    sectionHeading: {
+    sectionTitle: {
       flex: 1,
       minWidth: 0,
       fontSize: ft.signalTitleFont(16),

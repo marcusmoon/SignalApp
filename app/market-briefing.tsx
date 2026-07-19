@@ -1,18 +1,12 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
+import { useLocalSearchParams } from 'expo-router';
 
-import SignalScreen from './(tabs)/signal';
+import { MarketBriefingDetailContent } from '@/components/signal/MarketBriefingDetailContent';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
-import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
-import { useLocale } from '@/contexts/LocaleContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
-/** 홈·알림 → 시장 브리핑 — phone은 root Stack, wide는 홈 overlay + WideSubpaneHeader */
+/** 홈·알림 → 장중 브리핑 단건 상세 (시장 탭 허브와 분리) */
 export default function MarketBriefingScreen() {
-  const { t } = useLocale();
-  const router = useRouter();
   const { useTwoPane } = useResponsiveLayout();
   const routeParams = useLocalSearchParams<{
     session?: string | string[];
@@ -22,10 +16,6 @@ export default function MarketBriefingScreen() {
   const session = firstRouteParam(routeParams.session) || undefined;
   const date = firstRouteParam(routeParams.date) || undefined;
   const from = firstRouteParam(routeParams.from) || '';
-  const fromHome = from === 'home';
-  const fromAlerts = from === 'alerts';
-  const hideDateNavigator = fromHome || fromAlerts;
-  const hideSessionSegments = fromAlerts;
 
   if (useTwoPane) {
     return (
@@ -34,27 +24,11 @@ export default function MarketBriefingScreen() {
         params={{
           ...(session ? { session } : null),
           ...(date ? { date } : null),
-          ...(fromHome || fromAlerts ? { from } : null),
+          ...(from === 'home' || from === 'alerts' ? { from } : null),
         }}
       />
     );
   }
 
-  return (
-    <PhoneMoreStackChromeProvider>
-      <BottomTabBarHeightContext.Provider value={0}>
-        <Stack.Screen
-          options={{
-            title: fromAlerts ? '' : t('ipadHomeSignalTitle'),
-            headerBackVisible: false,
-            headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-          }}
-        />
-        <SignalScreen
-          hideDateNavigator={hideDateNavigator}
-          hideSessionSegments={hideSessionSegments}
-        />
-      </BottomTabBarHeightContext.Provider>
-    </PhoneMoreStackChromeProvider>
-  );
+  return <MarketBriefingDetailContent session={session} date={date} />;
 }

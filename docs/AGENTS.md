@@ -89,7 +89,7 @@ npm run ios
 npm run android
 npm run web
 npm run server:dev
-npx tsc --noEmit
+npm run verify   # tsc + domain unit tests (CI)
 ```
 
 ## 환경 변수

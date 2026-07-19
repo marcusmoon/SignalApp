@@ -11,6 +11,10 @@ import type { NewsSegmentKey } from '@/constants/newsSegment';
 import type { QuoteSegmentKey } from '@/domain/quotes/constants';
 import type { MessageId } from '@/locales/messages';
 
+import { homeShortcutCompoundLabel } from '@/domain/home/shortcutCompoundLabel';
+
+export { homeShortcutCompoundLabel } from '@/domain/home/shortcutCompoundLabel';
+
 /**
  * 홈 바로가기 타일 라벨 규칙
  *
@@ -18,7 +22,7 @@ import type { MessageId } from '@/locales/messages';
  * 2. 리프(일정·ETF·공시·설정) → 이름만.
  * 3. 그룹 기본(보드 all) → 상위만 (`게시판`).
  * 4. 그 외 그룹 → `상위·하위` (중점, 공백 없음).
- * 5. 하위는 탭 정식명이 아니라 홈 전용 짧은 표기(`homeShortcut*`).
+ * 5. 하위는 탭 정식명이 아니라 홈 전용 짧은 표기(`homeTile*`).
  * 6. 결합 길이가 예산을 넘으면 하위만 (아이콘이 상위 역할).
  *    - 라틴 문자 포함: 12 / 그 외(한글·가나 등): 8
  */
@@ -88,17 +92,6 @@ export type HomeShortcutDisplay = {
 };
 
 type Translate = (id: MessageId, vars?: Record<string, string | number>) => string;
-
-/** 상위·하위 결합. 길면 하위만. */
-export function homeShortcutCompoundLabel(parent: string, child: string): string {
-  const p = parent.trim();
-  const c = child.trim();
-  if (!c) return p;
-  if (!p) return c;
-  const joined = `${p}·${c}`;
-  const budget = /[A-Za-z]/.test(joined) ? 12 : 8;
-  return joined.length <= budget ? joined : c;
-}
 
 export function homeShortcutDisplay(
   shortcut: HomeShortcut | HomeShortcutOption,

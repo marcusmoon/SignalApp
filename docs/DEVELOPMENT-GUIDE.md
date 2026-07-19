@@ -19,7 +19,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | 명령 | 내용 |
 |---|---|
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Node `node:test` + `--experimental-strip-types` (`domain/**/*.test.ts`, `utils/**/*.test.ts`) |
+| `npm test` | Node `node:test` + `--experimental-strip-types` (`domain/**/*.test.ts`, `utils/**/*.test.ts`, `services/**/*.test.ts`) |
 | `npm run verify` | typecheck → test (PR·`main` push CI: `.github/workflows/verify.yml`) |
 
 회귀 추가 기준:
@@ -47,6 +47,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/quotes/ticker` | 티커·종목코드 검증 |
 | `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
+| `services/symbolLogo` | 서버 `imageUrl` 우선 · Parqet 폴백 |
 
 ## 디렉터리 규칙
 

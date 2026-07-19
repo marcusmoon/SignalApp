@@ -1,6 +1,8 @@
-import { isKoreaSymbol } from '@/domain/quotes/rows';
-
 const PARQET_LOGO_BASE = 'https://assets.parqet.com/logos/symbol';
+
+function isKoreaStockCode(symbol: string): boolean {
+  return /^\d{6}$/.test(symbol);
+}
 
 const failedLogoKeys = new Set<string>();
 
@@ -20,23 +22,49 @@ export function isSymbolLogoFailed(symbol: string, url: string): boolean {
   return failedLogoKeys.has(logoCacheKey(symbol, url));
 }
 
-/** Parqet 로고 후보 URL — 국장은 .KS → .KQ 순으로 시도 */
-export function symbolLogoUrls(symbol: string): string[] {
+function isHttpLogoUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url);
+}
+
+/**
+ * 로고 후보 URL.
+ * - `preferredUrls`: 서버 제공 (코인 CoinGecko `imageUrl` 등) — Parqet보다 우선
+ * - 이어서 Parqet (국장 .KS → .KQ)
+ */
+export function symbolLogoUrls(
+  symbol: string,
+  preferredUrls?: Array<string | null | undefined>,
+): string[] {
   const sym = symbol.trim().toUpperCase();
   if (!sym || sym === '—' || sym === 'GLOBAL') return [];
 
-  if (isKoreaSymbol(sym)) {
-    return [`${sym}.KS`, `${sym}.KQ`]
-      .map((ticker) => parqetLogoUrl(ticker))
-      .filter((url) => !isSymbolLogoFailed(sym, url));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (url: string) => {
+    if (!url || seen.has(url) || isSymbolLogoFailed(sym, url)) return;
+    seen.add(url);
+    out.push(url);
+  };
+
+  for (const raw of preferredUrls || []) {
+    const url = String(raw || '').trim();
+    if (isHttpLogoUrl(url)) push(url);
   }
 
-  if (!/^[A-Z][A-Z0-9.\-]{0,11}$/.test(sym)) return [];
-  const url = parqetLogoUrl(sym);
-  return isSymbolLogoFailed(sym, url) ? [] : [url];
+  if (isKoreaStockCode(sym)) {
+    for (const ticker of [`${sym}.KS`, `${sym}.KQ`]) {
+      push(parqetLogoUrl(ticker));
+    }
+    return out;
+  }
+
+  if (/^[A-Z][A-Z0-9.\-]{0,11}$/.test(sym)) {
+    push(parqetLogoUrl(sym));
+  }
+  return out;
 }
 
 /** 첫 번째 로고 URL (기존 호출부 호환) */
-export function symbolLogoUrl(symbol: string): string | null {
-  return symbolLogoUrls(symbol)[0] ?? null;
+export function symbolLogoUrl(symbol: string, preferredUrl?: string | null): string | null {
+  return symbolLogoUrls(symbol, preferredUrl ? [preferredUrl] : undefined)[0] ?? null;
 }

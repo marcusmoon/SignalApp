@@ -125,7 +125,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - 시세·일봉·코인
   - US: `market_quotes_popular` / `market_quotes_watchlist` / `market_quotes_mcap*` (Finnhub)
   - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve). runner는 `marketLists`(·기존 `marketQuotes`)를 로드한 뒤 조회한다.
-  - 코인: `market_coins_top` (CoinGecko)
+  - 코인: `market_coins_top` (CoinGecko). 공개 `/v1/coins`에 `imageUrl`(markets `image`)을 실어 앱 로고에 쓴다.
   - 일봉: `market_price_series_daily` (Yahoo). `listKeys`에 `korea_watchlist` 포함. KRX는 시세 Job이 저장한 `.KS`/`.KQ`를 재사용하고, 없으면 `.KS`→`.KQ` 순으로 조회한다. `/v1/stock-candles`는 DB miss 시 국내 6자리만 Yahoo live 폴백(Finnhub 아님).
 - `/v1/market-quotes`는 **DB 조회만** 한다. `refresh=1` provider 호출은 제거했다. 관심 추가도 시세 live lookup 없이 심볼 포맷만 검증한다. 국내 가격은 Job이 `market_quotes`에 채운 뒤 앱이 읽는다.
 

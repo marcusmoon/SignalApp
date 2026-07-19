@@ -37,12 +37,17 @@ function publicMarketQuote(item) {
 }
 
 function publicCoinMarket(item) {
+  const imageUrl =
+    String(item.imageUrl || '').trim() ||
+    String(item.rawPayload?.image || '').trim() ||
+    null;
   return {
     id: item.id,
     provider: item.provider,
     providerItemId: item.providerItemId,
     symbol: item.symbol,
     name: item.name,
+    imageUrl,
     currentPrice: item.currentPrice ?? null,
     marketCap: item.marketCap ?? null,
     change24h: item.change24h ?? null,

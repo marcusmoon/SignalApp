@@ -11,11 +11,13 @@ type Props = {
   symbol: string;
   size?: number;
   style?: StyleProp<ViewStyle>;
+  /** 서버 제공 로고 URL (코인 시세 `imageUrl` 등). Parqet보다 우선. */
+  imageUrl?: string | null;
 };
 
-export function SymbolLogo({ symbol, size = 24, style }: Props) {
+export function SymbolLogo({ symbol, size = 24, style, imageUrl }: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const urls = useMemo(() => symbolLogoUrls(symbol), [symbol]);
+  const urls = useMemo(() => symbolLogoUrls(symbol, [imageUrl]), [symbol, imageUrl]);
   const [urlIndex, setUrlIndex] = useState(0);
   const url = urls[urlIndex] ?? null;
   const [failed, setFailed] = useState(urls.length === 0);

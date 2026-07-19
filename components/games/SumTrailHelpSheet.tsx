@@ -57,13 +57,6 @@ export function SumTrailHelpSheet({ visible, onClose }: Props) {
             <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
             <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
           </ScrollView>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.doneBtn, pressed && styles.doneBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('filterSheetDone')}>
-            <Text style={styles.doneBtnText}>{t('filterSheetDone')}</Text>
-          </Pressable>
         </View>
       </View>
     </Modal>
@@ -139,22 +132,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(14),
       lineHeight: sf(22),
       color: theme.textMuted,
-    },
-    doneBtn: {
-      marginTop: 14,
-      minHeight: 54,
-      borderRadius: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.green,
-    },
-    doneBtnPressed: {
-      opacity: 0.9,
-    },
-    doneBtnText: {
-      fontSize: sf(16),
-      fontWeight: '600',
-      color: '#FFFFFF',
     },
   });
 }

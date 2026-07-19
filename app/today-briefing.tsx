@@ -5,6 +5,10 @@ import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { TodayBriefingBlock } from '@/components/signal/TodayBriefingBlock';
 import { useLocale } from '@/contexts/LocaleContext';
+import {
+  formatBriefingDetailTimeMeta,
+  todayBriefingDetailIso,
+} from '@/domain/briefings/detailTime';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
@@ -75,6 +79,9 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
   }, [load]);
 
   const headline = item?.headline?.trim() || item?.summary?.trim() || item?.title?.trim() || '';
+  const headlineMeta = item
+    ? formatBriefingDetailTimeMeta(todayBriefingDetailIso(item), locale)
+    : null;
 
   return (
     <BriefingDetailShell
@@ -87,6 +94,7 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
       error={error}
       emptyText={!error && !item ? t('todayBriefingEmpty') : null}
       headline={item ? headline : null}
+      headlineMeta={headlineMeta}
       scrollResetKey={date}
       contentRevision={item}>
       {item ? (

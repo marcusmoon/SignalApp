@@ -802,7 +802,7 @@ export function SumTrailGame({
     );
   }
 
-  if (fill || compact) {
+  if (fill) {
     return (
       <View style={styles.fillRoot}>
         {difficultyRow}

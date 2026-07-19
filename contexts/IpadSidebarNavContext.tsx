@@ -106,6 +106,8 @@ type IpadSidebarNavState = {
   symbolTicker: string | null;
   /** 홈 숏컷 보드 드릴 소스 */
   boardSource: CommunitySourceFilter;
+  /** 홈 숏컷 보드 — 채널 메뉴 숨김·소스 고정 */
+  boardSourceLocked: boolean;
   /** 홈 숏컷 시세 드릴 세그먼트 */
   quotesDrillSegment: QuoteSegmentKey;
   /** 홈 숏컷 뉴스 드릴 세그먼트 */
@@ -179,6 +181,7 @@ const defaultState: IpadSidebarNavState = {
   communityPostId: null,
   symbolTicker: null,
   boardSource: COMMUNITY_SOURCE_ALL,
+  boardSourceLocked: false,
   quotesDrillSegment: 'watch',
   newsFeedSegment: DEFAULT_NEWS_SEGMENT,
   calendarFromAccount: false,
@@ -296,6 +299,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [communityPostId, setCommunityPostId] = useState<string | null>(null);
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
   const [boardSource, setBoardSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
+  const [boardSourceLocked, setBoardSourceLocked] = useState(false);
   const [quotesDrillSegment, setQuotesDrillSegment] = useState<QuoteSegmentKey>('watch');
   const [newsFeedSegment, setNewsFeedSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
@@ -421,6 +425,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
             ? source
             : COMMUNITY_SOURCE_ALL,
         );
+        // 홈 숏컷은 lock=1. URL/사이드바 복원·일반 보드는 채널 메뉴 유지.
+        setBoardSourceLocked(p.lock === '1');
         return;
       }
 
@@ -932,19 +938,27 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       const source = String(options?.source || '').trim();
       const sourceParam =
         source === 'save_user_news' || source === 'naver_likeusstock_free' ? source : undefined;
+      const fromHome = options?.drillFrom === 'home';
       setBoardSource(sourceParam ?? COMMUNITY_SOURCE_ALL);
+      setBoardSourceLocked(fromHome);
       if (useTwoPane) {
         beginWideOverlay(
           'board',
-          sourceParam ? { source: sourceParam } : {},
+          {
+            ...(sourceParam ? { source: sourceParam } : {}),
+            ...(fromHome ? { lock: '1' } : {}),
+          },
           options?.drillFrom,
         );
         return;
       }
-      if (options?.drillFrom === 'home') {
+      if (fromHome) {
         router.push({
           pathname: '/more-board',
-          params: sourceParam ? { source: sourceParam } : {},
+          params: {
+            lock: '1',
+            ...(sourceParam ? { source: sourceParam } : {}),
+          },
         } as never);
         return;
       }
@@ -1229,6 +1243,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       communityPostId,
       symbolTicker,
       boardSource,
+      boardSourceLocked,
       quotesDrillSegment,
       newsFeedSegment,
       calendarFromAccount,
@@ -1255,6 +1270,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       communityPostId,
       symbolTicker,
       boardSource,
+      boardSourceLocked,
       quotesDrillSegment,
       newsFeedSegment,
       calendarFromAccount,

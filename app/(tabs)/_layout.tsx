@@ -420,6 +420,7 @@ function IpadWideTabLayout({
     communityPostId,
     symbolTicker,
     boardSource,
+    boardSourceLocked,
     quotesDrillSegment,
     newsFeedSegment,
     calendarFromAccount,
@@ -519,6 +520,7 @@ function IpadWideTabLayout({
                 onBack={subpaneBack}
                 active
                 initialSource={boardSource}
+                lockedSource={boardSourceLocked ? boardSource : null}
               />
             ) : contentPane === 'community' && communityPostId ? (
               <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />

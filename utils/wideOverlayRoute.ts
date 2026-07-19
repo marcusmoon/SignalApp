@@ -40,6 +40,7 @@ export const WIDE_OVERLAY_CLEAR_PARAMS: Record<string, undefined> = {
   ticker: undefined,
   session: undefined,
   segment: undefined,
+  lock: undefined,
 };
 
 export function normalizePathname(pathname: string): string {

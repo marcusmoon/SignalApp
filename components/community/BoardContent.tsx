@@ -81,7 +81,20 @@ export type BoardContentProps = {
   stackChrome?: boolean;
   /** 홈 숏컷 등 — 임베디드/스택에서 초기 소스 */
   initialSource?: CommunitySourceFilter | null;
+  /**
+   * 홈 숏컷 드릴 — 소스 고정. 폰 세그먼트·임베디드 세그먼트·사이드바 서브탭 숨김.
+   * all이면 제목은 상위(게시판), 그 외는 채널명.
+   */
+  lockedSource?: CommunitySourceFilter | null;
 };
+
+function boardLockedTitle(
+  source: CommunitySourceFilter,
+  t: (id: MessageId) => string,
+): string {
+  if (source === COMMUNITY_SOURCE_ALL) return t('screenBoard');
+  return t(SOURCE_LABEL[source]);
+}
 
 export function BoardContent({
   embedded = false,
@@ -90,6 +103,7 @@ export function BoardContent({
   active = true,
   stackChrome = false,
   initialSource = null,
+  lockedSource = null,
 }: BoardContentProps) {
   const { t } = useLocale();
   const router = useRouter();
@@ -239,7 +253,7 @@ export function BoardContent({
   }, [changeSource, embedded, initialSource]);
 
   const registerBoardSubTabs = useCallback(() => {
-    if (!useTwoPane) return;
+    if (!useTwoPane || lockedSource) return;
     setActiveSubTabKey(source);
     setSubTabs(
       COMMUNITY_SOURCE_ORDER.map((key) => ({
@@ -250,13 +264,31 @@ export function BoardContent({
         onPress: () => changeSource(key),
       })),
     );
-  }, [changeSource, embedded, setActiveSubTabKey, setSubTabs, source, t, useTwoPane]);
+  }, [
+    changeSource,
+    embedded,
+    lockedSource,
+    setActiveSubTabKey,
+    setSubTabs,
+    source,
+    t,
+    useTwoPane,
+  ]);
 
   useEffect(() => {
     if (!useTwoPane || !active) return;
+    if (lockedSource) {
+      clearSubTabs();
+      return;
+    }
     registerBoardSubTabs();
     return () => clearSubTabs();
-  }, [active, clearSubTabs, registerBoardSubTabs, useTwoPane]);
+  }, [active, clearSubTabs, lockedSource, registerBoardSubTabs, useTwoPane]);
+
+  useEffect(() => {
+    if (!lockedSource) return;
+    changeSource(lockedSource, { fromRoute: true });
+  }, [changeSource, lockedSource]);
 
   const listBottomPad = embedded
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
@@ -293,16 +325,19 @@ export function BoardContent({
   );
 
   const showPhoneChrome = !useTwoPane && !embedded && !stackChrome;
-  const showPhoneSegments = !useTwoPane && !embedded;
+  const showPhoneSegments = !useTwoPane && !embedded && !lockedSource;
   /** Wide uses sidebar source chips; in-pane segments only for non-wide embedded. */
-  const showEmbeddedSegments = embedded && !useTwoPane;
+  const showEmbeddedSegments = embedded && !useTwoPane && !lockedSource;
+  const subpaneTitle = lockedSource
+    ? boardLockedTitle(lockedSource, t)
+    : t('screenBoard');
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane || embedded || stackChrome ? [] : ['top']}>
       {showPhoneChrome ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {active ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>
-        {onBack ? <WideSubpaneHeader title={t('screenBoard')} onBack={onBack} /> : null}
+        {onBack ? <WideSubpaneHeader title={subpaneTitle} onBack={onBack} /> : null}
         {showPhoneSegments || showEmbeddedSegments ? (
           <View style={[styles.topFixed, embedded && styles.topFixedEmbedded]}>
             <View style={styles.segment}>

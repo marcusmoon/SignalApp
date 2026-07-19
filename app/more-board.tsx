@@ -10,6 +10,7 @@ import {
 } from '@/constants/communitySources';
 import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
 function parseSource(raw: string | undefined): CommunitySourceFilter {
@@ -22,18 +23,24 @@ function parseSource(raw: string | undefined): CommunitySourceFilter {
 export default function MoreBoardScreen() {
   const { t } = useLocale();
   const router = useRouter();
-  const params = useLocalSearchParams<{ source?: string | string[] }>();
+  const params = useLocalSearchParams<{ source?: string | string[]; lock?: string | string[] }>();
   const initialSource = useMemo(
     () => parseSource(firstRouteParam(params.source)),
     [params.source],
   );
+  const locked = firstRouteParam(params.lock) === '1';
+  const lockedSource = locked ? initialSource : null;
+  const title =
+    lockedSource && lockedSource !== COMMUNITY_SOURCE_ALL
+      ? t(communitySourceLabelId(lockedSource))
+      : t('screenBoard');
 
   return (
     <PhoneMoreStackChromeProvider>
       <BottomTabBarHeightContext.Provider value={0}>
         <Stack.Screen
           options={{
-            title: t('screenBoard'),
+            title,
             headerBackVisible: false,
             headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
           }}
@@ -43,6 +50,7 @@ export default function MoreBoardScreen() {
           active
           stackChrome
           initialSource={initialSource}
+          lockedSource={lockedSource}
         />
       </BottomTabBarHeightContext.Provider>
     </PhoneMoreStackChromeProvider>

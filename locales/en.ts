@@ -145,7 +145,7 @@ export const en = {
   homeFocusBoardEmpty: 'No recent posts',
   homeFocusSignalEmpty: 'No session briefing to show.',
   moreHubEtfShort: 'ETF',
-  screenGameCenter: 'Game Center',
+  screenGameCenter: 'Games',
   gameCenterLead: 'Short number puzzles to reset your focus.',
   gameSumTrailTitle: 'Sum Trail',
   gameSumTrailCardBody: 'Connect adjacent digits so their path equals the target',

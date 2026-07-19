@@ -40,7 +40,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/briefings/publishedIso` | 브리핑 상세 발행 시각 체인 |
 | `domain/digests/createdAt` | 다이제스트 시각 fallback |
 | `domain/etfInsights/etfHomeVisibilityRules` | ETF 홈 7일 게이트 |
-| `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF→게시판 앞 · 게임센터→게시판 뒤 |
+| `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF→게시판 앞 · 게임→게시판 뒤 |
 | `domain/games/sumTrail` | 합 트레일 퍼즐 로직 — [GAME-CENTER.md](./GAME-CENTER.md) |
 | `domain/news/feedFilters` | 뉴스 URL 중복 제거 · 페이지네이션 전진 |
 | `domain/quotes/tintSignedChangeInText` | 본문 부호/% 틴트 · 비변동 % 제외 |

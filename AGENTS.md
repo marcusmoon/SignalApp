@@ -22,7 +22,7 @@
 | [docs/NOTIFICATION-INBOX.md](./docs/NOTIFICATION-INBOX.md) | 알림센터 인박스 (템플릿 + 사용자 링크) |
 | [docs/MARKET-BRIEFING-AUTOMATION.md](./docs/MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
 | [docs/ETF-INSIGHT-AUTOMATION.md](./docs/ETF-INSIGHT-AUTOMATION.md) | ETF 브리핑 ingest·홈 노출 |
-| [docs/GAME-CENTER.md](./docs/GAME-CENTER.md) | 더보기 게임센터·미니게임 개발 |
+| [docs/GAME-CENTER.md](./docs/GAME-CENTER.md) | 더보기·사이드바 게임 허브·미니게임 개발 |
 | [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) | Expo/EAS 빌드와 OTA |
 | [docs/SOCIAL-AUTH.md](./docs/SOCIAL-AUTH.md) | 앱 사용자 인증과 소셜 로그인 |
 | [docs/SIGNAL-ADMIN-UIUX.md](./docs/SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |

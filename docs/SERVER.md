@@ -135,7 +135,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 | 구분 | 소스 | 저장·API |
 |---|---|---|
-| 주식 (US·KR) | Parqet CDN — 앱이 티커로 URL 조합 (`…/logos/symbol/{TICKER}`, 국장 `.KS`→`.KQ`) | DB·API에 로고 필드 없음 |
+| 주식 (US·KR) | Parqet CDN — 앱이 티커로 URL 조합 (`…/logos/symbol/{TICKER}`, 국장 `.KS`→`.KQ`) | DB·API에 로고 필드 없음. 시장 브리핑 companies/sectors는 read·ingest 시 `005930.KS` → `005930`으로 정규화 |
 | 코인 | CoinGecko markets `image` | Job `market_coins_top`이 `coin_markets.payload.imageUrl`에 저장. 공개 `GET /v1/coins` → `imageUrl`. 구 payload는 `rawPayload.image` 폴백 |
 
 - normalize: `server/src/providers/market/coingecko.mjs`

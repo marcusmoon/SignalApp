@@ -11,6 +11,11 @@ import {
 
 function publicBriefing(item) {
   if (!item) return null;
+  const normalizeSymbol = (value) => {
+    const text = cleanText(value).toUpperCase();
+    const kr = text.match(/^(\d{6})\.(KS|KQ)$/);
+    return kr ? kr[1] : text;
+  };
   return {
     id: item.id,
     market: item.market || '',
@@ -19,8 +24,20 @@ function publicBriefing(item) {
     headline: item.headline || '',
     summary: item.summary || '',
     overview: Array.isArray(item.overview) ? item.overview : [],
-    sectors: Array.isArray(item.sectors) ? item.sectors : [],
-    companies: Array.isArray(item.companies) ? item.companies : [],
+    sectors: Array.isArray(item.sectors)
+      ? item.sectors.map((sector) => {
+          const symbol = normalizeSymbol(sector?.symbol || sector?.etf);
+          return symbol
+            ? { ...sector, symbol, etf: sector?.etf ? symbol : sector?.etf }
+            : sector;
+        })
+      : [],
+    companies: Array.isArray(item.companies)
+      ? item.companies.map((company) => {
+          const symbol = normalizeSymbol(company?.symbol || company?.ticker);
+          return symbol ? { ...company, symbol } : company;
+        })
+      : [],
     macro: Array.isArray(item.macro) ? item.macro : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     publishedAt: item.publishedAt || item.generatedAt || null,

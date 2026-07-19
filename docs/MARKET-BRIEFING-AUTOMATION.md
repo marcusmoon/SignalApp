@@ -130,7 +130,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 | `trend` | 권장 | `▲` / `▽` / `→` — 수치 없을 때 칩 라벨·약한 채색 |
 | `summary` | 권장 | **왜**만 (시세·종목 % 나열 금지에 가깝게) |
 | `changePercent` | 권장 | 등락 칩·정렬. 없으면 summary의 `(-1.09%)` / `-9.49%` 파싱 |
-| `symbol` / `etf` | 권장 | 대표 티커. 탭 시 국내 Naver · 해외 Yahoo |
+| `symbol` / `etf` | 권장 | 대표 티커. **국내는 6자리만** (`005930`). `005930.KS`처럼 Yahoo 접미사를 넣어도 ingest·read에서 벗긴다. 탭 시 국내 Naver · 해외 Yahoo |
 
 역할 분담 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 보완 모델을 본다.
 

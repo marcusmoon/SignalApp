@@ -21,6 +21,22 @@ describe('symbolLogoUrls', () => {
     ]);
   });
 
+  it('strips Yahoo .KS/.KQ so briefing symbols still resolve (regression)', () => {
+    assert.deepEqual(symbolLogoUrls('005930.KS'), [
+      'https://assets.parqet.com/logos/symbol/005930.KS',
+      'https://assets.parqet.com/logos/symbol/005930.KQ',
+    ]);
+    assert.deepEqual(symbolLogoUrls('000660.KQ'), [
+      'https://assets.parqet.com/logos/symbol/000660.KS',
+      'https://assets.parqet.com/logos/symbol/000660.KQ',
+    ]);
+  });
+
+  it('keeps US class-share dots (BRK.B) and strips .US only', () => {
+    assert.equal(symbolLogoUrls('BRK.B')[0], 'https://assets.parqet.com/logos/symbol/BRK.B');
+    assert.equal(symbolLogoUrls('AAPL.US')[0], 'https://assets.parqet.com/logos/symbol/AAPL');
+  });
+
   it('ignores non-http preferred urls', () => {
     const urls = symbolLogoUrls('ETH', ['not-a-url', '']);
     assert.equal(urls[0], 'https://assets.parqet.com/logos/symbol/ETH');

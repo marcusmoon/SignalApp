@@ -6,6 +6,7 @@
 - [ ] 홈·뉴스·공시·시장·시세·더보기 주요 흐름 확인
 - [ ] IT 뉴스: More(iPhone)·사이드바(wide, 내 정보 위) 진입, GeekNews 수집분 표시
 - [ ] 퀵 설정 → More settings: iPhone·iPad 모두 설정 pill 탭 표시 / My info 진입은 단일 탭
+- [ ] 홈 바로가기(기본 보드·시세·뉴스·일정) → 각 목적지. 표시→홈에서 토글·최대 6
 - [ ] 홈 장중 히어로 → `/market-briefing` 상세. 오늘 정리 히어로 → `/today-briefing`. 섹터 흐름 → `/etf-insight`
 - [ ] 홈 뉴스 흐름 행 · 뉴스/공시 목록 행 → `/news-digest`·`/disclosure-digest` 단건 상세. 오늘 정리 본문 없으면 히어로 미노출
 - [ ] 브리핑 상세(오늘 정리·장중·ETF·다이제스트): 공통 셸(뒤로+헤드라인+lead+섹션 카드), 가독성·구조 일치

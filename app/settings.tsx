@@ -125,6 +125,17 @@ import {
   saveHomeSectorFlowDisplayCount,
 } from '@/services/homeSectorFlowDisplayPreference';
 import {
+  HOME_SHORTCUT_CATALOG,
+  HOME_SHORTCUTS_DEFAULT,
+  HOME_SHORTCUTS_MAX,
+  type HomeShortcutKey,
+} from '@/constants/homeShortcuts';
+import { toggleHomeShortcut } from '@/domain/home/shortcuts';
+import {
+  loadHomeShortcuts,
+  saveHomeShortcuts,
+} from '@/services/homeShortcutsPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -1058,6 +1069,8 @@ export default function SettingsScreen({
     HOME_SECTOR_FLOW_DISPLAY_DEFAULT,
   );
   const [homeSectorFlowDisplayReady, setHomeSectorFlowDisplayReady] = useState(false);
+  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcutKey[]>([...HOME_SHORTCUTS_DEFAULT]);
+  const [homeShortcutsReady, setHomeShortcutsReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1321,6 +1334,21 @@ export default function SettingsScreen({
     setHomeSectorFlowDisplayReady(true);
   }, []);
 
+  const reloadHomeShortcutsPref = useCallback(async () => {
+    const v = await loadHomeShortcuts();
+    setHomeShortcuts(v);
+    setHomeShortcutsReady(true);
+  }, []);
+
+  const onToggleHomeShortcut = useCallback(
+    (key: HomeShortcutKey, enabled: boolean) => {
+      const next = toggleHomeShortcut(homeShortcuts, key, enabled);
+      setHomeShortcuts(next);
+      void saveHomeShortcuts(next);
+    },
+    [homeShortcuts],
+  );
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1345,6 +1373,7 @@ export default function SettingsScreen({
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
     void reloadHomeSectorFlowDisplayPref();
+    void reloadHomeShortcutsPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1359,6 +1388,7 @@ export default function SettingsScreen({
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
     reloadHomeSectorFlowDisplayPref,
+    reloadHomeShortcutsPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -2061,11 +2091,42 @@ clearCalendarCache();
               <Text style={styles.prefHint}>{t('settingsHomeDisplayHint')}</Text>
               {!homeNewsFlowDisplayReady ||
               !homeWatchlistDisplayReady ||
-              !homeSectorFlowDisplayReady ? (
+              !homeSectorFlowDisplayReady ||
+              !homeShortcutsReady ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={[styles.limitRow, { marginTop: 8 }]}>
+                  <Text style={[styles.prefLabel, { marginTop: 10 }]}>
+                    {t('settingsHomeShortcutsSection')}
+                  </Text>
+                  <Text style={styles.prefHint}>
+                    {t('settingsHomeShortcutsHint', { count: String(HOME_SHORTCUTS_MAX) })}
+                  </Text>
+                  {HOME_SHORTCUT_CATALOG.map((item) => {
+                    const enabled = homeShortcuts.includes(item.key);
+                    const atMax = homeShortcuts.length >= HOME_SHORTCUTS_MAX && !enabled;
+                    return (
+                      <View key={item.key} style={[styles.prefRow, { marginTop: 8 }]}>
+                        <Text style={[styles.prefLabel, atMax && { color: theme.textDim }]}>
+                          {t(item.titleId)}
+                        </Text>
+                        <Switch
+                          value={enabled}
+                          disabled={atMax}
+                          onValueChange={(v) => onToggleHomeShortcut(item.key, v)}
+                          trackColor={{ false: theme.border, true: theme.green + '88' }}
+                          thumbColor={enabled ? theme.green : theme.textDim}
+                        />
+                      </View>
+                    );
+                  })}
+                  {homeShortcuts.length >= HOME_SHORTCUTS_MAX ? (
+                    <Text style={[styles.prefHint, { marginTop: 6 }]}>
+                      {t('settingsHomeShortcutsMaxHint', { count: String(HOME_SHORTCUTS_MAX) })}
+                    </Text>
+                  ) : null}
+
+                  <View style={[styles.limitRow, { marginTop: 14 }]}>
                     <Text style={styles.prefLabel}>{t('settingsHomeWatchlistDisplaySection')}</Text>
                     <Pressable
                       onPress={() => setCountPicker({ kind: 'home', field: 'watchlist' })}

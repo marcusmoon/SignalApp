@@ -70,7 +70,9 @@ export type WidePaneDrillFrom =
   | 'tabs'
   | 'alerts'
   | 'board'
-  | 'etfInsights';
+  | 'etfInsights'
+  | 'newsIssues'
+  | 'disclosureFlow';
 
 export type WidePaneDrillOptions = {
   /** In-memory drill origin — never put this in the shareable URL. */
@@ -991,13 +993,56 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           pathname: WIDE_HOME_ROUTE,
           params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'etf-insights' },
         } as never);
+      } else if (target === 'newsIssues') {
+        const p = newsIssuesParams;
+        const date = p?.date;
+        if (date) {
+          const fromHome = p.hideDateNavigator === true;
+          applyOverlayKind('news-issues', {
+            category: p.category,
+            date,
+            ...(fromHome ? { from: 'home' } : {}),
+          });
+          router.navigate({
+            pathname: WIDE_HOME_ROUTE,
+            params: {
+              ...WIDE_OVERLAY_CLEAR_PARAMS,
+              overlay: 'news-issues',
+              category: p.category === 'all' ? undefined : p.category,
+              date,
+              ...(fromHome ? { from: 'home' } : {}),
+            },
+          } as never);
+        } else {
+          setContentPane('tabs');
+        }
+      } else if (target === 'disclosureFlow') {
+        const p = disclosureFlowParams;
+        const date = p?.date;
+        if (date) {
+          applyOverlayKind('disclosure-flow', {
+            date,
+            ...(p.market && p.market !== 'all' ? { market: p.market } : {}),
+          });
+          router.navigate({
+            pathname: WIDE_HOME_ROUTE,
+            params: {
+              ...WIDE_OVERLAY_CLEAR_PARAMS,
+              overlay: 'disclosure-flow',
+              date,
+              ...(p.market && p.market !== 'all' ? { market: p.market } : {}),
+            },
+          } as never);
+        } else {
+          setContentPane('tabs');
+        }
       } else {
         setContentPane('tabs');
       }
     } finally {
       restoringWideBackRef.current = false;
     }
-  }, [alertsFromAccount, applyOverlayKind, router]);
+  }, [alertsFromAccount, applyOverlayKind, disclosureFlowParams, newsIssuesParams, router]);
 
   const showYoutubeTab = useCallback(() => {
     clearWideBackStack();

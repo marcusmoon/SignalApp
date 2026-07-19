@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,10 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import {
-  disclosureDigestSourceSheetRows,
-} from '@/components/disclosures/DisclosureDigestSection';
-import { DigestSourcesSheet } from '@/components/news/DigestSourcesSheet';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -30,6 +26,7 @@ import {
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -40,30 +37,17 @@ import {
   disclosureMeaningLabelIdsForForms,
   isImportantDisclosureDigest,
 } from '@/domain/disclosures';
-import {
-  fetchSignalDisclosureDigestById,
-  fetchSignalDisclosureDigests,
-} from '@/integrations/signal-api/disclosureDigests';
+import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import type { AppLocale, MessageId } from '@/locales/messages';
+import type { MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
-
-function localYmdFromDisclosureDigest(item: SignalApiDisclosureDigestItem): string | null {
-  const iso = String(item.generatedAt || '').trim();
-  if (iso) {
-    const d = new Date(iso);
-    if (Number.isFinite(d.getTime())) return toYmd(d);
-  }
-  const dateOnly = String(item.generatedDate || '').slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
-}
 
 const MARKET_LABEL: Record<DisclosureFlowMarket, MessageId> = {
   all: 'disclosuresFilterAll',
@@ -141,6 +125,8 @@ export function DisclosureFlowContent({
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
+  const router = useRouter();
+  const ipadNav = useIpadSidebarNavActions();
   const setRouteParams = useSafeSetRouteParams();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
@@ -150,10 +136,9 @@ export function DisclosureFlowContent({
   const [items, setItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const itemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   itemsRef.current = items;
-  const [sourcesDigestId, setSourcesDigestId] = useState<string | null>(initialDigestId);
-  const [focusedDigest, setFocusedDigest] = useState<SignalApiDisclosureDigestItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initialDetailNavRef = useRef(false);
   const { ref: scrollRef } = useScrollToTopOnChange([market, selectedYmd], {
     resyncDeps: [items],
   });
@@ -167,23 +152,16 @@ export function DisclosureFlowContent({
     setMarket(initialMarket);
   }, [initialMarket]);
 
-  useEffect(() => {
-    setSourcesDigestId(initialDigestId);
-    if (!initialDigestId) setFocusedDigest(null);
-  }, [initialDigestId]);
-
   const syncRoute = useCallback(
-    (next: { market?: DisclosureFlowMarket; date?: string; digestId?: string | null }) => {
+    (next: { market?: DisclosureFlowMarket; date?: string }) => {
       const nextMarket = next.market ?? market;
       const nextDate = next.date ?? selectedYmd;
-      const nextDigestId = next.digestId === undefined ? sourcesDigestId : next.digestId;
       setRouteParams({
         market: nextMarket === 'all' ? undefined : nextMarket,
         date: nextDate,
-        digestId: nextDigestId || undefined,
       });
     },
-    [market, selectedYmd, setRouteParams, sourcesDigestId],
+    [market, selectedYmd, setRouteParams],
   );
 
   const onPickMarket = useCallback(
@@ -204,40 +182,31 @@ export function DisclosureFlowContent({
     [selectedYmd, syncRoute],
   );
 
-  const openSources = useCallback(
+  const openDetail = useCallback(
     (id: string) => {
-      const row = itemsRef.current.find((item) => item.id === id) ?? null;
-      setFocusedDigest(row);
-      setSourcesDigestId(id);
-      syncRoute({ digestId: id });
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showDisclosureDigest(cleanId, { drillFrom: 'disclosureFlow' });
+        return;
+      }
+      router.push({ pathname: '/disclosure-digest', params: { id: cleanId } } as never);
     },
-    [syncRoute],
+    [ipadNav, router],
   );
-
-  const closeSources = useCallback(() => {
-    setSourcesDigestId(null);
-    setFocusedDigest(null);
-    syncRoute({ digestId: null });
-  }, [syncRoute]);
-
-  const sourcesDigest = useMemo(() => {
-    if (!sourcesDigestId) return null;
-    return (
-      items.find((item) => item.id === sourcesDigestId) ??
-      (focusedDigest?.id === sourcesDigestId ? focusedDigest : null)
-    );
-  }, [focusedDigest, items, sourcesDigestId]);
 
   useEffect(() => {
-    if (!sourcesDigestId) return;
-    const row = items.find((item) => item.id === sourcesDigestId);
-    if (row) setFocusedDigest(row);
-  }, [items, sourcesDigestId]);
-
-  const sourceRows = useMemo(
-    () => (sourcesDigest ? disclosureDigestSourceSheetRows(sourcesDigest, locale as AppLocale) : []),
-    [locale, sourcesDigest],
-  );
+    const id = String(initialDigestId || '').trim();
+    if (!id || initialDetailNavRef.current) return;
+    initialDetailNavRef.current = true;
+    // Deep link / legacy list?digestId= — open detail once; replace on phone so back
+    // does not return to the list URL and re-trigger this effect.
+    if (ipadNav.isAvailable) {
+      ipadNav.showDisclosureDigest(id, { drillFrom: 'disclosureFlow' });
+      return;
+    }
+    router.replace({ pathname: '/disclosure-digest', params: { id } } as never);
+  }, [initialDigestId, ipadNav, router]);
 
   const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
     selectedYmd,
@@ -275,37 +244,6 @@ export function DisclosureFlowContent({
   useEffect(() => {
     void load();
   }, [load]);
-
-  /** 목록 URL `digestId` — 당일 목록에 없으면 id로 가져와 시트에 쓴다 (알림은 `/disclosure-digest` 상세) */
-  useEffect(() => {
-    const pendingId = String(sourcesDigestId || '').trim();
-    if (!pendingId || loading) return;
-    if (items.some((item) => item.id === pendingId)) return;
-    let cancelled = false;
-    void (async () => {
-      const byId = await fetchSignalDisclosureDigestById(pendingId, { locale }).catch(() => null);
-      if (cancelled) return;
-      if (!byId) {
-        setSourcesDigestId(null);
-        setFocusedDigest(null);
-        syncRoute({ digestId: null });
-        return;
-      }
-      setFocusedDigest(byId);
-      setItems((prev) => {
-        if (prev.some((item) => item.id === byId.id)) return prev;
-        return sortDigests([byId, ...prev]);
-      });
-      const digestDay = localYmdFromDisclosureDigest(byId);
-      if (digestDay && digestDay !== selectedYmd) {
-        setSelectedYmd(digestDay);
-        syncRoute({ date: digestDay, digestId: pendingId });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [items, loading, locale, selectedYmd, sourcesDigestId, syncRoute]);
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
@@ -380,7 +318,16 @@ export function DisclosureFlowContent({
                   Boolean(item.summary?.trim()) ||
                   item.sourceRefs.length > 0;
                 return (
-                  <View key={item.id} style={styles.card}>
+                  <Pressable
+                    key={item.id}
+                    onPress={canOpenDetail ? () => openDetail(item.id) : undefined}
+                    disabled={!canOpenDetail}
+                    accessibilityRole={canOpenDetail ? 'button' : undefined}
+                    accessibilityLabel={canOpenDetail ? t('feedDigestDetailA11y') : undefined}
+                    style={({ pressed }) => [
+                      styles.card,
+                      canOpenDetail && pressed && styles.cardPressed,
+                    ]}>
                     <HomeDigestFeedRow
                       title={item.title}
                       titleLines={2}
@@ -419,16 +366,12 @@ export function DisclosureFlowContent({
                         })}
                       </Text>
                       {canOpenDetail ? (
-                        <Pressable
-                          onPress={() => openSources(item.id)}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('feedDigestDetailA11y')}
-                          style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}>
+                        <View style={styles.detailBtn}>
                           <FontAwesome name="info-circle" size={14} color={theme.green} />
-                        </Pressable>
+                        </View>
                       ) : null}
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -442,14 +385,6 @@ export function DisclosureFlowContent({
     <>
       {body}
       {datePickerSheet}
-      <DigestSourcesSheet
-        visible={sourcesDigest != null}
-        kicker={t('disclosureFlowTitle')}
-        digestTitle={sourcesDigest?.title ?? ''}
-        digestSummary={sourcesDigest?.summary?.trim() || undefined}
-        rows={sourceRows}
-        onClose={closeSources}
-      />
     </>
   );
 }
@@ -566,6 +501,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: ft.pad(14),
       gap: COMFORT_GAP_SM,
     },
+    cardPressed: {
+      opacity: 0.92,
+    },
     categoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -617,9 +555,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.greenBorder,
       flexShrink: 0,
-    },
-    detailBtnPressed: {
-      opacity: 0.88,
     },
   });
 }

@@ -27,7 +27,12 @@ export type SumTrailState = {
   clearsNeeded: number;
   status: SumTrailStatus;
   score: number;
+  /** 이번 레벨에서 남은 힌트 (추후 포인트 구매로 충전 예정) */
+  hintsRemaining: number;
+  /** 힌트로 강조할 다음 칸 */
+  hintCell: SumTrailCell | null;
 };
+
 
 
 export function levelConfig(level: number, difficulty: SumTrailDifficulty): SumTrailLevelConfig {
@@ -241,6 +246,59 @@ export function pathMatchesTarget(grid: SumTrailGrid, path: SumTrailCell[], targ
   return path.length >= 2 && pathSum(grid, path) === target;
 }
 
+export function hintsForDifficulty(difficulty: SumTrailDifficulty): number {
+  if (difficulty === 'easy') return 3;
+  if (difficulty === 'normal') return 2;
+  return 1;
+}
+
+/**
+ * 목표 합에 도달하는 경로를 하나 찾는다 (합이 target을 넘으면 가지치기).
+ * 없으면 null — UI에서는 실패로 취급할 수 있다.
+ */
+export function findPathToTarget(grid: SumTrailGrid, target: number): SumTrailCell[] | null {
+  if (target <= 0) return null;
+  const n = gridSize(grid);
+  const starts: SumTrailCell[] = [];
+  for (let r = 0; r < n; r += 1) {
+    for (let c = 0; c < n; c += 1) {
+      if ((grid[r]?.[c] ?? 0) > 0) starts.push({ r, c });
+    }
+  }
+
+  function dfs(path: SumTrailCell[], used: Set<string>, sum: number): SumTrailCell[] | null {
+    if (sum === target && path.length >= 2) return path;
+    if (sum >= target) return null;
+    const last = path[path.length - 1]!;
+    for (const nb of orthogonalNeighbors(grid, last)) {
+      const key = cellKey(nb);
+      if (used.has(key)) continue;
+      const v = grid[nb.r]?.[nb.c] ?? 0;
+      if (v <= 0) continue;
+      used.add(key);
+      path.push(nb);
+      const found = dfs(path, used, sum + v);
+      if (found) return found;
+      path.pop();
+      used.delete(key);
+    }
+    return null;
+  }
+
+  for (const start of starts) {
+    const v = grid[start.r]?.[start.c] ?? 0;
+    if (v <= 0 || v > target) continue;
+    const path = [start];
+    const used = new Set<string>([cellKey(start)]);
+    const found = dfs(path, used, v);
+    if (found) return [...found];
+  }
+  return null;
+}
+
+export function isTargetSolvable(grid: SumTrailGrid, target: number): boolean {
+  return findPathToTarget(grid, target) != null;
+}
 
 function freshBoard(
   level: number,
@@ -266,6 +324,8 @@ function freshBoard(
     clearsNeeded: cfg.clearsToClearLevel,
     status: 'playing',
     score,
+    hintsRemaining: hintsForDifficulty(difficulty),
+    hintCell: null,
   };
 }
 
@@ -297,13 +357,13 @@ export function tapSumTrailCell(
     // 경로의 마지막 칸을 다시 누르면 한 칸 취소
     const last = state.path[state.path.length - 1];
     if (last && last.r === cell.r && last.c === cell.c) {
-      return { ...state, path: state.path.slice(0, -1) };
+      return { ...state, path: state.path.slice(0, -1), hintCell: null };
     }
     return state;
   }
   const path = [...state.path, cell];
   if (!pathMatchesTarget(state.grid, path, state.target)) {
-    return { ...state, path };
+    return { ...state, path, hintCell: null };
   }
 
   // 타깃 달성 → 클리어
@@ -322,12 +382,14 @@ export function tapSumTrailCell(
       score,
       status: 'cleared',
       target: 0,
+      hintCell: null,
     };
   }
 
   const rng = mulberry32(seed ?? (Date.now() ^ clears ^ pathSum(state.grid, path)) >>> 0);
   const picked = pickTarget(clearedGrid, cfg.minPathLen, cfg.maxPathLen, rng);
   if (!picked) {
+    // 더 이상 목표를 못 만들면 레벨 클리어로 처리 (실패 아님)
     return {
       ...state,
       grid: clearedGrid,
@@ -336,6 +398,7 @@ export function tapSumTrailCell(
       score,
       status: 'cleared',
       target: 0,
+      hintCell: null,
     };
   }
   return {
@@ -346,19 +409,51 @@ export function tapSumTrailCell(
     score,
     target: picked.target,
     status: 'playing',
+    hintCell: null,
   };
 }
 
 export function undoSumTrailPath(state: SumTrailState): SumTrailState {
   if (state.status !== 'playing' || state.path.length === 0) return state;
-  return { ...state, path: state.path.slice(0, -1) };
+  return { ...state, path: state.path.slice(0, -1), hintCell: null };
 }
 
 export function clearSumTrailPath(state: SumTrailState): SumTrailState {
   if (state.status !== 'playing' || state.path.length === 0) return state;
-  return { ...state, path: [] };
+  return { ...state, path: [], hintCell: null };
 }
 
 export function currentPathSum(state: SumTrailState): number {
   return pathSum(state.grid, state.path);
 }
+
+/**
+ * 힌트 1회 소모 — 올바른 경로의 다음 칸을 강조.
+ * 현재 경로가 해답의 접두가 아니면 경로를 비우고 해답의 첫 칸을 보여 준다.
+ * 해가 없으면 failed (드묾: 생성 보장은 되지만 방어적으로).
+ */
+export function useSumTrailHint(state: SumTrailState): SumTrailState {
+  if (state.status !== 'playing') return state;
+  if (state.hintsRemaining <= 0) return state;
+  const solution = findPathToTarget(state.grid, state.target);
+  if (!solution || solution.length < 2) {
+    return { ...state, status: 'failed', hintCell: null, path: [] };
+  }
+  const isPrefix =
+    state.path.length < solution.length &&
+    state.path.every((c, i) => cellsEqual(c, solution[i]!));
+  if (isPrefix) {
+    return {
+      ...state,
+      hintsRemaining: state.hintsRemaining - 1,
+      hintCell: solution[state.path.length]!,
+    };
+  }
+  return {
+    ...state,
+    path: [],
+    hintsRemaining: state.hintsRemaining - 1,
+    hintCell: solution[0]!,
+  };
+}
+

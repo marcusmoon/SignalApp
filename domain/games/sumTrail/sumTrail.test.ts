@@ -12,13 +12,16 @@ import {
   createSumTrailGame,
   currentPathSum,
   fillRandomGrid,
+  findPathToTarget,
   findRandomPath,
+  hintsForDifficulty,
   mulberry32,
   pathMatchesTarget,
   pathSum,
   pickTarget,
   tapSumTrailCell,
   undoSumTrailPath,
+  useSumTrailHint,
 } from './sumTrail.ts';
 
 describe('sumTrail engine', () => {
@@ -123,5 +126,39 @@ describe('sumTrail game', () => {
     state = tapSumTrailCell(state, tapped!, 1);
     state = clearSumTrailPath(state);
     assert.equal(state.path.length, 0);
+  });
+
+  it('grants hints by difficulty and reveals a solvable next cell', () => {
+    assert.equal(hintsForDifficulty('easy'), 3);
+    assert.equal(hintsForDifficulty('normal'), 2);
+    assert.equal(hintsForDifficulty('hard'), 1);
+
+    let state = createSumTrailGame('normal', 42);
+    assert.equal(state.hintsRemaining, 2);
+    const solution = findPathToTarget(state.grid, state.target);
+    assert.ok(solution && solution.length >= 2);
+
+    state = useSumTrailHint(state);
+    assert.equal(state.hintsRemaining, 1);
+    assert.ok(state.hintCell);
+    assert.equal(state.hintCell!.r, solution![0]!.r);
+    assert.equal(state.hintCell!.c, solution![0]!.c);
+
+    state = useSumTrailHint(state);
+    assert.equal(state.hintsRemaining, 0);
+    state = useSumTrailHint(state);
+    assert.equal(state.hintsRemaining, 0);
+  });
+
+  it('findPathToTarget matches target sum', () => {
+    const grid = [
+      [1, 2, 9],
+      [3, 4, 8],
+      [5, 6, 7],
+    ];
+    const path = findPathToTarget(grid, 6);
+    assert.ok(path);
+    assert.equal(pathSum(grid, path!), 6);
+    assert.ok(path!.length >= 2);
   });
 });

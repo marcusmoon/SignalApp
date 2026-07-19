@@ -43,6 +43,13 @@ const GAMES: GameCard[] = [
     titleId: 'gameSumTrailTitle',
     bodyId: 'gameSumTrailCardBody',
   },
+  {
+    id: 'sudoku',
+    href: '/games/sudoku' as Href,
+    icon: 'table',
+    titleId: 'gameSudokuTitle',
+    bodyId: 'gameSudokuCardBody',
+  },
 ];
 
 export type GameHubContentProps = {

@@ -4,6 +4,10 @@ import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
 import { EtfInsightBlock } from '@/components/signal/EtfInsightBlock';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  etfInsightDetailIso,
+  formatBriefingDetailTimeMeta,
+} from '@/domain/briefings/detailTime';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import {
   fetchSignalEtfInsightById,
@@ -27,7 +31,7 @@ export function EtfInsightDetailContent({
   onBack,
 }: EtfInsightDetailContentProps) {
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [item, setItem] = useState<SignalApiEtfInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,6 +89,9 @@ export function EtfInsightDetailContent({
       error={error}
       emptyText={!error && !item ? t('etfInsightEmpty') : null}
       headline={item?.title?.trim() || null}
+      headlineMeta={
+        item ? formatBriefingDetailTimeMeta(etfInsightDetailIso(item), locale) : null
+      }
       scrollResetKey={scrollResetKey}
       contentRevision={item}>
       {item ? <EtfInsightBlock insight={item} theme={theme} scaleFont={scaleFont} /> : null}

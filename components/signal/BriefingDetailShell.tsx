@@ -14,6 +14,7 @@ import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
 } from '@/constants/screenLayout';
+import { FEED_META_TIME_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -34,6 +35,8 @@ export type BriefingDetailShellProps = {
   emptyText?: string | null;
   /** 본문 최상단 헤드라인 (단건 제목) */
   headline?: string | null;
+  /** 헤드라인 아래 시간·회차 메타 (예: `장중 · 3시간 전 · 7/18 14:30`) */
+  headlineMeta?: string | null;
   scrollResetKey?: string;
   contentRevision?: unknown;
   children?: ReactNode;
@@ -42,7 +45,7 @@ export type BriefingDetailShellProps = {
 /**
  * 단건 브리핑·다이제스트 상세 공통 셸.
  * 헤더: 숏컷과 동일 — 뒤로(chevron) + 섹션명(`chromeTitle`). dateBar 없음.
- * 본문: 단건 헤드라인 + children.
+ * 본문: 단건 헤드라인 + 시간 메타 + children.
  */
 export function BriefingDetailShell({
   embedded = false,
@@ -54,6 +57,7 @@ export function BriefingDetailShell({
   error = null,
   emptyText = null,
   headline = null,
+  headlineMeta = null,
   scrollResetKey = '',
   contentRevision,
   children,
@@ -67,6 +71,7 @@ export function BriefingDetailShell({
   );
   const sectionTitle = String(chromeTitle || '').trim();
   const title = String(headline || '').trim();
+  const meta = String(headlineMeta || '').trim();
 
   return (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
@@ -102,7 +107,12 @@ export function BriefingDetailShell({
           {!error && emptyText ? <Text style={styles.emptyText}>{emptyText}</Text> : null}
           {!error && !emptyText ? (
             <>
-              {title ? <Text style={styles.headline}>{title}</Text> : null}
+              {title || meta ? (
+                <View style={styles.headlineBlock}>
+                  {title ? <Text style={styles.headline}>{title}</Text> : null}
+                  {meta ? <Text style={styles.headlineMeta}>{meta}</Text> : null}
+                </View>
+              ) : null}
               {children}
             </>
           ) : null}
@@ -162,11 +172,20 @@ function makeStyles(
       textAlign: 'center',
       paddingVertical: 24,
     },
+    headlineBlock: {
+      gap: 4,
+    },
     headline: {
       fontSize: ft.ff(17),
       lineHeight: sf(25),
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    headlineMeta: {
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
     },
   });
 }

@@ -8,6 +8,10 @@ import {
 } from '@/constants/ipadHomeNav';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  formatBriefingDetailTimeMeta,
+  marketBriefingDetailIso,
+} from '@/domain/briefings/detailTime';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -122,6 +126,21 @@ export function MarketBriefingDetailContent({
   const summaryFallback = item?.summary?.trim() || '';
   const headline = titleHeadline || summaryFallback;
   const omitSummary = Boolean(item && !titleHeadline && summaryFallback);
+  const sessionPrefix = useMemo(() => {
+    const fromItem = HOME_SIGNAL_SESSIONS.find(
+      (row) =>
+        row.market === String(item?.market || '').toLowerCase() &&
+        row.session === String(item?.session || '').toLowerCase(),
+    );
+    if (fromItem) return t(fromItem.labelId);
+    const fromKey = HOME_SIGNAL_SESSIONS.find((row) => row.key === sessionKey);
+    return fromKey ? t(fromKey.labelId) : null;
+  }, [item?.market, item?.session, sessionKey, t]);
+  const headlineMeta = item
+    ? formatBriefingDetailTimeMeta(marketBriefingDetailIso(item), locale, {
+        prefix: sessionPrefix,
+      })
+    : null;
 
   return (
     <BriefingDetailShell
@@ -134,6 +153,7 @@ export function MarketBriefingDetailContent({
       error={error}
       emptyText={!error && !item ? t('briefingSessionEmptyTitle') : null}
       headline={item ? headline : null}
+      headlineMeta={headlineMeta}
       scrollResetKey={scrollResetKey}
       contentRevision={item}>
       {item ? (

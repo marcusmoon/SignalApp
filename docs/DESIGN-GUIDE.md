@@ -72,7 +72,7 @@ slide-up Modal 시트(다이제스트 스트립 「출처」·퀵 설정·필터
 
 레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 redirect한다.
 
-**단건 상세 공통 셸** (`BriefingDetailShell`): 홈 숏컷과 **동일 드릴 헤더** — `signalDrillStackOptions` / `WideSubpaneHeader`(chevron + 섹션명 `chromeTitle`). `dateBar` 없음. 본문 헤드라인(단건 제목) + leadPanel(초록 tint) + `sectionFeedCard`. 오늘 정리·장중·ETF·뉴스/공시 다이제스트가 동일 뼈대.
+**단건 상세 공통 셸** (`BriefingDetailShell`): 홈 숏컷과 **동일 드릴 헤더** — `signalDrillStackOptions` / `WideSubpaneHeader`(chevron + 섹션명 `chromeTitle`). `dateBar` 없음. 본문: 헤드라인(단건 제목) → **시간 메타**(`headlineMeta`: 상대·절대, 장중은 회차 접두) → leadPanel(초록 tint) → `sectionFeedCard`. 오늘 정리·장중·ETF·뉴스/공시 다이제스트가 동일 뼈대.
 
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 
@@ -247,7 +247,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 브리핑·다이제스트 단건 상세
 
-공통: `BriefingDetailShell` — 헤더(뒤로+섹션명)는 숏컷·플로우와 동일. `dateBar` 없음. 본문 헤드라인 = 단건 제목.
+공통: `BriefingDetailShell` — 헤더(뒤로+섹션명)는 숏컷·플로우와 동일. `dateBar` 없음. 본문 헤드라인 = 단건 제목, 바로 아래 시간 메타(`formatBriefingDetailTimeMeta`).
 
 | 화면 | 진입 | 본문 블록 |
 |---|---|---|
@@ -274,7 +274,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 컴포넌트 | 용도 |
 |---|---|
 | `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드 · More settings) |
-| `BriefingDetailShell` | 단건 상세 공통 셸 (공통 드릴 헤더 + 본문 헤드라인) |
+| `BriefingDetailShell` | 단건 상세 공통 셸 (공통 드릴 헤더 + 헤드라인 + 시간 메타) |
 | `signalDrillStackOptions` | phone Stack 드릴 헤더 옵션 (chevron + 제목) |
 | `QuickSettingsSheet` / `DigestSourcesSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% (스트립 출처·퀵 설정 등) |
 | `ItNewsFeedPanel` | IT 뉴스 리스트 (`category=it`) |

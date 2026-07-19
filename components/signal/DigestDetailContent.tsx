@@ -18,6 +18,11 @@ import type {
   SignalApiDisclosureDigestItem,
   SignalApiNewsDigestItem,
 } from '@/integrations/signal-api/types';
+import {
+  disclosureDigestDetailIso,
+  formatBriefingDetailTimeMeta,
+  newsDigestDetailIso,
+} from '@/domain/briefings/detailTime';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { AppLocale } from '@/locales/messages';
@@ -113,6 +118,14 @@ export function DigestDetailContent({
   const headline = item?.title?.trim() || '';
   const summary = item?.summary?.trim() || '';
   const summaryBody = summary && summary !== headline ? summary : '';
+  const headlineMeta = item
+    ? formatBriefingDetailTimeMeta(
+        kind === 'news'
+          ? newsDigestDetailIso(item as SignalApiNewsDigestItem)
+          : disclosureDigestDetailIso(item as SignalApiDisclosureDigestItem),
+        locale as AppLocale,
+      )
+    : null;
 
   return (
     <BriefingDetailShell
@@ -125,6 +138,7 @@ export function DigestDetailContent({
       error={error}
       emptyText={!error && !item ? t(emptyKey) : null}
       headline={item ? headline : null}
+      headlineMeta={headlineMeta}
       scrollResetKey={scrollResetKey}
       contentRevision={item}>
       {item ? (

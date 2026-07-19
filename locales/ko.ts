@@ -256,8 +256,9 @@ export const ko = {
   accountTabInfo: '정보',
   accountHubSettingsSection: '환경 설정',
   accountHubAccountSection: '계정',
-  accountHubDisplaySettingsDesc: '화면 테마, 글자 크기, 홈 관심 종목·뉴스 흐름 개수를 조정합니다.',
-  accountHubSettingsNewsDesc: '뉴스 탭 순서, 해시태그 표시, 새 글 확인 간격을 조정합니다.',
+  accountHubDisplaySettingsDesc:
+    '화면 테마, 글자 크기, 탭 새 글 확인 간격, 홈 관심 종목·뉴스 흐름 개수를 조정합니다.',
+  accountHubSettingsNewsDesc: '뉴스 탭 순서와 해시태그 표시를 조정합니다.',
   accountHubSettingsQuotesDesc: '시세 탭 순서, 목록 개수, 등락 색상을 조정합니다.',
   accountHubSettingsNotificationsDesc: '푸시, 브리핑, 로컬 알림을 조정합니다.',
   accountHubSettingsServerDesc: '개발 모드와 Signal API 연결을 변경합니다.',
@@ -569,7 +570,7 @@ export const ko = {
   settingsSignalServerCustomEmpty: 'URL을 입력해 주세요.',
 
   settingsNewsDisplaySection: '뉴스 화면',
-  settingsNewsTabLead: '뉴스 탭 순서, 해시태그 표시, 새 글 확인 간격을 조정합니다. 이 기기에만 저장됩니다.',
+  settingsNewsTabLead: '뉴스 탭 순서와 해시태그 표시를 조정합니다. 이 기기에만 저장됩니다.',
   settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
   settingsNewsSegmentOrderHint:
     '뉴스 화면 상단의 글로벌·코인·관심·영상 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
@@ -597,9 +598,9 @@ export const ko = {
   settingsEarningsOnly: '실적 알림만',
   settingsCalendarReminders: '투자 일정 리마인더',
   settingsCalendarRemindersHint: 'CPI·FOMC 등 주요 경제 일정을 기기 시간 기준으로 알려줍니다.',
-  settingsNewsUnreadCheckKicker: '뉴스 새 글 확인',
+  settingsNewsUnreadCheckKicker: '탭 새 글 확인',
   settingsNewsUnreadCheckHint:
-    '앱이 켜져 있을 때와 백그라운드에서 새 뉴스를 확인하는 간격입니다. 백그라운드 작업은 OS 최소 15분이며, iOS는 그보다 더 늦을 수 있습니다. Expo Go에서는 백그라운드 작업이 동작하지 않습니다.',
+    '뉴스·시장·공시 탭 배지를 서버와 맞춰 보는 간격입니다. 화면 안 세그먼트 chip 폴링(약 3분)과는 별개입니다. 백그라운드는 OS 최소 15분이며 iOS는 더 늦을 수 있고, Expo Go에서는 백그라운드 작업이 없습니다.',
   settingsNewsUnreadCheckOption: '{{minutes}}분',
   settingsLocalMacroCalendar: '로컬 알림 · 경제 캘린더',
   settingsLocalMacroCalendarHint: 'CPI·FOMC 등 매크로 일정 — 해당일 오전 8:00(기기)에 한 번 알림',

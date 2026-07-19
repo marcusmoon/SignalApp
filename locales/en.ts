@@ -258,8 +258,9 @@ export const en = {
   accountTabInfo: 'Info',
   accountHubSettingsSection: 'Settings',
   accountHubAccountSection: 'Account',
-  accountHubDisplaySettingsDesc: 'Adjust theme, font size, and home watchlist/news flow counts.',
-  accountHubSettingsNewsDesc: 'Adjust news tab order, hashtag display, and unread check interval.',
+  accountHubDisplaySettingsDesc:
+    'Adjust theme, font size, tab unread check interval, and home watchlist/news flow counts.',
+  accountHubSettingsNewsDesc: 'Adjust news tab order and hashtag display.',
   accountHubSettingsQuotesDesc: 'Adjust quotes tab order, list limits, and change colors.',
   accountHubSettingsNotificationsDesc: 'Tune push, briefing, and local notifications.',
   accountHubSettingsServerDesc: 'Change developer mode and Signal API connection.',
@@ -572,8 +573,7 @@ export const en = {
   settingsSignalServerCustomEmpty: 'Enter a URL.',
 
   settingsNewsDisplaySection: 'News screen',
-  settingsNewsTabLead:
-    'Adjust news tab order, hashtag display, and unread check interval. Stored on this device only.',
+  settingsNewsTabLead: 'Adjust news tab order and hashtag display. Stored on this device only.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
     'Order of Global, Crypto, Watch, and Video on the News screen. Drag the ≡ handle to reorder.',
@@ -602,9 +602,9 @@ export const en = {
   settingsEarningsOnly: 'Earnings alerts only',
   settingsCalendarReminders: 'Investment schedule reminders',
   settingsCalendarRemindersHint: 'Notify major macro economic events in device local time.',
-  settingsNewsUnreadCheckKicker: 'News update check',
+  settingsNewsUnreadCheckKicker: 'Tab update check',
   settingsNewsUnreadCheckHint:
-    'How often to check for new headlines while the app is open or in the background. Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
+    'How often to refresh News, Market, and Disclosures tab badges against the server. Separate from in-screen segment chips (~3 min). Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
   settingsNewsUnreadCheckOption: '{{minutes}} min',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
   settingsLocalMacroCalendarHint: 'Macro events such as CPI and FOMC — one alert at 8:00 on event day (device time)',

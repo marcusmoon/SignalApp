@@ -258,8 +258,9 @@ export const ja = {
   accountTabInfo: '情報',
   accountHubSettingsSection: '環境設定',
   accountHubAccountSection: 'アカウント',
-  accountHubDisplaySettingsDesc: 'テーマ、文字サイズ、ホームのウォッチ・ニュースフロー件数を調整します。',
-  accountHubSettingsNewsDesc: 'ニュースタブの順序、ハッシュタグ表示、新着確認間隔を調整します。',
+  accountHubDisplaySettingsDesc:
+    'テーマ、文字サイズ、タブ新着確認間隔、ホームのウォッチ・ニュースフロー件数を調整します。',
+  accountHubSettingsNewsDesc: 'ニュースタブの順序とハッシュタグ表示を調整します。',
   accountHubSettingsQuotesDesc: '相場タブの順序、一覧件数、騰落色を調整します。',
   accountHubSettingsNotificationsDesc: 'プッシュ、ブリーフィング、ローカル通知を調整します。',
   accountHubSettingsServerDesc: '開発モードと Signal API 接続を変更します。',
@@ -571,7 +572,7 @@ export const ja = {
   settingsSignalServerCustomEmpty: 'URL を入力してください。',
 
   settingsNewsDisplaySection: 'ニュース画面',
-  settingsNewsTabLead: 'ニュースタブの順序、ハッシュタグ表示、新着確認間隔を調整します。この端末にのみ保存されます。',
+  settingsNewsTabLead: 'ニュースタブの順序とハッシュタグ表示を調整します。この端末にのみ保存されます。',
   settingsNewsSegmentOrderKicker: 'ニュースタブの順序',
   settingsNewsSegmentOrderHint:
     'ニュース画面上部のグローバル・コイン・ウォッチ・動画の並びです。右の≡をドラッグして並べ替えます。',
@@ -600,9 +601,9 @@ export const ja = {
   settingsEarningsOnly: '決算のみ',
   settingsCalendarReminders: '投資予定リマインダー',
   settingsCalendarRemindersHint: 'CPI・FOMC など主要な経済予定を端末の現地時刻で通知します。',
-  settingsNewsUnreadCheckKicker: 'ニュース新着チェック',
+  settingsNewsUnreadCheckKicker: 'タブ新着チェック',
   settingsNewsUnreadCheckHint:
-    'アプリ起動中・バックグラウンドで新着ヘッドラインを確認する間隔です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があります。Expo Goでは動作しません。',
+    'ニュース・相場・開示タブのバッジをサーバーと照合する間隔です。画面内セグメントのchipポーリング（約3分）とは別です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があり、Expo Goでは動作しません。',
   settingsNewsUnreadCheckOption: '{{minutes}}分',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
   settingsLocalMacroCalendarHint: 'CPI・FOMC などのマクロ予定 — 当日 8:00（端末時刻）に1回通知',

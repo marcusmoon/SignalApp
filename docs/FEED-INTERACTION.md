@@ -236,6 +236,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 |---|---|
 | 화면 내 `setInterval` (~3분) | 포커스/백그라운드 중 scope별 chip |
 | `services/feedUnreadBadges.ts` | 탭 아이콘 배지 (뉴스·공시·시장·알림) |
+| `services/newsUnreadCheckIntervalPreference.ts` | 탭 배지 폴링 간격 (표시 설정 · 뉴스·시장·공시 공통) |
 | `services/newsUnreadPreference.ts` · `disclosureUnreadPreference.ts` · `signalUnreadPreference.ts` · `alertsUnreadPreference.ts` | scope별 unread·chip 폴링 |
 | `tasks/newsUnreadBackgroundTask.ts` | 백그라운드 배지 갱신 |
 

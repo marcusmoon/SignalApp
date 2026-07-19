@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,36 +39,26 @@ export function SumTrailContent({ embedded = false, onBack }: SumTrailScreenCont
   const wide = embedded || useTwoPane;
   /** 가로·넓은 pane에서는 보드|조작 2열 */
   const split = wide && (isLandscape || width - SIDEBAR_WIDTH >= 900);
-  const styles = useMemo(
-    () => makeStyles(theme, scaleFont, wide, split),
-    [theme, scaleFont, wide, split],
-  );
+  const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       {onBack ? <WideSubpaneHeader title={t('gameSumTrailTitle')} onBack={onBack} /> : null}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
+      <View
+        style={[
+          styles.fill,
           {
             paddingTop: wide ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP,
             paddingBottom: wide
               ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
               : stackScreenScrollBottomPadding(insets.bottom),
             paddingHorizontal: wide ? SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL : 16,
-            ...(split ? { flexGrow: 1 } : null),
           },
-        ]}
-        keyboardShouldPersistTaps="handled">
+        ]}>
         <View style={styles.inner}>
-          <SumTrailGame
-            wide={wide}
-            split={split}
-            viewportHeight={height}
-          />
+          <SumTrailGame wide={wide} split={split} fill viewportHeight={height} />
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -106,26 +96,23 @@ export default function SumTrailScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, _sf: (n: number) => number, wide: boolean, split: boolean) {
+function makeStyles(theme: AppTheme, _sf: (n: number) => number, wide: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
-    scroll: {
+    fill: {
       flex: 1,
       width: '100%',
+      minHeight: 0,
       ...(wide
         ? wideContentFill
         : { maxWidth: APP_CONTENT_MAX_WIDTH, alignSelf: 'center' as const }),
     },
-    scrollContent: {
+    inner: {
+      flex: 1,
+      minHeight: 0,
       width: '100%',
       maxWidth: wide ? APP_WIDE_CONTENT_MAX_WIDTH : APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-    },
-    inner: {
-      width: '100%',
-      maxWidth: wide ? (split ? APP_WIDE_CONTENT_MAX_WIDTH : 720) : APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      flex: split ? 1 : undefined,
     },
   });
 }

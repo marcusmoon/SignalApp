@@ -7,6 +7,9 @@
  *
  * clear는 owner가 일치할 때만 동작한다 — 탭 전환 시 이전 화면 blur가
  * 이미 등록된 다음 탭 서브메뉴를 지우는 경합을 막는다.
+ *
+ * 선택 하이라이트: `setSubTabs(owner, tabs, activeKey)`로 목록·선택을 한 번에 맞춘다.
+ * `setActiveSubTabKey`는 owner가 null이거나 동일 owner일 때만 허용(재등록 경합 방지).
  */
 import React, { createContext, useCallback, useContext, useRef, useState, useMemo } from 'react';
 
@@ -28,7 +31,11 @@ type SidebarSubTabsContextType = {
   subTabs: SidebarSubTab[];
   activeSubTabKey: string | null;
   owner: SidebarSubTabsOwner | null;
-  setSubTabs: (owner: SidebarSubTabsOwner, tabs: SidebarSubTab[]) => void;
+  setSubTabs: (
+    owner: SidebarSubTabsOwner,
+    tabs: SidebarSubTab[],
+    activeKey?: string | null,
+  ) => void;
   setActiveSubTabKey: (owner: SidebarSubTabsOwner, key: string | null) => void;
   clearSubTabs: (owner: SidebarSubTabsOwner) => void;
 };
@@ -48,14 +55,23 @@ export function SidebarSubTabsProvider({ children }: { children: React.ReactNode
   const [owner, setOwnerState] = useState<SidebarSubTabsOwner | null>(null);
   const ownerRef = useRef<SidebarSubTabsOwner | null>(null);
 
-  const setSubTabs = useCallback((nextOwner: SidebarSubTabsOwner, tabs: SidebarSubTab[]) => {
-    ownerRef.current = nextOwner;
-    setOwnerState(nextOwner);
-    setSubTabsState(tabs);
-  }, []);
+  const setSubTabs = useCallback(
+    (nextOwner: SidebarSubTabsOwner, tabs: SidebarSubTab[], activeKey?: string | null) => {
+      ownerRef.current = nextOwner;
+      setOwnerState(nextOwner);
+      setSubTabsState(tabs);
+      if (activeKey !== undefined) {
+        setActiveSubTabKeyState(activeKey);
+      }
+    },
+    [],
+  );
 
   const setActiveSubTabKey = useCallback((nextOwner: SidebarSubTabsOwner, key: string | null) => {
-    if (ownerRef.current !== nextOwner) return;
+    // clear 직후·최초 등록: owner가 비어 있으면 claim. 다른 owner면 무시.
+    if (ownerRef.current != null && ownerRef.current !== nextOwner) return;
+    ownerRef.current = nextOwner;
+    setOwnerState(nextOwner);
     setActiveSubTabKeyState(key);
   }, []);
 
@@ -90,7 +106,7 @@ export function useSidebarSubTabs() {
 export function useOwnedSidebarSubTabs(owner: SidebarSubTabsOwner) {
   const { subTabs, activeSubTabKey, setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const setOwnedSubTabs = useCallback(
-    (tabs: SidebarSubTab[]) => setSubTabs(owner, tabs),
+    (tabs: SidebarSubTab[], activeKey?: string | null) => setSubTabs(owner, tabs, activeKey),
     [owner, setSubTabs],
   );
   const setOwnedActiveSubTabKey = useCallback(

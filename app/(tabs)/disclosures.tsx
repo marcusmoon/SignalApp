@@ -330,7 +330,10 @@ export default function DisclosuresScreen() {
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
-      if (filter === key) return;
+      if (filter === key) {
+        if (useTwoPane) setActiveSubTabKey(key);
+        return;
+      }
       setError(null);
       setFilter(key);
       if (useTwoPane) setActiveSubTabKey(key);
@@ -349,7 +352,6 @@ export default function DisclosuresScreen() {
       clearSubTabs();
       return;
     }
-    setActiveSubTabKey(filter);
     setSubTabs(
       FILTERS.map((item) => ({
         key: item.key,
@@ -358,18 +360,9 @@ export default function DisclosuresScreen() {
         params: { market: item.key },
         onPress: () => onPickFilter(item.key),
       })),
+      filter,
     );
-  }, [
-    clearSubTabs,
-    filter,
-    isFocused,
-    onPickFilter,
-    setActiveSubTabKey,
-    setSubTabs,
-    symbolFilter,
-    t,
-    useTwoPane,
-  ]);
+  }, [clearSubTabs, filter, isFocused, onPickFilter, setSubTabs, symbolFilter, t, useTwoPane]);
 
   useFocusEffect(
     useCallback(() => {

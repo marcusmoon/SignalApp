@@ -67,48 +67,40 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
     (shortcut: HomeShortcut) => {
       switch (shortcut.type) {
         case 'board':
-          if (ipadNav.isAvailable) {
-            ipadNav.showBoard({
-              drillFrom: 'home',
-              ...(shortcut.source !== 'all' ? { source: shortcut.source } : null),
-            });
-            return;
-          }
-          router.navigate({
-            pathname: '/(tabs)/board',
-            params: shortcut.source !== 'all' ? { source: shortcut.source } : {},
-          } as never);
+          ipadNav.showBoard({
+            drillFrom: 'home',
+            ...(shortcut.source !== 'all' ? { source: shortcut.source } : null),
+          });
           return;
         case 'quotes':
-          if (ipadNav.isAvailable) ipadNav.showTabs();
-          router.navigate({
-            pathname: '/(tabs)/quotes',
-            params: { segment: shortcut.segment },
-          } as never);
+          ipadNav.showWatchlist({
+            drillFrom: 'home',
+            segment: shortcut.segment,
+          });
           return;
         case 'news':
-          ipadNav.showNewsTab(shortcut.segment);
+          ipadNav.showNewsFeed(shortcut.segment, { drillFrom: 'home' });
           return;
         case 'calendar':
           if (ipadNav.isAvailable) {
             ipadNav.showCalendar({ drillFrom: 'home' });
             return;
           }
-          router.navigate('/calendar' as never);
+          router.push('/calendar' as never);
           return;
         case 'etf':
           if (ipadNav.isAvailable) {
             ipadNav.showEtfInsights({ drillFrom: 'home' });
             return;
           }
-          router.navigate('/etf-insights' as never);
+          router.push('/etf-insights' as never);
           return;
         case 'disclosures':
           if (ipadNav.isAvailable) {
             ipadNav.showDisclosureFlow({ date: selectedYmd }, { drillFrom: 'home' });
             return;
           }
-          router.navigate({
+          router.push({
             pathname: '/disclosure-flow',
             params: { date: selectedYmd },
           } as never);
@@ -118,7 +110,7 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
             ipadNav.showSettings('display', { drillFrom: 'home' });
             return;
           }
-          router.navigate({ pathname: '/settings', params: { tab: 'display' } } as never);
+          router.push({ pathname: '/settings', params: { tab: 'display' } } as never);
           return;
         case 'communityPost':
           if (ipadNav.isAvailable) {

@@ -25,6 +25,7 @@ import AccountScreen from '@/app/account';
 import AlertsScreen from '@/app/alerts';
 import CalendarScreen from '@/app/calendar';
 import { NewsIssuesContent } from '@/app/news-issues';
+import { LegacyNewsFeedScreen } from '@/components/news/LegacyNewsFeedScreen';
 import { DisclosureFlowContent } from '@/app/disclosure-flow';
 import SettingsScreen from '@/app/settings';
 import TermsHistoryScreen from '@/app/terms-history';
@@ -418,6 +419,9 @@ function IpadWideTabLayout({
     etfInsightDate,
     communityPostId,
     symbolTicker,
+    boardSource,
+    quotesDrillSegment,
+    newsFeedSegment,
     calendarFromAccount,
     alertsFromAccount,
     settingsFromAccount,
@@ -510,14 +514,31 @@ function IpadWideTabLayout({
                 onBack={subpaneBack}
               />
             ) : contentPane === 'board' ? (
-              <BoardContent embedded onBack={subpaneBack} active />
+              <BoardContent
+                embedded
+                onBack={subpaneBack}
+                active
+                initialSource={boardSource}
+              />
             ) : contentPane === 'community' && communityPostId ? (
               <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />
             ) : contentPane === 'symbol' && symbolTicker ? (
               <SymbolDetailContent embedded ticker={symbolTicker} onBack={subpaneBack} />
             ) : contentPane === 'watchlist' ? (
               <BottomTabBarHeightContext.Provider value={0}>
-                <QuotesContent embedded lockedSegment="watch" onBack={subpaneBack} />
+                <QuotesContent
+                  embedded
+                  lockedSegment={quotesDrillSegment}
+                  onBack={subpaneBack}
+                />
+              </BottomTabBarHeightContext.Provider>
+            ) : contentPane === 'newsFeed' ? (
+              <BottomTabBarHeightContext.Provider value={0}>
+                <LegacyNewsFeedScreen
+                  embedded
+                  lockedSegment={newsFeedSegment}
+                  onBack={subpaneBack}
+                />
               </BottomTabBarHeightContext.Provider>
             ) : null}
           </View>

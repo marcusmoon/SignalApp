@@ -79,6 +79,8 @@ export type BoardContentProps = {
   active?: boolean;
   /** Root Stack under More — native header owns chrome; no SignalHeader. */
   stackChrome?: boolean;
+  /** 홈 숏컷 등 — 임베디드/스택에서 초기 소스 */
+  initialSource?: CommunitySourceFilter | null;
 };
 
 export function BoardContent({
@@ -87,6 +89,7 @@ export function BoardContent({
   tabBarHeight = 0,
   active = true,
   stackChrome = false,
+  initialSource = null,
 }: BoardContentProps) {
   const { t } = useLocale();
   const router = useRouter();
@@ -99,7 +102,10 @@ export function BoardContent({
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('board');
   const [source, setSource] = useState<CommunitySourceFilter>(
-    () => parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL,
+    () =>
+      initialSource ??
+      parseCommunitySourceParam(routeParams.source) ??
+      COMMUNITY_SOURCE_ALL,
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -226,6 +232,11 @@ export function BoardContent({
     const paramSource = parseCommunitySourceParam(routeParams.source) ?? COMMUNITY_SOURCE_ALL;
     changeSource(paramSource, { fromRoute: true });
   }, [changeSource, embedded, routeParams.source]);
+
+  useEffect(() => {
+    if (!embedded || !initialSource) return;
+    changeSource(initialSource, { fromRoute: true });
+  }, [changeSource, embedded, initialSource]);
 
   const registerBoardSubTabs = useCallback(() => {
     if (!useTwoPane) return;

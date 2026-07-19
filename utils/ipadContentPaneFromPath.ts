@@ -30,6 +30,7 @@ export function resolveIpadContentPaneFromPathname(pathname: string): IpadConten
   if (path.startsWith('/disclosure-digest')) return 'disclosureDigest';
   if (path.startsWith('/disclosure-flow')) return 'disclosureFlow';
   if (path.startsWith('/watchlist')) return 'watchlist';
+  if (path.startsWith('/home-news')) return 'newsFeed';
   if (path.startsWith('/community/')) return 'community';
   if (path.startsWith('/symbol/')) return 'symbol';
 

@@ -603,7 +603,7 @@ export const ja = {
   settingsCalendarRemindersHint: 'CPI・FOMC など主要な経済予定を端末の現地時刻で通知します。',
   settingsNewsUnreadCheckKicker: 'タブ新着チェック',
   settingsNewsUnreadCheckHint:
-    'ニュース・相場・開示タブのバッジをサーバーと照合する間隔です。画面内セグメントのchipポーリング（約3分）とは別です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があり、Expo Goでは動作しません。',
+    '下部タブの点と画面上の「新着」表示をサーバーで確認する間隔です（ニュース・相場・開示・通知）。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があり、Expo Goでは動作しません。',
   settingsNewsUnreadCheckOption: '{{minutes}}分',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
   settingsLocalMacroCalendarHint: 'CPI・FOMC などのマクロ予定 — 当日 8:00（端末時刻）に1回通知',

@@ -220,7 +220,7 @@ syncScopeLatestSeen(activeScope, rows[0]?.id);
 // PTR 시작 시
 clearScopeNewContent(activeScope);
 
-// 폴링 (3분, bypass) — seen id가 있을 때만 비교
+// 폴링 (표시 설정의 탭 새 글 확인 간격, bypass) — seen id가 있을 때만 비교
 if (latestId !== seen) markScopeHasNewContent(scope);
 ```
 
@@ -234,9 +234,9 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 
 | 경로 | 역할 |
 |---|---|
-| 화면 내 `setInterval` (~3분) | 포커스/백그라운드 중 scope별 chip |
+| 화면 내 `setInterval` (`useFeedUnreadCheckIntervalMs`) | 포커스 중 scope별 chip |
 | `services/feedUnreadBadges.ts` | 탭 아이콘 배지 (뉴스·공시·시장·알림) |
-| `services/newsUnreadCheckIntervalPreference.ts` | 탭 배지 폴링 간격 (표시 설정 · 뉴스·시장·공시 공통) |
+| `services/newsUnreadCheckIntervalPreference.ts` | 탭 배지 + 화면 chip 공통 폴링 간격 (표시 설정) |
 | `services/newsUnreadPreference.ts` · `disclosureUnreadPreference.ts` · `signalUnreadPreference.ts` · `alertsUnreadPreference.ts` | scope별 unread·chip 폴링 |
 | `tasks/newsUnreadBackgroundTask.ts` | 백그라운드 배지 갱신 |
 

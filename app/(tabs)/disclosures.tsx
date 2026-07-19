@@ -38,7 +38,7 @@ import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext'
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useScrollToTopOnChange } from '@/hooks';
+import { useFeedUnreadCheckIntervalMs, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import {
@@ -103,6 +103,7 @@ export default function DisclosuresScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
+  const feedUnreadCheckMs = useFeedUnreadCheckIntervalMs();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
@@ -224,11 +225,10 @@ export default function DisclosuresScreen() {
     void loadDigests();
   }, [isFocused, loadDigests]);
 
-  /** 포커스 중일 때만 백그라운드 폴링: 3분마다 시장별 최신 공시 ID 확인 → chip 표시 */
+  /** 포커스 중일 때만 백그라운드 폴링: 설정 간격으로 시장별 최신 공시 ID 확인 → chip 표시 */
   useEffect(() => {
     if (!isFocused) return;
     if (symbolFilter || !hasSignalApi()) return;
-    const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       await Promise.all(
@@ -246,9 +246,9 @@ export default function DisclosuresScreen() {
         }),
       );
     };
-    const id = setInterval(() => void poll(), POLL_MS);
+    const id = setInterval(() => void poll(), feedUnreadCheckMs);
     return () => clearInterval(id);
-  }, [isFocused, markFilterHasNewContent, symbolFilter]);
+  }, [feedUnreadCheckMs, isFocused, markFilterHasNewContent, symbolFilter]);
 
   useEffect(() => {
     if (!isFocused) return;

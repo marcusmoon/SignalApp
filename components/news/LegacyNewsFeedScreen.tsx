@@ -90,6 +90,7 @@ import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import {
+  useFeedUnreadCheckIntervalMs,
   useResetRefreshingOnTabBlur,
   useScrollToTopOnChange,
   useTabPressCycleSegment,
@@ -180,6 +181,7 @@ export function LegacyNewsFeedScreen({
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const feedUnreadCheckMs = useFeedUnreadCheckIntervalMs();
   const { useTwoPane } = useResponsiveLayout();
   const adsEnabled = useAdsEnabled();
   const ipadNav = useIpadSidebarNavActions();
@@ -278,7 +280,6 @@ export function LegacyNewsFeedScreen({
   useEffect(() => {
     if (!hasSignalApi()) return;
     if (!isFocused) return;
-    const POLL_MS = 3 * 60 * 1000;
     const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'it', 'video'];
 
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
@@ -306,9 +307,9 @@ export function LegacyNewsFeedScreen({
         }),
       );
     };
-    const id = setInterval(() => void poll(), POLL_MS);
+    const id = setInterval(() => void poll(), feedUnreadCheckMs);
     return () => clearInterval(id);
-  }, [isFocused, locale, markSegmentHasNewContent]);
+  }, [feedUnreadCheckMs, isFocused, locale, markSegmentHasNewContent]);
 
   const segmentHydratedRef = useRef(false);
 

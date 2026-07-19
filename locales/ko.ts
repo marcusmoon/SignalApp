@@ -600,7 +600,7 @@ export const ko = {
   settingsCalendarRemindersHint: 'CPI·FOMC 등 주요 경제 일정을 기기 시간 기준으로 알려줍니다.',
   settingsNewsUnreadCheckKicker: '탭 새 글 확인',
   settingsNewsUnreadCheckHint:
-    '뉴스·시장·공시 탭 배지를 서버와 맞춰 보는 간격입니다. 화면 안 세그먼트 chip 폴링(약 3분)과는 별개입니다. 백그라운드는 OS 최소 15분이며 iOS는 더 늦을 수 있고, Expo Go에서는 백그라운드 작업이 없습니다.',
+    '하단 탭 점과 화면 위 「새 글」 표시를 서버에서 확인하는 간격입니다(뉴스·시장·공시·알림). 백그라운드는 OS 최소 15분이며 iOS는 더 늦을 수 있고, Expo Go에서는 백그라운드 작업이 없습니다.',
   settingsNewsUnreadCheckOption: '{{minutes}}분',
   settingsLocalMacroCalendar: '로컬 알림 · 경제 캘린더',
   settingsLocalMacroCalendarHint: 'CPI·FOMC 등 매크로 일정 — 해당일 오전 8:00(기기)에 한 번 알림',

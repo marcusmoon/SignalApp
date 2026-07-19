@@ -30,7 +30,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useFeedUnreadCheckIntervalMs, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { checkAlertsHasUnread, loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
@@ -60,6 +60,7 @@ export default function AlertsScreen({
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const feedUnreadCheckMs = useFeedUnreadCheckIntervalMs();
   const router = useRouter();
   const ipadNav = useIpadSidebarNav();
   const { useTwoPane } = useResponsiveLayout();
@@ -144,7 +145,6 @@ export default function AlertsScreen({
       setNewContentAvailable(false);
       return;
     }
-    const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
       try {
         const hasUnread = await checkAlertsHasUnread();
@@ -153,9 +153,9 @@ export default function AlertsScreen({
         /* ignore polling errors */
       }
     };
-    const id = setInterval(() => void poll(), POLL_MS);
+    const id = setInterval(() => void poll(), feedUnreadCheckMs);
     return () => clearInterval(id);
-  }, [authSession, isFocused]);
+  }, [authSession, feedUnreadCheckMs, isFocused]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);

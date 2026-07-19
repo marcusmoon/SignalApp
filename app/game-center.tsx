@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, useRouter, type Href } from 'expo-router';
+import { Stack, useFocusEffect, useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GameRecordsSheet } from '@/components/games/GameRecordsSheet';
 import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import {
   APP_CONTENT_MAX_WIDTH,
@@ -20,15 +21,22 @@ import {
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import {
+  emptyGameRecords,
+  formatDurationMs,
+  type GameRecordsState,
+} from '@/domain/games/records';
 import type { MessageId } from '@/locales/messages';
+import { loadGameProgressSummaries } from '@/services/gameProgressStore';
+import { loadGameRecords } from '@/services/gameRecordsStore';
 
 type GameCard = {
-  id: string;
+  id: 'sum-trail' | 'sudoku';
   href: Href;
   icon: ComponentProps<typeof FontAwesome>['name'];
   titleId: MessageId;
@@ -70,6 +78,53 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
     () => makeStyles(theme, scaleFont, wide, columns),
     [theme, scaleFont, wide, columns],
   );
+  const [recordsOpen, setRecordsOpen] = useState(false);
+  const [records, setRecords] = useState<GameRecordsState>(emptyGameRecords);
+  const [resume, setResume] = useState<{ sumTrail: boolean; sudoku: boolean; sumLevel: number }>({
+    sumTrail: false,
+    sudoku: false,
+    sumLevel: 0,
+  });
+
+  const refreshMeta = useCallback(() => {
+    void loadGameRecords().then(setRecords);
+    void loadGameProgressSummaries().then((p) => {
+      setResume({
+        sumTrail: p.sumTrail != null,
+        sudoku: p.sudoku != null,
+        sumLevel: p.sumTrail?.state.level ?? 0,
+      });
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshMeta();
+    }, [refreshMeta]),
+  );
+
+  useEffect(() => {
+    refreshMeta();
+  }, [refreshMeta]);
+
+  const cardMeta = (id: GameCard['id']): string => {
+    if (id === 'sum-trail') {
+      if (resume.sumTrail) {
+        return t('gameHubResumeLevel', { level: resume.sumLevel });
+      }
+      if (records.sumTrail.bestLevel > 0) {
+        return t('gameHubBestLevel', { level: records.sumTrail.bestLevel });
+      }
+      return t('gameHubNoRecordsYet');
+    }
+    if (resume.sudoku) return t('gameHubResume');
+    const best = records.sudoku.byDifficulty.normal.bestTimeMs
+      ?? records.sudoku.byDifficulty.easy.bestTimeMs
+      ?? records.sudoku.byDifficulty.hard.bestTimeMs;
+    if (best != null) return t('gameHubBestTime', { time: formatDurationMs(best) });
+    if (records.sudoku.clears > 0) return t('gameHubClears', { count: records.sudoku.clears });
+    return t('gameHubNoRecordsYet');
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -97,26 +152,51 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
         ) : (
           <Text style={styles.lead}>{t('gameCenterLead')}</Text>
         )}
+
+        <Pressable
+          onPress={() => setRecordsOpen(true)}
+          style={({ pressed }) => [styles.recordsBtn, pressed && styles.recordsBtnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameRecordsTitle')}>
+          <FontAwesome name="trophy" size={14} color={theme.green} />
+          <Text style={styles.recordsBtnText}>{t('gameRecordsTitle')}</Text>
+          <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
+        </Pressable>
+
         <View style={styles.grid}>
-          {GAMES.map((game) => (
-            <Pressable
-              key={game.id}
-              onPress={() => router.push(game.href)}
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-              accessibilityRole="button"
-              accessibilityLabel={t(game.titleId)}>
-              <View style={styles.iconCircle}>
-                <FontAwesome name={game.icon} size={wide ? 24 : 20} color={theme.green} />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>{t(game.titleId)}</Text>
-                <Text style={styles.cardBody}>{t(game.bodyId)}</Text>
-              </View>
-              <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
-            </Pressable>
-          ))}
+          {GAMES.map((game) => {
+            const hasResume =
+              (game.id === 'sum-trail' && resume.sumTrail) ||
+              (game.id === 'sudoku' && resume.sudoku);
+            return (
+              <Pressable
+                key={game.id}
+                onPress={() => router.push(game.href)}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={t(game.titleId)}>
+                <View style={styles.iconCircle}>
+                  <FontAwesome name={game.icon} size={wide ? 24 : 20} color={theme.green} />
+                </View>
+                <View style={styles.cardText}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.cardTitle}>{t(game.titleId)}</Text>
+                    {hasResume ? (
+                      <View style={styles.resumeBadge}>
+                        <Text style={styles.resumeBadgeText}>{t('gameHubResumeBadge')}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.cardBody}>{t(game.bodyId)}</Text>
+                  <Text style={styles.cardMeta}>{cardMeta(game.id)}</Text>
+                </View>
+                <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
+      <GameRecordsSheet visible={recordsOpen} onClose={() => setRecordsOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -130,7 +210,6 @@ export default function GameCenterScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false, animation: 'none' }} />
-        {/* 사이드바 루트 — ETF·게시판과 같이 드릴 백 헤더 없음 */}
         <GameHubContent wideRoot />
       </>
     );
@@ -182,6 +261,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       color: theme.textMuted,
       marginBottom: wide ? 0 : 4,
     },
+    recordsBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    recordsBtnPressed: {
+      opacity: 0.9,
+    },
+    recordsBtnText: {
+      flex: 1,
+      fontSize: sf(14),
+      fontWeight: '700',
+      color: theme.green,
+    },
     grid: {
       gap: 12,
       ...(wide
@@ -229,15 +328,40 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       minWidth: 0,
       gap: 4,
     },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+    },
     cardTitle: {
       fontSize: sf(wide ? 17 : 15),
       fontWeight: '700',
       color: theme.text,
     },
+    resumeBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 6,
+      backgroundColor: theme.warningDim,
+      borderWidth: 1,
+      borderColor: theme.warning,
+    },
+    resumeBadgeText: {
+      fontSize: sf(11),
+      fontWeight: '700',
+      color: theme.warning,
+    },
     cardBody: {
       fontSize: sf(13),
       lineHeight: sf(18),
       color: theme.textMuted,
+    },
+    cardMeta: {
+      fontSize: sf(12),
+      fontWeight: '600',
+      color: theme.green,
+      marginTop: 2,
     },
   });
 }

@@ -25,7 +25,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 |---|---|
 | 게임 허브 화면 | `app/game-center.tsx` (`GameHubContent`) |
 | 개별 게임 화면 | `app/games/<game-id>.tsx` |
-| 게임 UI | `components/games/` (`SumTrailGame`, `SumTrailHelpSheet`, `SudokuGame`, `SudokuHelpSheet`) |
+| 게임 UI | `components/games/` (`SumTrail*`, `Sudoku*`, `GameRecordsSheet`) |
 | 규칙·순수 로직 | `domain/games/<gameId>/` |
 | 허브 타일 메타 | `app/(tabs)/more.tsx` `HUB_META.gameCenter` |
 | 사이드바 | `components/signal/SignalSidebarTabBar.tsx` |
@@ -42,7 +42,17 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 5. `locales` 세 언어에 동일 키 추가
 6. `app/_layout.tsx` `titleByName`·`wideOverlayStackRoutes`에 라우트 등록
 
-서버·Admin·캐시 연동은 두지 않는다. 점수·최고 기록 저장이 필요하면 `services/` + AsyncStorage만 쓰고, Signal API에 올리지 않는다.
+서버·Admin·캐시 연동은 두지 않는다. **이어하기·통산 기록**은 `services/gameProgressStore` · `services/gameRecordsStore` + AsyncStorage만 쓴다 (Signal API 없음).
+
+### 이어하기 · 기록
+
+| 구분 | 저장 | 내용 |
+|---|---|---|
+| 진행 | `gameProgressStore` | 합 트레일·스도쿠 보드 스냅샷. 재진입 시 자동 복원. 난이도 변경·스도쿠 완주 시 해당 진행 삭제 |
+| 기록 | `gameRecordsStore` | 플레이 횟수, 레벨/완주 수, 최고 레벨·점수, 스도쿠 난이도별 최단 시간·최소 실수 |
+| UI | 게임 허브 **게임 기록** 시트 · 카드 **이어하기** 배지 | `GameRecordsSheet` |
+
+규칙 정규화·이벤트는 `domain/games/records`, 스냅샷 파서는 `domain/games/progress`.
 
 ## 합 트레일 (Sum Trail)
 

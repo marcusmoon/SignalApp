@@ -16,6 +16,7 @@ import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { recordSumTrailLevelCleared, recordSumTrailRunStarted } from '@/domain/games/records';
 import {
   clearSumTrailPath,
   createSumTrailGame,
@@ -29,6 +30,12 @@ import {
   type SumTrailDifficulty,
   type SumTrailState,
 } from '@/domain/games/sumTrail';
+import {
+  clearSumTrailProgress,
+  loadSumTrailProgress,
+  saveSumTrailProgress,
+} from '@/services/gameProgressStore';
+import { updateGameRecords } from '@/services/gameRecordsStore';
 
 const DIFFICULTIES: SumTrailDifficulty[] = ['easy', 'normal', 'hard'];
 
@@ -429,9 +436,43 @@ export function SumTrailGame({
   const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardPulse = useRef(new Animated.Value(1)).current;
   const boardShake = useRef(new Animated.Value(0)).current;
+  const recordedClearKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSumTrailProgress().then((progress) => {
+      if (cancelled) return;
+      if (progress) {
+        setDifficulty(progress.difficulty);
+        setState(progress.state);
+      } else {
+        void updateGameRecords((r) => recordSumTrailRunStarted(r));
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void saveSumTrailProgress(state);
+  }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'cleared') return;
+    const key = `${state.difficulty}:${state.level}:${state.score}`;
+    if (recordedClearKey.current === key) return;
+    recordedClearKey.current = key;
+    void updateGameRecords((r) =>
+      recordSumTrailLevelCleared(r, state.difficulty, state.level, state.score),
+    );
+  }, [hydrated, state.status, state.difficulty, state.level, state.score]);
 
   const pathMap = useMemo(() => pathIndexMap(state.path), [state.path]);
   const sum = currentPathSum(state);
@@ -492,6 +533,9 @@ export function SumTrailGame({
       setBoardFx(null);
       setDifficulty(d);
       setState(createSumTrailGame(d));
+      recordedClearKey.current = null;
+      void clearSumTrailProgress();
+      void updateGameRecords((r) => recordSumTrailRunStarted(r));
     },
     [clearFxTimer],
   );

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -14,6 +14,11 @@ import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  formatDurationMs,
+  recordSudokuCleared,
+  recordSudokuRunStarted,
+} from '@/domain/games/records';
 import {
   cellKey,
   clearSudokuCell,
@@ -31,6 +36,12 @@ import {
   type SudokuDifficulty,
   type SudokuState,
 } from '@/domain/games/sudoku';
+import {
+  clearSudokuProgress,
+  loadSudokuProgress,
+  saveSudokuProgress,
+} from '@/services/gameProgressStore';
+import { updateGameRecords } from '@/services/gameRecordsStore';
 
 const DIFFICULTIES: SudokuDifficulty[] = ['easy', 'normal', 'hard'];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -68,6 +79,81 @@ export function SudokuGame({
   const [difficulty, setDifficulty] = useState<SudokuDifficulty>('normal');
   const [state, setState] = useState<SudokuState>(() => createSudokuGame('normal'));
   const [helpOpen, setHelpOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const elapsedBaseRef = useRef(0);
+  const tickBaseRef = useRef(Date.now());
+  const recordedClearRef = useRef(false);
+
+  const liveElapsed = useCallback(() => {
+    if (state.status !== 'playing') return elapsedMs;
+    return elapsedBaseRef.current + (Date.now() - tickBaseRef.current);
+  }, [elapsedMs, state.status]);
+
+  const beginTimer = useCallback((baseMs = 0) => {
+    elapsedBaseRef.current = baseMs;
+    tickBaseRef.current = Date.now();
+    setElapsedMs(baseMs);
+    recordedClearRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSudokuProgress().then((progress) => {
+      if (cancelled) return;
+      if (progress) {
+        setDifficulty(progress.difficulty);
+        setState(progress.state);
+        beginTimer(progress.elapsedMs);
+      } else {
+        beginTimer(0);
+        void updateGameRecords((r) => recordSudokuRunStarted(r));
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [beginTimer]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'playing') return;
+    const id = setInterval(() => {
+      setElapsedMs(elapsedBaseRef.current + (Date.now() - tickBaseRef.current));
+    }, 500);
+    return () => clearInterval(id);
+  }, [hydrated, state.status, difficulty]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const ms =
+      state.status === 'playing'
+        ? elapsedBaseRef.current + (Date.now() - tickBaseRef.current)
+        : elapsedBaseRef.current;
+    void saveSudokuProgress(state, ms);
+  }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'cleared' || recordedClearRef.current) return;
+    recordedClearRef.current = true;
+    const finalMs = liveElapsed();
+    setElapsedMs(finalMs);
+    void updateGameRecords((r) =>
+      recordSudokuCleared(r, state.difficulty, finalMs, state.mistakes),
+    );
+    void clearSudokuProgress();
+  }, [hydrated, state.status, state.difficulty, state.mistakes, liveElapsed]);
+
+  const onDifficulty = useCallback(
+    (d: SudokuDifficulty) => {
+      setDifficulty(d);
+      setState(newSudokuGame(d));
+      beginTimer(0);
+      void clearSudokuProgress();
+      void updateGameRecords((r) => recordSudokuRunStarted(r));
+    },
+    [beginTimer],
+  );
 
   const conflicts = useMemo(() => conflictSet(state.grid), [state.grid]);
   const related = useMemo(
@@ -88,11 +174,6 @@ export function SudokuGame({
         ? prev
         : { w: width, h: height },
     );
-  }, []);
-
-  const onDifficulty = useCallback((d: SudokuDifficulty) => {
-    setDifficulty(d);
-    setState(newSudokuGame(d));
   }, []);
 
   const onSelect = useCallback((r: number, c: number) => {
@@ -159,6 +240,11 @@ export function SudokuGame({
   const statsBlock = (
     <View style={styles.statsRow}>
       <View style={styles.statBox}>
+        <FontAwesome name="clock-o" size={12} color={theme.textDim} />
+        <Text style={styles.statLabel}>{t('gameSudokuTime')}</Text>
+        <Text style={styles.statValue}>{formatDurationMs(elapsedMs)}</Text>
+      </View>
+      <View style={styles.statBox}>
         <FontAwesome name="times-circle" size={12} color={theme.danger} />
         <Text style={styles.statLabel}>{t('gameSudokuMistakes')}</Text>
         <Text style={styles.statValue}>{state.mistakes}</Text>
@@ -167,13 +253,6 @@ export function SudokuGame({
         <FontAwesome name="lightbulb-o" size={12} color={theme.warning} />
         <Text style={styles.statLabel}>{t('gameSudokuHints')}</Text>
         <Text style={[styles.statValue, { color: theme.warning }]}>{state.hintsRemaining}</Text>
-      </View>
-      <View style={styles.statBox}>
-        <FontAwesome name="check-circle" size={12} color={theme.green} />
-        <Text style={styles.statLabel}>{t('gameSudokuProgress')}</Text>
-        <Text style={styles.statValue}>
-          {filledCount(state)}/81
-        </Text>
       </View>
     </View>
   );
@@ -253,7 +332,12 @@ export function SudokuGame({
         <Text style={styles.winBody}>{t('gameSudokuClearedBody')}</Text>
         <Pressable
           style={styles.primaryBtn}
-          onPress={() => setState(newSudokuGame(difficulty))}
+          onPress={() => {
+            setState(newSudokuGame(difficulty));
+            beginTimer(0);
+            void clearSudokuProgress();
+            void updateGameRecords((r) => recordSudokuRunStarted(r));
+          }}
           accessibilityRole="button">
           <Text style={styles.primaryBtnText}>{t('gameSudokuNewGame')}</Text>
         </Pressable>
@@ -299,7 +383,10 @@ export function SudokuGame({
           </Pressable>
           <Pressable
             style={styles.secondaryBtn}
-            onPress={() => setState((s) => restartSudoku(s))}
+            onPress={() => {
+              setState((s) => restartSudoku(s));
+              beginTimer(0);
+            }}
             accessibilityRole="button">
             <Text style={styles.secondaryBtnText}>{t('gameSudokuRestart')}</Text>
           </Pressable>
@@ -350,16 +437,6 @@ export function SudokuGame({
       {helpSheet}
     </View>
   );
-}
-
-function filledCount(state: SudokuState): number {
-  let n = 0;
-  for (let r = 0; r < 9; r += 1) {
-    for (let c = 0; c < 9; c += 1) {
-      if (state.grid[r]![c]! > 0) n += 1;
-    }
-  }
-  return n;
 }
 
 function makeStyles(

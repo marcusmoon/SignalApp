@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -393,6 +394,7 @@ export default function DisclosureFlowScreen() {
   const params = useLocalSearchParams<{ date?: string; market?: string; digestId?: string }>();
   const { useTwoPane } = useResponsiveLayout();
   const { t } = useLocale();
+  const router = useRouter();
   const initialDate = parseDateParam(params.date);
   const initialMarket = parseMarketParam(params.market);
   const initialDigestId = typeof params.digestId === 'string' ? params.digestId : null;
@@ -421,7 +423,12 @@ export default function DisclosureFlowScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('disclosureFlowTitle') }} />
+      <Stack.Screen
+        options={signalDrillStackOptions({
+          title: t('disclosureFlowTitle'),
+          onBack: () => router.back(),
+        })}
+      />
       {content}
     </>
   );

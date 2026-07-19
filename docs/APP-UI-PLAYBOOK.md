@@ -30,7 +30,7 @@ useResponsiveLayout()
 | 상단 브랜드 헤더 | 탭 루트만 `SignalHeader compact` | `WideWebShell` 전역 1회. 화면 안 중복 금지 |
 | 하단 내비 | `SignalFloatingTabBar` | 없음 (사이드바) |
 | 콘텐츠 폭 | 전폭 + 좌우 `APP_CONTENT_SIDE_PADDING` | **탭·피드·플로우 루트는 pane 전체 채움** (`wideContentFill`). 일부 임베디드 상세만 max-width(예: 1120) 중앙 |
-| 드릴인 뒤로 | Stack / `PhoneHeaderBackButton` | `WideSubpaneHeader` (chevron only). 루트·직접 URL에는 없음 |
+| 드릴인 뒤로 | Stack / `signalDrillStackOptions` (`PhoneHeaderBackButton` + 제목) | `WideSubpaneHeader` (동일 chevron + 제목). 루트·직접 URL에는 없음 |
 | Safe Area | 탭: 하단 제외 등 화면별 `edges` | wide: 셸이 처리. 화면 `edges={[]}` 기본 |
 
 상세 수치·헬퍼: [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md).

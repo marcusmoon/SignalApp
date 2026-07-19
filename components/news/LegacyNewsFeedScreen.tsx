@@ -36,6 +36,16 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
+import type { MessageId } from '@/locales/messages';
+
+const HOME_TILE_NEWS: Record<NewsSegmentKey, MessageId> = {
+  global: 'homeTileNewsGlobal',
+  korea: 'homeTileNewsKorea',
+  crypto: 'homeTileNewsCrypto',
+  it: 'homeTileNewsIt',
+  video: 'homeTileNewsVideo',
+};
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
@@ -878,7 +888,14 @@ export function LegacyNewsFeedScreen({
         />
       ) : null}
       {onBack ? (
-        <WideSubpaneHeader title={t(NEWS_SEGMENT_LABEL[segment])} onBack={onBack} />
+        <WideSubpaneHeader
+          title={
+            drillLocked
+              ? homeShortcutCompoundLabel(t('tabNews'), t(HOME_TILE_NEWS[segment]))
+              : t(NEWS_SEGMENT_LABEL[segment])
+          }
+          onBack={onBack}
+        />
       ) : null}
       {isFocused && !hidePhoneChrome ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>

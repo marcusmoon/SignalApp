@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -21,12 +22,17 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 export type BriefingDetailShellProps = {
   embedded?: boolean;
   onBack?: () => void;
+  /**
+   * Stack / WideSubpane 공통 헤더 제목(섹션명).
+   * 본문 `headline`(단건 제목)과 분리. 홈 숏컷·플로우와 같은 뒤로+제목 chrome.
+   */
+  chromeTitle?: string | null;
   loading?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
   error?: string | null;
   emptyText?: string | null;
-  /** 본문 최상단 헤드라인 (Stack 제목 대신) */
+  /** 본문 최상단 헤드라인 (단건 제목) */
   headline?: string | null;
   scrollResetKey?: string;
   contentRevision?: unknown;
@@ -35,11 +41,13 @@ export type BriefingDetailShellProps = {
 
 /**
  * 단건 브리핑·다이제스트 상세 공통 셸.
- * Stack 제목·dateBar 없음 — 뒤로(chevron) + 본문 헤드라인 + children.
+ * 헤더: 숏컷과 동일 — 뒤로(chevron) + 섹션명(`chromeTitle`). dateBar 없음.
+ * 본문: 단건 헤드라인 + children.
  */
 export function BriefingDetailShell({
   embedded = false,
   onBack,
+  chromeTitle = null,
   loading = false,
   refreshing = false,
   onRefresh,
@@ -52,15 +60,25 @@ export function BriefingDetailShell({
 }: BriefingDetailShellProps) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
+  const router = useRouter();
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, embedded),
     [theme, scaleFont, feedTypo, embedded],
   );
+  const sectionTitle = String(chromeTitle || '').trim();
   const title = String(headline || '').trim();
 
   return (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
-      {!embedded ? <Stack.Screen options={{ title: '' }} /> : null}
+      {!embedded ? (
+        <Stack.Screen
+          options={signalDrillStackOptions({
+            title: sectionTitle,
+            onBack: () => router.back(),
+          })}
+        />
+      ) : null}
+      {onBack ? <WideSubpaneHeader title={sectionTitle || undefined} onBack={onBack} /> : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -76,7 +94,6 @@ export function BriefingDetailShell({
               <ThemedRefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} />
             ) : undefined
           }>
-          {onBack ? <WideSubpaneHeader onBack={onBack} /> : null}
           {error ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>

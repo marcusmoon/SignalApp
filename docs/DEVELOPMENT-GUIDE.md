@@ -94,8 +94,9 @@ UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 섹션. 구현 위치:
 
 내비 (`showBoard` / `showWatchlist` / `showNewsFeed`, `drillFrom: 'home'`):
 
-- **폰**: `/more-board?lock=1` · `/watchlist` · `/home-news` (Stack 백).
-- **wide**: overlay + `WideSubpaneHeader`. 보드 숏컷은 `boardSourceLocked` / `BoardContent.lockedSource` — 채널 세그먼트·사이드바 서브탭 숨김.
+- **폰**: `/more-board?lock=1` · `/watchlist` · `/home-news` 등 — Stack 옵션은 `signalDrillStackOptions` 공통.
+- **wide**: overlay + `WideSubpaneHeader`(스크롤 밖). 보드 숏컷은 `boardSourceLocked` / `BoardContent.lockedSource`.
+- **단건 상세**도 동일 헤더: `BriefingDetailShell` + `chromeTitle`(섹션명). 본문 `headline`과 분리.
 - **타일 라벨**: 기본(all)→상위만, 그 외→`상위·하위`(짧은 `homeTile*`). 규칙 상세는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 바로가기.
 
 ## 외부 링크

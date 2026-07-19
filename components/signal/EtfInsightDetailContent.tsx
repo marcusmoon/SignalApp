@@ -78,6 +78,7 @@ export function EtfInsightDetailContent({
     <BriefingDetailShell
       embedded={embedded}
       onBack={onBack}
+      chromeTitle={t('homeEtfInsightTitle')}
       loading={loading}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}

@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -199,14 +200,19 @@ export default function CalendarScreen({
       if (!useTwoPane) {
         return (
           <>
-            <Stack.Screen options={{ title: t('screenCalendar') }} />
+            <Stack.Screen
+              options={signalDrillStackOptions({
+                title: t('screenCalendar'),
+                onBack: () => router.back(),
+              })}
+            />
             {body}
           </>
         );
       }
       return body;
     },
-    [t, useTwoPane],
+    [router, t, useTwoPane],
   );
 
   const todayYmd = toYmd(new Date());

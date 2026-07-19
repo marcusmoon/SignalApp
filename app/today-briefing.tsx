@@ -80,6 +80,7 @@ export function TodayBriefingContent({ date, embedded = false, onBack }: TodayBr
     <BriefingDetailShell
       embedded={embedded}
       onBack={onBack}
+      chromeTitle={t('ipadHomeTitle')}
       loading={loading}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}

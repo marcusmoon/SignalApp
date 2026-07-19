@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
@@ -135,11 +135,10 @@ export function EtfInsightsListContent({ embedded = false, onBack }: EtfInsights
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
       {!embedded ? (
         <Stack.Screen
-          options={{
+          options={signalDrillStackOptions({
             title: t('homeEtfInsightTitle'),
-            headerBackVisible: false,
-            headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-          }}
+            onBack: () => router.back(),
+          })}
         />
       ) : null}
       {onBack ? <WideSubpaneHeader title={t('homeEtfInsightTitle')} onBack={onBack} /> : null}

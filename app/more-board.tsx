@@ -3,14 +3,14 @@ import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { useMemo } from 'react';
 
 import { BoardContent } from '@/components/community/BoardContent';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import {
   COMMUNITY_SOURCE_ALL,
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
 import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
 import { useLocale } from '@/contexts/LocaleContext';
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
 function parseSource(raw: string | undefined): CommunitySourceFilter {
@@ -39,11 +39,10 @@ export default function MoreBoardScreen() {
     <PhoneMoreStackChromeProvider>
       <BottomTabBarHeightContext.Provider value={0}>
         <Stack.Screen
-          options={{
+          options={signalDrillStackOptions({
             title,
-            headerBackVisible: false,
-            headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-          }}
+            onBack: () => router.back(),
+          })}
         />
         <BoardContent
           tabBarHeight={0}

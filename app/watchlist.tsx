@@ -3,19 +3,22 @@ import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { useMemo } from 'react';
 
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { QuotesContent } from '@/components/quotes/QuotesContent';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
 import { useLocale } from '@/contexts/LocaleContext';
+import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import { QUOTES_SEGMENT_KEYS, type QuoteSegmentKey } from '@/domain/quotes/constants';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import type { MessageId } from '@/locales/messages';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
-const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
-  watch: 'quotesSegmentWatch',
-  popular: 'quotesSegmentPopular',
-  mcap: 'quotesSegmentMcap',
-  coin: 'quotesSegmentCoin',
+const HOME_TILE_QUOTES: Record<
+  QuoteSegmentKey,
+  'homeTileQuotesWatch' | 'homeTileQuotesPopular' | 'homeTileQuotesMcap' | 'homeTileQuotesCoin'
+> = {
+  watch: 'homeTileQuotesWatch',
+  popular: 'homeTileQuotesPopular',
+  mcap: 'homeTileQuotesMcap',
+  coin: 'homeTileQuotesCoin',
 };
 
 function parseSegment(raw: string | undefined): QuoteSegmentKey {
@@ -23,10 +26,6 @@ function parseSegment(raw: string | undefined): QuoteSegmentKey {
   return (QUOTES_SEGMENT_KEYS as readonly string[]).includes(value)
     ? (value as QuoteSegmentKey)
     : 'watch';
-}
-
-function titleKey(segment: QuoteSegmentKey): MessageId {
-  return segment === 'watch' ? 'homeFocusWatchTitle' : QUOTE_SEGMENT_LABEL[segment];
 }
 
 /** 홈 숏컷·관심 종목 — 시세 세그먼트 드릴 + 백 */
@@ -46,14 +45,15 @@ export default function WatchlistScreen() {
     );
   }
 
+  const title = homeShortcutCompoundLabel(t('tabQuotes'), t(HOME_TILE_QUOTES[segment]));
+
   return (
     <>
       <Stack.Screen
-        options={{
-          title: t(titleKey(segment)),
-          headerBackVisible: false,
-          headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-        }}
+        options={signalDrillStackOptions({
+          title,
+          onBack: () => router.back(),
+        })}
       />
       <BottomTabBarHeightContext.Provider value={0}>
         <QuotesContent embedded lockedSegment={segment} />

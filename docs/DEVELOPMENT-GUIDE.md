@@ -116,6 +116,24 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 - **허브 메뉴 설명**(`accountHub*Desc`)과 설정 화면 lead(`settings*Lead`) 문구는 동일 의미로 유지한다.
 - **소셜 연동**: 해제 전 확인 다이얼로그. 비밀번호 미설정 + 마지막 소셜이면 해제 불가([SOCIAL-AUTH.md](./SOCIAL-AUTH.md)). 서버 비활성 공급자는 목록에 「준비 중」으로 표시.
 
+## 종목 로고
+
+시세·뉴스·공시·브리핑 등에서 쓰는 심볼 아이콘. **로컬 에셋 파일로 관리하지 않는다.**
+
+| 구분 | 우선 URL | 실패 시 |
+|---|---|---|
+| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) | Parqet → 글자 아바타 |
+| 주식 | Parqet (`assets.parqet.com/logos/symbol/…`, 국장 `.KS`→`.KQ`) | 글자 아바타 |
+
+| 역할 | 경로 |
+|---|---|
+| URL 후보·실패 캐시 | `services/symbolLogo.ts` (`symbolLogoUrls(symbol, preferredUrls?)`) |
+| UI | `components/signal/SymbolLogo.tsx` — `imageUrl` prop이 있으면 Parqet보다 먼저 시도 |
+| 코인 행 매핑 | `domain/quotes/rows.ts` (`mapSignalCoinToRow` → `QuoteRow.imageUrl`) |
+| 시세 리스트 | `components/quotes/QuotesContent.tsx` |
+
+서버 저장·Job은 [SERVER.md](./SERVER.md) 「종목·코인 로고」. 코인 `imageUrl`은 티커 패턴으로 만들 수 없어서 시세 ingest 때 URL을 같이 둔다(주식 Parqet과 다름).
+
 ## 홈 바로가기
 
 UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 섹션. 구현 위치:
@@ -254,7 +272,8 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
-| 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
+| 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 코인 로고는 `/v1/coins` `imageUrl`([종목 로고](#종목-로고)). 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
+| 종목 로고 | `components/signal/SymbolLogo.tsx`, `services/symbolLogo.ts` — [종목 로고](#종목-로고) · [SERVER.md](./SERVER.md) |
 | 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
 | IT 뉴스 | `app/(tabs)/it-news.tsx`, `app/more-it-news.tsx`, `components/news/ItNewsFeedPanel.tsx` — `GET /v1/news?category=it` |
 | 마감 브리핑 상세 | `app/today-briefing.tsx` (푸시 딥링크) |

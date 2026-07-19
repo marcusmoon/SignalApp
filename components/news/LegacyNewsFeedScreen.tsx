@@ -721,7 +721,6 @@ export function LegacyNewsFeedScreen({
 
   const registerNewsSubTabs = useCallback(() => {
     if (!useTwoPane) return;
-    setActiveSubTabKey(segment);
     setSubTabs(
       segmentOrder.map((key) => ({
         key,
@@ -730,13 +729,15 @@ export function LegacyNewsFeedScreen({
         params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
+      segment,
     );
-  }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+  }, [onPickSegment, segment, segmentOrder, setSubTabs, t, useTwoPane]);
 
   useEffect(() => {
     if (lockedSegment) setSegment(lockedSegment);
   }, [lockedSegment]);
 
+  // 세그먼트 변경 시 목록·선택만 갱신 — focus cleanup에 register를 넣지 않는다.
   useEffect(() => {
     if (!useTwoPane || !isFocused || drillLocked) return;
     registerNewsSubTabs();
@@ -773,9 +774,8 @@ export function LegacyNewsFeedScreen({
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane || drillLocked) return;
-      registerNewsSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, drillLocked, registerNewsSubTabs, useTwoPane]),
+    }, [clearSubTabs, drillLocked, useTwoPane]),
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';

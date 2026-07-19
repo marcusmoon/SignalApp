@@ -21,7 +21,7 @@
 - **iPhone**: compact / regular — 하단 플로팅 탭바, 탭마다 `SignalHeader compact`.
 - **iPad**: 세로·가로 모두 wide — 좌측 `SignalSidebarTabBar`·상단 `SignalHeader`는 `WideWebShell`에서 **고정 1회**. 우측 pane만 페이지가 바뀐다 (홈·내 정보 드릴인도 전체 Stack 전환 금지).
 - **넓은 웹** (≥900): iPad와 동일. 좁은 웹은 iPhone과 동일.
-- **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다.
+- **Wide URL 동기화**: 홈·내 정보·설정·뉴스 이슈·공시 플로우·유튜브 정렬 등은 `IpadSidebarNavContext`가 **실제 라우트**로 맞춘다 (`useGlobalSearchParams`). 화면 안 필터·날짜도 쿼리에 기본값까지 명시한다. 사이드바 서브탭은 owner 단위로 clear해 탭 전환 경합으로 메뉴가 사라지지 않게 한다. 선택 하이라이트는 `setSubTabs(owner, tabs, activeKey)`로 목록과 함께 맞추고, 세그먼트 변경 시 effect cleanup으로 clear하지 않는다(클릭 후 선택 표시 유실 방지).
 
 콘텐츠 최대 폭: `APP_CONTENT_MAX_WIDTH` (720).  
 wide 탭·홈·뉴스 플로우·공시 플로우·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  

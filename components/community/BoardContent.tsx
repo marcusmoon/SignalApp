@@ -254,7 +254,6 @@ export function BoardContent({
 
   const registerBoardSubTabs = useCallback(() => {
     if (!useTwoPane || lockedSource) return;
-    setActiveSubTabKey(source);
     setSubTabs(
       COMMUNITY_SOURCE_ORDER.map((key) => ({
         key,
@@ -263,27 +262,25 @@ export function BoardContent({
         params: embedded ? undefined : { source: key },
         onPress: () => changeSource(key),
       })),
+      source,
     );
-  }, [
-    changeSource,
-    embedded,
-    lockedSource,
-    setActiveSubTabKey,
-    setSubTabs,
-    source,
-    t,
-    useTwoPane,
-  ]);
+  }, [changeSource, embedded, lockedSource, setSubTabs, source, t, useTwoPane]);
 
+  // 포커스/락 생명주기만 clear — register 콜백을 deps에 넣지 않는다.
   useEffect(() => {
-    if (!useTwoPane || !active) return;
-    if (lockedSource) {
+    if (!useTwoPane) return;
+    if (!active || lockedSource) {
       clearSubTabs();
       return;
     }
-    registerBoardSubTabs();
     return () => clearSubTabs();
-  }, [active, clearSubTabs, lockedSource, registerBoardSubTabs, useTwoPane]);
+  }, [active, clearSubTabs, lockedSource, useTwoPane]);
+
+  // 소스 변경 시 목록·선택만 갱신 (clear 없음).
+  useEffect(() => {
+    if (!useTwoPane || !active || lockedSource) return;
+    registerBoardSubTabs();
+  }, [active, lockedSource, registerBoardSubTabs, useTwoPane]);
 
   useEffect(() => {
     if (!lockedSource) return;

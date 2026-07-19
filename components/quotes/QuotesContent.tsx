@@ -440,7 +440,6 @@ export function QuotesContent({
 
   const registerQuoteSubTabs = useCallback(() => {
     if (!useTwoPane) return;
-    setActiveSubTabKey(segment);
     setSubTabs(
       segmentOrder.map((key) => ({
         key,
@@ -449,14 +448,25 @@ export function QuotesContent({
         params: { segment: key },
         onPress: () => onPickSegment(key),
       })),
+      segment,
     );
-  }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+  }, [onPickSegment, segment, segmentOrder, setSubTabs, t, useTwoPane]);
 
+  // 포커스 생명주기만 clear — register 콜백을 deps에 넣지 않는다.
+  useEffect(() => {
+    if (!useTwoPane || lockedSegment || embedded) return;
+    if (!isEffectivelyFocused) {
+      clearSubTabs();
+      return;
+    }
+    return () => clearSubTabs();
+  }, [clearSubTabs, embedded, isEffectivelyFocused, lockedSegment, useTwoPane]);
+
+  // 세그먼트 변경 시 목록·선택만 갱신 (clear 없음).
   useEffect(() => {
     if (!useTwoPane || !isEffectivelyFocused || lockedSegment || embedded) return;
     registerQuoteSubTabs();
-    return () => clearSubTabs();
-  }, [clearSubTabs, embedded, isEffectivelyFocused, lockedSegment, registerQuoteSubTabs, useTwoPane]);
+  }, [embedded, isEffectivelyFocused, lockedSegment, registerQuoteSubTabs, useTwoPane]);
 
   const renderQuoteItem = useCallback(
     ({ item: r, index }: { item: Row; index: number }) => {

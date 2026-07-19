@@ -492,7 +492,6 @@ export default function SignalScreen({
 
   const registerSignalSubTabs = useCallback(() => {
     if (!useTwoPane || embedded) return;
-    if (activeTabKey) setActiveSubTabKey(activeTabKey);
     setSubTabs(
       FLAT_TABS.map((tab) => ({
         key: tab.key,
@@ -501,8 +500,9 @@ export default function SignalScreen({
         params: { session: tab.key },
         onPress: () => onPickSessionTab(tab.key),
       })),
+      activeTabKey,
     );
-  }, [activeTabKey, embedded, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
+  }, [activeTabKey, embedded, flatTabLabel, onPickSessionTab, setSubTabs, useTwoPane]);
 
   useEffect(() => {
     if (!useTwoPane || !paneActive || embedded) return;
@@ -547,9 +547,8 @@ export default function SignalScreen({
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane || embedded) return;
-      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, embedded, registerSignalSubTabs, useTwoPane]),
+    }, [clearSubTabs, embedded, useTwoPane]),
   );
 
   return (

@@ -22,6 +22,7 @@
 - [ ] 알림 권한, push token 등록, 알림함 확인
 - [ ] iOS 실기기 하단 safe area, status bar, splash 확인
 - [ ] iPad·wide 웹: 사이드바·2-pane·전역 헤더 새로고침 확인
+- [ ] iPad·wide 웹: 사이드바 서브메뉴 클릭 시 우측 전환 + **선택 하이라이트 유지**(뉴스·시장·시세·공시·게시판)
 - [ ] 앱 아이콘, alternate icon, deep link 확인
 
 ## 서버

@@ -126,7 +126,7 @@ export function SignalSidebarTabBar({
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { subTabs, activeSubTabKey } = useSidebarSubTabs();
+  const { subTabs, activeSubTabKey, owner, setActiveSubTabKey } = useSidebarSubTabs();
   const ipadState = useIpadSidebarNavState();
   const ipadNav = useIpadSidebarNavActions();
   const badges = useFeedUnreadBadges();
@@ -226,6 +226,9 @@ export function SignalSidebarTabBar({
 
   const handleSubPress = (sub: (typeof subTabs)[number]) => {
     if (sub.key === activeSubTabKey) return;
+
+    // 화면 effect 경합과 무관하게 즉시 하이라이트.
+    if (owner) setActiveSubTabKey(owner, sub.key);
 
     const onSameTab = sub.href ? isCurrentTabHref(sub.href, pathname, activeTabName) : false;
 

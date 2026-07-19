@@ -300,6 +300,77 @@ export function isTargetSolvable(grid: SumTrailGrid, target: number): boolean {
   return findPathToTarget(grid, target) != null;
 }
 
+/** 현재 경로에서 인접·미사용·채워진 칸으로 한 칸이라도 더 갈 수 있는지 */
+export function hasLegalExtension(grid: SumTrailGrid, path: SumTrailCell[]): boolean {
+  if (path.length === 0) {
+    const n = gridSize(grid);
+    for (let r = 0; r < n; r += 1) {
+      for (let c = 0; c < n; c += 1) {
+        if ((grid[r]?.[c] ?? 0) > 0) return true;
+      }
+    }
+    return false;
+  }
+  const last = path[path.length - 1]!;
+  const used = new Set(path.map(cellKey));
+  for (const nb of orthogonalNeighbors(grid, last)) {
+    if (used.has(cellKey(nb))) continue;
+    if ((grid[nb.r]?.[nb.c] ?? 0) > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * 현재 경로로는 목표에 도달할 수 없고(또는 이미 초과),
+ * 더 이상 둘 칸이 없으면 막힘 → 실패.
+ */
+export function isPathDeadEnd(grid: SumTrailGrid, path: SumTrailCell[], target: number): boolean {
+  if (path.length === 0) return false;
+  const sum = pathSum(grid, path);
+  if (sum === target && path.length >= 2) return false;
+  if (sum > target) return true;
+  return !hasLegalExtension(grid, path);
+}
+
+/**
+ * 현재 경로를 접두로 목표 합까지 이어지는 해가 있는지.
+ * (잘못된 경로인데 옆칸은 있는 경우는 아직 실패가 아님 — 둔 뒤에 막히면 isPathDeadEnd)
+ */
+export function canCompleteFromPath(
+  grid: SumTrailGrid,
+  path: SumTrailCell[],
+  target: number,
+): boolean {
+  if (target <= 0) return false;
+  if (path.length === 0) return findPathToTarget(grid, target) != null;
+  const sum = pathSum(grid, path);
+  if (sum === target && path.length >= 2) return true;
+  if (sum >= target) return false;
+
+  const used = new Set(path.map(cellKey));
+
+  function dfs(cur: SumTrailCell[], curSum: number): boolean {
+    if (curSum === target && cur.length >= 2) return true;
+    if (curSum >= target) return false;
+    const last = cur[cur.length - 1]!;
+    for (const nb of orthogonalNeighbors(grid, last)) {
+      const key = cellKey(nb);
+      if (used.has(key)) continue;
+      const v = grid[nb.r]?.[nb.c] ?? 0;
+      if (v <= 0) continue;
+      used.add(key);
+      cur.push(nb);
+      if (dfs(cur, curSum + v)) return true;
+      cur.pop();
+      used.delete(key);
+    }
+    return false;
+  }
+
+  return dfs([...path], sum);
+}
+
+
 function freshBoard(
   level: number,
   difficulty: SumTrailDifficulty,
@@ -363,6 +434,15 @@ export function tapSumTrailCell(
   }
   const path = [...state.path, cell];
   if (!pathMatchesTarget(state.grid, path, state.target)) {
+    // 합 초과이거나, 더 둘 칸이 없으면 실패
+    if (isPathDeadEnd(state.grid, path, state.target)) {
+      return {
+        ...state,
+        path,
+        hintCell: null,
+        status: 'failed',
+      };
+    }
     return { ...state, path, hintCell: null };
   }
 

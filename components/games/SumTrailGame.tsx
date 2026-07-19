@@ -23,7 +23,7 @@ import {
 
 const DIFFICULTIES: SumTrailDifficulty[] = ['easy', 'normal', 'hard'];
 
-type HitFx = { id: number; points: number; levelClear: boolean };
+type BoardFx = { id: number; kind: 'hit' | 'level' | 'fail'; points: number };
 
 function pathIndexMap(path: SumTrailCell[]): Map<string, number> {
   const m = new Map<string, number>();
@@ -94,21 +94,23 @@ const progressStyles = StyleSheet.create({
 
 function BurstOverlay({
   visible,
-  levelClear,
+  kind,
   points,
   theme,
   sf,
   labelHit,
   labelLevel,
+  labelFail,
   labelPoints,
 }: {
   visible: boolean;
-  levelClear: boolean;
+  kind: BoardFx['kind'];
   points: number;
   theme: AppTheme;
   sf: (n: number) => number;
   labelHit: string;
   labelLevel: string;
+  labelFail: string;
   labelPoints: string;
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -119,6 +121,11 @@ function BurstOverlay({
       anim: new Animated.Value(0),
     })),
   ).current;
+
+  const isFail = kind === 'fail';
+  const isLevel = kind === 'level';
+  const holdMs = isFail || isLevel ? 900 : 520;
+  const sparkMs = isFail || isLevel ? 700 : 480;
 
   useEffect(() => {
     if (!visible) {
@@ -133,7 +140,7 @@ function BurstOverlay({
     Animated.parallel([
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 120, useNativeDriver: true }),
-        Animated.delay(levelClear ? 900 : 520),
+        Animated.delay(holdMs),
         Animated.timing(opacity, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]),
       Animated.sequence([
@@ -145,16 +152,21 @@ function BurstOverlay({
         sparkles.map((s) =>
           Animated.timing(s.anim, {
             toValue: 1,
-            duration: levelClear ? 700 : 480,
+            duration: sparkMs,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
         ),
       ),
     ]).start();
-  }, [visible, levelClear, opacity, scale, sparkles]);
+  }, [visible, kind, holdMs, sparkMs, opacity, scale, sparkles]);
 
   if (!visible) return null;
+
+  const accent = isFail ? theme.danger : theme.green;
+  const accentAlt = theme.warning;
+  const title = isFail ? labelFail : isLevel ? labelLevel : labelHit;
+  const icon = isFail ? 'times-circle' : isLevel ? 'trophy' : 'check-circle';
 
   return (
     <Animated.View
@@ -167,7 +179,7 @@ function BurstOverlay({
         },
       ]}>
       {sparkles.map((s, i) => {
-        const dist = levelClear ? 56 : 42;
+        const dist = isFail || isLevel ? 56 : 42;
         const tx = s.anim.interpolate({
           inputRange: [0, 1],
           outputRange: [0, Math.cos(s.angle) * dist],
@@ -186,7 +198,7 @@ function BurstOverlay({
             style={[
               burstStyles.spark,
               {
-                backgroundColor: i % 2 === 0 ? theme.green : theme.warning,
+                backgroundColor: i % 2 === 0 ? accent : accentAlt,
                 opacity: sparkOpacity,
                 transform: [{ translateX: tx }, { translateY: ty }],
               },
@@ -198,31 +210,32 @@ function BurstOverlay({
         style={[
           burstStyles.card,
           {
-            backgroundColor: levelClear ? theme.green : theme.card,
-            borderColor: theme.greenBorder,
+            backgroundColor: isFail ? theme.danger : isLevel ? theme.green : theme.card,
+            borderColor: isFail ? theme.danger : theme.greenBorder,
           },
         ]}>
         <FontAwesome
-          name={levelClear ? 'trophy' : 'check-circle'}
-          size={levelClear ? 28 : 22}
-          color={levelClear ? '#FFFFFF' : theme.green}
+          name={icon}
+          size={isFail || isLevel ? 28 : 22}
+          color={isFail || isLevel ? '#FFFFFF' : theme.green}
         />
         <Text
           style={{
             marginTop: 6,
-            fontSize: sf(levelClear ? 17 : 15),
+            fontSize: sf(isFail || isLevel ? 17 : 15),
             fontWeight: '800',
-            color: levelClear ? '#FFFFFF' : theme.green,
+            color: isFail || isLevel ? '#FFFFFF' : theme.green,
+            textAlign: 'center',
           }}>
-          {levelClear ? labelLevel : labelHit}
+          {title}
         </Text>
-        {points > 0 ? (
+        {!isFail && points > 0 ? (
           <Text
             style={{
               marginTop: 2,
               fontSize: sf(13),
               fontWeight: '700',
-              color: levelClear ? 'rgba(255,255,255,0.9)' : theme.warning,
+              color: isLevel ? 'rgba(255,255,255,0.9)' : theme.warning,
             }}>
             {labelPoints}
           </Text>
@@ -377,10 +390,11 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
   const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
   const [difficulty, setDifficulty] = useState<SumTrailDifficulty>('normal');
   const [state, setState] = useState<SumTrailState>(() => createSumTrailGame('normal'));
-  const [hitFx, setHitFx] = useState<HitFx | null>(null);
+  const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardPulse = useRef(new Animated.Value(1)).current;
+  const boardShake = useRef(new Animated.Value(0)).current;
 
   const pathMap = useMemo(() => pathIndexMap(state.path), [state.path]);
   const sum = currentPathSum(state);
@@ -405,27 +419,39 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
     ]).start();
   }, [boardPulse]);
 
-  const triggerHitFx = useCallback(
-    (points: number, levelClear: boolean) => {
+  const playBoardShake = useCallback(() => {
+    boardShake.setValue(0);
+    Animated.sequence([
+      Animated.timing(boardShake, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(boardShake, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(boardShake, { toValue: 6, duration: 45, useNativeDriver: true }),
+      Animated.timing(boardShake, { toValue: -4, duration: 45, useNativeDriver: true }),
+      Animated.timing(boardShake, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  }, [boardShake]);
+
+  const triggerBoardFx = useCallback(
+    (kind: BoardFx['kind'], points = 0) => {
       clearFxTimer();
       setFlashKey((n) => n + 1);
-      playBoardPulse();
-      setHitFx({ id: Date.now(), points, levelClear });
+      if (kind === 'fail') playBoardShake();
+      else playBoardPulse();
+      setBoardFx({ id: Date.now(), kind, points });
       fxTimer.current = setTimeout(
         () => {
-          setHitFx(null);
+          setBoardFx(null);
           fxTimer.current = null;
         },
-        levelClear ? 1400 : 900,
+        kind === 'hit' ? 900 : 1400,
       );
     },
-    [clearFxTimer, playBoardPulse],
+    [clearFxTimer, playBoardPulse, playBoardShake],
   );
 
   const onDifficulty = useCallback(
     (d: SumTrailDifficulty) => {
       clearFxTimer();
-      setHitFx(null);
+      setBoardFx(null);
       setDifficulty(d);
       setState(createSumTrailGame(d));
     },
@@ -436,29 +462,35 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
     (cell: SumTrailCell) => {
       setState((prev) => {
         const next = tapSumTrailCell(prev, cell);
-        if (next.clears > prev.clears || next.status === 'cleared') {
+        if (next.status === 'failed' && prev.status !== 'failed') {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          queueMicrotask(() => triggerBoardFx('fail'));
+        } else if (next.clears > prev.clears || next.status === 'cleared') {
           const gained = next.score - prev.score;
-          const levelClear = next.status === 'cleared';
+          const kind = next.status === 'cleared' ? 'level' : 'hit';
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          queueMicrotask(() => triggerHitFx(gained, levelClear));
+          queueMicrotask(() => triggerBoardFx(kind, gained));
         } else if (next.path.length > prev.path.length) {
           void Haptics.selectionAsync().catch(() => {});
         }
         return next;
       });
     },
-    [triggerHitFx],
+    [triggerBoardFx],
   );
 
   const onHint = useCallback(() => {
     setState((prev) => {
       const next = useSumTrailHint(prev);
-      if (next.hintsRemaining < prev.hintsRemaining) {
+      if (next.status === 'failed' && prev.status !== 'failed') {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        queueMicrotask(() => triggerBoardFx('fail'));
+      } else if (next.hintsRemaining < prev.hintsRemaining) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
       return next;
     });
-  }, []);
+  }, [triggerBoardFx]);
 
   return (
     <View style={styles.root}>
@@ -546,19 +578,27 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
         style={[
           styles.board,
           {
-            transform: [{ scale: boardPulse }],
-            borderColor: over ? theme.danger : near ? theme.warning : theme.greenBorder,
+            transform: [{ scale: boardPulse }, { translateX: boardShake }],
+            borderColor:
+              state.status === 'failed'
+                ? theme.danger
+                : over
+                  ? theme.danger
+                  : near
+                    ? theme.warning
+                    : theme.greenBorder,
           },
         ]}>
         <BurstOverlay
-          visible={hitFx != null}
-          levelClear={hitFx?.levelClear === true}
-          points={hitFx?.points ?? 0}
+          visible={boardFx != null}
+          kind={boardFx?.kind ?? 'hit'}
+          points={boardFx?.points ?? 0}
           theme={theme}
           sf={scaleFont}
           labelHit={t('gameSumTrailHitFx')}
           labelLevel={t('gameSumTrailCleared')}
-          labelPoints={t('gameSumTrailHitPoints', { points: hitFx?.points ?? 0 })}
+          labelFail={t('gameSumTrailFailed')}
+          labelPoints={t('gameSumTrailHitPoints', { points: boardFx?.points ?? 0 })}
         />
         {state.grid.map((row, r) => (
           <View key={`r-${r}`} style={styles.boardRow}>
@@ -613,7 +653,7 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
             style={styles.primaryBtn}
             onPress={() => {
               clearFxTimer();
-              setHitFx(null);
+              setBoardFx(null);
               setState((s) => nextSumTrailLevel(s));
             }}
             accessibilityRole="button">
@@ -631,7 +671,7 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
             style={styles.primaryBtn}
             onPress={() => {
               clearFxTimer();
-              setHitFx(null);
+              setBoardFx(null);
               setState((s) => restartSumTrailLevel(s));
             }}
             accessibilityRole="button">
@@ -679,7 +719,7 @@ export function SumTrailGame({ wide = false }: { wide?: boolean }) {
             style={styles.secondaryBtn}
             onPress={() => {
               clearFxTimer();
-              setHitFx(null);
+              setBoardFx(null);
               setState((s) => restartSumTrailLevel(s));
             }}
             accessibilityRole="button">

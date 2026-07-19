@@ -604,7 +604,7 @@ export const en = {
   settingsCalendarRemindersHint: 'Notify major macro economic events in device local time.',
   settingsNewsUnreadCheckKicker: 'Tab update check',
   settingsNewsUnreadCheckHint:
-    'How often to check the server for tab dots and on-screen “new posts” chips (News, Market, Disclosures, Alerts). Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
+    'How often to check tab dots and on-screen “new posts” for News, Market, Disclosures, and Alerts.',
   settingsNewsUnreadCheckOption: '{{minutes}} min',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
   settingsLocalMacroCalendarHint: 'Macro events such as CPI and FOMC — one alert at 8:00 on event day (device time)',

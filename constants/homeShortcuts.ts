@@ -17,8 +17,7 @@ export type HomeShortcut =
   | { type: 'calendar' }
   | { type: 'etf' }
   | { type: 'disclosures' }
-  | { type: 'settings' }
-  | { type: 'communityPost'; id: string; title?: string; source?: string };
+  | { type: 'settings' };
 
 export type HomeShortcutSimpleType = 'calendar' | 'etf' | 'disclosures' | 'settings';
 
@@ -30,7 +29,7 @@ export type HomeShortcutOption =
 
 /** 설정·스트립용 아이콘 */
 export const HOME_SHORTCUT_TYPE_ICON: Record<
-  Exclude<HomeShortcut['type'], 'communityPost'>,
+  HomeShortcut['type'],
   ComponentProps<typeof FontAwesome>['name']
 > = {
   board: 'comments',
@@ -42,7 +41,7 @@ export const HOME_SHORTCUT_TYPE_ICON: Record<
   settings: 'cog',
 };
 
-/** 추가 가능한 고정 옵션(게시글 제외) — 카탈로그 순 */
+/** 추가 가능한 옵션 — 카탈로그 순 */
 export const HOME_SHORTCUT_OPTIONS: HomeShortcutOption[] = [
   ...COMMUNITY_SOURCE_ORDER.map((source) => ({ type: 'board' as const, source })),
   ...QUOTES_SEGMENT_KEYS.map((segment) => ({ type: 'quotes' as const, segment })),
@@ -71,8 +70,6 @@ export function homeShortcutStableId(shortcut: HomeShortcut): string {
       return `quotes:${shortcut.segment}`;
     case 'news':
       return `news:${shortcut.segment}`;
-    case 'communityPost':
-      return `communityPost:${shortcut.id}`;
     default:
       return shortcut.type;
   }

@@ -169,7 +169,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 관심 종목 → (조건부) 섹터 흐름
   - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 관심 종목 숨김
-  - **홈 바로가기** (`HomeShortcutsStrip`): 보드(전체/세이브/미주미)·시세 세그먼트·뉴스 세그먼트를 **여러 개** 둘 수 있고 순서 변경 가능. 개별 게시글·일정·ETF·공시·설정도 추가. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김
+  - **홈 바로가기** (`HomeShortcutsStrip`): 보드(전체/세이브/미주미)·시세 세그먼트·뉴스 세그먼트를 **여러 개** 둘 수 있고 순서 변경 가능. 일정·ETF·공시·설정도 추가. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김. **탭 루트로 전환하지 않음** — 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): ~09:00 `us/overnight` · 09:00~12:30 `kr/morning` · 12:30~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)

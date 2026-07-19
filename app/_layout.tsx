@@ -194,6 +194,7 @@ function RootLayoutNav() {
         'disclosure-flow',
         'disclosure-digest',
         'watchlist',
+        'home-news',
         'terms',
         'terms-history',
       ]),
@@ -246,6 +247,7 @@ function RootLayoutNav() {
           'etf-insights': t('homeEtfInsightTitle'),
           'etf-insight': t('etfInsightDetailKicker'),
           watchlist: t('homeFocusWatchTitle'),
+          'home-news': t('tabNews'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

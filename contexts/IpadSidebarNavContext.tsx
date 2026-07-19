@@ -4,7 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { isSettingsTab, type SettingsTab } from '@/constants/settingsTabs';
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import type { DisclosureFlowMarket, NewsIssuesCategory } from '@/constants/ipadHomeNav';
-import type { NewsSegmentKey } from '@/constants/newsSegment';
+import {
+  COMMUNITY_SOURCE_ALL,
+  type CommunitySourceFilter,
+} from '@/constants/communitySources';
+import { DEFAULT_NEWS_SEGMENT, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
+import { QUOTES_SEGMENT_KEYS, type QuoteSegmentKey } from '@/domain/quotes/constants';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
 import {
@@ -40,7 +45,8 @@ export type IpadContentPane =
   | 'board'
   | 'community'
   | 'symbol'
-  | 'watchlist';
+  | 'watchlist'
+  | 'newsFeed';
 
 export type IpadNewsIssuesPaneParams = {
   category: NewsIssuesCategory;
@@ -98,6 +104,12 @@ type IpadSidebarNavState = {
   etfInsightDate: string | null;
   communityPostId: string | null;
   symbolTicker: string | null;
+  /** 홈 숏컷 보드 드릴 소스 */
+  boardSource: CommunitySourceFilter;
+  /** 홈 숏컷 시세 드릴 세그먼트 */
+  quotesDrillSegment: QuoteSegmentKey;
+  /** 홈 숏컷 뉴스 드릴 세그먼트 */
+  newsFeedSegment: NewsSegmentKey;
   calendarFromAccount: boolean;
   alertsFromAccount: boolean;
   settingsFromAccount: boolean;
@@ -134,7 +146,8 @@ type IpadSidebarNavActions = {
   showBoard: (options?: WidePaneDrillOptions & { source?: string }) => void;
   showCommunityPost: (id: string, options?: WidePaneDrillOptions) => void;
   showSymbol: (ticker: string, options?: WidePaneDrillOptions) => void;
-  showWatchlist: (options?: WidePaneDrillOptions) => void;
+  showWatchlist: (options?: WidePaneDrillOptions & { segment?: QuoteSegmentKey }) => void;
+  showNewsFeed: (segment?: NewsSegmentKey, options?: WidePaneDrillOptions) => void;
   showYoutubeTab: () => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey, date?: string) => void;
@@ -165,6 +178,9 @@ const defaultState: IpadSidebarNavState = {
   etfInsightDate: null,
   communityPostId: null,
   symbolTicker: null,
+  boardSource: COMMUNITY_SOURCE_ALL,
+  quotesDrillSegment: 'watch',
+  newsFeedSegment: DEFAULT_NEWS_SEGMENT,
   calendarFromAccount: false,
   alertsFromAccount: false,
   settingsFromAccount: false,
@@ -195,6 +211,7 @@ const defaultActions: IpadSidebarNavActions = {
   showCommunityPost: () => {},
   showSymbol: () => {},
   showWatchlist: () => {},
+  showNewsFeed: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -278,6 +295,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [marketBriefingParams, setMarketBriefingParams] = useState<IpadMarketBriefingPaneParams | null>(null);
   const [communityPostId, setCommunityPostId] = useState<string | null>(null);
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
+  const [boardSource, setBoardSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
+  const [quotesDrillSegment, setQuotesDrillSegment] = useState<QuoteSegmentKey>('watch');
+  const [newsFeedSegment, setNewsFeedSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
   const [alertsFromAccount, setAlertsFromAccount] = useState(false);
   const [settingsFromAccount, setSettingsFromAccount] = useState(false);
@@ -395,6 +415,27 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       }
 
       if (kind === 'board') {
+        const source = String(p.source || '').trim();
+        setBoardSource(
+          source === 'save_user_news' || source === 'naver_likeusstock_free'
+            ? source
+            : COMMUNITY_SOURCE_ALL,
+        );
+        return;
+      }
+
+      if (kind === 'watchlist') {
+        const segment = String(p.segment || '').trim();
+        setQuotesDrillSegment(
+          (QUOTES_SEGMENT_KEYS as readonly string[]).includes(segment)
+            ? (segment as QuoteSegmentKey)
+            : 'watch',
+        );
+        return;
+      }
+
+      if (kind === 'news-feed') {
+        setNewsFeedSegment(parseNewsSegmentKey(p.segment) ?? DEFAULT_NEWS_SEGMENT);
         return;
       }
 
@@ -888,17 +929,28 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
   const showBoard = useCallback(
     (options?: WidePaneDrillOptions & { source?: string }) => {
+      const source = String(options?.source || '').trim();
+      const sourceParam =
+        source === 'save_user_news' || source === 'naver_likeusstock_free' ? source : undefined;
+      setBoardSource(sourceParam ?? COMMUNITY_SOURCE_ALL);
       if (useTwoPane) {
         beginWideOverlay(
           'board',
-          options?.source ? { source: options.source } : {},
+          sourceParam ? { source: sourceParam } : {},
           options?.drillFrom,
         );
         return;
       }
+      if (options?.drillFrom === 'home') {
+        router.push({
+          pathname: '/more-board',
+          params: sourceParam ? { source: sourceParam } : {},
+        } as never);
+        return;
+      }
       router.navigate({
         pathname: '/(tabs)/board',
-        params: options?.source ? { source: options.source } : {},
+        params: sourceParam ? { source: sourceParam } : {},
       } as never);
     },
     [beginWideOverlay, router, useTwoPane],
@@ -935,12 +987,36 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   );
 
   const showWatchlist = useCallback(
-    (options?: WidePaneDrillOptions) => {
+    (options?: WidePaneDrillOptions & { segment?: QuoteSegmentKey }) => {
+      const segment =
+        options?.segment && (QUOTES_SEGMENT_KEYS as readonly string[]).includes(options.segment)
+          ? options.segment
+          : 'watch';
+      setQuotesDrillSegment(segment);
       if (useTwoPane) {
-        beginWideOverlay('watchlist', {}, options?.drillFrom);
+        beginWideOverlay('watchlist', { segment }, options?.drillFrom);
         return;
       }
-      router.push('/watchlist' as never);
+      router.push({
+        pathname: '/watchlist',
+        params: { segment },
+      } as never);
+    },
+    [beginWideOverlay, router, useTwoPane],
+  );
+
+  const showNewsFeed = useCallback(
+    (segment?: NewsSegmentKey, options?: WidePaneDrillOptions) => {
+      const next = parseNewsSegmentKey(segment) ?? DEFAULT_NEWS_SEGMENT;
+      setNewsFeedSegment(next);
+      if (useTwoPane) {
+        beginWideOverlay('news-feed', { segment: next }, options?.drillFrom);
+        return;
+      }
+      router.push({
+        pathname: '/home-news',
+        params: { segment: next },
+      } as never);
     },
     [beginWideOverlay, router, useTwoPane],
   );
@@ -1118,6 +1194,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     contentPane === 'todayBriefing' ||
     contentPane === 'marketBriefing' ||
     contentPane === 'watchlist' ||
+    contentPane === 'newsFeed' ||
     contentPane === 'board' ||
     contentPane === 'community' ||
     contentPane === 'symbol' ||
@@ -1151,6 +1228,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       etfInsightDate,
       communityPostId,
       symbolTicker,
+      boardSource,
+      quotesDrillSegment,
+      newsFeedSegment,
       calendarFromAccount,
       alertsFromAccount,
       settingsFromAccount,
@@ -1174,6 +1254,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       etfInsightDate,
       communityPostId,
       symbolTicker,
+      boardSource,
+      quotesDrillSegment,
+      newsFeedSegment,
       calendarFromAccount,
       alertsFromAccount,
       settingsFromAccount,
@@ -1206,6 +1289,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showCommunityPost,
       showSymbol,
       showWatchlist,
+      showNewsFeed,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -1238,6 +1322,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showCommunityPost,
       showSymbol,
       showWatchlist,
+      showNewsFeed,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

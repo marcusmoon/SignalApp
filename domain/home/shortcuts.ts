@@ -57,25 +57,13 @@ function parseHomeShortcut(raw: unknown): HomeShortcut | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as {
     type?: unknown;
-    id?: unknown;
-    title?: unknown;
     source?: unknown;
     segment?: unknown;
   };
   const type = String(row.type || '').trim();
 
-  if (type === 'communityPost') {
-    const id = String(row.id || '').trim();
-    if (!id) return null;
-    const title = String(row.title || '').trim();
-    const source = String(row.source || '').trim();
-    return {
-      type: 'communityPost',
-      id,
-      ...(title ? { title } : null),
-      ...(source ? { source } : null),
-    };
-  }
+  // 구버전 개별 게시글 숏컷은 제거
+  if (type === 'communityPost') return null;
 
   if (type === 'newsIt') return { type: 'news', segment: 'it' };
 
@@ -154,28 +142,4 @@ export function toggleHomeShortcutOption(
 
 export function reorderHomeShortcuts(next: HomeShortcut[]): HomeShortcut[] {
   return normalizeHomeShortcuts(next);
-}
-
-export function addHomeCommunityPostShortcut(
-  current: HomeShortcut[],
-  post: { id: string; title?: string; source?: string },
-): HomeShortcut[] {
-  const id = String(post.id || '').trim();
-  if (!id) return normalizeHomeShortcuts(current);
-  const title = String(post.title || '').trim();
-  const source = String(post.source || '').trim();
-  return addHomeShortcut(current, {
-    type: 'communityPost',
-    id,
-    ...(title ? { title } : null),
-    ...(source ? { source } : null),
-  });
-}
-
-export function listHomeCommunityPostShortcuts(
-  current: HomeShortcut[],
-): Extract<HomeShortcut, { type: 'communityPost' }>[] {
-  return current.filter(
-    (row): row is Extract<HomeShortcut, { type: 'communityPost' }> => row.type === 'communityPost',
-  );
 }

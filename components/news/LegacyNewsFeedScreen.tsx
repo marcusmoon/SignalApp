@@ -34,6 +34,7 @@ import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { makeNewsStyles } from '@/components/news/newsStyles';
+import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -145,7 +146,21 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
   };
 }
 
-export function LegacyNewsFeedScreen() {
+export type LegacyNewsFeedScreenProps = {
+  embedded?: boolean;
+  onBack?: () => void;
+  /** 홈 숏컷 등 — 세그먼트 고정 */
+  lockedSegment?: NewsSegmentKey | null;
+  /** Root Stack 헤더가 크롬을 담당 */
+  stackChrome?: boolean;
+};
+
+export function LegacyNewsFeedScreen({
+  embedded = false,
+  onBack,
+  lockedSegment = null,
+  stackChrome = false,
+}: LegacyNewsFeedScreenProps = {}) {
   const router = useRouter();
   const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ segment?: string }>();
@@ -159,7 +174,10 @@ export function LegacyNewsFeedScreen() {
   const adsEnabled = useAdsEnabled();
   const ipadNav = useIpadSidebarNavActions();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('news');
+  const drillLocked = Boolean(lockedSegment);
+  const hidePhoneChrome = embedded || stackChrome || Boolean(onBack);
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
+    if (lockedSegment) return lockedSegment;
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
     return fromUrl ?? DEFAULT_NEWS_SEGMENT;
   });
@@ -706,14 +724,18 @@ export function LegacyNewsFeedScreen() {
   }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
 
   useEffect(() => {
-    if (!useTwoPane || !isFocused) return;
+    if (lockedSegment) setSegment(lockedSegment);
+  }, [lockedSegment]);
+
+  useEffect(() => {
+    if (!useTwoPane || !isFocused || drillLocked) return;
     registerNewsSubTabs();
-  }, [isFocused, registerNewsSubTabs, useTwoPane]);
+  }, [drillLocked, isFocused, registerNewsSubTabs, useTwoPane]);
 
   // iPad: 홈·사이드바 pending / 저장 세그먼트 (URL과 충돌하지 않을 때만)
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane || !ipadNav.isAvailable) return;
+      if (!useTwoPane || !ipadNav.isAvailable || drillLocked) return;
 
       const pending = ipadNav.takePendingNewsSegment();
       if (pending) {
@@ -735,15 +757,15 @@ export function LegacyNewsFeedScreen() {
           if (s) onPickSegmentRef.current(s);
         });
       }
-    }, [ipadNav, routeParams.segment, useTwoPane]),
+    }, [drillLocked, ipadNav, routeParams.segment, useTwoPane]),
   );
 
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane) return;
+      if (!useTwoPane || drillLocked) return;
       registerNewsSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, registerNewsSubTabs, useTwoPane]),
+    }, [clearSubTabs, drillLocked, registerNewsSubTabs, useTwoPane]),
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
@@ -845,8 +867,8 @@ export function LegacyNewsFeedScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? (
+    <SafeAreaView style={styles.safe} edges={useTwoPane || hidePhoneChrome ? [] : ['top']}>
+      {!useTwoPane && !hidePhoneChrome ? (
         <SignalHeader
           compact
           onBrandPress={() => {
@@ -855,9 +877,12 @@ export function LegacyNewsFeedScreen() {
           }}
         />
       ) : null}
-      {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane ? (
+      {onBack ? (
+        <WideSubpaneHeader title={t(NEWS_SEGMENT_LABEL[segment])} onBack={onBack} />
+      ) : null}
+      {isFocused && !hidePhoneChrome ? <OtaUpdateBanner /> : null}
+      <View style={[styles.mainColumn, (useTwoPane || embedded) && styles.mainColumnWide]}>
+        {!useTwoPane && !drillLocked && !hidePhoneChrome ? (
           <View style={styles.topFixedStack}>
             <View style={styles.topFixedSubmenu}>
               <View style={styles.segment}>
@@ -892,6 +917,19 @@ export function LegacyNewsFeedScreen() {
                 />
               </View>
             ) : null}
+          </View>
+        ) : null}
+        {!useTwoPane && drillLocked && showDigest ? (
+          <View style={styles.topFixedStack}>
+            <View style={styles.topFixedDigest}>
+              <DigestPager
+                batches={digestBatches}
+                onRefresh={() => void onRefresh()}
+                refreshing={refreshing}
+                onGoToList={goToFeedList}
+                goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
+              />
+            </View>
           </View>
         ) : null}
 

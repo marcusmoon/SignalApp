@@ -263,6 +263,7 @@ function BoardCell({
   disabled,
   theme,
   sf,
+  wide,
   onPress,
   a11yLabel,
   flashKey,
@@ -275,6 +276,7 @@ function BoardCell({
   disabled: boolean;
   theme: AppTheme;
   sf: (n: number) => number;
+  wide: boolean;
   onPress: () => void;
   a11yLabel: string;
   flashKey: number;
@@ -310,7 +312,7 @@ function BoardCell({
         style={[cellStyles.cell, { backgroundColor: bg, borderColor: border }]}
         accessibilityRole="button"
         accessibilityLabel={a11yLabel}>
-        <Text style={{ fontSize: sf(20), fontWeight: '800', color: textColor }}>{value}</Text>
+        <Text style={{ fontSize: sf(wide ? 24 : 20), fontWeight: '800', color: textColor }}>{value}</Text>
         {selected ? (
           <View style={[cellStyles.badge, { backgroundColor: over ? theme.danger : theme.green }]}>
             <Text style={cellStyles.badgeText}>{order}</Text>
@@ -353,10 +355,10 @@ const cellStyles = StyleSheet.create({
   },
 });
 
-export function SumTrailGame() {
+export function SumTrailGame({ wide = false }: { wide?: boolean }) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
   const [difficulty, setDifficulty] = useState<SumTrailDifficulty>('normal');
   const [state, setState] = useState<SumTrailState>(() => createSumTrailGame('normal'));
   const [hitFx, setHitFx] = useState<HitFx | null>(null);
@@ -554,6 +556,7 @@ export function SumTrailGame() {
                   disabled={empty || state.status !== 'playing'}
                   theme={theme}
                   sf={scaleFont}
+                  wide={wide}
                   flashKey={selected ? flashKey : 0}
                   onPress={() => onTapCell({ r, c })}
                   a11yLabel={
@@ -618,16 +621,16 @@ export function SumTrailGame() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean) {
   return StyleSheet.create({
     root: {
-      gap: 14,
+      gap: wide ? 16 : 14,
     },
     heroBand: {
       flexDirection: 'row',
       gap: 12,
       alignItems: 'flex-start',
-      padding: 12,
+      padding: wide ? 16 : 12,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -693,7 +696,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: 10,
+      paddingVertical: wide ? 14 : 10,
       paddingHorizontal: 8,
       alignItems: 'center',
       gap: 2,
@@ -716,12 +719,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
     },
     statValue: {
-      fontSize: sf(18),
+      fontSize: sf(wide ? 20 : 18),
       fontWeight: '700',
       color: theme.text,
     },
     statValueFocus: {
-      fontSize: sf(22),
+      fontSize: sf(wide ? 26 : 22),
       fontWeight: '800',
       color: theme.green,
     },
@@ -744,9 +747,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     board: {
       alignSelf: 'center',
       width: '100%',
-      maxWidth: 360,
-      gap: 6,
-      padding: 10,
+      maxWidth: wide ? 480 : 360,
+      gap: wide ? 8 : 6,
+      padding: wide ? 14 : 10,
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1.5,
       backgroundColor: theme.bgElevated,
@@ -755,7 +758,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     boardRow: {
       flexDirection: 'row',
-      gap: 6,
+      gap: wide ? 8 : 6,
     },
     actions: {
       flexDirection: 'row',

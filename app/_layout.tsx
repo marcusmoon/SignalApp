@@ -189,6 +189,8 @@ function RootLayoutNav() {
         'market-briefing',
         'etf-insights',
         'etf-insight',
+        'game-center',
+        'games/sum-trail',
         'news-issues',
         'news-digest',
         'disclosure-flow',

@@ -145,7 +145,7 @@ export const ja = {
   homeFocusBoardEmpty: '新着投稿はありません',
   homeFocusSignalEmpty: '表示する場中ブリーフィングがありません。',
   moreHubEtfShort: 'ETF',
-  screenGameCenter: 'ゲームセンター',
+  screenGameCenter: 'ゲーム',
   gameCenterLead: '頭を休められる短い数字パズルを集めました。',
   gameSumTrailTitle: 'サム・トレイル',
   gameSumTrailCardBody: '隣り合う数字をつなぎ、合計を目標に合わせるパズル',

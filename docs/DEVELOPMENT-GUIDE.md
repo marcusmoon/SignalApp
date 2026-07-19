@@ -19,16 +19,34 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | 명령 | 내용 |
 |---|---|
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Node `node:test` + `--experimental-strip-types` (`domain/**/*.test.ts`) |
+| `npm test` | Node `node:test` + `--experimental-strip-types` (`domain/**/*.test.ts`, `utils/**/*.test.ts`) |
 | `npm run verify` | typecheck → test (PR·`main` push CI: `.github/workflows/verify.yml`) |
 
 회귀 추가 기준:
 
 1. **같은 계열 버그가 2회 이상** 나왔거나, wide 서브탭·홈 라벨처럼 경합/예산 규칙이 있는 경우
-2. 테스트는 **순수 함수**만 대상으로 한다 (`@/` 경로·RN 의존 없이 `domain/` 상대 import)
+2. 테스트는 **순수 함수**만 대상으로 한다 (`@/` 값 import·RN 의존 없이 상대 import; `import type`의 `@/`는 strip-types로 제거됨)
 3. 실패 메시지에 증상(예: clear 후 선택 유실)을 남긴다
+4. 앱이 `@/`에 묶인 규칙은 `*Raw` / `*Rules` 순수 모듈로 뽑아 테스트한다
 
-현재 커버: `domain/sidebar/subTabsState` (사이드바 선택 하이라이트), `domain/home/shortcutCompoundLabel` (홈 숏컷 한 줄 라벨).
+현재 커버 (자주 깨진 계열):
+
+| 모듈 | 회귀 초점 |
+|---|---|
+| `domain/sidebar/subTabsState` | wide 사이드바 서브탭 선택 하이라이트·clear 경합 |
+| `domain/home/shortcutCompoundLabel` | 홈 숏컷 한 줄 `부모·자식` 라벨 예산 |
+| `domain/home/homeHeroRules` | 빈 오늘 정리 히어로 제외 · KST 회차 창 |
+| `domain/home/normalizeHomeShortcuts` | 숏컷 레거시 마이그레이션 · 최대 6 · `[]` 유지 |
+| `domain/briefings/publishedIso` | 브리핑 상세 발행 시각 체인 |
+| `domain/digests/createdAt` | 다이제스트 시각 fallback |
+| `domain/etfInsights/etfHomeVisibilityRules` | ETF 홈 7일 게이트 |
+| `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF→게시판 앞 삽입 |
+| `domain/news/feedFilters` | 뉴스 URL 중복 제거 · 페이지네이션 전진 |
+| `domain/quotes/tintSignedChangeInText` | 본문 부호/% 틴트 · 비변동 % 제외 |
+| `domain/heatmaps/changeHeat` | 히트맵 채색 강도 |
+| `domain/quotes/ticker` | 티커·종목코드 검증 |
+| `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
+| `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
 
 ## 디렉터리 규칙
 

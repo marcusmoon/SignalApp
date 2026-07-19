@@ -1,3 +1,4 @@
+import { briefingDetailPublishedIso } from '@/domain/briefings/publishedIso';
 import {
   newsDigestCreatedIso,
   disclosureDigestCreatedIso,
@@ -12,29 +13,7 @@ import type {
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel, formatInstantLabel } from '@/utils/date';
 
-type InstantFields = {
-  publishedAt?: string | null;
-  generatedAt?: string | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
-  briefingDate?: string | null;
-  insightDate?: string | null;
-};
-
-function noonUtcFromDateOnly(date: string | null | undefined): string | null {
-  const text = String(date || '').trim().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T12:00:00.000Z` : null;
-}
-
-/** 브리핑·인사이트 단건 — 표시용 발행 instant */
-export function briefingDetailPublishedIso(item: InstantFields | null | undefined): string | null {
-  if (!item) return null;
-  for (const raw of [item.publishedAt, item.generatedAt, item.updatedAt, item.createdAt]) {
-    const value = String(raw || '').trim();
-    if (value) return value;
-  }
-  return noonUtcFromDateOnly(item.briefingDate) ?? noonUtcFromDateOnly(item.insightDate);
-}
+export { briefingDetailPublishedIso };
 
 export function todayBriefingDetailIso(item: SignalApiTodayBriefing | null | undefined): string | null {
   return briefingDetailPublishedIso(item);

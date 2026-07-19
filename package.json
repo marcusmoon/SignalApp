@@ -21,7 +21,7 @@
     "server:dev": "npm --prefix server run dev",
     "server:worker": "npm --prefix server run worker",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test 'domain/**/*.test.ts'",
+    "test": "node --experimental-strip-types --test 'domain/**/*.test.ts' 'utils/**/*.test.ts'",
     "verify": "npm run typecheck && npm test"
   },
   "dependencies": {

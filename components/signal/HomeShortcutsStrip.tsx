@@ -1,11 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   HOME_SHORTCUT_CATALOG,
-  type HomeShortcutKey,
+  homeShortcutStableId,
+  type HomeShortcut,
+  type HomeShortcutCatalogKey,
 } from '@/constants/homeShortcuts';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
@@ -18,8 +20,15 @@ const GRID_GAP = 8;
 const TILE_MIN_HEIGHT = 58;
 
 type Props = {
-  keys: HomeShortcutKey[];
+  shortcuts: HomeShortcut[];
   selectedYmd: string;
+};
+
+type StripItem = {
+  id: string;
+  shortcut: HomeShortcut;
+  icon: ComponentProps<typeof FontAwesome>['name'];
+  label: string;
 };
 
 function resolveColumns(count: number, useTwoPane: boolean, containerWidth: number): number {
@@ -29,7 +38,7 @@ function resolveColumns(count: number, useTwoPane: boolean, containerWidth: numb
   return Math.min(2, count);
 }
 
-export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
+export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -38,10 +47,25 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
   const [containerWidth, setContainerWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const items = useMemo(
-    () => HOME_SHORTCUT_CATALOG.filter((row) => keys.includes(row.key)),
-    [keys],
-  );
+  const items = useMemo((): StripItem[] => {
+    return shortcuts.map((shortcut) => {
+      if (shortcut.type === 'communityPost') {
+        return {
+          id: homeShortcutStableId(shortcut),
+          shortcut,
+          icon: 'comment' as const,
+          label: shortcut.title?.trim() || t('homeShortcutBoardPost'),
+        };
+      }
+      const meta = HOME_SHORTCUT_CATALOG.find((row) => row.key === shortcut.type);
+      return {
+        id: homeShortcutStableId(shortcut),
+        shortcut,
+        icon: meta?.icon ?? 'external-link',
+        label: meta ? t(meta.titleId) : shortcut.type,
+      };
+    });
+  }, [shortcuts, t]);
 
   const columns = useMemo(
     () => resolveColumns(items.length, useTwoPane, containerWidth),
@@ -53,8 +77,8 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
     return (containerWidth - GRID_GAP * (columns - 1)) / columns;
   }, [columns, containerWidth]);
 
-  const openShortcut = useCallback(
-    (key: HomeShortcutKey) => {
+  const openCatalog = useCallback(
+    (key: HomeShortcutCatalogKey) => {
       switch (key) {
         case 'board':
           if (ipadNav.isAvailable) {
@@ -111,6 +135,21 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
     [ipadNav, router, selectedYmd],
   );
 
+  const openShortcut = useCallback(
+    (shortcut: HomeShortcut) => {
+      if (shortcut.type === 'communityPost') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showCommunityPost(shortcut.id, { drillFrom: 'home' });
+          return;
+        }
+        router.push(`/community/${encodeURIComponent(shortcut.id)}` as never);
+        return;
+      }
+      openCatalog(shortcut.type);
+    },
+    [ipadNav, openCatalog, router],
+  );
+
   if (items.length === 0) return null;
 
   return (
@@ -122,18 +161,18 @@ export function HomeShortcutsStrip({ keys, selectedYmd }: Props) {
       }}>
       {items.map((item) => (
         <Pressable
-          key={item.key}
-          onPress={() => openShortcut(item.key)}
+          key={item.id}
+          onPress={() => openShortcut(item.shortcut)}
           accessibilityRole="button"
-          accessibilityLabel={t(item.titleId)}
+          accessibilityLabel={item.label}
           style={({ pressed }) => [
             styles.tile,
             tileWidth != null ? { width: tileWidth } : styles.tileFallback,
             pressed && styles.tilePressed,
           ]}>
           <FontAwesome name={item.icon} size={scaleFont(17)} color={theme.green} />
-          <Text style={styles.label} numberOfLines={1}>
-            {t(item.titleId)}
+          <Text style={styles.label} numberOfLines={2}>
+            {item.label}
           </Text>
         </Pressable>
       ))}

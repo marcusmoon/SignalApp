@@ -125,9 +125,22 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - 시세·일봉·코인
   - US: `market_quotes_popular` / `market_quotes_watchlist` / `market_quotes_mcap*` (Finnhub)
   - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve). runner는 `marketLists`(·기존 `marketQuotes`)를 로드한 뒤 조회한다.
-  - 코인: `market_coins_top` (CoinGecko). 공개 `/v1/coins`에 `imageUrl`(markets `image`)을 실어 앱 로고에 쓴다.
+  - 코인: `market_coins_top` (CoinGecko) — 로고는 아래 「종목·코인 로고」
   - 일봉: `market_price_series_daily` (Yahoo). `listKeys`에 `korea_watchlist` 포함. KRX는 시세 Job이 저장한 `.KS`/`.KQ`를 재사용하고, 없으면 `.KS`→`.KQ` 순으로 조회한다. `/v1/stock-candles`는 DB miss 시 국내 6자리만 Yahoo live 폴백(Finnhub 아님).
 - `/v1/market-quotes`는 **DB 조회만** 한다. `refresh=1` provider 호출은 제거했다. 관심 추가도 시세 live lookup 없이 심볼 포맷만 검증한다. 국내 가격은 Job이 `market_quotes`에 채운 뒤 앱이 읽는다.
+
+### 종목·코인 로고 (서버)
+
+로고 **이미지 파일은 서버/앱에 저장하지 않는다.** URL만 쓰거나 CDN 패턴으로 조합한다.
+
+| 구분 | 소스 | 저장·API |
+|---|---|---|
+| 주식 (US·KR) | Parqet CDN — 앱이 티커로 URL 조합 (`…/logos/symbol/{TICKER}`, 국장 `.KS`→`.KQ`) | DB·API에 로고 필드 없음 |
+| 코인 | CoinGecko markets `image` | Job `market_coins_top`이 `coin_markets.payload.imageUrl`에 저장. 공개 `GET /v1/coins` → `imageUrl`. 구 payload는 `rawPayload.image` 폴백 |
+
+- normalize: `server/src/providers/market/coingecko.mjs`
+- 공개 shape: `server/src/db/repositories/marketRepository.mjs` → `publicCoinMarket`
+- 앱 표시 규칙은 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고
 
 ## 배포
 

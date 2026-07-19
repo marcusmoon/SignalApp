@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 
+import { SumTrailHelpSheet } from '@/components/games/SumTrailHelpSheet';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -20,12 +29,6 @@ import {
   type SumTrailDifficulty,
   type SumTrailState,
 } from '@/domain/games/sumTrail';
-import {
-  loadSumTrailHelpMode,
-  saveSumTrailHelpMode,
-  SUM_TRAIL_HELP_DEFAULT,
-  type SumTrailHelpMode,
-} from '@/services/sumTrailHelpPreference';
 
 const DIFFICULTIES: SumTrailDifficulty[] = ['easy', 'normal', 'hard'];
 
@@ -393,21 +396,30 @@ const cellStyles = StyleSheet.create({
 export function SumTrailGame({
   wide = false,
   split = false,
+  fill = false,
   viewportHeight = 800,
 }: {
   wide?: boolean;
   split?: boolean;
+  /** 폰·세로: 가용 영역을 채워 보드를 최대화 */
+  fill?: boolean;
   viewportHeight?: number;
 }) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  /** 폰: 보드 우선 · 와이드 세로: 여유 · 스플릿: 사이드 열 */
+  /** 밀도: 폰만 컴팩트. fill은 보드 최대화와 별개 */
   const compact = !wide && !split;
-  const boardMax = split
+  const [playArea, setPlayArea] = useState({ w: 0, h: 0 });
+  const measuredBoard =
+    playArea.w > 0 && playArea.h > 0
+      ? Math.floor(Math.min(playArea.w, playArea.h))
+      : 0;
+  const fallbackBoard = split
     ? Math.max(360, Math.min(560, Math.floor(viewportHeight * 0.62)))
     : wide
       ? 480
-      : Math.max(300, Math.min(392, Math.floor(viewportHeight * 0.42)));
+      : Math.max(320, Math.min(420, Math.floor(viewportHeight * 0.48)));
+  const boardMax = measuredBoard > 0 ? measuredBoard : fallbackBoard;
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, wide, split, compact, boardMax),
     [theme, scaleFont, wide, split, compact, boardMax],
@@ -416,31 +428,17 @@ export function SumTrailGame({
   const [state, setState] = useState<SumTrailState>(() => createSumTrailGame('normal'));
   const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
   const [flashKey, setFlashKey] = useState(0);
-  const [helpMode, setHelpMode] = useState<SumTrailHelpMode>(SUM_TRAIL_HELP_DEFAULT);
+  const [helpOpen, setHelpOpen] = useState(false);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boardPulse = useRef(new Animated.Value(1)).current;
   const boardShake = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadSumTrailHelpMode().then((mode) => {
-      if (!cancelled) setHelpMode(mode);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const setHelp = useCallback((mode: SumTrailHelpMode) => {
-    setHelpMode(mode);
-    void saveSumTrailHelpMode(mode);
-  }, []);
 
   const pathMap = useMemo(() => pathIndexMap(state.path), [state.path]);
   const sum = currentPathSum(state);
   const over = sum > state.target && state.target > 0;
   const progress = state.target > 0 ? sum / state.target : 0;
   const near = !over && progress >= 0.7 && sum > 0;
+  const largeCells = wide || split || boardMax >= 340;
 
   const clearFxTimer = useCallback(() => {
     if (fxTimer.current) {
@@ -532,6 +530,25 @@ export function SumTrailGame({
     });
   }, [triggerBoardFx]);
 
+  const onPlayAreaLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setPlayArea((prev) =>
+      Math.abs(prev.w - width) < 1 && Math.abs(prev.h - height) < 1
+        ? prev
+        : { w: width, h: height },
+    );
+  }, []);
+
+  const helpBtn = (
+    <Pressable
+      onPress={() => setHelpOpen(true)}
+      style={styles.helpShowBtn}
+      accessibilityRole="button"
+      accessibilityLabel={t('gameSumTrailHelpShowA11y')}>
+      <FontAwesome name="question-circle" size={16} color={theme.green} />
+    </Pressable>
+  );
+
   const difficultyRow = (
     <View style={styles.diffRow}>
       {DIFFICULTIES.map((d) => {
@@ -554,66 +571,8 @@ export function SumTrailGame({
           </Pressable>
         );
       })}
-      {!split && helpMode === 'hidden' ? (
-        <Pressable
-          onPress={() => setHelp('collapsed')}
-          style={styles.helpShowBtn}
-          accessibilityRole="button"
-          accessibilityLabel={t('gameSumTrailHelpShowA11y')}>
-          <FontAwesome name="question-circle" size={16} color={theme.green} />
-        </Pressable>
-      ) : null}
+      {helpBtn}
     </View>
-  );
-
-  const helpBand =
-    split || helpMode === 'hidden' ? null : (
-      <View style={[styles.heroBand, helpMode === 'collapsed' && styles.heroBandCollapsed]}>
-        <Pressable
-          onPress={() => setHelp(helpMode === 'expanded' ? 'collapsed' : 'expanded')}
-          style={styles.helpToggle}
-          accessibilityRole="button"
-          accessibilityLabel={
-            helpMode === 'expanded' ? t('gameSumTrailHelpCollapseA11y') : t('gameSumTrailHelpExpandA11y')
-          }
-          accessibilityState={{ expanded: helpMode === 'expanded' }}>
-          <View style={styles.heroIcon}>
-            <FontAwesome name="sitemap" size={compact ? 14 : 16} color={theme.green} />
-          </View>
-          <View style={styles.heroText}>
-            <View style={styles.helpTitleRow}>
-              <Text style={styles.kicker} numberOfLines={1}>
-                {helpMode === 'collapsed' ? t('gameSumTrailHowTo') : t('gameSumTrailKicker')}
-              </Text>
-              <FontAwesome
-                name={helpMode === 'expanded' ? 'chevron-up' : 'chevron-down'}
-                size={11}
-                color={theme.green}
-              />
-            </View>
-            {helpMode === 'expanded' ? <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text> : null}
-          </View>
-        </Pressable>
-        <Pressable
-          onPress={() => setHelp('hidden')}
-          style={styles.helpHideBtn}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={t('gameSumTrailHelpHideA11y')}>
-          {helpMode === 'expanded' && !compact ? (
-            <Text style={styles.helpHideText}>{t('gameSumTrailHelpHide')}</Text>
-          ) : (
-            <FontAwesome name="times" size={12} color={theme.textDim} />
-          )}
-        </Pressable>
-      </View>
-    );
-
-  const splitHelp = (
-    <>
-      <Text style={styles.kicker}>{t('gameSumTrailKicker')}</Text>
-      <Text style={styles.blurb}>{t('gameSumTrailBlurb')}</Text>
-    </>
   );
 
   const statsBlock = (
@@ -672,6 +631,7 @@ export function SumTrailGame({
       style={[
         styles.board,
         {
+          width: boardMax,
           transform: [{ scale: boardPulse }, { translateX: boardShake }],
           borderColor:
             state.status === 'failed'
@@ -717,7 +677,7 @@ export function SumTrailGame({
                 disabled={empty || state.status !== 'playing'}
                 theme={theme}
                 sf={scaleFont}
-                wide={wide || split}
+                wide={largeCells}
                 flashKey={selected ? flashKey : 0}
                 onPress={() => onTapCell({ r, c })}
                 a11yLabel={
@@ -824,31 +784,50 @@ export function SumTrailGame({
       </View>
     );
 
+  const helpSheet = <SumTrailHelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} />;
+
   if (split) {
     return (
       <View style={styles.splitRoot}>
-        <View style={styles.boardColumn}>{boardNode}</View>
+        <View style={styles.boardColumn} onLayout={onPlayAreaLayout}>
+          {boardNode}
+        </View>
         <View style={styles.sideColumn}>
-          {splitHelp}
           {difficultyRow}
           {statsBlock}
           {statusOrActions}
         </View>
+        {helpSheet}
+      </View>
+    );
+  }
+
+  if (fill || compact) {
+    return (
+      <View style={styles.fillRoot}>
+        {difficultyRow}
+        {statsBlock}
+        <View style={styles.playArea} onLayout={onPlayAreaLayout}>
+          {boardNode}
+        </View>
+        <View style={styles.footer}>{statusOrActions}</View>
+        {helpSheet}
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      {helpBand}
       {difficultyRow}
       {statsBlock}
-      {boardNode}
+      <View style={styles.playAreaStacked} onLayout={onPlayAreaLayout}>
+        {boardNode}
+      </View>
       {statusOrActions}
+      {helpSheet}
     </View>
   );
 }
-
 
 function makeStyles(
   theme: AppTheme,
@@ -858,71 +837,53 @@ function makeStyles(
   compact: boolean,
   boardMax: number,
 ) {
-  const gap = compact ? 10 : wide ? 16 : 14;
+  const gap = compact ? 8 : wide ? 16 : 14;
   return StyleSheet.create({
     root: {
       gap,
     },
+    fillRoot: {
+      flex: 1,
+      minHeight: 0,
+      gap,
+    },
+    playArea: {
+      flex: 1,
+      minHeight: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%',
+    },
+    playAreaStacked: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: boardMax,
+    },
+    footer: {
+      width: '100%',
+    },
     splitRoot: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'stretch',
       gap: 24,
       flex: 1,
-      minHeight: boardMax + 24,
+      minHeight: 0,
     },
     boardColumn: {
       flex: 1.15,
-      minWidth: 320,
-      maxWidth: boardMax + 40,
+      minWidth: 280,
+      minHeight: 0,
       alignItems: 'center',
+      justifyContent: 'center',
     },
     sideColumn: {
       flex: 1,
-      minWidth: 280,
+      minWidth: 260,
       maxWidth: 420,
-      gap: 14,
+      gap: 12,
       paddingTop: 4,
-    },
-    heroBand: {
-      flexDirection: 'row',
-      gap: compact ? 8 : 12,
-      alignItems: 'flex-start',
-      padding: compact ? 8 : wide ? 16 : 12,
-      borderRadius: UI_RADIUS_CARD_LG,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    heroBandCollapsed: {
-      paddingVertical: compact ? 6 : 8,
-      alignItems: 'center',
-    },
-    helpToggle: {
-      flex: 1,
-      flexDirection: 'row',
-      gap: compact ? 8 : 12,
-      alignItems: 'flex-start',
-      minWidth: 0,
-    },
-    helpTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexWrap: 'nowrap',
-    },
-    helpHideBtn: {
-      minWidth: 28,
-      height: 28,
-      paddingHorizontal: 6,
-      borderRadius: 8,
-      alignItems: 'center',
       justifyContent: 'center',
-      marginTop: compact ? 0 : 2,
-    },
-    helpHideText: {
-      fontSize: sf(11),
-      fontWeight: '600',
-      color: theme.textDim,
     },
     helpShowBtn: {
       width: compact ? 34 : 38,
@@ -934,33 +895,6 @@ function makeStyles(
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: 'auto',
-    },
-    heroIcon: {
-      width: compact ? 28 : 32,
-      height: compact ? 28 : 32,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    heroText: {
-      flex: 1,
-      gap: 4,
-      minWidth: 0,
-    },
-    kicker: {
-      fontSize: sf(compact ? 12 : 13),
-      fontWeight: '700',
-      color: theme.green,
-      letterSpacing: 0.3,
-      flexShrink: 1,
-    },
-    blurb: {
-      fontSize: sf(compact ? 12 : 13),
-      lineHeight: sf(compact ? 17 : 18),
-      color: theme.textMuted,
     },
     diffRow: {
       flexDirection: 'row',
@@ -998,10 +932,10 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: compact ? 8 : wide ? 14 : 10,
+      paddingVertical: compact ? 6 : wide ? 14 : 10,
       paddingHorizontal: compact ? 6 : 8,
       alignItems: 'center',
-      gap: 2,
+      gap: 1,
     },
     statBoxFocus: {
       borderColor: theme.greenBorder,
@@ -1048,8 +982,8 @@ function makeStyles(
     },
     board: {
       alignSelf: 'center',
-      width: '100%',
-      maxWidth: boardMax,
+      width: boardMax,
+      maxWidth: '100%',
       gap: compact ? 5 : wide ? 8 : 6,
       padding: compact ? 8 : wide ? 14 : 10,
       borderRadius: UI_RADIUS_CARD_LG,
@@ -1152,3 +1086,4 @@ function makeStyles(
     },
   });
 }
+

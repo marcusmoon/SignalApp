@@ -153,10 +153,6 @@ export const en = {
   gameSumTrailBlurb:
     'Tap adjacent cells to build a trail. Hit the target sum to clear them—numbers above fall down. Clear enough trails to finish the level.',
   gameSumTrailHowTo: 'How to play',
-  gameSumTrailHelpExpandA11y: 'Expand how to play',
-  gameSumTrailHelpCollapseA11y: 'Collapse how to play',
-  gameSumTrailHelpHide: 'Hide',
-  gameSumTrailHelpHideA11y: 'Hide how to play',
   gameSumTrailHelpShowA11y: 'Show how to play',
   gameSumTrailDiffEasy: 'Easy',
   gameSumTrailDiffNormal: 'Normal',

@@ -151,11 +151,7 @@ export const ko = {
   gameSumTrailBlurb:
     '칸을 이어 경로를 만듭니다. 합이 목표와 같으면 사라지고, 위 숫자가 내려옵니다. 목표 횟수만큼 지우면 레벨 클리어.',
   gameSumTrailHowTo: '플레이 방법',
-  gameSumTrailHelpExpandA11y: '설명 펼치기',
-  gameSumTrailHelpCollapseA11y: '설명 접기',
-  gameSumTrailHelpHide: '숨기기',
-  gameSumTrailHelpHideA11y: '설명 숨기기',
-  gameSumTrailHelpShowA11y: '설명 보기',
+  gameSumTrailHelpShowA11y: '플레이 방법 보기',
   gameSumTrailDiffEasy: '쉬움',
   gameSumTrailDiffNormal: '보통',
   gameSumTrailDiffHard: '어려움',

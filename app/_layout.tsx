@@ -243,6 +243,8 @@ function RootLayoutNav() {
           'more-disclosures': t('tabDisclosures'),
           'more-youtube': t('tabYoutube'),
           'more-it-news': t('tabItNews'),
+          'game-center': t('screenGameCenter'),
+          'games/sum-trail': t('gameSumTrailTitle'),
           'market-briefing': t('ipadHomeSignalTitle'),
           'etf-insights': t('homeEtfInsightTitle'),
           'etf-insight': t('etfInsightDetailKicker'),

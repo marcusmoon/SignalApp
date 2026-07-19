@@ -115,6 +115,7 @@ npm run verify   # tsc + domain unit tests (CI)
 | 게시판 | `app/(tabs)/board.tsx`, `app/more-board.tsx`, `components/community/BoardContent.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
+| 게임센터 | `app/game-center.tsx`, `app/games/sum-trail.tsx`, `domain/games/sumTrail/` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
 | 알림함 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |

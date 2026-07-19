@@ -52,6 +52,11 @@ const HUB_META: Record<
     icon: 'pie-chart',
     titleId: 'moreHubEtfShort',
   },
+  gameCenter: {
+    href: '/game-center' as Href,
+    icon: 'gamepad',
+    titleId: 'screenGameCenter',
+  },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
 };
 
@@ -197,6 +202,10 @@ export default function MoreHubScreen() {
           return;
         }
         router.push('/account' as never);
+        return;
+      }
+      if (item === 'gameCenter') {
+        router.push('/game-center' as never);
       }
     },
     [ipadNav, router, useTwoPane],

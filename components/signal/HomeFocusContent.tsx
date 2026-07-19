@@ -23,6 +23,7 @@ import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
 import {
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
@@ -33,6 +34,10 @@ import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import {
+  HOME_SHORTCUTS_DEFAULT,
+  type HomeShortcutKey,
+} from '@/constants/homeShortcuts';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
@@ -102,6 +107,10 @@ import {
   loadHomeWatchlistDisplayCount,
   subscribeHomeWatchlistDisplayCountChanged,
 } from '@/services/homeWatchlistDisplayPreference';
+import {
+  loadHomeShortcuts,
+  subscribeHomeShortcutsChanged,
+} from '@/services/homeShortcutsPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
@@ -290,6 +299,7 @@ export function HomeFocusContent({
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [sectorFlowDisplayCount, setSectorFlowDisplayCount] = useState(HOME_SECTOR_FLOW_DISPLAY_DEFAULT);
+  const [homeShortcuts, setHomeShortcuts] = useState<HomeShortcutKey[]>([...HOME_SHORTCUTS_DEFAULT]);
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
@@ -494,14 +504,16 @@ export function HomeFocusContent({
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   const reloadHomeDisplayPrefs = useCallback(async () => {
-    const [newsFlow, watchlist, sectorFlow] = await Promise.all([
+    const [newsFlow, watchlist, sectorFlow, shortcuts] = await Promise.all([
       loadHomeNewsFlowDisplayCount(),
       loadHomeWatchlistDisplayCount(),
       loadHomeSectorFlowDisplayCount(),
+      loadHomeShortcuts(),
     ]);
     setNewsFlowDisplayCount(newsFlow);
     setWatchlistDisplayCount(watchlist);
     setSectorFlowDisplayCount(sectorFlow);
+    setHomeShortcuts(shortcuts);
     setHomeDisplayPrefsReady(true);
   }, []);
 
@@ -515,6 +527,9 @@ export function HomeFocusContent({
         void reloadHomeDisplayPrefs();
       }),
       subscribeHomeSectorFlowDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+      subscribeHomeShortcutsChanged(() => {
         void reloadHomeDisplayPrefs();
       }),
     ];
@@ -825,6 +840,13 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader title={t('ipadHomeCalendarTitle')} />
               {renderCalendarChips()}
+            </View>
+          ) : null}
+
+          {homeShortcuts.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('homeShortcutsTitle')} />
+              <HomeShortcutsStrip keys={homeShortcuts} selectedYmd={selectedYmd} />
             </View>
           ) : null}
 

@@ -338,6 +338,8 @@ export type SignalApiMarketQuote = {
   displaySymbol?: string | null;
   krxSymbol?: string | null;
   name: string | null;
+  /** CoinGecko 등 서버가 준 로고 URL (주식은 보통 없음 → Parqet) */
+  imageUrl?: string | null;
   currentPrice: number | null;
   change: number | null;
   changePercent: number | null;
@@ -371,6 +373,8 @@ export type SignalApiCoinMarket = {
   providerItemId: string;
   symbol: string;
   name: string;
+  /** CoinGecko markets `image` */
+  imageUrl?: string | null;
   currentPrice: number | null;
   marketCap: number | null;
   change24h: number | null;

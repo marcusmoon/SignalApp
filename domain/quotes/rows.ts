@@ -9,6 +9,8 @@ export type QuoteRow = {
   name?: string;
   quote: SignalApiMarketQuote | null;
   error?: string;
+  /** 서버 제공 로고 (코인). 없으면 SymbolLogo가 Parqet 시도 */
+  imageUrl?: string | null;
 };
 
 export function isKoreaSymbol(symbol: string): boolean {
@@ -100,6 +102,7 @@ export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApi
     segment: 'coin',
     symbol: item.symbol,
     name: item.name,
+    imageUrl: item.imageUrl ?? null,
     currentPrice: Number.isFinite(c) ? c : null,
     change: d,
     changePercent: dp,
@@ -118,6 +121,7 @@ export function mapSignalQuoteToRow(item: SignalApiMarketQuote): QuoteRow {
     symbol: item.displaySymbol || item.symbol,
     name: item.name || undefined,
     quote: signalMarketQuoteHasValidPrice(item) ? item : null,
+    imageUrl: item.imageUrl ?? null,
   };
 }
 
@@ -135,13 +139,15 @@ export function quoteLookupKeys(item: SignalApiMarketQuote, row: QuoteRow): stri
 }
 
 export function mapSignalCoinToRow(item: SignalApiCoinMarket): QuoteRow {
+  const imageUrl = item.imageUrl ?? null;
   const price = item.currentPrice;
   if (typeof price !== 'number' || !Number.isFinite(price)) {
-    return { symbol: item.symbol || '—', name: item.name, quote: null };
+    return { symbol: item.symbol || '—', name: item.name, quote: null, imageUrl };
   }
   return {
     symbol: item.symbol,
     name: item.name,
     quote: mapCoinToSignalMarketQuote(item),
+    imageUrl,
   };
 }

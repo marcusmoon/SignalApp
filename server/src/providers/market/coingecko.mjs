@@ -2,12 +2,14 @@ import { getProviderSetting } from '../../providerSettings.mjs';
 
 function normalizeCoin(raw) {
   const symbol = String(raw.symbol || '').trim().toUpperCase();
+  const imageUrl = String(raw.image || '').trim() || null;
   return {
     id: `coin-market-${String(raw.id || symbol).trim()}`,
     provider: 'coingecko',
     providerItemId: String(raw.id || symbol).trim(),
     symbol,
     name: String(raw.name || symbol).trim(),
+    imageUrl,
     currentPrice: typeof raw.current_price === 'number' ? raw.current_price : null,
     marketCap: typeof raw.market_cap === 'number' ? raw.market_cap : null,
     change24h: typeof raw.price_change_24h === 'number' ? raw.price_change_24h : null,

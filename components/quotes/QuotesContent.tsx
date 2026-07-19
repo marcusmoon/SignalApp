@@ -488,7 +488,7 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  <SymbolLogo symbol={r.symbol} size={28} />
+                  <SymbolLogo symbol={r.symbol} imageUrl={r.imageUrl} size={28} />
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
                     <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                       {titleText}

@@ -322,7 +322,7 @@ function BoardCell({
   }, [flashKey, selected, scale]);
 
   if (empty) {
-    return <View style={[cellStyles.cell, cellStyles.empty]} />;
+    return <View style={[cellStyles.cell, cellStyles.empty, { flex: 1, alignSelf: 'stretch' }]} />;
   }
 
   let bg = tint.bg;
@@ -339,7 +339,7 @@ function BoardCell({
   }
 
   return (
-    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+    <Animated.View style={{ flex: 1, alignSelf: 'stretch', transform: [{ scale }] }}>
       <Pressable
         disabled={disabled}
         onPress={onPress}
@@ -364,7 +364,7 @@ function BoardCell({
 const cellStyles = StyleSheet.create({
   cell: {
     flex: 1,
-    aspectRatio: 1,
+    alignSelf: 'stretch',
     borderRadius: UI_RADIUS_CARD,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -632,6 +632,7 @@ export function SumTrailGame({
         styles.board,
         {
           width: boardMax,
+          height: boardMax,
           transform: [{ scale: boardPulse }, { translateX: boardShake }],
           borderColor:
             state.status === 'failed'
@@ -983,7 +984,9 @@ function makeStyles(
     board: {
       alignSelf: 'center',
       width: boardMax,
+      height: boardMax,
       maxWidth: '100%',
+      flexShrink: 0,
       gap: compact ? 5 : wide ? 8 : 6,
       padding: compact ? 8 : wide ? 14 : 10,
       borderRadius: UI_RADIUS_CARD_LG,
@@ -993,6 +996,7 @@ function makeStyles(
       position: 'relative',
     },
     boardRow: {
+      flex: 1,
       flexDirection: 'row',
       gap: compact ? 5 : wide ? 8 : 6,
     },

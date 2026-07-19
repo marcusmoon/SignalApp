@@ -49,14 +49,21 @@ export function homeShortcutDisplay(
   t: Translate,
 ): HomeShortcutDisplay {
   if (shortcut.type === 'board') {
-    const detail =
-      shortcut.source === COMMUNITY_SOURCE_ALL
-        ? t('communitySourceAll')
-        : t(communitySourceLabelId(shortcut.source));
+    const group = t(GROUP_TITLE.board);
+    // 타일 라벨: all → 상위명(게시판). 그 외 → 하위 채널명만(세이브·미주미).
+    if (shortcut.source === COMMUNITY_SOURCE_ALL) {
+      return {
+        icon: HOME_SHORTCUT_TYPE_ICON.board,
+        label: group,
+        groupLabel: group,
+        detailLabel: t('communitySourceAll'),
+      };
+    }
+    const detail = t(communitySourceLabelId(shortcut.source));
     return {
       icon: HOME_SHORTCUT_TYPE_ICON.board,
-      label: `${t(GROUP_TITLE.board)} · ${detail}`,
-      groupLabel: t(GROUP_TITLE.board),
+      label: detail,
+      groupLabel: group,
       detailLabel: detail,
     };
   }

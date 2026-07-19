@@ -79,6 +79,24 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 - **허브 메뉴 설명**(`accountHub*Desc`)과 설정 화면 lead(`settings*Lead`) 문구는 동일 의미로 유지한다.
 - **소셜 연동**: 해제 전 확인 다이얼로그. 비밀번호 미설정 + 마지막 소셜이면 해제 불가([SOCIAL-AUTH.md](./SOCIAL-AUTH.md)). 서버 비활성 공급자는 목록에 「준비 중」으로 표시.
 
+## 홈 바로가기
+
+UI 규칙은 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) 홈 섹션. 구현 위치:
+
+| 역할 | 경로 |
+|---|---|
+| 모델·기본값·최대 6 | `constants/homeShortcuts.ts` · `domain/home/shortcuts.ts` |
+| 타일·설정 라벨 | `domain/home/shortcutDisplay.ts` |
+| 저장 | `services/homeShortcutsPreference.ts` (`@signal/home_shortcuts_v2`) |
+| 홈 스트립 | `components/signal/HomeShortcutsStrip.tsx` |
+| 설정 UI | `app/settings.tsx` 표시 탭 — **홈 바로가기** 카드(개수 카드와 분리) |
+
+내비 (`showBoard` / `showWatchlist` / `showNewsFeed`, `drillFrom: 'home'`):
+
+- **폰**: `/more-board?lock=1` · `/watchlist` · `/home-news` (Stack 백).
+- **wide**: overlay + `WideSubpaneHeader`. 보드 숏컷은 `boardSourceLocked` / `BoardContent.lockedSource` — 채널 세그먼트·사이드바 서브탭 숨김.
+- 보드 라벨: `all` → `screenBoard`(게시판), 채널 → 하위명만 (`homeShortcutDisplay`).
+
 ## 외부 링크
 
 종목 상세·더보기·유튜브 등 **모든 외부 URL**은 아래 스택을 통한다. `Linking.openURL` / `WebBrowser`를 화면에서 직접 호출하지 않는다.

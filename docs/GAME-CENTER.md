@@ -51,6 +51,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | UI | `components/games/SumTrailGame.tsx` |
 | 난이도 | `easy` · `normal` · `hard` (`levelConfig`) |
 | 조작 | 칸 탭으로 경로 연장 · 마지막 칸 재탭/Undo로 취소 · 경로 지우기 · 레벨 다시 |
+| 연출 | 숫자 구간별 타일 색 · 합 진행 바 · 목표 근접(경고)/초과(위험) 틴트 · 맞춤·레벨 클리어 버스트 오버레이 |
 
 생성 시 시드로 유효 경로를 하나 골라 목표를 정한다 (`pickTarget`). 보드가 비거나 다음 목표를 못 고르면 레벨 클리어로 처리한다.
 

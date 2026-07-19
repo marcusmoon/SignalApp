@@ -118,6 +118,7 @@ export function DigestDetailContent({
     <BriefingDetailShell
       embedded={embedded}
       onBack={onBack}
+      chromeTitle={t(kind === 'news' ? 'newsIssuesTitle' : 'disclosureFlowTitle')}
       loading={loading}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}

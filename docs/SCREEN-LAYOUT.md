@@ -98,7 +98,7 @@ SafeAreaView edges={['top']}
 - **뉴스·공시 고정 스택**: 세그먼트는 `submenuStrip`(카드 배경), 다이제스트는 `digestSlot`(배경 없음)으로 분리. `fixedStack` 내부 gap은 `COMFORT_TOP_FIXED_GAP`(12).
 - **날짜 바 패턴**: 홈·시장·캘린더·뉴스/공시 플로우 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치. **C1**: 바깥 셸 1개만(보더·`bgElevated`), 안쪽 화살표/날짜/오늘 컨트롤은 보더·배경 없이 Ionicons + 텍스트. 뉴스·공시 플로우 리스트는 시장 브리핑과 같이 **날짜 바 → 세그먼트** 순서로 `topFixed`에 둔다.
 - **설정**: More 탭에는 없음. **My info** 허브의 「환경 설정」에서 진입. iPhone은 `app/settings?from=account` — 이때 설정 상단 pill 서브탭은 숨긴다. 웹·iPad는 사이드바 **게시판 아래 내 정보**로 진입하고, 퀵 링크는 사이드바 하단 도크(`SidebarReferenceLinksDock`)에 둔다. More 항목은 사이드바에 없음.
-- **단건 상세** (`BriefingDetailShell`: `today-briefing` · `market-briefing` · `news-digest` · `disclosure-digest` · `etf-insight`): Stack 제목·`dateBar` 없음(뒤로만 + 본문 헤드라인). 시장 탭 허브(날짜·회차)와 분리된 장중 단건도 동일. wide는 `WideSubpaneHeader` chevron만.
+- **홈·More 드릴 헤더** (숏컷·뉴스/섹터 흐름·브리핑 상세 공통): phone은 `signalDrillStackOptions`(`PhoneHeaderBackButton` + 제목), wide는 `WideSubpaneHeader`(동일 chevron + 제목, 스크롤 밖). 단건 상세(`BriefingDetailShell`) 제목 = 섹션명(`chromeTitle`: 뉴스 흐름·섹터 흐름 등), 본문 헤드라인 = 단건 제목. `dateBar` 없음.
 
 ## Wide 우측 pane 내비 (iPad · 넓은 웹)
 
@@ -129,7 +129,7 @@ wide 우측 pane 규칙을 **적용하지 않는다.** 탭바·Expo Stack·화�
 | 진입 | 뒤로 크롬 |
 |---|---|
 | More → 보드·공시·My info | **같은 root Stack** — native 헤더 + `PhoneHeaderBackButton`(chevron만) |
-| 홈 → 시장 브리핑·보드 | root Stack (`/market-briefing`, `/more-board?lock=1`) — 동일 `PhoneHeaderBackButton`. 보드 숏컷은 채널 세그먼트 없음 |
+| 홈 → 숏컷·뉴스/섹터 흐름·브리핑 | root Stack — 모두 `signalDrillStackOptions`(chevron+제목). 보드 숏컷은 채널 세그먼트 없음 |
 | My info → 프로필·비밀번호·소셜 | 같은 Stack 헤더 + `PhoneHeaderBackButton` → 허브 |
 | 홈 등에서 시장 탭 직접 | `SignalHeader` (하단 탭 진입 — Stack 드릴인 아님) |
 

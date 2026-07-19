@@ -37,6 +37,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -100,9 +101,12 @@ function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmen
     : 'watch';
 }
 
-function lockedSegmentTitleKey(key: QuoteSegmentKey): MessageId {
-  return key === 'watch' ? 'homeFocusWatchTitle' : QUOTE_SEGMENT_LABEL[key];
-}
+const HOME_TILE_QUOTES: Record<QuoteSegmentKey, MessageId> = {
+  watch: 'homeTileQuotesWatch',
+  popular: 'homeTileQuotesPopular',
+  mcap: 'homeTileQuotesMcap',
+  coin: 'homeTileQuotesCoin',
+};
 
 export type QuotesContentProps = {
   /** Wide overlay / stack embed — no SignalHeader; optional WideSubpaneHeader via onBack */
@@ -679,7 +683,7 @@ export function QuotesContent({
   );
 
   const subpaneTitle = lockedSegment
-    ? t(lockedSegmentTitleKey(lockedSegment))
+    ? homeShortcutCompoundLabel(t('tabQuotes'), t(HOME_TILE_QUOTES[lockedSegment]))
     : t('homeFocusWatchTitle');
 
   return (

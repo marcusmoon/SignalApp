@@ -127,6 +127,7 @@ export function MarketBriefingDetailContent({
     <BriefingDetailShell
       embedded={embedded}
       onBack={onBack}
+      chromeTitle={t('ipadHomeSignalTitle')}
       loading={loading}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}

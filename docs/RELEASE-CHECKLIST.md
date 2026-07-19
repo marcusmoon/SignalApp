@@ -7,13 +7,13 @@
 - [ ] IT 뉴스: More(iPhone)·사이드바(wide, 내 정보 위) 진입, GeekNews 수집분 표시
 - [ ] 퀵 설정 → More settings: iPhone·iPad 모두 설정 pill 탭 표시 / My info 진입은 단일 탭
 - [ ] 홈 바로가기: 보드·시세/뉴스 세그먼트 다중 선택·드래그 순서·최대 6. 홈 개수 카드와 분리
-- [ ] 홈 바로가기 진입 화면 상단 백(폰 Stack / wide WideSubpaneHeader) → 홈 복귀
+- [ ] 홈 드릴 헤더 공통: 숏컷·뉴스 흐름·섹터 흐름·브리핑 상세 모두 chevron+섹션명 (phone Stack / wide WideSubpaneHeader) → 홈 복귀
 - [ ] 홈 숏컷 타일 라벨 한 줄: 기본→상위만, 그 외→`상위·하위`(예: 시세·코인). 보드 숏컷 진입 시 채널 메뉴 없음 (More·탭은 유지)
 - [ ] 홈 장중 히어로 → `/market-briefing` 상세. 오늘 정리 히어로 → `/today-briefing`. 섹터 흐름 → `/etf-insight`
 - [ ] 홈 뉴스 흐름 행 · 뉴스/공시 목록 행 → `/news-digest`·`/disclosure-digest` 단건 상세. 오늘 정리 본문 없으면 히어로 미노출
 - [ ] 브리핑 상세(오늘 정리·장중·ETF·다이제스트): 공통 셸(뒤로+헤드라인+lead+섹션 카드), 가독성·구조 일치
 - [ ] 홈 섹션 헤더 `>` 없음(목록은 각 메뉴)
-- [ ] 알림→장중: 날짜바·회차 세그먼트·Stack 제목 없음(해당 회차 본문만). 알림→다이제스트/오늘정리/ETF: dateBar·Stack 제목 없음
+- [ ] 알림→장중/다이제스트/오늘정리/ETF: dateBar·회차 세그먼트 없음. 공통 드릴 헤더(섹션명)+본문 헤드라인
 - [ ] 홈 섹션 표기 **뉴스 흐름** (메뉴 탭 **뉴스**와 구분)
 - [ ] 시장 탭: 날짜·회차(미장·장전·장중·마감), 브리핑 본문·종목 가격 표시
 - [ ] 피드 PTR: 당겨서 새로고침 시 스크롤 위치 유지 ([FEED-INTERACTION.md](./FEED-INTERACTION.md))

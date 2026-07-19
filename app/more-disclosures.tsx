@@ -2,7 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 
 import DisclosuresScreen from './(tabs)/disclosures';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
 import { useLocale } from '@/contexts/LocaleContext';
 
@@ -15,11 +15,10 @@ export default function MoreDisclosuresScreen() {
     <PhoneMoreStackChromeProvider>
       <BottomTabBarHeightContext.Provider value={0}>
         <Stack.Screen
-          options={{
+          options={signalDrillStackOptions({
             title: t('tabDisclosures'),
-            headerBackVisible: false,
-            headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-          }}
+            onBack: () => router.back(),
+          })}
         />
         <DisclosuresScreen />
       </BottomTabBarHeightContext.Provider>

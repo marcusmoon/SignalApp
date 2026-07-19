@@ -67,12 +67,12 @@ slide-up Modal 시트(다이제스트 스트립 「출처」·퀵 설정·필터
 | 홈 뉴스 흐름 행 · 뉴스/공시 목록 행 | **단건 상세** (`/news-digest` · `/disclosure-digest`) | 탭한 그 항목의 본문·출처 |
 | 홈 히어로(오늘 정리·장중) · 섹터 흐름 카드 | **상세** (`/today-briefing` · `/market-briefing` · `/etf-insight`) | 긴 본문 — 시트 70% 스크롤 지양 |
 | 홈 섹션 `>` | 없음 | 목록·탭은 시장·시세·더보기·사이드바 |
-| 알림함·푸시 | **단건 상세** (날짜바·회차 세그먼트·Stack 제목 없음 — 뒤로만 + 본문) | 알림이 가리킨 그 정보만 |
+| 알림함·푸시 | **단건 상세** (날짜바·회차 없음 — 공통 드릴 헤더(섹션명) + 본문 헤드라인) | 알림이 가리킨 그 정보만 |
 | 다이제스트 스트립 「출처」·퀵 설정·필터·날짜 | 바텀 시트 | 짧은 보조 UI |
 
 레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 redirect한다.
 
-**단건 상세 공통 셸** (`BriefingDetailShell`): Stack 제목·`dateBar` 없음 → chevron 뒤로 + 본문 헤드라인 + leadPanel(초록 tint) + `sectionFeedCard` 섹션. 오늘 정리·장중·ETF·뉴스/공시 다이제스트가 동일 뼈대.
+**단건 상세 공통 셸** (`BriefingDetailShell`): 홈 숏컷과 **동일 드릴 헤더** — `signalDrillStackOptions` / `WideSubpaneHeader`(chevron + 섹션명 `chromeTitle`). `dateBar` 없음. 본문 헤드라인(단건 제목) + leadPanel(초록 tint) + `sectionFeedCard`. 오늘 정리·장중·ETF·뉴스/공시 다이제스트가 동일 뼈대.
 
 | `UI_RADIUS_DIGEST_*` | 12 / 10 | 다이제스트 카드 |
 
@@ -247,7 +247,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 브리핑·다이제스트 단건 상세
 
-공통: `BriefingDetailShell` — Stack 제목·`dateBar` 없음(뒤로만). 본문 헤드라인이 제목.
+공통: `BriefingDetailShell` — 헤더(뒤로+섹션명)는 숏컷·플로우와 동일. `dateBar` 없음. 본문 헤드라인 = 단건 제목.
 
 | 화면 | 진입 | 본문 블록 |
 |---|---|---|
@@ -274,7 +274,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 컴포넌트 | 용도 |
 |---|---|
 | `SignalHeader` | iPhone 탭 상단 / wide 전역(고정). 맨 우측 **options-outline** → `QuickSettingsSheet`(언어·화면 모드 · More settings) |
-| `BriefingDetailShell` | 단건 브리핑·다이제스트 상세 공통 셸 (뒤로 + 헤드라인 + 본문) |
+| `BriefingDetailShell` | 단건 상세 공통 셸 (공통 드릴 헤더 + 본문 헤드라인) |
+| `signalDrillStackOptions` | phone Stack 드릴 헤더 옵션 (chevron + 제목) |
 | `QuickSettingsSheet` / `DigestSourcesSheet` | 바텀 시트 — `BOTTOM_SHEET_MAX_HEIGHT` 70% (스트립 출처·퀵 설정 등) |
 | `ItNewsFeedPanel` | IT 뉴스 리스트 (`category=it`) |
 | `WideSubpaneHeader` | wide 우측 pane **드릴인** — chevron + 제목 (`PhoneHeaderBackButton`) |

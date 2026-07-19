@@ -3,18 +3,26 @@ import { BottomTabBarHeightContext } from 'expo-router/js-tabs';
 import { useMemo } from 'react';
 
 import { WideOverlayRouteRedirect } from '@/components/layout/WideOverlayRouteRedirect';
-import { PhoneHeaderBackButton } from '@/components/layout/PhoneHeaderBackButton';
+import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import { LegacyNewsFeedScreen } from '@/components/news/LegacyNewsFeedScreen';
 import { DEFAULT_NEWS_SEGMENT, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
 import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
 import { useLocale } from '@/contexts/LocaleContext';
-import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
 function parseSegment(raw: string | undefined): NewsSegmentKey {
   return parseNewsSegmentKey(raw) ?? DEFAULT_NEWS_SEGMENT;
 }
+
+const HOME_TILE_NEWS: Record<NewsSegmentKey, 'homeTileNewsGlobal' | 'homeTileNewsKorea' | 'homeTileNewsCrypto' | 'homeTileNewsIt' | 'homeTileNewsVideo'> = {
+  global: 'homeTileNewsGlobal',
+  korea: 'homeTileNewsKorea',
+  crypto: 'homeTileNewsCrypto',
+  it: 'homeTileNewsIt',
+  video: 'homeTileNewsVideo',
+};
 
 /** 홈 숏컷 → 뉴스 세그먼트 드릴 + 백 */
 export default function HomeNewsScreen() {
@@ -31,15 +39,16 @@ export default function HomeNewsScreen() {
     return <WideOverlayRouteRedirect kind="news-feed" params={{ segment }} />;
   }
 
+  const title = homeShortcutCompoundLabel(t('tabNews'), t(HOME_TILE_NEWS[segment]));
+
   return (
     <PhoneMoreStackChromeProvider>
       <BottomTabBarHeightContext.Provider value={0}>
         <Stack.Screen
-          options={{
-            title: t(NEWS_SEGMENT_LABEL[segment]),
-            headerBackVisible: false,
-            headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
-          }}
+          options={signalDrillStackOptions({
+            title,
+            onBack: () => router.back(),
+          })}
         />
         <LegacyNewsFeedScreen stackChrome lockedSegment={segment} />
       </BottomTabBarHeightContext.Provider>

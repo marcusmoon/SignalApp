@@ -11,10 +11,12 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | **더보기** 허브 타일 | `gameCenter` → `/game-center` |
 | 게임센터 카드 | 개별 게임 스택 화면 (예: `/games/sum-trail`) |
 
-- 허브 키·기본 순서: `constants/moreHubOrder.ts` (`gameCenter`는 ETF 뒤·게시판 앞)
-- 저장 순서 정규화: `domain/moreHub/normalizeMoreHubOrder` — 기존 저장에 키가 없으면 게시판 앞에 삽입
-- iPhone·웹: root Stack 드릴 (`signalDrillStackOptions`)
-- iPad·2-pane: 더보기에서 `/game-center`로 push (탭 전환 아님)
+- 허브 키·기본 순서: `constants/moreHubOrder.ts` (`gameCenter`는 게시판 바로 뒤)
+- 저장 순서 정규화: `domain/moreHub/normalizeMoreHubOrder` — 없으면 게시판 뒤에 삽입, 예전에 앞이던 저장분도 뒤로 이동
+- iPhone: 더보기 허브 타일 → `/game-center`
+- iPad·웹: 사이드바 **게시판 다음** 항목 → `/game-center` (`SignalSidebarTabBar`)
+- iPhone·웹 폰: root Stack 드릴 (`signalDrillStackOptions`)
+- iPad·2-pane: 사이드바에서 진입 (더보기 허브에는 노출하지 않음)
 
 ## 디렉터리
 

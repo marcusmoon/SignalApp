@@ -13,8 +13,8 @@ export const MORE_HUB_ROUTE_ORDER_DEFAULT_NORMALIZED: MoreHubRouteKeyNormalized[
   'account',
   'disclosures',
   'etfBriefing',
-  'gameCenter',
   'board',
+  'gameCenter',
 ];
 
 function migrateHubKey(raw: unknown): MoreHubRouteKeyNormalized | null {
@@ -32,6 +32,17 @@ function migrateHubKey(raw: unknown): MoreHubRouteKeyNormalized | null {
   return null;
 }
 
+/** 게임센터는 게시판 바로 뒤에 둔다 (이전에 앞에 있던 저장분도 이동). */
+function ensureGameCenterAfterBoard(out: MoreHubRouteKeyNormalized[]): void {
+  const gcIdx = out.indexOf('gameCenter');
+  const boardIdx = out.indexOf('board');
+  if (gcIdx < 0 || boardIdx < 0) return;
+  if (gcIdx === boardIdx + 1) return;
+  out.splice(gcIdx, 1);
+  const nextBoardIdx = out.indexOf('board');
+  out.splice(nextBoardIdx + 1, 0, 'gameCenter');
+}
+
 /** 빠진 키를 기본 순서 기준으로 끼워 넣는다. */
 function insertMissingKey(
   out: MoreHubRouteKeyNormalized[],
@@ -39,9 +50,16 @@ function insertMissingKey(
   key: MoreHubRouteKeyNormalized,
 ): void {
   if (seen.has(key)) return;
-  if (key === 'etfBriefing' || key === 'gameCenter') {
+  if (key === 'etfBriefing') {
     const boardIdx = out.indexOf('board');
     if (boardIdx >= 0) out.splice(boardIdx, 0, key);
+    else out.push(key);
+    seen.add(key);
+    return;
+  }
+  if (key === 'gameCenter') {
+    const boardIdx = out.indexOf('board');
+    if (boardIdx >= 0) out.splice(boardIdx + 1, 0, key);
     else out.push(key);
     seen.add(key);
     return;
@@ -66,5 +84,6 @@ export function normalizeMoreHubOrderRaw(raw: unknown): MoreHubRouteKeyNormalize
   for (const k of defaults) {
     insertMissingKey(out, seen, k);
   }
+  ensureGameCenterAfterBoard(out);
   return out;
 }

@@ -229,7 +229,8 @@ export default function MoreHubScreen() {
               item !== 'account' &&
               item !== 'board' &&
               item !== 'disclosures' &&
-              item !== 'etfBriefing',
+              item !== 'etfBriefing' &&
+              item !== 'gameCenter',
           )
         : order,
     [order, useTwoPane],

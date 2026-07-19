@@ -18,31 +18,38 @@ describe('normalizeMoreHubOrderRaw', () => {
   it('migrates todayBriefing → disclosures and drops settings', () => {
     assert.deepEqual(
       normalizeMoreHubOrderRaw(['account', 'todayBriefing', 'board', 'settings']),
-      ['account', 'disclosures', 'etfBriefing', 'gameCenter', 'board'],
+      ['account', 'disclosures', 'etfBriefing', 'board', 'gameCenter'],
     );
   });
 
-  it('inserts etfBriefing and gameCenter before board when missing', () => {
+  it('inserts etfBriefing before board and gameCenter after board when missing', () => {
     assert.deepEqual(normalizeMoreHubOrderRaw(['account', 'disclosures', 'board']), [
       'account',
       'disclosures',
       'etfBriefing',
-      'gameCenter',
       'board',
+      'gameCenter',
     ]);
   });
 
-  it('inserts gameCenter before board when only gameCenter missing', () => {
+  it('inserts gameCenter after board when only gameCenter missing', () => {
     assert.deepEqual(
       normalizeMoreHubOrderRaw(['account', 'disclosures', 'etfBriefing', 'board']),
-      ['account', 'disclosures', 'etfBriefing', 'gameCenter', 'board'],
+      ['account', 'disclosures', 'etfBriefing', 'board', 'gameCenter'],
     );
   });
 
-  it('preserves custom order when gameCenter already present', () => {
+  it('moves legacy gameCenter-before-board to after board', () => {
+    assert.deepEqual(
+      normalizeMoreHubOrderRaw(['account', 'disclosures', 'etfBriefing', 'gameCenter', 'board']),
+      ['account', 'disclosures', 'etfBriefing', 'board', 'gameCenter'],
+    );
+  });
+
+  it('places gameCenter right after board even if custom order had it earlier', () => {
     assert.deepEqual(
       normalizeMoreHubOrderRaw(['account', 'gameCenter', 'board', 'etfBriefing', 'disclosures']),
-      ['account', 'gameCenter', 'board', 'etfBriefing', 'disclosures'],
+      ['account', 'board', 'gameCenter', 'etfBriefing', 'disclosures'],
     );
   });
 });

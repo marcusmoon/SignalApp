@@ -9,7 +9,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
-/** 홈 → 시장 브리핑 — phone은 root Stack, wide는 홈 overlay + WideSubpaneHeader */
+/** 홈·알림 → 시장 브리핑 — phone은 root Stack, wide는 홈 overlay + WideSubpaneHeader */
 export default function MarketBriefingScreen() {
   const { t } = useLocale();
   const router = useRouter();
@@ -21,7 +21,11 @@ export default function MarketBriefingScreen() {
   }>();
   const session = firstRouteParam(routeParams.session) || undefined;
   const date = firstRouteParam(routeParams.date) || undefined;
-  const fromHome = firstRouteParam(routeParams.from) === 'home';
+  const from = firstRouteParam(routeParams.from) || '';
+  const fromHome = from === 'home';
+  const fromAlerts = from === 'alerts';
+  const hideDateNavigator = fromHome || fromAlerts;
+  const hideSessionSegments = fromAlerts;
 
   if (useTwoPane) {
     return (
@@ -30,7 +34,7 @@ export default function MarketBriefingScreen() {
         params={{
           ...(session ? { session } : null),
           ...(date ? { date } : null),
-          ...(fromHome ? { from: 'home' } : null),
+          ...(fromHome || fromAlerts ? { from } : null),
         }}
       />
     );
@@ -41,12 +45,15 @@ export default function MarketBriefingScreen() {
       <BottomTabBarHeightContext.Provider value={0}>
         <Stack.Screen
           options={{
-            title: t('ipadHomeSignalTitle'),
+            title: fromAlerts ? '' : t('ipadHomeSignalTitle'),
             headerBackVisible: false,
             headerLeft: () => <PhoneHeaderBackButton onPress={() => router.back()} />,
           }}
         />
-        <SignalScreen hideDateNavigator={fromHome} />
+        <SignalScreen
+          hideDateNavigator={hideDateNavigator}
+          hideSessionSegments={hideSessionSegments}
+        />
       </BottomTabBarHeightContext.Provider>
     </PhoneMoreStackChromeProvider>
   );

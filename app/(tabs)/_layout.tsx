@@ -481,6 +481,7 @@ function IpadWideTabLayout({
                   initialSession={marketBriefingParams?.session ?? null}
                   initialDate={marketBriefingParams?.date ?? null}
                   hideDateNavigator={marketBriefingParams?.hideDateNavigator === true}
+                  hideSessionSegments={marketBriefingParams?.hideSessionSegments === true}
                 />
               </BottomTabBarHeightContext.Provider>
             ) : contentPane === 'etfInsights' ? (

@@ -67,7 +67,7 @@ slide-up Modal 시트(홈 뉴스 다이제스트·퀵 설정·필터·날짜 선
 | 홈 뉴스 흐름 행 · 목록 행(뉴스/공시) | 바텀 시트 | 짧은 다이제스트 연속 훑기 |
 | 홈 히어로(오늘 정리·장중) · 섹터 흐름 카드 | **상세** (`/today-briefing` · `/market-briefing` · `/etf-insight`) | 긴 본문 — 시트 70% 스크롤 지양 |
 | 홈 섹션 `>` | 없음 | 목록·탭은 시장·시세·더보기·사이드바 |
-| 알림함·푸시 | **상세** (`/today-briefing` · `/market-briefing` · `/news-digest` · `/disclosure-digest` · `/etf-insight`) | 단건 읽기 — 목록+시트 중첩 금지 |
+| 알림함·푸시 | **단건 상세** (날짜바·회차 세그먼트·Stack 제목 없음 — 뒤로만 + 본문) | 알림이 가리킨 그 정보만 |
 
 레거시 deepLink `/news-issues?digestId=` · `/disclosure-flow?digestId=` 는 앱이 상세로 rewrite한다.
 
@@ -234,10 +234,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 오늘 정리 상세
 
-`app/today-briefing.tsx` — 홈 히어로(오늘 정리) · 푸시 딥링크.
+`app/today-briefing.tsx` — 홈 히어로 · 알림·푸시.
 
-- Stack 헤더 제목: `todayBriefingDetailKicker` (오늘 정리)
-- 날짜: 헤더 바로 아래 고정 `dateBar` (본문 kicker 중복 없음)
+- Stack 제목·`dateBar` 없음 (뒤로만). 본문 헤드라인이 제목
 - 본문: 헤드라인 · 요약 · 핵심 포인트 · 출처
 
 ### 종목 상세 바로가기

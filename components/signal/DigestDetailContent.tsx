@@ -17,7 +17,6 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/r
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
-  SCREEN_HEADER_CONTENT_GAP,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
@@ -35,7 +34,6 @@ import type {
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { AppLocale } from '@/locales/messages';
-import { formatLocalYmdLabel } from '@/utils/date';
 
 export type DigestDetailKind = 'news' | 'disclosure';
 
@@ -45,16 +43,6 @@ export type DigestDetailContentProps = {
   embedded?: boolean;
   onBack?: () => void;
 };
-
-function ymdFromDigest(item: { generatedDate?: string | null; generatedAt?: string | null }): string {
-  const dateOnly = String(item.generatedDate || '').slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return dateOnly;
-  const iso = String(item.generatedAt || '').trim();
-  if (!iso) return '';
-  const parsed = new Date(iso);
-  if (!Number.isFinite(parsed.getTime())) return '';
-  return parsed.toISOString().slice(0, 10);
-}
 
 export function DigestDetailContent({
   kind,
@@ -132,17 +120,6 @@ export function DigestDetailContent({
     }
   }, [load]);
 
-  const dateLabel = useMemo(() => {
-    const ymd = item ? ymdFromDigest(item) : '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
-    return formatLocalYmdLabel(ymd, locale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-    });
-  }, [item, locale]);
-
   const sourceRows: DigestSourceSheetRow[] = useMemo(() => {
     if (!item) return [];
     if (kind === 'news') {
@@ -156,12 +133,8 @@ export function DigestDetailContent({
 
   return (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
-      {!embedded ? <Stack.Screen options={{ title: t(titleKey) }} /> : null}
-      {embedded ? null : dateLabel ? (
-        <View style={styles.dateBar}>
-          <Text style={styles.dateHeader}>{dateLabel}</Text>
-        </View>
-      ) : null}
+      {/* 단건 상세 — Stack 제목·dateBar 없음 (뒤로만). 본문 헤드라인이 제목 역할 */}
+      {!embedded ? <Stack.Screen options={{ title: '' }} /> : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -174,8 +147,7 @@ export function DigestDetailContent({
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
-          {onBack ? <WideSubpaneHeader title={t(titleKey)} onBack={onBack} /> : null}
-          {embedded && dateLabel ? <Text style={styles.dateHeader}>{dateLabel}</Text> : null}
+          {onBack ? <WideSubpaneHeader onBack={onBack} /> : null}
           {error ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -243,22 +215,6 @@ function makeStyles(
     safe: {
       flex: 1,
       backgroundColor: theme.bg,
-    },
-    dateBar: {
-      width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      paddingBottom: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    dateHeader: {
-      fontSize: sf(14),
-      lineHeight: sf(20),
-      fontWeight: '600',
-      color: theme.textMuted,
     },
     scroll: {
       flex: 1,

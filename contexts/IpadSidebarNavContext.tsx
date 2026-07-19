@@ -57,8 +57,10 @@ export type IpadDisclosureFlowPaneParams = {
 export type IpadMarketBriefingPaneParams = {
   session?: SignalSessionKey;
   date?: string;
-  /** 홈 섹션 `>` 드릴 — 상단 날짜피커 숨김 */
+  /** 홈·알림 드릴 — 상단 날짜피커 숨김 */
   hideDateNavigator?: boolean;
+  /** 알림 단건 — 회차 세그먼트 숨김 (해당 세션만) */
+  hideSessionSegments?: boolean;
 };
 
 export type WidePaneDrillFrom =
@@ -337,10 +339,13 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       }
 
       if (kind === 'market-briefing') {
+        const fromHome = p.from === 'home';
+        const fromAlerts = p.from === 'alerts';
         setMarketBriefingParams({
           session: parseSignalSessionParam(p.session),
           date: parseDateParam(p.date),
-          hideDateNavigator: p.from === 'home',
+          hideDateNavigator: fromHome || fromAlerts,
+          hideSessionSegments: fromAlerts,
         });
         return;
       }
@@ -785,12 +790,15 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showMarketBriefing = useCallback(
     (session?: SignalSessionKey, date?: string, options?: WidePaneDrillOptions) => {
       const fromHome = options?.drillFrom === 'home';
+      const fromAlerts = options?.drillFrom === 'alerts';
+      const fromParam = fromHome ? 'home' : fromAlerts ? 'alerts' : undefined;
       if (session) pendingSignalSessionRef.current = session;
       if (date) pendingSignalDateRef.current = date;
       setMarketBriefingParams({
         ...(session ? { session } : null),
         ...(date ? { date } : null),
-        hideDateNavigator: fromHome,
+        hideDateNavigator: fromHome || fromAlerts,
+        hideSessionSegments: fromAlerts,
       });
       if (useTwoPane) {
         beginWideOverlay(
@@ -798,7 +806,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           {
             ...(session ? { session } : null),
             ...(date ? { date } : null),
-            ...(fromHome ? { from: 'home' } : null),
+            ...(fromParam ? { from: fromParam } : null),
           },
           options?.drillFrom,
         );
@@ -809,7 +817,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         params: {
           ...(session ? { session } : null),
           ...(date ? { date } : null),
-          ...(fromHome ? { from: 'home' } : null),
+          ...(fromParam ? { from: fromParam } : null),
         },
       } as never);
     },

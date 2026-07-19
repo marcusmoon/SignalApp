@@ -169,6 +169,8 @@ export const ja = {
   gameSumTrailCellEmpty: '空のマス',
   gameSumTrailCellA11y: '数字 {{value}}',
   gameSumTrailCellInPathA11y: '数字 {{value}}、経路 {{order}}番目',
+  gameSumTrailHitFx: '目標達成！',
+  gameSumTrailHitPoints: '+{{points}}',
   homeEtfInsightTitle: 'セクター動向',
   homeEtfInsightEmpty: 'この日付のセクター動向はありません。',
   etfInsightDetailKicker: 'セクター動向',

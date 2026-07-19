@@ -167,6 +167,8 @@ export const ko = {
   gameSumTrailCellEmpty: '빈 칸',
   gameSumTrailCellA11y: '숫자 {{value}}',
   gameSumTrailCellInPathA11y: '숫자 {{value}}, 경로 {{order}}번째',
+  gameSumTrailHitFx: '목표 달성!',
+  gameSumTrailHitPoints: '+{{points}}',
   homeEtfInsightTitle: '섹터 흐름',
   homeEtfInsightEmpty: '이 날짜의 섹터 흐름이 없습니다.',
   etfInsightDetailKicker: '섹터 흐름',

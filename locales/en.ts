@@ -169,6 +169,8 @@ export const en = {
   gameSumTrailCellEmpty: 'Empty cell',
   gameSumTrailCellA11y: 'Number {{value}}',
   gameSumTrailCellInPathA11y: 'Number {{value}}, path step {{order}}',
+  gameSumTrailHitFx: 'Target hit!',
+  gameSumTrailHitPoints: '+{{points}}',
   homeEtfInsightTitle: 'Sector Flow',
   homeEtfInsightEmpty: 'No sector flow for this date.',
   etfInsightDetailKicker: 'Sector Flow',

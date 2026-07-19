@@ -1,5 +1,11 @@
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import { HOME_SIGNAL_SESSIONS } from '@/constants/ipadHomeNav';
+import {
+  hasTodayBriefingContent,
+  kstMinutesSinceMidnight,
+  preferredHeroTargetForKstMinutes,
+  type HomeHeroTarget,
+} from '@/domain/home/homeHeroRules';
 import type {
   SignalApiMarketBriefing,
   SignalApiTodayBriefing,
@@ -9,8 +15,13 @@ export type HomeHeroSelection =
   | { kind: 'today'; briefing: SignalApiTodayBriefing }
   | { kind: 'market'; briefing: SignalApiMarketBriefing; sessionKey: SignalSessionKey };
 
-type MarketTarget = { market: 'us' | 'kr'; session: string };
-type HeroTarget = 'today' | MarketTarget;
+export {
+  hasTodayBriefingContent,
+  kstMinutesSinceMidnight,
+  preferredHeroTargetForKstMinutes,
+};
+
+type HeroTarget = HomeHeroTarget;
 
 const ARCHIVE_ORDER: HeroTarget[] = [
   'today',
@@ -19,28 +30,6 @@ const ARCHIVE_ORDER: HeroTarget[] = [
   { market: 'kr', session: 'morning' },
   { market: 'us', session: 'overnight' },
 ];
-
-/** Asia/Seoul wall-clock minutes since midnight. */
-export function kstMinutesSinceMidnight(now: Date = new Date()): number {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(now);
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
-  return hour * 60 + minute;
-}
-
-/** Today hero window (KST): overnight → morning → lunch → close → today_briefing. */
-export function preferredHeroTargetForKstMinutes(minutes: number): HeroTarget {
-  if (minutes < 9 * 60) return { market: 'us', session: 'overnight' };
-  if (minutes < 12 * 60 + 30) return { market: 'kr', session: 'morning' };
-  if (minutes < 15 * 60 + 30) return { market: 'kr', session: 'lunch' };
-  if (minutes < 23 * 60) return { market: 'kr', session: 'close' };
-  return 'today';
-}
 
 function sessionKeyFor(row: SignalApiMarketBriefing): SignalSessionKey | undefined {
   return HOME_SIGNAL_SESSIONS.find(
@@ -60,17 +49,6 @@ function findMarketBriefing(
         String(row.session || '').toLowerCase() === session,
     ) ?? null
   );
-}
-
-/** 오늘 정리에 읽을 본문이 있을 때만 히어로 후보. */
-export function hasTodayBriefingContent(briefing: SignalApiTodayBriefing | null | undefined): boolean {
-  if (!briefing) return false;
-  if (briefing.headline?.trim()) return true;
-  if (briefing.summary?.trim()) return true;
-  if (Array.isArray(briefing.keyPoints) && briefing.keyPoints.some((p) => String(p || '').trim())) {
-    return true;
-  }
-  return false;
 }
 
 function usableTodayBriefing(

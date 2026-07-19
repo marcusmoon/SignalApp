@@ -9,8 +9,26 @@ npm install
 npm run start          # Expo dev
 npm run ios | android | web
 npm run server:dev     # Signal Server
-npx tsc --noEmit
+npm run verify         # typecheck + unit tests (CI와 동일)
 ```
+
+## 검증·회귀 테스트
+
+자주 깨지는 **순수 도메인 규칙**은 UI와 분리해 `domain/**/*.test.ts`로 고정한다. React Native 컴포넌트 E2E는 두지 않고, 상태 전이·라벨 규칙처럼 재현 가능한 단위만 잡는다.
+
+| 명령 | 내용 |
+|---|---|
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Node `node:test` + `--experimental-strip-types` (`domain/**/*.test.ts`) |
+| `npm run verify` | typecheck → test (PR·`main` push CI: `.github/workflows/verify.yml`) |
+
+회귀 추가 기준:
+
+1. **같은 계열 버그가 2회 이상** 나왔거나, wide 서브탭·홈 라벨처럼 경합/예산 규칙이 있는 경우
+2. 테스트는 **순수 함수**만 대상으로 한다 (`@/` 경로·RN 의존 없이 `domain/` 상대 import)
+3. 실패 메시지에 증상(예: clear 후 선택 유실)을 남긴다
+
+현재 커버: `domain/sidebar/subTabsState` (사이드바 선택 하이라이트), `domain/home/shortcutCompoundLabel` (홈 숏컷 한 줄 라벨).
 
 ## 디렉터리 규칙
 

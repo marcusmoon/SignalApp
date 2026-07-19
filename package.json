@@ -19,7 +19,10 @@
     "railway:start": "npm --prefix server run start",
     "generate:splash": "node scripts/generateNativeSplash.mjs",
     "server:dev": "npm --prefix server run dev",
-    "server:worker": "npm --prefix server run worker"
+    "server:worker": "npm --prefix server run worker",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test 'domain/**/*.test.ts'",
+    "verify": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

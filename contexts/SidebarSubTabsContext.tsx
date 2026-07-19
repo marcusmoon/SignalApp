@@ -1,23 +1,19 @@
 /**
  * iPad 사이드바에 서브탭을 등록하기 위한 Context.
- * 각 탭 화면은 포커스 시 자신의 서브탭 목록을 등록하고, 블러 시 지운다.
- *
- * Wide 웹: `href`+`params`로 URL을 갱신한다. 기본값도 쿼리에 명시해
- * 주소 직접 입력·링크 공유·새로고침이 같은 화면을 복원한다.
- *
- * clear는 owner가 일치할 때만 동작한다 — 탭 전환 시 이전 화면 blur가
- * 이미 등록된 다음 탭 서브메뉴를 지우는 경합을 막는다.
- *
- * 선택 하이라이트: `setSubTabs(owner, tabs, activeKey)`로 목록·선택을 한 번에 맞춘다.
- * `setActiveSubTabKey`는 owner가 null이거나 동일 owner일 때만 허용(재등록 경합 방지).
+ * 상태 전이 규칙은 `domain/sidebar/subTabsState.ts` (회귀 테스트 대상).
  */
-import React, { createContext, useCallback, useContext, useRef, useState, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useReducer, useRef } from 'react';
 
-export type SidebarSubTabsOwner = 'news' | 'signal' | 'quotes' | 'disclosures' | 'board';
+import {
+  INITIAL_SIDEBAR_SUB_TABS_STATE,
+  reduceSidebarSubTabs,
+  type SidebarSubTabDef,
+  type SidebarSubTabsOwner,
+} from '@/domain/sidebar/subTabsState';
 
-export type SidebarSubTab = {
-  key: string;
-  label: string;
+export type { SidebarSubTabsOwner };
+
+export type SidebarSubTab = SidebarSubTabDef & {
   /** @deprecated activeSubTabKey를 사용한다. 하위 호환용으로만 남김 */
   active?: boolean;
   /** Expo Router pathname (예: `/(tabs)/board`) */
@@ -50,49 +46,56 @@ const SidebarSubTabsContext = createContext<SidebarSubTabsContextType>({
 });
 
 export function SidebarSubTabsProvider({ children }: { children: React.ReactNode }) {
-  const [subTabs, setSubTabsState] = useState<SidebarSubTab[]>([]);
-  const [activeSubTabKey, setActiveSubTabKeyState] = useState<string | null>(null);
-  const [owner, setOwnerState] = useState<SidebarSubTabsOwner | null>(null);
+  const [state, dispatch] = useReducer(reduceSidebarSubTabs, INITIAL_SIDEBAR_SUB_TABS_STATE);
+  // onPress 등 함수 props는 reducer 밖에 보관 (순수 상태와 분리).
+  const [tabExtras, setTabExtras] = React.useState<SidebarSubTab[]>([]);
   const ownerRef = useRef<SidebarSubTabsOwner | null>(null);
 
   const setSubTabs = useCallback(
     (nextOwner: SidebarSubTabsOwner, tabs: SidebarSubTab[], activeKey?: string | null) => {
       ownerRef.current = nextOwner;
-      setOwnerState(nextOwner);
-      setSubTabsState(tabs);
-      if (activeKey !== undefined) {
-        setActiveSubTabKeyState(activeKey);
-      }
+      setTabExtras(tabs);
+      dispatch({
+        type: 'setTabs',
+        owner: nextOwner,
+        tabs: tabs.map(({ key, label }) => ({ key, label })),
+        activeKey,
+      });
     },
     [],
   );
 
   const setActiveSubTabKey = useCallback((nextOwner: SidebarSubTabsOwner, key: string | null) => {
-    // clear 직후·최초 등록: owner가 비어 있으면 claim. 다른 owner면 무시.
     if (ownerRef.current != null && ownerRef.current !== nextOwner) return;
     ownerRef.current = nextOwner;
-    setOwnerState(nextOwner);
-    setActiveSubTabKeyState(key);
+    dispatch({ type: 'setActive', owner: nextOwner, key });
   }, []);
 
   const clearSubTabs = useCallback((nextOwner: SidebarSubTabsOwner) => {
     if (ownerRef.current !== nextOwner) return;
     ownerRef.current = null;
-    setOwnerState(null);
-    setSubTabsState([]);
-    setActiveSubTabKeyState(null);
+    setTabExtras([]);
+    dispatch({ type: 'clear', owner: nextOwner });
   }, []);
+
+  const subTabs = useMemo(() => {
+    const byKey = new Map(tabExtras.map((tab) => [tab.key, tab]));
+    return state.tabs.map((tab) => {
+      const extra = byKey.get(tab.key);
+      return extra ? { ...extra, key: tab.key, label: tab.label } : tab;
+    });
+  }, [state.tabs, tabExtras]);
 
   const value = useMemo(
     () => ({
       subTabs,
-      activeSubTabKey,
-      owner,
+      activeSubTabKey: state.activeKey,
+      owner: state.owner,
       setSubTabs,
       setActiveSubTabKey,
       clearSubTabs,
     }),
-    [subTabs, activeSubTabKey, owner, setSubTabs, setActiveSubTabKey, clearSubTabs],
+    [subTabs, state.activeKey, state.owner, setSubTabs, setActiveSubTabKey, clearSubTabs],
   );
 
   return <SidebarSubTabsContext.Provider value={value}>{children}</SidebarSubTabsContext.Provider>;

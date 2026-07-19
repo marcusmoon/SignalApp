@@ -2,7 +2,7 @@
 
 ## 앱
 
-- [ ] `npx tsc --noEmit` 통과
+- [ ] `npm run verify` 통과 (typecheck + `domain/**` 단위 테스트)
 - [ ] 홈·뉴스·공시·시장·시세·더보기 주요 흐름 확인
 - [ ] IT 뉴스: More(iPhone)·사이드바(wide, 내 정보 위) 진입, GeekNews 수집분 표시
 - [ ] 퀵 설정 → More settings: iPhone·iPad 모두 설정 pill 탭 표시 / My info 진입은 단일 탭

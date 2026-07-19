@@ -19,6 +19,27 @@ function cleanArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+/** 브리핑 종목·섹터 심볼 — `005930.KS` → `005930` (앱 로고·시세 매칭용) */
+function normalizeBriefingSymbol(value) {
+  const text = cleanText(value).toUpperCase();
+  if (!text) return '';
+  const kr = text.match(/^(\d{6})\.(KS|KQ)$/);
+  if (kr) return kr[1];
+  return text;
+}
+
+function normalizeBriefingCompany(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const symbol = normalizeBriefingSymbol(raw.symbol || raw.ticker);
+  if (!symbol) return null;
+  return {
+    ...raw,
+    symbol,
+    name: cleanText(raw.name) || null,
+    summary: cleanText(raw.summary),
+  };
+}
+
 function normalizeBriefingDate(value, publishedAt) {
   return (
     utcDateOnlyOrNull(value) ||
@@ -48,7 +69,7 @@ function normalizeBriefingPayload(input) {
       const changeRaw = s?.changePercent;
       const changePercent =
         typeof changeRaw === 'number' && Number.isFinite(changeRaw) ? changeRaw : null;
-      const symbol = cleanText(s?.symbol) || cleanText(s?.etf) || null;
+      const symbol = normalizeBriefingSymbol(s?.symbol) || normalizeBriefingSymbol(s?.etf) || null;
       return {
         name: cleanText(s?.name),
         trend: cleanText(s?.trend),
@@ -57,7 +78,10 @@ function normalizeBriefingPayload(input) {
         ...(symbol ? { symbol, etf: symbol } : {}),
       };
     }).filter((s) => s.name),
-    companies: cleanArray(input?.companies).slice(0, 12),
+    companies: cleanArray(input?.companies)
+      .slice(0, 12)
+      .map(normalizeBriefingCompany)
+      .filter(Boolean),
     macro: cleanArray(input?.macro).slice(0, 8),
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),

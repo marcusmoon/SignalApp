@@ -129,9 +129,11 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 | 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) | Parqet → 글자 아바타 |
 | 주식 | Parqet (`assets.parqet.com/logos/symbol/…`, 국장 `.KS`→`.KQ`) | 글자 아바타 |
 
+국장 심볼은 브리핑 ingest가 `005930.KS`처럼 Yahoo 접미사를 붙이더라도 `logoBaseSymbol`이 6자리로 정규화한 뒤 Parqet을 조회한다. 서버 공개 API도 companies/sectors `symbol`에서 `.KS`/`.KQ`를 벗겨 내려준다.
+
 | 역할 | 경로 |
 |---|---|
-| URL 후보·실패 캐시 | `services/symbolLogo.ts` (`symbolLogoUrls(symbol, preferredUrls?)`) |
+| URL 후보·실패 캐시 | `services/symbolLogo.ts` (`logoBaseSymbol`, `symbolLogoUrls`) |
 | UI | `components/signal/SymbolLogo.tsx` — `imageUrl` prop이 있으면 Parqet보다 먼저 시도 |
 | 코인 행 매핑 | `domain/quotes/rows.ts` (`mapSignalCoinToRow` → `QuoteRow.imageUrl`) |
 | 시세 리스트 | `components/quotes/QuotesContent.tsx` |

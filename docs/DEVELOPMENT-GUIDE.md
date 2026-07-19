@@ -41,7 +41,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/digests/createdAt` | 다이제스트 시각 fallback |
 | `domain/etfInsights/etfHomeVisibilityRules` | ETF 홈 7일 게이트 |
 | `domain/moreHub/normalizeMoreHubOrder` | More 허브 ETF·게임센터→게시판 앞 삽입 |
-| `domain/games/sumTrail` | 합 트레일 퍼즐 로직 |
+| `domain/games/sumTrail` | 합 트레일 퍼즐 로직 — [GAME-CENTER.md](./GAME-CENTER.md) |
 | `domain/news/feedFilters` | 뉴스 URL 중복 제거 · 페이지네이션 전진 |
 | `domain/quotes/tintSignedChangeInText` | 본문 부호/% 틴트 · 비변동 % 제외 |
 | `domain/heatmaps/changeHeat` | 히트맵 채색 강도 |

@@ -237,7 +237,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 ### 더보기 · My info
 
 - **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 내 정보·공시·**ETF**(짧은 라벨)·**게임센터**·게시판 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
-  - **게임센터** (`/game-center`): 숫자 퍼즐 허브. 첫 게임 **합 트레일** (`/games/sum-trail`) — 인접 칸 경로 합 = 목표.
+  - **게임센터**: 진입·새 게임 추가·합 트레일 규칙은 [GAME-CENTER.md](./GAME-CENTER.md).
 - **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · **ETF** · 게시판 · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
 - **퀵 설정** (`QuickSettingsSheet`): 헤더 우측 options 아이콘. 언어·화면 모드. 푸터 **More settings** → 전체 설정(pill 탭 표시, iPhone·iPad 동일).

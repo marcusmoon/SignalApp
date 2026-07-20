@@ -21,6 +21,7 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
+import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
@@ -634,7 +635,12 @@ export function HomeFocusContent({
           showIssueSummary && styles.heroCardSummary,
           pressed && styles.pressed,
         ]}>
-        <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
+        <View style={styles.heroHeadlineRow}>
+          {homeHero.kind === 'market' ? (
+            <BriefingSessionTag briefing={homeHero.briefing} />
+          ) : null}
+          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
+        </View>
       </Pressable>
     );
   }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles]);
@@ -998,7 +1004,14 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
+    heroHeadlineRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
     issueGroupTitle: {
+      flex: 1,
+      minWidth: 0,
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,

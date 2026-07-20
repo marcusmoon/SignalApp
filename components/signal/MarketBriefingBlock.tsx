@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
+import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
@@ -231,10 +232,15 @@ export function MarketBriefingBlock({
       {hasLead ? (
         <View style={styles.leadPanel}>
           {summaryText ? (
-            <ChangeTintedText style={styles.summary}>
-              {summaryText}
-            </ChangeTintedText>
-          ) : null}
+            <View style={styles.summaryRow}>
+              <BriefingSessionTag briefing={briefing} />
+              <ChangeTintedText style={styles.summary}>
+                {summaryText}
+              </ChangeTintedText>
+            </View>
+          ) : (
+            <BriefingSessionTag briefing={briefing} />
+          )}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
@@ -364,7 +370,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
       letterSpacing: 0.1,
     },
+    summaryRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
     summary: {
+      flex: 1,
+      minWidth: 0,
       fontSize: ft.signalBodyFont(15),
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,

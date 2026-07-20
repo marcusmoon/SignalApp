@@ -21,6 +21,9 @@
 | `overnight` | 미국 밤사이 | 직전 미국장 종가 · 밤사이 뉴스 (`us` 전용) |
 
 앱 **시장** 탭 회차(미장 · 장전 · 장중 · 마감)는 위 `session` 값과 1:1로 대응한다. 총 4회차다.
+ingest 별칭: `intraday`/`midday` → `lunch`, `premarket` → `morning`.
+
+홈 히어로는 KST 기본 창을 쓰되, **이미 발행된 더 늦은 회차(장중·마감)가 있으면 그걸 우선**한다. 장중 스케줄(12:10)과 히어로 lunch 창(12:10~)을 맞춘다.
 
 ## Ingest Endpoint
 

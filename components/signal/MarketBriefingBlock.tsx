@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
-import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
@@ -231,11 +230,7 @@ export function MarketBriefingBlock({
     <View style={styles.block}>
       {hasLead ? (
         <View style={styles.leadPanel}>
-          {summaryText ? (
-            <ChangeTintedText style={styles.summary} prefix={<BriefingSessionTag briefing={briefing} />}>
-              {summaryText}
-            </ChangeTintedText>
-          ) : null}
+          {summaryText ? <ChangeTintedText style={styles.summary}>{summaryText}</ChangeTintedText> : null}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
@@ -245,11 +240,7 @@ export function MarketBriefingBlock({
                 {briefing.overview.map((line, index) => (
                   <View key={`overview-${index}`} style={styles.overviewRow}>
                     <View style={styles.overviewDot} />
-                    <ChangeTintedText
-                      style={styles.overviewText}
-                      prefix={!summaryText && index === 0 ? <BriefingSessionTag briefing={briefing} /> : undefined}>
-                      {line}
-                    </ChangeTintedText>
+                    <ChangeTintedText style={styles.overviewText}>{line}</ChangeTintedText>
                   </View>
                 ))}
               </View>

@@ -635,12 +635,13 @@ export function HomeFocusContent({
           showIssueSummary && styles.heroCardSummary,
           pressed && styles.pressed,
         ]}>
-        <View style={styles.heroHeadlineRow}>
-          {homeHero.kind === 'market' ? (
-            <BriefingSessionTag briefing={homeHero.briefing} />
-          ) : null}
-          <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
-        </View>
+        <ChangeTintedText
+          style={styles.issueGroupTitle}
+          prefix={
+            homeHero.kind === 'market' ? <BriefingSessionTag briefing={homeHero.briefing} /> : undefined
+          }>
+          {headline}
+        </ChangeTintedText>
       </Pressable>
     );
   }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles]);
@@ -1004,14 +1005,7 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
-    heroHeadlineRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-    },
     issueGroupTitle: {
-      flex: 1,
-      minWidth: 0,
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,

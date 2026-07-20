@@ -232,15 +232,10 @@ export function MarketBriefingBlock({
       {hasLead ? (
         <View style={styles.leadPanel}>
           {summaryText ? (
-            <View style={styles.summaryRow}>
-              <BriefingSessionTag briefing={briefing} />
-              <ChangeTintedText style={styles.summary}>
-                {summaryText}
-              </ChangeTintedText>
-            </View>
-          ) : (
-            <BriefingSessionTag briefing={briefing} />
-          )}
+            <ChangeTintedText style={styles.summary} prefix={<BriefingSessionTag briefing={briefing} />}>
+              {summaryText}
+            </ChangeTintedText>
+          ) : null}
 
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
@@ -250,7 +245,9 @@ export function MarketBriefingBlock({
                 {briefing.overview.map((line, index) => (
                   <View key={`overview-${index}`} style={styles.overviewRow}>
                     <View style={styles.overviewDot} />
-                    <ChangeTintedText style={styles.overviewText}>
+                    <ChangeTintedText
+                      style={styles.overviewText}
+                      prefix={!summaryText && index === 0 ? <BriefingSessionTag briefing={briefing} /> : undefined}>
                       {line}
                     </ChangeTintedText>
                   </View>
@@ -370,14 +367,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
       letterSpacing: 0.1,
     },
-    summaryRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-    },
     summary: {
-      flex: 1,
-      minWidth: 0,
       fontSize: ft.signalBodyFont(15),
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,

@@ -1,4 +1,4 @@
-import { useMemo, type ComponentProps } from 'react';
+import { useMemo, type ComponentProps, type ReactNode } from 'react';
 import { Text, type StyleProp, type TextStyle } from 'react-native';
 
 import { splitTextWithSignedChangeTints } from '@/domain/quotes/tintSignedChangeInText';
@@ -8,6 +8,8 @@ type Props = {
   children: string;
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  /** 본문 앞 인라인 prefix (예: 세션 태그) */
+  prefix?: ReactNode;
   /** nested Text에 추가로 줄 강조(기본 semibold) */
   tintWeight?: TextStyle['fontWeight'];
 } & Omit<ComponentProps<typeof Text>, 'children' | 'style' | 'numberOfLines'>;
@@ -20,6 +22,7 @@ export function ChangeTintedText({
   children,
   style,
   numberOfLines,
+  prefix,
   tintWeight = '600',
   ...rest
 }: Props) {
@@ -30,6 +33,7 @@ export function ChangeTintedText({
   if (!hasTint) {
     return (
       <Text style={style} numberOfLines={numberOfLines} {...rest}>
+        {prefix}
         {children}
       </Text>
     );
@@ -37,6 +41,7 @@ export function ChangeTintedText({
 
   return (
     <Text style={style} numberOfLines={numberOfLines} {...rest}>
+      {prefix}
       {segments.map((part, index) => {
         if (part.kind === 'plain') return part.text;
         return (

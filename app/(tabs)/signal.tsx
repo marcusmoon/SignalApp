@@ -44,6 +44,7 @@ import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext'
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { briefingsForYmd } from '@/domain/home/briefingDate';
 import {
   QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   type QuotesChangeColorConvention,
@@ -59,7 +60,7 @@ import {
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { useFeedUnreadCheckIntervalMs, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
-import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { addDays, toYmd } from '@/utils/date';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
@@ -210,12 +211,13 @@ export default function SignalScreen({
 
   const syncBriefingsLatestSeen = useCallback(
     (rows: SignalApiMarketBriefing[]) => {
+      const dayRows = briefingsForYmd(rows, selectedYmd);
       for (const tab of FLAT_TABS) {
-        const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+        const match = dayRows.find((row) => row.market === tab.market && row.session === tab.session);
         syncTabLatestSeen(tab.key, match?.id);
       }
     },
-    [syncTabLatestSeen],
+    [selectedYmd, syncTabLatestSeen],
   );
 
   const flatTabLabel = useCallback(
@@ -242,7 +244,7 @@ export default function SignalScreen({
     }
     setError(null);
     const rows = await fetchSignalMarketBriefings(
-      { ...utcRangeForLocalYmd(selectedYmd), limit: 30, locale },
+      { date: selectedYmd, limit: 30, locale },
       { cacheMode: signalCacheMode(forceRefresh) },
     ).catch(() => [] as SignalApiMarketBriefing[]);
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
@@ -308,11 +310,12 @@ export default function SignalScreen({
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
         const rows = await fetchSignalMarketBriefings(
-          { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30, locale },
+          { date: todayYmdRef.current, limit: 30, locale },
           { cacheMode: 'bypass' },
         );
+        const dayRows = briefingsForYmd(rows, todayYmdRef.current);
         for (const tab of FLAT_TABS) {
-          const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+          const match = dayRows.find((row) => row.market === tab.market && row.session === tab.session);
           const latestId = match?.id ?? null;
           if (!latestId) continue;
           const seen = latestSeenIdByTabRef.current[tab.key];
@@ -425,14 +428,15 @@ export default function SignalScreen({
 
   const briefingByTabKey = useMemo(() => {
     const map = new Map<FlatTabKey, SignalApiMarketBriefing>();
+    const dayRows = briefingsForYmd(marketBriefings, selectedYmd);
     for (const tab of FLAT_TABS) {
-      const match = marketBriefings.find(
+      const match = dayRows.find(
         (row) => row.market === tab.market && row.session === tab.session,
       );
       if (match) map.set(tab.key, match);
     }
     return map;
-  }, [marketBriefings]);
+  }, [marketBriefings, selectedYmd]);
 
   useEffect(() => {
     const session = firstRouteParam(routeParams.session);

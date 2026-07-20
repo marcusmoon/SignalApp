@@ -179,7 +179,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
       5. 결합 길이 예산 초과 시 **하위만** (아이콘이 상위). 예산: 라틴 포함 12 / 그 외 8
     - **보드 숏컷 진입**: 상단 채널 메뉴 숨김 · `lockedSource` 고정. 헤더 제목은 전체→게시판, 채널→채널명. More·탭·사이드바 보드는 채널 메뉴 유지.
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
-- **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): 기본 창 ~09:00 `us/overnight` · 09:00~12:10 `kr/morning` · 12:10~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. **이미 올라온 더 늦은 회차가 있으면 그걸 우선** (예: 장중 `lunch`가 있으면 장전 `morning` 창이어도 장중). 없으면 그날 published 최신 1개. 과거는 오늘 정리 → close → lunch → morning → overnight
+- **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): 기본 창 ~09:00 `us/overnight` · 09:00~12:10 `kr/morning` · 12:10~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. **이미 올라온 더 늦은 회차가 있으면 그걸 우선** (예: 장중 `lunch`가 있으면 장전 `morning` 창이어도 장중). 없으면 **같은 날(`briefingDate`)** 더 이른 회차로만 폴백 — 다른 날짜 브리핑은 노출하지 않음. 과거일은 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
 - **히어로·뉴스·ETF 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` · 뉴스 행 → `/news-digest` · 섹터 흐름 → `/etf-insight` (알림과 동일 단건 상세)
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF/뉴스 바텀시트

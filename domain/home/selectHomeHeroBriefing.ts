@@ -1,6 +1,8 @@
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import { HOME_SIGNAL_SESSIONS } from '@/constants/ipadHomeNav';
+import { briefingsForYmd, matchesBriefingYmd } from '@/domain/home/briefingDate';
 import {
+  fallbackSameDayTarget,
   hasTodayBriefingContent,
   HOME_HERO_DAY_PROGRESSION,
   kstMinutesSinceMidnight,
@@ -56,17 +58,21 @@ function findMarketBriefing(
 
 function usableTodayBriefing(
   todayBriefing: SignalApiTodayBriefing | null,
+  selectedYmd: string,
 ): SignalApiTodayBriefing | null {
-  return hasTodayBriefingContent(todayBriefing) ? todayBriefing : null;
+  if (!hasTodayBriefingContent(todayBriefing)) return null;
+  if (!matchesBriefingYmd(todayBriefing, selectedYmd)) return null;
+  return todayBriefing;
 }
 
 function resolveTarget(
   target: HeroTarget,
   todayBriefing: SignalApiTodayBriefing | null,
   briefings: SignalApiMarketBriefing[],
+  selectedYmd: string,
 ): HomeHeroSelection | null {
   if (target === 'today') {
-    const row = usableTodayBriefing(todayBriefing);
+    const row = usableTodayBriefing(todayBriefing, selectedYmd);
     return row ? { kind: 'today', briefing: row } : null;
   }
   const row = findMarketBriefing(briefings, target.market, target.session);
@@ -76,43 +82,25 @@ function resolveTarget(
   return { kind: 'market', briefing: row, sessionKey };
 }
 
-function publishedSortKey(iso: string | null | undefined, fallbackDate: string | null | undefined): string {
-  return String(iso || fallbackDate || '');
-}
-
-/** Latest published item that day (today_briefing or any market session). */
-function latestPublishedHero(
+/** 선호 회차가 아직 없으면 같은 날 더 이른 회차로 폴백. */
+function fallbackSameDayHero(
+  preferred: HomeHeroTarget,
   todayBriefing: SignalApiTodayBriefing | null,
   briefings: SignalApiMarketBriefing[],
+  selectedYmd: string,
 ): HomeHeroSelection | null {
-  type Candidate = { at: string; hero: HomeHeroSelection };
-  const candidates: Candidate[] = [];
-  const usableToday = usableTodayBriefing(todayBriefing);
-  if (usableToday) {
-    candidates.push({
-      at: publishedSortKey(
-        usableToday.publishedAt || usableToday.generatedAt || usableToday.updatedAt,
-        usableToday.briefingDate,
-      ),
-      hero: { kind: 'today', briefing: usableToday },
-    });
-  }
-  for (const row of briefings) {
-    const sessionKey = sessionKeyFor(row);
-    if (!sessionKey) continue;
-    candidates.push({
-      at: publishedSortKey(row.publishedAt || row.updatedAt || row.createdAt, row.briefingDate),
-      hero: { kind: 'market', briefing: row, sessionKey },
-    });
-  }
-  candidates.sort((a, b) => b.at.localeCompare(a.at));
-  return candidates[0]?.hero ?? null;
+  const available = HOME_HERO_DAY_PROGRESSION.filter((target) =>
+    Boolean(resolveTarget(target, todayBriefing, briefings, selectedYmd)),
+  );
+  const target = fallbackSameDayTarget(preferred, available);
+  return target ? resolveTarget(target, todayBriefing, briefings, selectedYmd) : null;
 }
 
 /**
  * Home hero: one briefing card.
  * - Today: KST 기본 회차 이상에서 이미 올라온 가장 늦은 회차 (장중이 있으면 장전보다 우선).
  * - Past: today_briefing → kr/close → lunch → morning → us/overnight.
+ * - 항상 selectedYmd(briefingDate)와 일치하는 항목만 사용.
  */
 export function selectHomeHeroBriefing(args: {
   selectedYmd: string;
@@ -122,22 +110,24 @@ export function selectHomeHeroBriefing(args: {
   now?: Date;
 }): HomeHeroSelection | null {
   const { selectedYmd, todayYmd, todayBriefing, briefings, now = new Date() } = args;
+  const dayBriefings = briefingsForYmd(briefings, selectedYmd);
+  const scopedToday = usableTodayBriefing(todayBriefing, selectedYmd);
   const isToday = selectedYmd === todayYmd;
 
   if (isToday) {
     const preferred = preferredHeroTargetForKstMinutes(kstMinutesSinceMidnight(now));
     const available = HOME_HERO_DAY_PROGRESSION.filter((target) =>
-      Boolean(resolveTarget(target, todayBriefing, briefings)),
+      Boolean(resolveTarget(target, scopedToday, dayBriefings, selectedYmd)),
     );
     const chosen = selectTodayHeroTarget(preferred, available);
     return (
-      (chosen ? resolveTarget(chosen, todayBriefing, briefings) : null) ??
-      latestPublishedHero(todayBriefing, briefings)
+      (chosen ? resolveTarget(chosen, scopedToday, dayBriefings, selectedYmd) : null) ??
+      fallbackSameDayHero(preferred, scopedToday, dayBriefings, selectedYmd)
     );
   }
 
   for (const target of ARCHIVE_ORDER) {
-    const hit = resolveTarget(target, todayBriefing, briefings);
+    const hit = resolveTarget(target, scopedToday, dayBriefings, selectedYmd);
     if (hit) return hit;
   }
   return null;

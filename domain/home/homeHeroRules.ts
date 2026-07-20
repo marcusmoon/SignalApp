@@ -54,6 +54,21 @@ export function selectTodayHeroTarget(
   return best;
 }
 
+/** 선호 회차가 없을 때 같은 날 후보 중 더 이른 회차로 폴백. */
+export function fallbackSameDayTarget(
+  preferred: HomeHeroTarget,
+  available: readonly HomeHeroTarget[],
+): HomeHeroTarget | null {
+  const availableKeys = new Set(available.map(heroTargetKey));
+  const startRank = heroTargetRank(preferred);
+  if (startRank < 0) return null;
+  for (let rank = startRank; rank >= 0; rank -= 1) {
+    const target = HOME_HERO_DAY_PROGRESSION[rank];
+    if (availableKeys.has(heroTargetKey(target))) return target;
+  }
+  return null;
+}
+
 /** Asia/Seoul wall-clock minutes since midnight. */
 export function kstMinutesSinceMidnight(now: Date = new Date()): number {
   const parts = new Intl.DateTimeFormat('en-GB', {

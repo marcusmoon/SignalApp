@@ -56,6 +56,7 @@ import {
   homeCalendarChipLabel,
   homeCalendarChipRangeEnd,
 } from '@/domain/home/calendarChipLabel';
+import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
 import {
   homeHeroHeadline,
@@ -413,7 +414,7 @@ export function HomeFocusContent({
             )
           : Promise.resolve([] as SignalApiMarketQuote[]),
         fetchSignalMarketBriefings(
-          { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
+          { date: selectedYmd, limit: BRIEFING_LIMIT, locale },
           { cacheMode },
         ).catch(() => [] as SignalApiMarketBriefing[]),
         fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }).catch(() => null),

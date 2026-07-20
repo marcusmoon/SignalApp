@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  fallbackSameDayTarget,
   hasTodayBriefingContent,
   kstMinutesSinceMidnight,
   preferredHeroTargetForKstMinutes,
@@ -85,6 +86,24 @@ describe('selectTodayHeroTarget', () => {
         ],
       ),
       { market: 'kr', session: 'morning' },
+    );
+  });
+});
+
+describe('fallbackSameDayTarget', () => {
+  it('falls back to close when today wrap is missing after 23:00 window', () => {
+    const preferred = preferredHeroTargetForKstMinutes(23 * 60);
+    assert.equal(preferred, 'today');
+    assert.deepEqual(
+      fallbackSameDayTarget(preferred, [{ market: 'kr', session: 'close' }]),
+      { market: 'kr', session: 'close' },
+    );
+  });
+
+  it('returns null when no same-day candidates exist', () => {
+    assert.equal(
+      fallbackSameDayTarget('today', []),
+      null,
     );
   });
 });

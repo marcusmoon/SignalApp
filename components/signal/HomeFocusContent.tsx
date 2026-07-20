@@ -366,14 +366,8 @@ export function HomeFocusContent({
       ? t('ipadHomeTitle')
       : t('ipadHomeSignalTitle')
     : t('ipadHomeTitle');
-  const heroSectionBadge = homeHero?.kind === 'market'
-    ? (
-      <View style={styles.headerBadgeRow}>
-        <AiBadge />
-        <BriefingSessionTag briefing={homeHero.briefing} />
-      </View>
-    )
-    : <AiBadge />;
+  const heroSessionTag =
+    homeHero?.kind === 'market' ? <BriefingSessionTag briefing={homeHero.briefing} /> : null;
 
   const changeSelectedYmd = useCallback(
     (ymd: string) => {
@@ -831,7 +825,11 @@ export function HomeFocusContent({
           <>
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={heroSectionTitle} trailingBadge={heroSectionBadge} />
+              <HomeSectionHeader
+                title={heroSectionTitle}
+                badge={<AiBadge />}
+                trailingBadge={heroSessionTag}
+              />
               {renderHeroCard()}
             </View>
           ) : null}
@@ -1012,11 +1010,6 @@ function makeStyles(
       lineHeight: sf(20),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    headerBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
     },
     section: {
       gap: COMFORT_GAP_SM,

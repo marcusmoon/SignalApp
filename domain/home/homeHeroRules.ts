@@ -12,6 +12,48 @@ export type TodayBriefingContentFields = {
   keyPoints?: unknown;
 };
 
+/** 오늘 회차 진행 순서 — 이미 올라온 더 늦은 회차가 있으면 그걸 쓴다. */
+export const HOME_HERO_DAY_PROGRESSION: readonly HomeHeroTarget[] = [
+  { market: 'us', session: 'overnight' },
+  { market: 'kr', session: 'morning' },
+  { market: 'kr', session: 'lunch' },
+  { market: 'kr', session: 'close' },
+  'today',
+];
+
+export function heroTargetKey(target: HomeHeroTarget): string {
+  if (target === 'today') return 'today';
+  return `${target.market}:${target.session}`;
+}
+
+export function heroTargetRank(target: HomeHeroTarget): number {
+  const key = heroTargetKey(target);
+  return HOME_HERO_DAY_PROGRESSION.findIndex((row) => heroTargetKey(row) === key);
+}
+
+/**
+ * KST 창의 기본 회차 이상(같거나 더 늦은) 회차 중, 이미 있는 것 중 가장 늦은 회차.
+ * 예: 12:20에 morning 창이어도 lunch가 있으면 lunch.
+ */
+export function selectTodayHeroTarget(
+  preferred: HomeHeroTarget,
+  available: readonly HomeHeroTarget[],
+): HomeHeroTarget | null {
+  const minRank = heroTargetRank(preferred);
+  if (minRank < 0) return available[0] ?? null;
+  let best: HomeHeroTarget | null = null;
+  let bestRank = -1;
+  for (const target of available) {
+    const rank = heroTargetRank(target);
+    if (rank < minRank) continue;
+    if (rank >= bestRank) {
+      best = target;
+      bestRank = rank;
+    }
+  }
+  return best;
+}
+
 /** Asia/Seoul wall-clock minutes since midnight. */
 export function kstMinutesSinceMidnight(now: Date = new Date()): number {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -25,10 +67,13 @@ export function kstMinutesSinceMidnight(now: Date = new Date()): number {
   return hour * 60 + minute;
 }
 
-/** Today hero window (KST): overnight → morning → lunch → close → today_briefing. */
+/**
+ * Today hero window (KST).
+ * lunch 창은 자동화 스케줄(12:10)에 맞춰 12:10부터.
+ */
 export function preferredHeroTargetForKstMinutes(minutes: number): HomeHeroTarget {
   if (minutes < 9 * 60) return { market: 'us', session: 'overnight' };
-  if (minutes < 12 * 60 + 30) return { market: 'kr', session: 'morning' };
+  if (minutes < 12 * 60 + 10) return { market: 'kr', session: 'morning' };
   if (minutes < 15 * 60 + 30) return { market: 'kr', session: 'lunch' };
   if (minutes < 23 * 60) return { market: 'kr', session: 'close' };
   return 'today';

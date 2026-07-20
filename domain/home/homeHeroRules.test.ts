@@ -8,6 +8,7 @@ import {
   hasTodayBriefingContent,
   kstMinutesSinceMidnight,
   preferredHeroTargetForKstMinutes,
+  selectTodayHeroTarget,
 } from './homeHeroRules.ts';
 
 describe('hasTodayBriefingContent', () => {
@@ -36,11 +37,11 @@ describe('preferredHeroTargetForKstMinutes', () => {
       market: 'kr',
       session: 'morning',
     });
-    assert.deepEqual(preferredHeroTargetForKstMinutes(12 * 60 + 29), {
+    assert.deepEqual(preferredHeroTargetForKstMinutes(12 * 60 + 9), {
       market: 'kr',
       session: 'morning',
     });
-    assert.deepEqual(preferredHeroTargetForKstMinutes(12 * 60 + 30), {
+    assert.deepEqual(preferredHeroTargetForKstMinutes(12 * 60 + 10), {
       market: 'kr',
       session: 'lunch',
     });
@@ -57,6 +58,34 @@ describe('preferredHeroTargetForKstMinutes', () => {
       session: 'close',
     });
     assert.equal(preferredHeroTargetForKstMinutes(23 * 60), 'today');
+  });
+});
+
+describe('selectTodayHeroTarget', () => {
+  it('advances to lunch when published during morning window (regression: stuck on pre-market)', () => {
+    const preferred = preferredHeroTargetForKstMinutes(12 * 60 + 5);
+    assert.deepEqual(preferred, { market: 'kr', session: 'morning' });
+    assert.deepEqual(
+      selectTodayHeroTarget(preferred, [
+        { market: 'us', session: 'overnight' },
+        { market: 'kr', session: 'morning' },
+        { market: 'kr', session: 'lunch' },
+      ]),
+      { market: 'kr', session: 'lunch' },
+    );
+  });
+
+  it('stays on morning when lunch is not yet available', () => {
+    assert.deepEqual(
+      selectTodayHeroTarget(
+        { market: 'kr', session: 'morning' },
+        [
+          { market: 'us', session: 'overnight' },
+          { market: 'kr', session: 'morning' },
+        ],
+      ),
+      { market: 'kr', session: 'morning' },
+    );
   });
 });
 

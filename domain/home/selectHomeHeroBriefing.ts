@@ -2,8 +2,10 @@ import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import { HOME_SIGNAL_SESSIONS } from '@/constants/ipadHomeNav';
 import {
   hasTodayBriefingContent,
+  HOME_HERO_DAY_PROGRESSION,
   kstMinutesSinceMidnight,
   preferredHeroTargetForKstMinutes,
+  selectTodayHeroTarget,
   type HomeHeroTarget,
 } from '@/domain/home/homeHeroRules';
 import type {
@@ -19,6 +21,7 @@ export {
   hasTodayBriefingContent,
   kstMinutesSinceMidnight,
   preferredHeroTargetForKstMinutes,
+  selectTodayHeroTarget,
 };
 
 type HeroTarget = HomeHeroTarget;
@@ -108,7 +111,7 @@ function latestPublishedHero(
 
 /**
  * Home hero: one briefing card.
- * - Today: KST window preferred session, else latest published that day.
+ * - Today: KST 기본 회차 이상에서 이미 올라온 가장 늦은 회차 (장중이 있으면 장전보다 우선).
  * - Past: today_briefing → kr/close → lunch → morning → us/overnight.
  */
 export function selectHomeHeroBriefing(args: {
@@ -123,8 +126,12 @@ export function selectHomeHeroBriefing(args: {
 
   if (isToday) {
     const preferred = preferredHeroTargetForKstMinutes(kstMinutesSinceMidnight(now));
+    const available = HOME_HERO_DAY_PROGRESSION.filter((target) =>
+      Boolean(resolveTarget(target, todayBriefing, briefings)),
+    );
+    const chosen = selectTodayHeroTarget(preferred, available);
     return (
-      resolveTarget(preferred, todayBriefing, briefings) ??
+      (chosen ? resolveTarget(chosen, todayBriefing, briefings) : null) ??
       latestPublishedHero(todayBriefing, briefings)
     );
   }

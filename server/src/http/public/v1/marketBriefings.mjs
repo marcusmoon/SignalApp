@@ -15,6 +15,16 @@ function cleanText(value) {
   return String(value || '').trim();
 }
 
+/** ingest 별칭 — intraday/premarket → lunch/morning */
+function normalizeBriefingSession(value) {
+  const session = cleanText(value).toLowerCase();
+  if (session === 'intraday' || session === 'midday') return 'lunch';
+  if (session === 'premarket' || session === 'pre-market' || session === 'pre_market') {
+    return 'morning';
+  }
+  return session;
+}
+
 function cleanArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -50,7 +60,7 @@ function normalizeBriefingDate(value, publishedAt) {
 
 function normalizeBriefingPayload(input) {
   const market = cleanText(input?.market).toLowerCase();
-  const session = cleanText(input?.session).toLowerCase();
+  const session = normalizeBriefingSession(input?.session);
   const id = cleanText(input?.id);
   const title = cleanText(input?.title);
   const headline = cleanText(input?.headline);

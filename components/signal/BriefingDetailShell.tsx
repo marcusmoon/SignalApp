@@ -28,6 +28,7 @@ export type BriefingDetailShellProps = {
    * 본문 `headline`(단건 제목)과 분리. 홈 숏컷·플로우와 같은 뒤로+제목 chrome.
    */
   chromeTitle?: string | null;
+  chromeTitleAccessory?: ReactNode;
   loading?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
@@ -51,6 +52,7 @@ export function BriefingDetailShell({
   embedded = false,
   onBack,
   chromeTitle = null,
+  chromeTitleAccessory,
   loading = false,
   refreshing = false,
   onRefresh,
@@ -83,7 +85,13 @@ export function BriefingDetailShell({
           })}
         />
       ) : null}
-      {onBack ? <WideSubpaneHeader title={sectionTitle || undefined} onBack={onBack} /> : null}
+      {onBack ? (
+        <WideSubpaneHeader
+          title={sectionTitle || undefined}
+          titleAccessory={chromeTitleAccessory}
+          onBack={onBack}
+        />
+      ) : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
+import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import {
   HOME_SIGNAL_SESSIONS,
@@ -147,6 +148,7 @@ export function MarketBriefingDetailContent({
       embedded={embedded}
       onBack={onBack}
       chromeTitle={t('ipadHomeSignalTitle')}
+      chromeTitleAccessory={item ? <BriefingSessionTag briefing={item} /> : null}
       loading={loading}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}

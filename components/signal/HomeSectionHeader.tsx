@@ -9,6 +9,7 @@ type HomeSectionHeaderProps = {
   title: string;
   subtitle?: string;
   badge?: ReactNode;
+  trailingBadge?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
   showChevron?: boolean;
@@ -18,6 +19,7 @@ export function HomeSectionHeader({
   title,
   subtitle,
   badge,
+  trailingBadge,
   onPress,
   accessibilityLabel,
   showChevron = true,
@@ -32,6 +34,7 @@ export function HomeSectionHeader({
           <View style={styles.titleLine}>
             {badge}
             <Text style={styles.title}>{title}</Text>
+            {trailingBadge}
           </View>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>

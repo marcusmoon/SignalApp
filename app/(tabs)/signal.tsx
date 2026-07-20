@@ -17,6 +17,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
+import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -563,6 +564,9 @@ export default function SignalScreen({
       {onBack ? (
         <WideSubpaneHeader
           title={hideSessionSegments ? undefined : t('ipadHomeSignalTitle')}
+          titleAccessory={
+            !hideSessionSegments && activeBriefing ? <BriefingSessionTag briefing={activeBriefing} /> : null
+          }
           onBack={onBack}
         />
       ) : null}

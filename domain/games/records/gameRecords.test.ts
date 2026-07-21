@@ -9,8 +9,6 @@ import {
   formatDurationMs,
   recordBlockPuzzleGameOver,
   recordBlockPuzzleRunStarted,
-  recordMahjongCleared,
-  recordMahjongRunStarted,
   normalizeGameRecords,
   recordSudokuCleared,
   recordSudokuRunStarted,
@@ -70,17 +68,5 @@ describe('gameRecords', () => {
   it('normalizes legacy records without block puzzle', () => {
     const r = normalizeGameRecords({ version: 1, sumTrail: {}, sudoku: {} });
     assert.equal(r.blockPuzzle.bestScore, 0);
-    assert.equal(r.mahjong.clears, 0);
-  });
-
-  it('records mahjong clears with best time/score', () => {
-    let r = emptyGameRecords();
-    r = recordMahjongRunStarted(r);
-    r = recordMahjongCleared(r, 'easy', 120_000, 800);
-    r = recordMahjongCleared(r, 'easy', 90_000, 950);
-    assert.equal(r.mahjong.clears, 2);
-    assert.equal(r.mahjong.bestScore, 950);
-    assert.equal(r.mahjong.byDifficulty.easy.bestTimeMs, 90_000);
-    assert.equal(r.mahjong.byDifficulty.easy.bestScore, 950);
   });
 });

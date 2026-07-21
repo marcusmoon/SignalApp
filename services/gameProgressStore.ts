@@ -2,23 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   parseBlockPuzzleProgress,
-  parseMahjongProgress,
   parseSudokuProgress,
   parseSumTrailProgress,
   type BlockPuzzleProgress,
-  type MahjongProgress,
   type SudokuProgress,
   type SumTrailProgress,
 } from '@/domain/games/progress/parseGameProgress';
 import type { BlockPuzzleState } from '@/domain/games/blockPuzzle';
-import type { MahjongState } from '@/domain/games/mahjongSolitaire';
 import type { SumTrailState } from '@/domain/games/sumTrail';
 import type { SudokuState } from '@/domain/games/sudoku';
 
-export type { BlockPuzzleProgress, MahjongProgress, SudokuProgress, SumTrailProgress };
+export type { BlockPuzzleProgress, SudokuProgress, SumTrailProgress };
 export {
   parseBlockPuzzleProgress,
-  parseMahjongProgress,
   parseSudokuProgress,
   parseSumTrailProgress,
 };
@@ -26,7 +22,6 @@ export {
 const SUM_TRAIL_KEY = '@signal/game_progress_sum_trail_v1';
 const SUDOKU_KEY = '@signal/game_progress_sudoku_v1';
 const BLOCK_PUZZLE_KEY = '@signal/game_progress_block_puzzle_v1';
-const MAHJONG_KEY = '@signal/game_progress_mahjong_v1';
 
 export async function loadSumTrailProgress(): Promise<SumTrailProgress | null> {
   try {
@@ -130,54 +125,16 @@ export async function clearBlockPuzzleProgress(): Promise<void> {
   }
 }
 
-export async function loadMahjongProgress(): Promise<MahjongProgress | null> {
-  try {
-    const raw = await AsyncStorage.getItem(MAHJONG_KEY);
-    if (raw == null) return null;
-    return parseMahjongProgress(JSON.parse(raw) as unknown);
-  } catch {
-    return null;
-  }
-}
-
-export async function saveMahjongProgress(state: MahjongState, elapsedMs: number): Promise<void> {
-  if (state.status === 'cleared') {
-    await clearMahjongProgress();
-    return;
-  }
-  const payload: MahjongProgress = {
-    updatedAt: new Date().toISOString(),
-    difficulty: state.difficulty,
-    state,
-    elapsedMs: Math.max(0, Math.floor(elapsedMs)),
-  };
-  try {
-    await AsyncStorage.setItem(MAHJONG_KEY, JSON.stringify(payload));
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function clearMahjongProgress(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(MAHJONG_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
 /** 허브 배지용 — 이어하기 가능 여부 */
 export async function loadGameProgressSummaries(): Promise<{
   sumTrail: SumTrailProgress | null;
   sudoku: SudokuProgress | null;
   blockPuzzle: BlockPuzzleProgress | null;
-  mahjong: MahjongProgress | null;
 }> {
-  const [sumTrail, sudoku, blockPuzzle, mahjong] = await Promise.all([
+  const [sumTrail, sudoku, blockPuzzle] = await Promise.all([
     loadSumTrailProgress(),
     loadSudokuProgress(),
     loadBlockPuzzleProgress(),
-    loadMahjongProgress(),
   ]);
-  return { sumTrail, sudoku, blockPuzzle, mahjong };
+  return { sumTrail, sudoku, blockPuzzle };
 }

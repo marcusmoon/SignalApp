@@ -36,7 +36,7 @@ import { loadGameProgressSummaries } from '@/services/gameProgressStore';
 import { loadGameRecords } from '@/services/gameRecordsStore';
 
 type GameCard = {
-  id: 'sum-trail' | 'sudoku' | 'block-puzzle' | 'mahjong-solitaire';
+  id: 'sum-trail' | 'sudoku' | 'block-puzzle';
   href: Href;
   icon: ComponentProps<typeof FontAwesome>['name'];
   titleId: MessageId;
@@ -65,13 +65,6 @@ const GAMES: GameCard[] = [
     titleId: 'gameBlockPuzzleTitle',
     bodyId: 'gameBlockPuzzleCardBody',
   },
-  {
-    id: 'mahjong-solitaire',
-    href: '/games/mahjong-solitaire' as Href,
-    icon: 'clone',
-    titleId: 'gameMahjongTitle',
-    bodyId: 'gameMahjongCardBody',
-  },
 ];
 
 export type GameHubContentProps = {
@@ -98,18 +91,14 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
     sumTrail: boolean;
     sudoku: boolean;
     blockPuzzle: boolean;
-    mahjong: boolean;
     sumLevel: number;
     blockScore: number;
-    mahjongRemaining: number;
   }>({
     sumTrail: false,
     sudoku: false,
     blockPuzzle: false,
-    mahjong: false,
     sumLevel: 0,
     blockScore: 0,
-    mahjongRemaining: 0,
   });
 
   const refreshMeta = useCallback(() => {
@@ -119,12 +108,8 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
         sumTrail: p.sumTrail != null,
         sudoku: p.sudoku != null,
         blockPuzzle: p.blockPuzzle != null,
-        mahjong: p.mahjong != null,
         sumLevel: p.sumTrail?.state.level ?? 0,
         blockScore: p.blockPuzzle?.state.score ?? 0,
-        mahjongRemaining: p.mahjong
-          ? p.mahjong.state.tiles.filter((t) => !t.removed).length
-          : 0,
       });
     });
   }, []);
@@ -164,18 +149,6 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
       }
       if (records.blockPuzzle.bestScore > 0) {
         return t('gameHubBestScore', { score: records.blockPuzzle.bestScore });
-      }
-      return t('gameHubNoRecordsYet');
-    }
-    if (id === 'mahjong-solitaire') {
-      if (resume.mahjong) {
-        return t('gameHubResumeMahjong', { count: resume.mahjongRemaining });
-      }
-      if (records.mahjong.clears > 0) {
-        return t('gameHubClears', { count: records.mahjong.clears });
-      }
-      if (records.mahjong.bestScore > 0) {
-        return t('gameHubBestScore', { score: records.mahjong.bestScore });
       }
       return t('gameHubNoRecordsYet');
     }
@@ -224,8 +197,7 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
             const hasResume =
               (game.id === 'sum-trail' && resume.sumTrail) ||
               (game.id === 'sudoku' && resume.sudoku) ||
-              (game.id === 'block-puzzle' && resume.blockPuzzle) ||
-              (game.id === 'mahjong-solitaire' && resume.mahjong);
+              (game.id === 'block-puzzle' && resume.blockPuzzle);
             return (
               <Pressable
                 key={game.id}

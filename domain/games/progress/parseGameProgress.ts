@@ -1,5 +1,4 @@
 import type { BlockPuzzleDifficulty, BlockPuzzleState } from '../blockPuzzle/blockPuzzle.ts';
-import type { MahjongDifficulty, MahjongState } from '../mahjongSolitaire/mahjongSolitaire.ts';
 import type { SumTrailDifficulty, SumTrailState } from '../sumTrail/sumTrail.ts';
 import type { SudokuDifficulty, SudokuState } from '../sudoku/sudoku.ts';
 
@@ -21,13 +20,6 @@ export type BlockPuzzleProgress = {
   updatedAt: string;
   difficulty: BlockPuzzleDifficulty;
   state: BlockPuzzleState;
-};
-
-export type MahjongProgress = {
-  updatedAt: string;
-  difficulty: MahjongDifficulty;
-  state: MahjongState;
-  elapsedMs: number;
 };
 
 function isDiff(v: unknown): v is 'easy' | 'normal' | 'hard' {
@@ -216,65 +208,5 @@ export function parseBlockPuzzleProgress(raw: unknown): BlockPuzzleProgress | nu
     updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : new Date().toISOString(),
     difficulty: o.difficulty,
     state,
-  };
-}
-
-function parseMahjongTile(raw: unknown): MahjongState['tiles'][number] | null {
-  if (raw == null || typeof raw !== 'object') return null;
-  const t = raw as Record<string, unknown>;
-  if (typeof t.id !== 'string' || typeof t.kind !== 'string') return null;
-  if (typeof t.x !== 'number' || typeof t.y !== 'number' || typeof t.layer !== 'number') return null;
-  return {
-    id: t.id,
-    kind: t.kind,
-    x: Math.floor(t.x),
-    y: Math.floor(t.y),
-    layer: Math.max(0, Math.floor(t.layer)),
-    removed: t.removed === true,
-  };
-}
-
-export function parseMahjongProgress(raw: unknown): MahjongProgress | null {
-  if (raw == null || typeof raw !== 'object') return null;
-  const o = raw as Record<string, unknown>;
-  if (!isDiff(o.difficulty)) return null;
-  const st = o.state;
-  if (st == null || typeof st !== 'object') return null;
-  const s = st as Record<string, unknown>;
-  if (s.status !== 'playing' && s.status !== 'stuck') return null;
-  if (!isDiff(s.difficulty)) return null;
-  const tilesRaw = Array.isArray(s.tiles) ? s.tiles : [];
-  const tiles = tilesRaw.map(parseMahjongTile).filter((t): t is NonNullable<typeof t> => t != null);
-  if (tiles.length === 0) return null;
-  const history = Array.isArray(s.history)
-    ? s.history
-        .filter(
-          (h): h is { a: string; b: string } =>
-            h != null &&
-            typeof h === 'object' &&
-            typeof (h as { a: unknown }).a === 'string' &&
-            typeof (h as { b: unknown }).b === 'string',
-        )
-        .map((h) => ({ a: h.a, b: h.b }))
-    : [];
-  const state: MahjongState = {
-    difficulty: s.difficulty,
-    tiles,
-    selectedId: typeof s.selectedId === 'string' ? s.selectedId : null,
-    status: s.status,
-    score: typeof s.score === 'number' ? Math.max(0, Math.floor(s.score)) : 0,
-    matches: typeof s.matches === 'number' ? Math.max(0, Math.floor(s.matches)) : 0,
-    hintsRemaining:
-      typeof s.hintsRemaining === 'number' ? Math.max(0, Math.floor(s.hintsRemaining)) : 0,
-    history,
-  };
-  return {
-    updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : new Date().toISOString(),
-    difficulty: o.difficulty,
-    state,
-    elapsedMs:
-      typeof o.elapsedMs === 'number' && Number.isFinite(o.elapsedMs)
-        ? Math.max(0, Math.floor(o.elapsedMs))
-        : 0,
   };
 }

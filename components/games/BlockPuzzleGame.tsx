@@ -11,6 +11,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Haptics from 'expo-haptics';
 
 import { BlockPuzzleHelpSheet } from '@/components/games/BlockPuzzleHelpSheet';
+import { blockPieceTint } from '@/components/games/blockPuzzleColors';
 import { GameBurstOverlay } from '@/components/games/GameBurstOverlay';
 import { runBoardPulse, runBoardShake } from '@/components/games/gameBoardFx';
 import type { AppTheme } from '@/constants/theme';
@@ -53,25 +54,60 @@ const TICK_MS = 50;
 
 type BoardFx = { id: number; kind: 'lines' | 'gameover'; subtitle?: string };
 
-function blockTint(theme: AppTheme, id: number): { bg: string; border: string } {
-  switch (id) {
-    case 1:
-      return { bg: theme.greenDim, border: theme.greenBorder };
-    case 2:
-      return { bg: theme.warningDim, border: theme.warning };
-    case 3:
-      return { bg: theme.bgElevated, border: theme.border };
-    case 4:
-      return { bg: theme.greenDim, border: theme.green };
-    case 5:
-      return { bg: theme.dangerDim, border: theme.danger };
-    case 6:
-      return { bg: theme.bgElevated, border: theme.textMuted };
-    case 7:
-      return { bg: theme.warningDim, border: theme.warning };
-    default:
-      return { bg: theme.bgElevated, border: theme.border };
+function BlockCell({
+  id,
+  cellSize,
+  theme,
+  empty,
+}: {
+  id: number;
+  cellSize: number;
+  theme: AppTheme;
+  empty: boolean;
+}) {
+  if (empty) {
+    return (
+      <View
+        style={{
+          width: cellSize - 1,
+          height: cellSize - 1,
+          margin: 0.5,
+          borderRadius: 3,
+          backgroundColor: theme.bgElevated,
+          borderColor: theme.border,
+          borderWidth: StyleSheet.hairlineWidth,
+        }}
+      />
+    );
   }
+  const tint = blockPieceTint(theme, id);
+  return (
+    <View
+      style={{
+        width: cellSize - 1,
+        height: cellSize - 1,
+        margin: 0.5,
+        borderRadius: 3,
+        backgroundColor: tint.bg,
+        borderColor: tint.border,
+        borderWidth: 2,
+        overflow: 'hidden',
+      }}>
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '38%',
+          backgroundColor: tint.shine,
+          opacity: theme.colorScheme === 'dark' ? 0.28 : 0.2,
+          borderTopLeftRadius: 2,
+          borderTopRightRadius: 2,
+        }}
+      />
+    </View>
+  );
 }
 
 function MiniPreview({
@@ -95,7 +131,7 @@ function MiniPreview({
         <View key={r} style={{ flexDirection: 'row' }}>
           {Array.from({ length: cols }, (_, c) => {
             const id = ids.has(`${r},${c}`) ? typeToDisplayId(type) : 0;
-            const tint = id ? blockTint(theme, id) : null;
+            const tint = id ? blockPieceTint(theme, id) : null;
             return (
               <View
                 key={c}
@@ -107,7 +143,7 @@ function MiniPreview({
                     margin: 1,
                     backgroundColor: tint?.bg ?? 'transparent',
                     borderColor: tint?.border ?? 'transparent',
-                    borderWidth: id ? 1 : 0,
+                    borderWidth: id ? 2 : 0,
                   },
                 ]}
               />
@@ -413,24 +449,9 @@ export function BlockPuzzleGame({
       <View style={[styles.board, { width: boardWidth, height: boardHeight }]}>
         {grid.map((row, r) => (
           <View key={r} style={styles.boardRow}>
-            {row.map((id, c) => {
-              const tint = id ? blockTint(theme, id) : null;
-              return (
-                <View
-                  key={c}
-                  style={[
-                    styles.cell,
-                    {
-                      width: cellSize - 1,
-                      height: cellSize - 1,
-                      backgroundColor: tint?.bg ?? theme.bgElevated,
-                      borderColor: tint?.border ?? theme.border,
-                      borderWidth: id ? 1 : StyleSheet.hairlineWidth,
-                    },
-                  ]}
-                />
-              );
-            })}
+            {row.map((id, c) => (
+              <BlockCell key={c} id={id} cellSize={cellSize} theme={theme} empty={id === 0} />
+            ))}
           </View>
         ))}
       </View>
@@ -754,10 +775,6 @@ function makeStyles(
     },
     boardRow: {
       flexDirection: 'row',
-    },
-    cell: {
-      margin: 0.5,
-      borderRadius: 3,
     },
     controlDock: {
       flexDirection: 'row',

@@ -1,19 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  parseBlockPuzzleProgress,
   parseSudokuProgress,
   parseSumTrailProgress,
+  type BlockPuzzleProgress,
   type SudokuProgress,
   type SumTrailProgress,
 } from '@/domain/games/progress/parseGameProgress';
+import type { BlockPuzzleState } from '@/domain/games/blockPuzzle';
 import type { SumTrailState } from '@/domain/games/sumTrail';
 import type { SudokuState } from '@/domain/games/sudoku';
 
-export type { SudokuProgress, SumTrailProgress };
-export { parseSudokuProgress, parseSumTrailProgress };
+export type { BlockPuzzleProgress, SudokuProgress, SumTrailProgress };
+export { parseBlockPuzzleProgress, parseSudokuProgress, parseSumTrailProgress };
 
 const SUM_TRAIL_KEY = '@signal/game_progress_sum_trail_v1';
 const SUDOKU_KEY = '@signal/game_progress_sudoku_v1';
+const BLOCK_PUZZLE_KEY = '@signal/game_progress_block_puzzle_v1';
 
 export async function loadSumTrailProgress(): Promise<SumTrailProgress | null> {
   try {
@@ -82,11 +86,51 @@ export async function clearSudokuProgress(): Promise<void> {
   }
 }
 
+export async function loadBlockPuzzleProgress(): Promise<BlockPuzzleProgress | null> {
+  try {
+    const raw = await AsyncStorage.getItem(BLOCK_PUZZLE_KEY);
+    if (raw == null) return null;
+    return parseBlockPuzzleProgress(JSON.parse(raw) as unknown);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveBlockPuzzleProgress(state: BlockPuzzleState): Promise<void> {
+  if (state.status === 'gameover') {
+    await clearBlockPuzzleProgress();
+    return;
+  }
+  const payload: BlockPuzzleProgress = {
+    updatedAt: new Date().toISOString(),
+    difficulty: state.difficulty,
+    state,
+  };
+  try {
+    await AsyncStorage.setItem(BLOCK_PUZZLE_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function clearBlockPuzzleProgress(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(BLOCK_PUZZLE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** 허브 배지용 — 이어하기 가능 여부 */
 export async function loadGameProgressSummaries(): Promise<{
   sumTrail: SumTrailProgress | null;
   sudoku: SudokuProgress | null;
+  blockPuzzle: BlockPuzzleProgress | null;
 }> {
-  const [sumTrail, sudoku] = await Promise.all([loadSumTrailProgress(), loadSudokuProgress()]);
-  return { sumTrail, sudoku };
+  const [sumTrail, sudoku, blockPuzzle] = await Promise.all([
+    loadSumTrailProgress(),
+    loadSudokuProgress(),
+    loadBlockPuzzleProgress(),
+  ]);
+  return { sumTrail, sudoku, blockPuzzle };
 }

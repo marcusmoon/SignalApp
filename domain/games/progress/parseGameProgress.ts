@@ -1,3 +1,4 @@
+import type { BlockPuzzleDifficulty, BlockPuzzleState } from '../blockPuzzle/blockPuzzle.ts';
 import type { SumTrailDifficulty, SumTrailState } from '../sumTrail/sumTrail.ts';
 import type { SudokuDifficulty, SudokuState } from '../sudoku/sudoku.ts';
 
@@ -13,6 +14,12 @@ export type SudokuProgress = {
   state: SudokuState;
   /** 누적 플레이 시간(ms) — 백그라운드 제외분 */
   elapsedMs: number;
+};
+
+export type BlockPuzzleProgress = {
+  updatedAt: string;
+  difficulty: BlockPuzzleDifficulty;
+  state: BlockPuzzleState;
 };
 
 function isDiff(v: unknown): v is 'easy' | 'normal' | 'hard' {
@@ -135,5 +142,71 @@ export function parseSudokuProgress(raw: unknown): SudokuProgress | null {
       typeof o.elapsedMs === 'number' && Number.isFinite(o.elapsedMs)
         ? Math.max(0, Math.floor(o.elapsedMs))
         : 0,
+  };
+}
+
+function isBoard(v: unknown, rows: number, cols: number): v is number[][] {
+  if (!Array.isArray(v) || v.length !== rows) return false;
+  return v.every(
+    (row) =>
+      Array.isArray(row) &&
+      row.length === cols &&
+      row.every((n) => typeof n === 'number' && Number.isFinite(n)),
+  );
+}
+
+function isTetromino(v: unknown): v is BlockPuzzleState['next'] {
+  return v === 'I' || v === 'O' || v === 'T' || v === 'S' || v === 'Z' || v === 'J' || v === 'L';
+}
+
+export function parseBlockPuzzleProgress(raw: unknown): BlockPuzzleProgress | null {
+  if (raw == null || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (!isDiff(o.difficulty)) return null;
+  const st = o.state;
+  if (st == null || typeof st !== 'object') return null;
+  const s = st as Record<string, unknown>;
+  if (!isBoard(s.board, 22, 10)) return null;
+  if (s.status !== 'playing') return null;
+  if (!isDiff(s.difficulty)) return null;
+  if (!isTetromino(s.next)) return null;
+  const bag = Array.isArray(s.bag) ? s.bag.filter(isTetromino) : [];
+  const pieceRaw = s.piece;
+  let piece: BlockPuzzleState['piece'] = null;
+  if (pieceRaw != null && typeof pieceRaw === 'object') {
+    const p = pieceRaw as Record<string, unknown>;
+    if (
+      isTetromino(p.type) &&
+      typeof p.rotation === 'number' &&
+      typeof p.r === 'number' &&
+      typeof p.c === 'number'
+    ) {
+      piece = {
+        type: p.type,
+        rotation: Math.max(0, Math.floor(p.rotation)) % 4,
+        r: Math.floor(p.r),
+        c: Math.floor(p.c),
+      };
+    }
+  }
+  const state: BlockPuzzleState = {
+    difficulty: s.difficulty,
+    board: s.board,
+    piece,
+    next: s.next,
+    bag,
+    score: typeof s.score === 'number' ? Math.max(0, Math.floor(s.score)) : 0,
+    lines: typeof s.lines === 'number' ? Math.max(0, Math.floor(s.lines)) : 0,
+    level: typeof s.level === 'number' ? Math.max(1, Math.floor(s.level)) : 1,
+    status: 'playing',
+    dropMs:
+      typeof s.dropMs === 'number' && Number.isFinite(s.dropMs)
+        ? Math.max(0, Math.floor(s.dropMs))
+        : 0,
+  };
+  return {
+    updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : new Date().toISOString(),
+    difficulty: o.difficulty,
+    state,
   };
 }

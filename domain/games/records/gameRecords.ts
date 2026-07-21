@@ -30,10 +30,25 @@ export type SudokuRecords = {
   byDifficulty: Record<GameDifficulty, SudokuDiffRecords>;
 };
 
+export type BlockPuzzleDiffRecords = {
+  bestScore: number;
+  bestLines: number;
+  bestLevel: number;
+  gamesPlayed: number;
+};
+
+export type BlockPuzzleRecords = {
+  runsStarted: number;
+  bestScore: number;
+  bestLines: number;
+  byDifficulty: Record<GameDifficulty, BlockPuzzleDiffRecords>;
+};
+
 export type GameRecordsState = {
   version: 1;
   sumTrail: SumTrailRecords;
   sudoku: SudokuRecords;
+  blockPuzzle: BlockPuzzleRecords;
 };
 
 const DIFFS: GameDifficulty[] = ['easy', 'normal', 'hard'];
@@ -72,8 +87,30 @@ export function emptySudokuRecords(): SudokuRecords {
   };
 }
 
+function emptyBlockPuzzleDiff(): BlockPuzzleDiffRecords {
+  return { bestScore: 0, bestLines: 0, bestLevel: 0, gamesPlayed: 0 };
+}
+
+export function emptyBlockPuzzleRecords(): BlockPuzzleRecords {
+  return {
+    runsStarted: 0,
+    bestScore: 0,
+    bestLines: 0,
+    byDifficulty: {
+      easy: emptyBlockPuzzleDiff(),
+      normal: emptyBlockPuzzleDiff(),
+      hard: emptyBlockPuzzleDiff(),
+    },
+  };
+}
+
 export function emptyGameRecords(): GameRecordsState {
-  return { version: 1, sumTrail: emptySumTrailRecords(), sudoku: emptySudokuRecords() };
+  return {
+    version: 1,
+    sumTrail: emptySumTrailRecords(),
+    sudoku: emptySudokuRecords(),
+    blockPuzzle: emptyBlockPuzzleRecords(),
+  };
 }
 
 function asDifficulty(v: unknown): GameDifficulty | null {
@@ -133,6 +170,29 @@ export function normalizeGameRecords(raw: unknown): GameRecordsState {
             clears: num(r.clears),
             bestTimeMs: numOrNull(r.bestTimeMs),
             bestMistakes: numOrNull(r.bestMistakes),
+          };
+        }
+      }
+    }
+  }
+
+  const bp = o.blockPuzzle;
+  if (bp && typeof bp === 'object') {
+    const b = bp as Record<string, unknown>;
+    base.blockPuzzle.runsStarted = num(b.runsStarted);
+    base.blockPuzzle.bestScore = num(b.bestScore);
+    base.blockPuzzle.bestLines = num(b.bestLines);
+    const by = b.byDifficulty;
+    if (by && typeof by === 'object') {
+      for (const d of DIFFS) {
+        const row = (by as Record<string, unknown>)[d];
+        if (row && typeof row === 'object') {
+          const r = row as Record<string, unknown>;
+          base.blockPuzzle.byDifficulty[d] = {
+            bestScore: num(r.bestScore),
+            bestLines: num(r.bestLines),
+            bestLevel: num(r.bestLevel),
+            gamesPlayed: num(r.gamesPlayed),
           };
         }
       }
@@ -208,6 +268,45 @@ export function recordSudokuCleared(
       runsStarted: su.runsStarted,
       clears: su.clears + 1,
       byDifficulty: { ...su.byDifficulty, [difficulty]: nextDiff },
+    },
+  };
+}
+
+export function recordBlockPuzzleRunStarted(records: GameRecordsState): GameRecordsState {
+  return {
+    ...records,
+    blockPuzzle: {
+      ...records.blockPuzzle,
+      runsStarted: records.blockPuzzle.runsStarted + 1,
+    },
+  };
+}
+
+export function recordBlockPuzzleGameOver(
+  records: GameRecordsState,
+  difficulty: GameDifficulty,
+  score: number,
+  lines: number,
+  level: number,
+): GameRecordsState {
+  const bp = records.blockPuzzle;
+  const diff = bp.byDifficulty[difficulty];
+  const sc = Math.max(0, Math.floor(score));
+  const ln = Math.max(0, Math.floor(lines));
+  const lv = Math.max(1, Math.floor(level));
+  const nextDiff: BlockPuzzleDiffRecords = {
+    bestScore: Math.max(diff.bestScore, sc),
+    bestLines: Math.max(diff.bestLines, ln),
+    bestLevel: Math.max(diff.bestLevel, lv),
+    gamesPlayed: diff.gamesPlayed + 1,
+  };
+  return {
+    ...records,
+    blockPuzzle: {
+      runsStarted: bp.runsStarted,
+      bestScore: Math.max(bp.bestScore, sc),
+      bestLines: Math.max(bp.bestLines, ln),
+      byDifficulty: { ...bp.byDifficulty, [difficulty]: nextDiff },
     },
   };
 }

@@ -51,6 +51,7 @@ export function GameRecordsSheet({ visible, onClose }: Props) {
 
   const st = records.sumTrail;
   const su = records.sudoku;
+  const bp = records.blockPuzzle;
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -121,6 +122,44 @@ export function GameRecordsSheet({ visible, onClose }: Props) {
                     <Row
                       label={t('gameRecordsBestMistakes')}
                       value={miss}
+                      styles={styles}
+                      compact
+                    />
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={styles.section}>{t('gameBlockPuzzleTitle')}</Text>
+            <View style={styles.card}>
+              <Row label={t('gameRecordsRuns')} value={String(bp.runsStarted)} styles={styles} />
+              <Row label={t('gameRecordsBestScore')} value={String(bp.bestScore)} styles={styles} />
+              <Row label={t('gameRecordsBestLines')} value={String(bp.bestLines)} styles={styles} />
+              {(['easy', 'normal', 'hard'] as const).map((d) => {
+                const row = bp.byDifficulty[d];
+                const diffLabel =
+                  d === 'easy'
+                    ? t('gameBlockPuzzleDiffEasy')
+                    : d === 'normal'
+                      ? t('gameBlockPuzzleDiffNormal')
+                      : t('gameBlockPuzzleDiffHard');
+                return (
+                  <View key={d} style={styles.diffBlock}>
+                    <Text style={styles.diffTitle}>{diffLabel}</Text>
+                    <Row
+                      label={t('gameRecordsBestScore')}
+                      value={String(row.bestScore)}
+                      styles={styles}
+                      compact
+                    />
+                    <Row
+                      label={t('gameRecordsBestLines')}
+                      value={String(row.bestLines)}
+                      styles={styles}
+                      compact
+                    />
+                    <Row
+                      label={t('gameRecordsBestLevel')}
+                      value={String(row.bestLevel)}
                       styles={styles}
                       compact
                     />

@@ -214,6 +214,7 @@ export const en = {
   gameSudokuRestart: 'Restart',
   gameSudokuNewGame: 'New game',
   gameSudokuHint: 'Hint {{count}}',
+  gameSudokuHintFx: 'Hint!',
   gameSudokuHintA11y: 'Use hint, {{count}} remaining',
   gameSudokuDigitA11y: 'Enter {{digit}}',
   gameSudokuCellA11y: 'Row {{row}}, column {{col}}, number {{value}}',

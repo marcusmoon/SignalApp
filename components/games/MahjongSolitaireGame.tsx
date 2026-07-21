@@ -1,0 +1,671 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as Haptics from 'expo-haptics';
+
+import { GameBurstOverlay } from '@/components/games/GameBurstOverlay';
+import { MahjongSolitaireHelpSheet } from '@/components/games/MahjongSolitaireHelpSheet';
+import { runBoardPulse, runCellPop } from '@/components/games/gameBoardFx';
+import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { useLocale } from '@/contexts/LocaleContext';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  formatDurationMs,
+  recordMahjongCleared,
+  recordMahjongRunStarted,
+} from '@/domain/games/records';
+import {
+  TILE_H,
+  TILE_W,
+  boardBounds,
+  createMahjongGame,
+  findMahjongHint,
+  isTileFree,
+  newMahjongGame,
+  remainingCount,
+  restartMahjongGame,
+  tapMahjongTile,
+  tileLabel,
+  tileSuitColor,
+  undoMahjong,
+  useMahjongHint,
+  type MahjongDifficulty,
+  type MahjongState,
+  type MahjongTile,
+} from '@/domain/games/mahjongSolitaire';
+import {
+  clearMahjongProgress,
+  loadMahjongProgress,
+  saveMahjongProgress,
+} from '@/services/gameProgressStore';
+import { updateGameRecords } from '@/services/gameRecordsStore';
+
+const DIFFICULTIES: MahjongDifficulty[] = ['easy', 'normal', 'hard'];
+
+type BoardFx = { id: number; kind: 'match' | 'win' | 'stuck' };
+
+function suitColors(theme: AppTheme, kind: string): { bg: string; border: string; text: string } {
+  const suit = tileSuitColor(kind);
+  switch (suit) {
+    case 'dot':
+      return { bg: theme.greenDim, border: theme.greenBorder, text: theme.green };
+    case 'bamboo':
+      return { bg: theme.warningDim, border: theme.warning, text: theme.warning };
+    case 'char':
+      return { bg: theme.dangerDim, border: theme.danger, text: theme.danger };
+    case 'flower':
+      return { bg: theme.bgElevated, border: theme.border, text: theme.text };
+    default:
+      return { bg: theme.card, border: theme.border, text: theme.text };
+  }
+}
+
+function MahjongTileView({
+  tile,
+  selected,
+  hinted,
+  free,
+  left,
+  top,
+  w,
+  h,
+  theme,
+  sf,
+  onPress,
+  styles,
+  popTick,
+}: {
+  tile: MahjongTile;
+  selected: boolean;
+  hinted: boolean;
+  free: boolean;
+  left: number;
+  top: number;
+  w: number;
+  h: number;
+  theme: AppTheme;
+  sf: (n: number) => number;
+  onPress: () => void;
+  styles: ReturnType<typeof makeStyles>;
+  popTick: number;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const colors = suitColors(theme, tile.kind);
+
+  useEffect(() => {
+    if (popTick <= 0) return;
+    runCellPop(scale);
+  }, [popTick, scale]);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: w,
+        height: h,
+        zIndex: tile.layer * 10 + 1,
+        transform: [{ scale: selected ? 1.06 : 1 }],
+        opacity: free ? 1 : 0.72,
+      }}>
+      <Pressable
+        onPress={onPress}
+        disabled={!free}
+        style={[
+          styles.tile,
+          {
+            backgroundColor: colors.bg,
+            borderColor: selected || hinted ? theme.green : colors.border,
+            borderWidth: selected || hinted ? 2 : 1,
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={tileLabel(tile.kind)}>
+        <Text style={[styles.tileText, { fontSize: sf(w > 34 ? 15 : 13), color: colors.text }]}>
+          {tileLabel(tile.kind)}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+export function MahjongSolitaireGame({
+  wide = false,
+  split = false,
+  fill = false,
+  viewportHeight = 800,
+}: {
+  wide?: boolean;
+  split?: boolean;
+  fill?: boolean;
+  viewportHeight?: number;
+}) {
+  const { theme, scaleFont } = useSignalTheme();
+  const { t } = useLocale();
+  const compact = !wide && !split;
+  const [boardBox, setBoardBox] = useState({ w: 0, h: 0 });
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, wide, compact),
+    [theme, scaleFont, wide, compact],
+  );
+
+  const [difficulty, setDifficulty] = useState<MahjongDifficulty>('normal');
+  const [state, setState] = useState<MahjongState>(() => createMahjongGame('normal'));
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [boardFx, setBoardFx] = useState<BoardFx | null>(null);
+  const [hintIds, setHintIds] = useState<string[]>([]);
+  const [popTick, setPopTick] = useState(0);
+  const elapsedBaseRef = useRef(0);
+  const tickBaseRef = useRef(Date.now());
+  const recordedClearRef = useRef(false);
+  const boardPulse = useRef(new Animated.Value(1)).current;
+  const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const liveElapsed = useCallback(() => {
+    if (state.status !== 'playing') return elapsedMs;
+    return elapsedBaseRef.current + (Date.now() - tickBaseRef.current);
+  }, [elapsedMs, state.status]);
+
+  const beginTimer = useCallback((baseMs = 0) => {
+    elapsedBaseRef.current = baseMs;
+    tickBaseRef.current = Date.now();
+    setElapsedMs(baseMs);
+    recordedClearRef.current = false;
+  }, []);
+
+  const clearFxTimer = useCallback(() => {
+    if (fxTimer.current) {
+      clearTimeout(fxTimer.current);
+      fxTimer.current = null;
+    }
+  }, []);
+
+  const triggerBoardFx = useCallback(
+    (kind: BoardFx['kind']) => {
+      clearFxTimer();
+      if (kind === 'win') runBoardPulse(boardPulse, 1.05);
+      else runBoardPulse(boardPulse, 1.03);
+      setBoardFx({ id: Date.now(), kind });
+      fxTimer.current = setTimeout(() => {
+        setBoardFx(null);
+        fxTimer.current = null;
+      }, kind === 'win' ? 1400 : 900);
+    },
+    [clearFxTimer, boardPulse],
+  );
+
+  useEffect(
+    () => () => {
+      clearFxTimer();
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+    },
+    [clearFxTimer],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadMahjongProgress().then((progress) => {
+      if (cancelled) return;
+      if (progress) {
+        setDifficulty(progress.difficulty);
+        setState(progress.state);
+        beginTimer(progress.elapsedMs);
+      } else {
+        beginTimer(0);
+        void updateGameRecords((r) => recordMahjongRunStarted(r));
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [beginTimer]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'playing') return;
+    const id = setInterval(() => {
+      setElapsedMs(elapsedBaseRef.current + (Date.now() - tickBaseRef.current));
+    }, 500);
+    return () => clearInterval(id);
+  }, [hydrated, state.status, difficulty]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const ms =
+      state.status === 'playing'
+        ? elapsedBaseRef.current + (Date.now() - tickBaseRef.current)
+        : elapsedBaseRef.current;
+    void saveMahjongProgress(state, ms);
+  }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'cleared' || recordedClearRef.current) return;
+    recordedClearRef.current = true;
+    const finalMs = liveElapsed();
+    setElapsedMs(finalMs);
+    triggerBoardFx('win');
+    void updateGameRecords((r) => recordMahjongCleared(r, state.difficulty, finalMs, state.score));
+    void clearMahjongProgress();
+  }, [hydrated, state.status, state.difficulty, state.score, liveElapsed, triggerBoardFx]);
+
+  useEffect(() => {
+    if (!hydrated || state.status !== 'stuck') return;
+    triggerBoardFx('stuck');
+  }, [hydrated, state.status, triggerBoardFx]);
+
+  const onDifficulty = useCallback(
+    (d: MahjongDifficulty) => {
+      setDifficulty(d);
+      setState(newMahjongGame(d));
+      beginTimer(0);
+      setHintIds([]);
+      void clearMahjongProgress();
+      void updateGameRecords((r) => recordMahjongRunStarted(r));
+    },
+    [beginTimer],
+  );
+
+  const onNewGame = useCallback(() => {
+    setState(restartMahjongGame(state));
+    beginTimer(0);
+    setHintIds([]);
+    recordedClearRef.current = false;
+    void clearMahjongProgress();
+    void updateGameRecords((r) => recordMahjongRunStarted(r));
+  }, [state, beginTimer]);
+
+  const onTap = useCallback(
+    (tileId: string) => {
+      setState((prev) => {
+        const next = tapMahjongTile(prev, tileId);
+        if (next.matches > prev.matches) {
+          queueMicrotask(() => {
+            setPopTick(Date.now());
+            triggerBoardFx('match');
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          });
+        } else {
+          void Haptics.selectionAsync().catch(() => {});
+        }
+        return next;
+      });
+      setHintIds([]);
+    },
+    [triggerBoardFx],
+  );
+
+  const onHint = useCallback(() => {
+    setState((prev) => {
+      const hint = findMahjongHint(prev);
+      const next = useMahjongHint(prev);
+      if (next.hintsRemaining < prev.hintsRemaining && hint) {
+        setHintIds([hint.a, hint.b]);
+        if (hintTimer.current) clearTimeout(hintTimer.current);
+        hintTimer.current = setTimeout(() => setHintIds([]), 1500);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+      return next;
+    });
+  }, []);
+
+  const onUndo = useCallback(() => {
+    setState((prev) => undoMahjong(prev));
+    setHintIds([]);
+  }, []);
+
+  const onBoardLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setBoardBox((p) =>
+      Math.abs(p.w - width) < 1 && Math.abs(p.h - height) < 1 ? p : { w: width, h: height },
+    );
+  }, []);
+
+  const bounds = useMemo(() => boardBounds(state), [state]);
+  const boardW = bounds.maxX - bounds.minX;
+  const boardH = bounds.maxY - bounds.minY;
+  const boxW = boardBox.w > 0 ? boardBox.w : wide ? 420 : Math.min(360, viewportHeight * 0.55);
+  const boxH =
+    boardBox.h > 0
+      ? boardBox.h
+      : fill
+        ? Math.max(220, viewportHeight * 0.42)
+        : Math.max(200, viewportHeight * 0.38);
+  const unit = Math.min(boxW / boardW, boxH / boardH);
+  const tileW = TILE_W * unit;
+  const tileH = TILE_H * unit;
+  const canvasW = boardW * unit + 8;
+  const canvasH = boardH * unit + 8;
+
+  const sortedTiles = useMemo(
+    () =>
+      [...state.tiles]
+        .filter((t) => !t.removed)
+        .sort((a, b) => a.layer - b.layer || a.y - b.y || a.x - b.x),
+    [state.tiles],
+  );
+
+  const difficultyRow = (
+    <View style={styles.diffRow}>
+      {DIFFICULTIES.map((d) => {
+        const active = difficulty === d;
+        const label =
+          d === 'easy'
+            ? t('gameMahjongDiffEasy')
+            : d === 'normal'
+              ? t('gameMahjongDiffNormal')
+              : t('gameMahjongDiffHard');
+        return (
+          <Pressable
+            key={d}
+            onPress={() => onDifficulty(d)}
+            style={[styles.diffChip, active && styles.diffChipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}>
+            <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+      <Pressable
+        onPress={() => setHelpOpen(true)}
+        style={styles.helpShowBtn}
+        accessibilityRole="button"
+        accessibilityLabel={t('gameMahjongHelpShowA11y')}>
+        <FontAwesome name="question-circle" size={16} color={theme.green} />
+      </Pressable>
+    </View>
+  );
+
+  const statsRow = (
+    <View style={styles.statsRow}>
+      <Stat label={t('gameMahjongScore')} value={String(state.score)} styles={styles} />
+      <Stat label={t('gameMahjongRemaining')} value={String(remainingCount(state))} styles={styles} />
+      <Stat label={t('gameMahjongTime')} value={formatDurationMs(elapsedMs)} styles={styles} />
+    </View>
+  );
+
+  const boardView = (
+    <Animated.View
+      style={[
+        styles.boardOuter,
+        { width: canvasW, height: canvasH, transform: [{ scale: boardPulse }] },
+      ]}
+      onLayout={onBoardLayout}>
+      <View style={[styles.boardInner, { width: canvasW, height: canvasH }]}>
+        {sortedTiles.map((tile) => {
+          const free = isTileFree(state, tile.id);
+          const left = (tile.x - bounds.minX) * unit + tile.layer * 2;
+          const top = (tile.y - bounds.minY) * unit - tile.layer * 2;
+          return (
+            <MahjongTileView
+              key={tile.id}
+              tile={tile}
+              selected={state.selectedId === tile.id}
+              hinted={hintIds.includes(tile.id)}
+              free={free}
+              left={left}
+              top={top}
+              w={tileW - 2}
+              h={tileH - 2}
+              theme={theme}
+              sf={scaleFont}
+              onPress={() => onTap(tile.id)}
+              styles={styles}
+              popTick={popTick}
+            />
+          );
+        })}
+      </View>
+      <GameBurstOverlay
+        visible={boardFx?.kind === 'match'}
+        kind="hit"
+        theme={theme}
+        sf={scaleFont}
+        title={t('gameMahjongMatchFx')}
+      />
+      <GameBurstOverlay
+        visible={boardFx?.kind === 'win'}
+        kind="win"
+        theme={theme}
+        sf={scaleFont}
+        title={t('gameMahjongCleared')}
+        subtitle={t('gameMahjongClearedScore', { score: state.score })}
+        big
+      />
+      <GameBurstOverlay
+        visible={boardFx?.kind === 'stuck'}
+        kind="fail"
+        theme={theme}
+        sf={scaleFont}
+        title={t('gameMahjongStuck')}
+        subtitle={t('gameMahjongStuckBody')}
+        big
+      />
+    </Animated.View>
+  );
+
+  const actions = (
+    <View style={styles.actions}>
+      <ActionBtn
+        icon="lightbulb-o"
+        label={t('gameMahjongHint', { count: state.hintsRemaining })}
+        onPress={onHint}
+        disabled={state.status !== 'playing' || state.hintsRemaining <= 0}
+        styles={styles}
+        theme={theme}
+      />
+      <ActionBtn
+        icon="undo"
+        label={t('gameMahjongUndo')}
+        onPress={onUndo}
+        disabled={state.history.length === 0 || state.status === 'cleared'}
+        styles={styles}
+        theme={theme}
+      />
+      <ActionBtn
+        icon="refresh"
+        label={t('gameMahjongNewGame')}
+        onPress={onNewGame}
+        styles={styles}
+        theme={theme}
+      />
+    </View>
+  );
+
+  const body = split ? (
+    <View style={styles.splitRow}>
+      <ScrollView
+        style={styles.splitBoardScroll}
+        contentContainerStyle={styles.splitBoardContent}
+        showsVerticalScrollIndicator={false}>
+        {boardView}
+      </ScrollView>
+      <View style={styles.splitSide}>
+        {difficultyRow}
+        {statsRow}
+        {actions}
+      </View>
+    </View>
+  ) : fill ? (
+    <View style={styles.fillCol}>
+      {difficultyRow}
+      {statsRow}
+      <ScrollView
+        style={styles.fillBoardScroll}
+        contentContainerStyle={styles.fillBoardContent}
+        showsVerticalScrollIndicator={false}>
+        {boardView}
+      </ScrollView>
+      {actions}
+    </View>
+  ) : (
+    <View style={styles.stack}>
+      {difficultyRow}
+      {statsRow}
+      <ScrollView contentContainerStyle={styles.scrollBoard} showsVerticalScrollIndicator={false}>
+        {boardView}
+      </ScrollView>
+      {actions}
+    </View>
+  );
+
+  return (
+    <>
+      {body}
+      <MahjongSolitaireHelpSheet visible={helpOpen} onClose={() => setHelpOpen(false)} />
+    </>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
+function ActionBtn({
+  icon,
+  label,
+  onPress,
+  disabled,
+  styles,
+  theme,
+}: {
+  icon: ComponentProps<typeof FontAwesome>['name'];
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  styles: ReturnType<typeof makeStyles>;
+  theme: AppTheme;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.actionBtn,
+        disabled && styles.actionBtnDisabled,
+        pressed && !disabled && styles.actionBtnPressed,
+      ]}
+      accessibilityRole="button">
+      <FontAwesome name={icon} size={14} color={disabled ? theme.textDim : theme.green} />
+      <Text style={[styles.actionBtnText, disabled && styles.actionBtnTextDisabled]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, compact: boolean) {
+  return StyleSheet.create({
+    stack: { gap: compact ? 10 : 12, alignItems: 'center' },
+    fillCol: { flex: 1, minHeight: 0, gap: 8 },
+    fillBoardScroll: { flex: 1, minHeight: 0, width: '100%' },
+    fillBoardContent: { alignItems: 'center', paddingVertical: 8 },
+    scrollBoard: { alignItems: 'center', paddingVertical: 4 },
+    splitRow: { flex: 1, flexDirection: 'row', gap: 16, minHeight: 0 },
+    splitBoardScroll: { flex: 1, minWidth: 0 },
+    splitBoardContent: { alignItems: 'center', justifyContent: 'center', minHeight: 280 },
+    splitSide: { width: wide ? 260 : 220, gap: 12, justifyContent: 'center' },
+    diffRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      alignItems: 'center',
+      alignSelf: 'stretch',
+    },
+    diffChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    diffChipActive: { borderColor: theme.greenBorder, backgroundColor: theme.greenDim },
+    diffChipText: { fontSize: sf(13), fontWeight: '700', color: theme.textMuted },
+    diffChipTextActive: { color: theme.green },
+    helpShowBtn: {
+      marginLeft: 'auto',
+      width: 36,
+      height: 36,
+      borderRadius: UI_RADIUS_CARD,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    statsRow: { flexDirection: 'row', gap: 8, alignSelf: 'stretch' },
+    stat: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      gap: 2,
+    },
+    statLabel: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted },
+    statValue: { fontSize: sf(wide ? 16 : 14), fontWeight: '800', color: theme.text },
+    boardOuter: { position: 'relative', alignSelf: 'center' },
+    boardInner: {
+      borderRadius: UI_RADIUS_CARD_LG,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    tile: {
+      flex: 1,
+      borderRadius: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tileText: { fontWeight: '800' },
+    actions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      justifyContent: 'center',
+      alignSelf: 'stretch',
+    },
+    actionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    actionBtnDisabled: { opacity: 0.45 },
+    actionBtnPressed: { opacity: 0.88 },
+    actionBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.green },
+    actionBtnTextDisabled: { color: theme.textDim },
+  });
+}

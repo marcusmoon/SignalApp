@@ -44,11 +44,25 @@ export type BlockPuzzleRecords = {
   byDifficulty: Record<GameDifficulty, BlockPuzzleDiffRecords>;
 };
 
+export type MahjongDiffRecords = {
+  clears: number;
+  bestTimeMs: number | null;
+  bestScore: number | null;
+};
+
+export type MahjongRecords = {
+  runsStarted: number;
+  clears: number;
+  bestScore: number;
+  byDifficulty: Record<GameDifficulty, MahjongDiffRecords>;
+};
+
 export type GameRecordsState = {
   version: 1;
   sumTrail: SumTrailRecords;
   sudoku: SudokuRecords;
   blockPuzzle: BlockPuzzleRecords;
+  mahjong: MahjongRecords;
 };
 
 const DIFFS: GameDifficulty[] = ['easy', 'normal', 'hard'];
@@ -104,12 +118,30 @@ export function emptyBlockPuzzleRecords(): BlockPuzzleRecords {
   };
 }
 
+function emptyMahjongDiff(): MahjongDiffRecords {
+  return { clears: 0, bestTimeMs: null, bestScore: null };
+}
+
+export function emptyMahjongRecords(): MahjongRecords {
+  return {
+    runsStarted: 0,
+    clears: 0,
+    bestScore: 0,
+    byDifficulty: {
+      easy: emptyMahjongDiff(),
+      normal: emptyMahjongDiff(),
+      hard: emptyMahjongDiff(),
+    },
+  };
+}
+
 export function emptyGameRecords(): GameRecordsState {
   return {
     version: 1,
     sumTrail: emptySumTrailRecords(),
     sudoku: emptySudokuRecords(),
     blockPuzzle: emptyBlockPuzzleRecords(),
+    mahjong: emptyMahjongRecords(),
   };
 }
 
@@ -193,6 +225,28 @@ export function normalizeGameRecords(raw: unknown): GameRecordsState {
             bestLines: num(r.bestLines),
             bestLevel: num(r.bestLevel),
             gamesPlayed: num(r.gamesPlayed),
+          };
+        }
+      }
+    }
+  }
+
+  const mj = o.mahjong;
+  if (mj && typeof mj === 'object') {
+    const m = mj as Record<string, unknown>;
+    base.mahjong.runsStarted = num(m.runsStarted);
+    base.mahjong.clears = num(m.clears);
+    base.mahjong.bestScore = num(m.bestScore);
+    const by = m.byDifficulty;
+    if (by && typeof by === 'object') {
+      for (const d of DIFFS) {
+        const row = (by as Record<string, unknown>)[d];
+        if (row && typeof row === 'object') {
+          const r = row as Record<string, unknown>;
+          base.mahjong.byDifficulty[d] = {
+            clears: num(r.clears),
+            bestTimeMs: numOrNull(r.bestTimeMs),
+            bestScore: numOrNull(r.bestScore),
           };
         }
       }
@@ -307,6 +361,42 @@ export function recordBlockPuzzleGameOver(
       bestScore: Math.max(bp.bestScore, sc),
       bestLines: Math.max(bp.bestLines, ln),
       byDifficulty: { ...bp.byDifficulty, [difficulty]: nextDiff },
+    },
+  };
+}
+
+export function recordMahjongRunStarted(records: GameRecordsState): GameRecordsState {
+  return {
+    ...records,
+    mahjong: {
+      ...records.mahjong,
+      runsStarted: records.mahjong.runsStarted + 1,
+    },
+  };
+}
+
+export function recordMahjongCleared(
+  records: GameRecordsState,
+  difficulty: GameDifficulty,
+  elapsedMs: number,
+  score: number,
+): GameRecordsState {
+  const mj = records.mahjong;
+  const diff = mj.byDifficulty[difficulty];
+  const time = Math.max(0, Math.floor(elapsedMs));
+  const sc = Math.max(0, Math.floor(score));
+  const nextDiff: MahjongDiffRecords = {
+    clears: diff.clears + 1,
+    bestTimeMs: diff.bestTimeMs == null ? time : Math.min(diff.bestTimeMs, time),
+    bestScore: diff.bestScore == null ? sc : Math.max(diff.bestScore, sc),
+  };
+  return {
+    ...records,
+    mahjong: {
+      runsStarted: mj.runsStarted,
+      clears: mj.clears + 1,
+      bestScore: Math.max(mj.bestScore, sc),
+      byDifficulty: { ...mj.byDifficulty, [difficulty]: nextDiff },
     },
   };
 }

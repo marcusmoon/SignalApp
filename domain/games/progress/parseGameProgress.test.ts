@@ -5,10 +5,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { createBlockPuzzleGame } from '../blockPuzzle/blockPuzzle.ts';
+import { createMahjongGame } from '../mahjongSolitaire/mahjongSolitaire.ts';
 import { createSudokuGame } from '../sudoku/sudoku.ts';
 import { createSumTrailGame } from '../sumTrail/sumTrail.ts';
 import {
   parseBlockPuzzleProgress,
+  parseMahjongProgress,
   parseSudokuProgress,
   parseSumTrailProgress,
 } from './parseGameProgress.ts';
@@ -72,6 +74,32 @@ describe('parseGameProgress', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         difficulty: 'easy',
         state,
+      }),
+      null,
+    );
+  });
+
+  it('parses playing mahjong progress', () => {
+    const state = createMahjongGame('normal', 8);
+    const parsed = parseMahjongProgress({
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      difficulty: 'normal',
+      state,
+      elapsedMs: 30000,
+    });
+    assert.ok(parsed);
+    assert.equal(parsed!.elapsedMs, 30000);
+    assert.equal(parsed!.state.tiles.length, state.tiles.length);
+  });
+
+  it('rejects cleared mahjong progress', () => {
+    const state = { ...createMahjongGame('easy', 9), status: 'cleared' as const };
+    assert.equal(
+      parseMahjongProgress({
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        difficulty: 'easy',
+        state,
+        elapsedMs: 0,
       }),
       null,
     );

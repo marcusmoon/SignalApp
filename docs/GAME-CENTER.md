@@ -48,8 +48,8 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 
 | 구분 | 저장 | 내용 |
 |---|---|---|
-| 진행 | `gameProgressStore` | 합 트레일·스도쿠·**블록 퍼즐** 보드 스냅샷. 재진입 시 자동 복원. 난이도 변경·스도쿠 완주·블록 퍼즐 게임 오버 시 해당 진행 삭제 |
-| 기록 | `gameRecordsStore` | 플레이 횟수, 레벨/완주 수, 최고 레벨·점수, 스도쿠 난이도별 최단 시간·최소 실수, **블록 퍼즐 최고 점수·줄** |
+| 진행 | `gameProgressStore` | 합 트레일·스도쿠·블록 퍼즐·**마작** 보드 스냅샷. 재진입 시 자동 복원. 완주·게임 오버(블록)·막힘 후 새 게임 시 해당 진행 삭제 |
+| 기록 | `gameRecordsStore` | … **마작 클리어·최고 점수·최단 시간** |
 | UI | 게임 허브 **게임 기록** 시트 · 카드 **이어하기** 배지 | `GameRecordsSheet` |
 
 규칙 정규화·이벤트는 `domain/games/records`, 스냅샷 파서는 `domain/games/progress`.
@@ -116,6 +116,21 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | 연출 | 줄 삭제·게임 오버 버스트 · 보드 펄스/흔들림 |
 | 레이아웃 | 합 트레일·스도쿠와 동일 — 폰 fill · `?` 바텀 시트 · 와이드 2열 |
 
+## 마작 짝 맞추기 (Mahjong Solitaire)
+
+겹쳐 쌓인 타일에서 같은 그림 두 장을 골라 제거하는 솔itaire. 모든 타일을 없애면 클리어.
+
+| 항목 | 값 |
+|---|---|
+| 라우트 | `/games/mahjong-solitaire` |
+| 로직 | `domain/games/mahjongSolitaire/mahjongSolitaire.ts` |
+| UI | `components/games/MahjongSolitaireGame.tsx` |
+| 난이도 | `easy`(48장) · `normal`/`hard`(72장) — `hard`는 힌트 1회 |
+| 조작 | 타일 탭 짝 맞추기 · 힌트 · 되돌리기 · 새 게임 |
+| 이어하기 | 플레이·막힘 상태 저장. 클리어 시 기록 반영 후 삭제 |
+| 기록 | 클리어 횟수 · 최고 점수 · 난이도별 최단 시간·점수 |
+| 연출 | 짝 맞춤·클리어·막힘 버스트 · 타일 선택 강조 |
+
 ## UI 규칙
 
 - 테마 hex 직접 사용 금지 — `theme` / `scaleFont`만
@@ -132,4 +147,4 @@ npm test          # domain/games 포함
 npm run typecheck
 ```
 
-수동: 더보기·사이드바 → 게임 → 합 트레일·스도쿠·블록 퍼즐에서 난이도 전환·클리어·와이드 레이아웃을 확인한다.
+수동: 더보기·사이드바 → 게임 → 합 트레일·스도쿠·블록 퍼즐·마작에서 난이도 전환·클리어·와이드 레이아웃을 확인한다.

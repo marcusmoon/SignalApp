@@ -11,15 +11,15 @@ export function mahjongTileTint(theme: AppTheme, kind: string): MahjongTileTint 
   if (dark) {
     switch (suit) {
       case 'dot':
-        return { bg: theme.card, border: theme.green, text: theme.green };
+        return { bg: theme.bgElevated, border: theme.green, text: theme.green };
       case 'bamboo':
-        return { bg: theme.card, border: theme.warning, text: theme.warning };
+        return { bg: theme.bgElevated, border: theme.warning, text: theme.warning };
       case 'char':
-        return { bg: theme.card, border: theme.danger, text: theme.danger };
+        return { bg: theme.bgElevated, border: theme.danger, text: theme.danger };
       case 'flower':
-        return { bg: theme.card, border: theme.textMuted, text: theme.text };
+        return { bg: theme.bgElevated, border: theme.textMuted, text: theme.text };
       default:
-        return { bg: theme.card, border: theme.border, text: theme.text };
+        return { bg: theme.bgElevated, border: theme.border, text: theme.text };
     }
   }
 

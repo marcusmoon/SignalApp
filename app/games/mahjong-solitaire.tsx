@@ -34,7 +34,7 @@ export function MahjongSolitaireContent({ embedded = false, onBack }: MahjongScr
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
-  const { useTwoPane, width, height, isLandscape } = useResponsiveLayout();
+  const { useTwoPane, width, isLandscape } = useResponsiveLayout();
   const wide = embedded || useTwoPane;
   const split = wide && (isLandscape || width - SIDEBAR_WIDTH >= 900);
   const styles = useMemo(() => makeStyles(theme, scaleFont, wide), [theme, scaleFont, wide]);
@@ -54,7 +54,7 @@ export function MahjongSolitaireContent({ embedded = false, onBack }: MahjongScr
           },
         ]}>
         <View style={styles.inner}>
-          <MahjongSolitaireGame wide={wide} split={split} fill viewportHeight={height} />
+          <MahjongSolitaireGame wide={wide} split={split} fill />
         </View>
       </View>
     </SafeAreaView>

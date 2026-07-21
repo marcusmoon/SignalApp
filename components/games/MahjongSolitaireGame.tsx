@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps 
 import {
   Animated,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -15,7 +17,7 @@ import { MahjongSolitaireHelpSheet } from '@/components/games/MahjongSolitaireHe
 import { mahjongTileTint } from '@/components/games/mahjongTileColors';
 import { runBoardPulse, runCellPop } from '@/components/games/gameBoardFx';
 import type { AppTheme } from '@/constants/theme';
-import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -49,7 +51,8 @@ import {
 import { updateGameRecords } from '@/services/gameRecordsStore';
 
 const DIFFICULTIES: MahjongDifficulty[] = ['easy', 'normal', 'hard'];
-const LAYER_DEPTH = 0.34;
+const LAYER_DEPTH = 0.28;
+const TILE_ASPECT = 1.32;
 
 type BoardFx = { id: number; kind: 'match' | 'win' | 'stuck' };
 
@@ -100,7 +103,7 @@ function MahjongTileView({
         height: h,
         zIndex: tile.layer * 10 + 1,
         transform: [{ scale: selected ? 1.06 : 1 }],
-        opacity: free ? 1 : 0.78,
+        opacity: free ? 1 : 0.92,
       }}>
       <Pressable
         onPress={onPress}
@@ -108,6 +111,8 @@ function MahjongTileView({
         style={[
           styles.tile,
           {
+            width: w,
+            height: h,
             backgroundColor: colors.bg,
             borderColor: selected || hinted ? theme.green : colors.border,
             borderWidth: selected || hinted ? 2 : 1,
@@ -115,7 +120,7 @@ function MahjongTileView({
         ]}
         accessibilityRole="button"
         accessibilityLabel={tileLabel(tile.kind)}>
-        <Text style={[styles.tileText, { fontSize: sf(w > 34 ? 15 : 13), color: colors.text }]}>
+        <Text style={[styles.tileText, { fontSize: sf(Math.max(11, Math.min(17, h * 0.44))), color: colors.text }]}>
           {tileLabel(tile.kind)}
         </Text>
       </Pressable>
@@ -127,15 +132,14 @@ export function MahjongSolitaireGame({
   wide = false,
   split = false,
   fill = false,
-  viewportHeight = 800,
 }: {
   wide?: boolean;
   split?: boolean;
   fill?: boolean;
-  viewportHeight?: number;
 }) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
+  const { width: windowW, height: windowH } = useWindowDimensions();
   const compact = !wide && !split;
   const [playArea, setPlayArea] = useState({ w: 0, h: 0 });
   const styles = useMemo(
@@ -324,22 +328,23 @@ export function MahjongSolitaireGame({
     () => state.tiles.filter((t) => !t.removed).reduce((m, t) => Math.max(m, t.layer), 0),
     [state.tiles],
   );
-  const reservedChrome = compact ? 210 : split ? 0 : 190;
-  const fallbackW = wide ? 420 : Math.min(380, viewportHeight * 0.92);
-  const fallbackH = Math.max(
-    280,
-    Math.min(viewportHeight - reservedChrome, viewportHeight * 0.58),
-  );
+  const reservedChrome = compact ? 196 : split ? 0 : 190;
+  const fallbackW = Math.max(280, windowW - (wide ? 48 : 32));
+  const fallbackH = Math.max(300, windowH - reservedChrome);
   const availW = playArea.w > 0 ? playArea.w : fallbackW;
   const availH = playArea.h > 0 ? playArea.h : fallbackH;
   const depthUnits = maxLayer * LAYER_DEPTH;
-  const unit = Math.min(availW / (boardW + depthUnits), availH / (boardH + depthUnits));
+  const unitByW = availW / (boardW + depthUnits);
+  const unitByH = availH / (boardH + depthUnits);
+  const unit = compact ? unitByH : Math.min(unitByW, unitByH);
   const layerStep = unit * LAYER_DEPTH;
   const depthPad = maxLayer * layerStep;
-  const tileW = TILE_W * unit;
-  const tileH = TILE_H * unit;
+  const tileGap = Math.max(2, unit * 0.07);
+  const tileW = TILE_W * unit - tileGap;
+  const tileH = TILE_H * unit * TILE_ASPECT - tileGap;
   const canvasW = boardW * unit + depthPad;
   const canvasH = boardH * unit + depthPad;
+  const needsHScroll = canvasW > availW + 2;
 
   const sortedTiles = useMemo(
     () =>
@@ -421,8 +426,8 @@ export function MahjongSolitaireGame({
               free={free}
               left={left}
               top={top}
-              w={tileW - 2}
-              h={tileH - 2}
+              w={tileW}
+              h={tileH}
               theme={theme}
               sf={scaleFont}
               onPress={() => onTap(tile.id)}
@@ -483,7 +488,21 @@ export function MahjongSolitaireGame({
 
   const playAreaView = (
     <View style={styles.playArea} onLayout={onPlayAreaLayout}>
-      {boardView}
+      {needsHScroll ? (
+        <ScrollView
+          horizontal
+          style={styles.playScroll}
+          contentContainerStyle={[
+            styles.playScrollContent,
+            { minHeight: Math.max(canvasH, availH * 0.92) },
+          ]}
+          showsHorizontalScrollIndicator={false}
+          bounces>
+          {boardView}
+        </ScrollView>
+      ) : (
+        boardView
+      )}
     </View>
   );
 
@@ -578,7 +597,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       width: '100%',
       alignItems: 'center',
       justifyContent: 'center',
-      overflow: 'hidden',
+    },
+    playScroll: {
+      flex: 1,
+      width: '100%',
+    },
+    playScrollContent: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
     },
     splitRow: { flex: 1, flexDirection: 'row', gap: 16, minHeight: 0 },
     splitSide: { width: wide ? 260 : 220, gap: 10, justifyContent: 'center' },
@@ -639,17 +666,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
     boardOuter: { position: 'relative' },
     boardInner: {
       position: 'relative',
-      borderRadius: UI_RADIUS_CARD_LG,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      overflow: 'visible',
     },
     tile: {
-      flex: 1,
       borderRadius: 6,
       alignItems: 'center',
       justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 2,
+      elevation: 2,
     },
     tileText: { fontWeight: '800' },
     actions: {

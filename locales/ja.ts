@@ -214,6 +214,7 @@ export const ja = {
   gameSudokuRestart: 'やり直す',
   gameSudokuNewGame: '新しい盤',
   gameSudokuHint: 'ヒント {{count}}',
+  gameSudokuHintFx: 'ヒント!',
   gameSudokuHintA11y: 'ヒントを使う、残り {{count}}',
   gameSudokuDigitA11y: '数字 {{digit}} を入力',
   gameSudokuCellA11y: '{{row}}行 {{col}}列、数字 {{value}}',

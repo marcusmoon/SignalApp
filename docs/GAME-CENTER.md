@@ -67,7 +67,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | 조작 | 칸 탭 · Undo · 경로 지우기 · **힌트**(레벨당 횟수) · 레벨 다시 |
 | 힌트 | 쉬움 3 / 보통 2 / 어려움 1회. 올바른 다음 칸 강조. **추후 포인트로 추가 구매** 예정 |
 | 실패 | 합이 목표를 **초과**하거나, 목표에 도달하기 전에 **둘 칸이 없으면** `failed`. 실패 버스트·보드 흔들림·에러 햅틱 |
-| 연출 | 숫자 구간별 타일 색 · 합 진행 바 · 목표 근접(경고)/초과(위험) 틴트 · 맞춤·레벨 클리어 버스트 오버레이 |
+| 연출 | 숫자 구간별 타일 색 · 합 진행 바 · 목표 근접/초과/**일치** 틴트 · 맞춤·레벨 클리어 버스트(`GameBurstOverlay`) · 보드 펄스/흔들림 |
 | 와이드 | 사이드바 루트(백 없음) · 가로/넓은 pane에서 보드\|조작 2열 · 보드 크기 viewport 연동 |
 | 폰 | **화면 채움** (`fill`): Scroll 없이 가용 높이에 보드 맞춤. 설명은 `?` → `SumTrailHelpSheet` 바텀 시트 |
 
@@ -90,7 +90,8 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 | 난이도 | `easy`(≈40 힌트칸) · `normal`(≈32) · `hard`(≈26) |
 | 조작 | 칸 선택 · 1–9 패드 · 지우기 · Undo · **힌트** · 다시 · 새 게임 |
 | 힌트 | 쉬움 3 / 보통 2 / 어려움 1회. 빈칸(또는 틀린 칸)에 정답 채움 |
-| 실수 | 정답과 다른 숫자 입력 시 카운트. 행·열·박스 충돌은 빨간 강조 |
+| 실수 | 정답과 다른 숫자 입력 시 카운트. 행·열·박스 충돌은 빨간 강조 · **칸 흔들림·보드 FX** |
+| 연출 | 칸 팝/흔들림 · 힌트/완주 버스트 · 숫자 패드 누름 · 보드 펄스/흔들림 (`GameBurstOverlay`) |
 | 레이아웃 | 합 트레일과 동일 — 폰 fill · `?` 바텀 시트 · 와이드 가로 2열 |
 
 ### 후속 (미구현)
@@ -105,6 +106,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 - 폰: `APP_CONTENT_MAX_WIDTH` + fill 레이아웃 · 합 트레일 설명은 바텀 시트
 - 와이드: `APP_WIDE_CONTENT_MAX_WIDTH` / `wideContentFill` + `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 - 햅틱은 선택(`expo-haptics`). 실패해도 무시
+- 공용 FX: `components/games/GameBurstOverlay.tsx` · `gameBoardFx.ts`
 
 ## 검증
 

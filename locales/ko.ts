@@ -212,6 +212,7 @@ export const ko = {
   gameSudokuRestart: '다시',
   gameSudokuNewGame: '새 게임',
   gameSudokuHint: '힌트 {{count}}',
+  gameSudokuHintFx: '힌트!',
   gameSudokuHintA11y: '힌트 사용, 남은 횟수 {{count}}',
   gameSudokuDigitA11y: '숫자 {{digit}} 입력',
   gameSudokuCellA11y: '{{row}}행 {{col}}열, 숫자 {{value}}',

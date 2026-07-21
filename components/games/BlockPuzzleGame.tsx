@@ -512,6 +512,28 @@ export function BlockPuzzleGame({
 
   const controlDock = (
     <View style={[styles.controlDock, split && styles.controlDockSplit]}>
+      <View style={styles.actionZone}>
+        <ControlBtn
+          icon="rotate-right"
+          label={t('gameBlockPuzzleRotateA11y')}
+          onPress={onRotate}
+          disabled={state.status !== 'playing'}
+          theme={theme}
+          styles={styles}
+          primary
+          large
+        />
+        <ControlBtn
+          icon="bolt"
+          label={t('gameBlockPuzzleHardDropA11y')}
+          onPress={onHardDrop}
+          disabled={state.status !== 'playing'}
+          theme={theme}
+          styles={styles}
+          accent
+          large
+        />
+      </View>
       <View style={styles.moveZone}>
         <View style={styles.moveRow}>
           <ControlBtn
@@ -542,28 +564,6 @@ export function BlockPuzzleGame({
             large
           />
         </View>
-      </View>
-      <View style={styles.actionZone}>
-        <ControlBtn
-          icon="rotate-right"
-          label={t('gameBlockPuzzleRotateA11y')}
-          onPress={onRotate}
-          disabled={state.status !== 'playing'}
-          theme={theme}
-          styles={styles}
-          primary
-          large
-        />
-        <ControlBtn
-          icon="bolt"
-          label={t('gameBlockPuzzleHardDropA11y')}
-          onPress={onHardDrop}
-          disabled={state.status !== 'playing'}
-          theme={theme}
-          styles={styles}
-          accent
-          large
-        />
       </View>
     </View>
   );
@@ -829,7 +829,7 @@ function makeStyles(
     },
     moveZone: {
       flex: 1,
-      alignItems: 'flex-start',
+      alignItems: 'flex-end',
       justifyContent: 'center',
     },
     moveRow: {
@@ -841,7 +841,7 @@ function makeStyles(
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       gap: compact ? 6 : 8,
     },
     nextBoxInline: {

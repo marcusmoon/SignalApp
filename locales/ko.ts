@@ -226,7 +226,7 @@ export const ko = {
   gameBlockPuzzleCardBody: '떨어지는 블록을 맞춰 줄을 지우고 점수를 올리는 액션 퍼즐',
   gameBlockPuzzleKicker: '블록을 쌓아 가로 줄을 채우세요',
   gameBlockPuzzleBlurb:
-    '왼쪽 버튼(또는 보드 스와이프)으로 이동·내리기, 오른쪽 버튼으로 회전·즉시 내리기를 조작합니다. 가로 줄이 가득 차면 지워지고 점수를 얻습니다. 10줄마다 속도가 빨라집니다. 더 쌓을 공간이 없으면 게임 오버입니다.',
+    '왼쪽 버튼(또는 보드 스와이프 위)으로 회전·즉시 내리기, 오른쪽 버튼(또는 스와이프)으로 이동·내리기를 조작합니다. 가로 줄이 가득 차면 지워지고 점수를 얻습니다. 10줄마다 속도가 빨라집니다. 더 쌓을 공간이 없으면 게임 오버입니다.',
   gameBlockPuzzleHowTo: '플레이 방법',
   gameBlockPuzzleHelpShowA11y: '플레이 방법 보기',
   gameBlockPuzzleDiffEasy: '쉬움',

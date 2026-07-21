@@ -228,7 +228,7 @@ export const en = {
   gameBlockPuzzleCardBody: 'Stack falling blocks, clear lines, and chase a high score',
   gameBlockPuzzleKicker: 'Fill rows to clear lines',
   gameBlockPuzzleBlurb:
-    'Use the left buttons (or swipe the board) to move and drop; use the right buttons to rotate and hard drop. Full rows disappear for points. Speed increases every 10 lines. The game ends when the stack reaches the top.',
+    'Use the left buttons (or swipe up on the board) to rotate and hard drop; use the right buttons (or swipe) to move and drop. Full rows disappear for points. Speed increases every 10 lines. The game ends when the stack reaches the top.',
   gameBlockPuzzleHowTo: 'How to play',
   gameBlockPuzzleHelpShowA11y: 'Show how to play',
   gameBlockPuzzleDiffEasy: 'Easy',

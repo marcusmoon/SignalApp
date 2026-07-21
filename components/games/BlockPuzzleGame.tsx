@@ -24,7 +24,6 @@ import {
 import {
   COLS,
   VISIBLE_ROWS,
-  changeBlockPuzzleDifficulty,
   createBlockPuzzleGame,
   hardDropBlockPuzzle,
   moveBlockPuzzleLeft,
@@ -150,13 +149,20 @@ export function BlockPuzzleGame({
   const [playArea, setPlayArea] = useState({ w: 0, h: 0 });
   const measuredBoard =
     playArea.w > 0 && playArea.h > 0
-      ? Math.floor(Math.min(playArea.w, (playArea.h * COLS) / VISIBLE_ROWS))
+      ? Math.floor(Math.min(playArea.w - 4, (playArea.h * COLS) / VISIBLE_ROWS))
       : 0;
+  const reservedChrome = compact ? 200 : split ? 0 : 180;
   const fallbackBoard = split
     ? Math.max(280, Math.min(400, Math.floor(viewportHeight * 0.52)))
     : wide
       ? 360
-      : Math.max(260, Math.min(340, Math.floor(viewportHeight * 0.42)));
+      : Math.max(
+          220,
+          Math.min(
+            320,
+            Math.floor(Math.min(viewportHeight - reservedChrome, viewportHeight * 0.5) * (COLS / VISIBLE_ROWS)),
+          ),
+        );
   const boardWidth = measuredBoard > 0 ? measuredBoard : fallbackBoard;
   const cellSize = Math.floor(boardWidth / COLS);
   const boardHeight = cellSize * VISIBLE_ROWS;
@@ -331,50 +337,66 @@ export function BlockPuzzleGame({
 
   const grid = useMemo(() => visibleBoard(state), [state]);
 
-  const difficultyRow = (
-    <View style={styles.diffRow}>
-      {DIFFICULTIES.map((d) => {
-        const active = difficulty === d;
-        const label =
-          d === 'easy'
-            ? t('gameBlockPuzzleDiffEasy')
-            : d === 'normal'
-              ? t('gameBlockPuzzleDiffNormal')
-              : t('gameBlockPuzzleDiffHard');
-        return (
-          <Pressable
-            key={d}
-            onPress={() => onDifficulty(d)}
-            style={[styles.diffChip, active && styles.diffChipActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={label}>
-            <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
-          </Pressable>
-        );
-      })}
-      <Pressable
-        onPress={() => setHelpOpen(true)}
-        style={styles.helpShowBtn}
-        accessibilityRole="button"
-        accessibilityLabel={t('gameBlockPuzzleHelpShowA11y')}>
-        <FontAwesome name="question-circle" size={16} color={theme.green} />
-      </Pressable>
+  const headerBar = (
+    <View style={styles.headerBar}>
+      <View style={styles.diffRow}>
+        {DIFFICULTIES.map((d) => {
+          const active = difficulty === d;
+          const label =
+            d === 'easy'
+              ? t('gameBlockPuzzleDiffEasy')
+              : d === 'normal'
+                ? t('gameBlockPuzzleDiffNormal')
+                : t('gameBlockPuzzleDiffHard');
+          return (
+            <Pressable
+              key={d}
+              onPress={() => onDifficulty(d)}
+              style={[styles.diffChip, active && styles.diffChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}>
+              <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable
+          onPress={onNewGame}
+          style={styles.headerIconBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameBlockPuzzleNewGame')}>
+          <FontAwesome name="refresh" size={15} color={theme.textMuted} />
+        </Pressable>
+        <Pressable
+          onPress={() => setHelpOpen(true)}
+          style={styles.headerIconBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameBlockPuzzleHelpShowA11y')}>
+          <FontAwesome name="question-circle" size={16} color={theme.green} />
+        </Pressable>
+      </View>
     </View>
   );
 
   const statsRow = (
     <View style={styles.statsRow}>
-      <Stat label={t('gameBlockPuzzleScore')} value={String(state.score)} styles={styles} />
-      <Stat label={t('gameBlockPuzzleLines')} value={String(state.lines)} styles={styles} />
-      <Stat label={t('gameBlockPuzzleLevel')} value={String(state.level)} styles={styles} />
+      <Stat icon="star" label={t('gameBlockPuzzleScore')} value={String(state.score)} theme={theme} styles={styles} />
+      <Stat icon="minus" label={t('gameBlockPuzzleLines')} value={String(state.lines)} theme={theme} styles={styles} />
+      <Stat icon="flag" label={t('gameBlockPuzzleLevel')} value={String(state.level)} theme={theme} styles={styles} />
     </View>
   );
 
   const nextPreview = (
     <View style={styles.nextBox}>
       <Text style={styles.nextLabel}>{t('gameBlockPuzzleNext')}</Text>
-      <MiniPreview type={state.next} theme={theme} cell={Math.max(14, Math.floor(cellSize * 0.42))} styles={styles} />
+      <MiniPreview
+        type={state.next}
+        theme={theme}
+        cell={Math.max(12, Math.floor(cellSize * 0.34))}
+        styles={styles}
+      />
     </View>
   );
 
@@ -432,63 +454,63 @@ export function BlockPuzzleGame({
     </Animated.View>
   );
 
-  const controls = (
-    <View style={styles.controls}>
-      <ControlBtn
-        icon="arrow-left"
-        label={t('gameBlockPuzzleMoveLeftA11y')}
-        onPress={onLeft}
-        disabled={state.status !== 'playing'}
-        theme={theme}
-        styles={styles}
-      />
-      <ControlBtn
-        icon="rotate-right"
-        label={t('gameBlockPuzzleRotateA11y')}
-        onPress={onRotate}
-        disabled={state.status !== 'playing'}
-        theme={theme}
-        styles={styles}
-        primary
-      />
-      <ControlBtn
-        icon="arrow-right"
-        label={t('gameBlockPuzzleMoveRightA11y')}
-        onPress={onRight}
-        disabled={state.status !== 'playing'}
-        theme={theme}
-        styles={styles}
-      />
-      <ControlBtn
-        icon="arrow-down"
-        label={t('gameBlockPuzzleSoftDropA11y')}
-        onPress={onSoftDrop}
-        disabled={state.status !== 'playing'}
-        theme={theme}
-        styles={styles}
-      />
-      <ControlBtn
-        icon="bolt"
-        label={t('gameBlockPuzzleHardDropA11y')}
-        onPress={onHardDrop}
-        disabled={state.status !== 'playing'}
-        theme={theme}
-        styles={styles}
-        accent
-      />
-    </View>
-  );
-
-  const actions = (
-    <View style={styles.actions}>
-      <Pressable
-        onPress={onNewGame}
-        style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('gameBlockPuzzleNewGame')}>
-        <FontAwesome name="refresh" size={14} color={theme.green} />
-        <Text style={styles.actionBtnText}>{t('gameBlockPuzzleNewGame')}</Text>
-      </Pressable>
+  const controlDock = (
+    <View style={[styles.controlDock, split && styles.controlDockSplit]}>
+      {!split ? nextPreview : null}
+      <View style={styles.dpad}>
+        <View style={styles.dpadRow}>
+          <View style={styles.dpadSpacer} />
+          <ControlBtn
+            icon="rotate-right"
+            label={t('gameBlockPuzzleRotateA11y')}
+            onPress={onRotate}
+            disabled={state.status !== 'playing'}
+            theme={theme}
+            styles={styles}
+            primary
+          />
+          <View style={styles.dpadSpacer} />
+        </View>
+        <View style={styles.dpadRow}>
+          <ControlBtn
+            icon="arrow-left"
+            label={t('gameBlockPuzzleMoveLeftA11y')}
+            onPress={onLeft}
+            disabled={state.status !== 'playing'}
+            theme={theme}
+            styles={styles}
+          />
+          <ControlBtn
+            icon="arrow-down"
+            label={t('gameBlockPuzzleSoftDropA11y')}
+            onPress={onSoftDrop}
+            disabled={state.status !== 'playing'}
+            theme={theme}
+            styles={styles}
+          />
+          <ControlBtn
+            icon="arrow-right"
+            label={t('gameBlockPuzzleMoveRightA11y')}
+            onPress={onRight}
+            disabled={state.status !== 'playing'}
+            theme={theme}
+            styles={styles}
+          />
+        </View>
+        <View style={styles.dpadRow}>
+          <View style={styles.dpadSpacer} />
+          <ControlBtn
+            icon="bolt"
+            label={t('gameBlockPuzzleHardDropA11y')}
+            onPress={onHardDrop}
+            disabled={state.status !== 'playing'}
+            theme={theme}
+            styles={styles}
+            accent
+          />
+          <View style={styles.dpadSpacer} />
+        </View>
+      </View>
     </View>
   );
 
@@ -498,32 +520,29 @@ export function BlockPuzzleGame({
         {boardView}
       </View>
       <View style={styles.splitSide}>
-        {difficultyRow}
+        {headerBar}
         {statsRow}
         {nextPreview}
-        {controls}
-        {actions}
+        {controlDock}
       </View>
     </View>
   ) : fill ? (
-    <View style={styles.fillCol} onLayout={onPlayAreaLayout}>
-      {difficultyRow}
+    <View style={styles.fillRoot}>
+      {headerBar}
       {statsRow}
-      <View style={styles.fillBoardArea}>{boardView}</View>
-      <View style={styles.fillBottom}>
-        {nextPreview}
-        {controls}
-        {actions}
+      <View style={styles.playArea} onLayout={onPlayAreaLayout}>
+        {boardView}
       </View>
+      {controlDock}
     </View>
   ) : (
     <View style={styles.stack}>
-      {difficultyRow}
+      {headerBar}
       {statsRow}
-      <View onLayout={onPlayAreaLayout}>{boardView}</View>
-      {nextPreview}
-      {controls}
-      {actions}
+      <View style={styles.playAreaStacked} onLayout={onPlayAreaLayout}>
+        {boardView}
+      </View>
+      {controlDock}
     </View>
   );
 
@@ -536,16 +555,21 @@ export function BlockPuzzleGame({
 }
 
 function Stat({
+  icon,
   label,
   value,
+  theme,
   styles,
 }: {
+  icon: ComponentProps<typeof FontAwesome>['name'];
   label: string;
   value: string;
+  theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
 }) {
   return (
     <View style={styles.stat}>
+      <FontAwesome name={icon} size={11} color={theme.textDim} />
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>{value}</Text>
     </View>
@@ -600,26 +624,30 @@ function makeStyles(
   compact: boolean,
   boardWidth: number,
 ) {
+  const gap = compact ? 6 : wide ? 12 : 10;
+  const ctrlSize = compact ? 42 : wide ? 50 : 46;
   return StyleSheet.create({
     stack: {
-      gap: compact ? 10 : 12,
-      alignItems: 'center',
+      gap,
+      alignItems: 'stretch',
     },
-    fillCol: {
+    fillRoot: {
       flex: 1,
       minHeight: 0,
-      gap: 8,
+      gap,
     },
-    fillBoardArea: {
+    playArea: {
       flex: 1,
       minHeight: 0,
       alignItems: 'center',
       justifyContent: 'center',
+      width: '100%',
     },
-    fillBottom: {
-      gap: 10,
+    playAreaStacked: {
+      width: '100%',
       alignItems: 'center',
-      paddingBottom: 4,
+      justifyContent: 'center',
+      minHeight: boardWidth * (VISIBLE_ROWS / COLS),
     },
     splitRow: {
       flex: 1,
@@ -635,19 +663,40 @@ function makeStyles(
     },
     splitSide: {
       width: Math.min(280, Math.max(220, boardWidth * 0.55)),
-      gap: 12,
+      gap: 10,
       justifyContent: 'center',
     },
+    headerBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: 6,
+      marginLeft: 'auto',
+    },
+    headerIconBtn: {
+      width: compact ? 34 : 36,
+      height: compact ? 34 : 36,
+      borderRadius: UI_RADIUS_CARD,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
     diffRow: {
+      flex: 1,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: compact ? 6 : 8,
       alignItems: 'center',
-      alignSelf: 'stretch',
     },
     diffChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: compact ? 10 : 12,
+      paddingVertical: compact ? 6 : 8,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -658,47 +707,36 @@ function makeStyles(
       backgroundColor: theme.greenDim,
     },
     diffChipText: {
-      fontSize: sf(13),
-      fontWeight: '700',
+      fontSize: sf(compact ? 12 : 13),
+      fontWeight: '600',
       color: theme.textMuted,
     },
     diffChipTextActive: {
       color: theme.green,
     },
-    helpShowBtn: {
-      marginLeft: 'auto',
-      width: 36,
-      height: 36,
-      borderRadius: UI_RADIUS_CARD,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-    },
     statsRow: {
       flexDirection: 'row',
-      gap: 8,
-      alignSelf: 'stretch',
+      gap: compact ? 6 : 8,
+      flexShrink: 0,
     },
     stat: {
       flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 10,
+      paddingVertical: compact ? 5 : 8,
+      paddingHorizontal: compact ? 4 : 8,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       alignItems: 'center',
-      gap: 2,
+      gap: 1,
     },
     statLabel: {
-      fontSize: sf(11),
+      fontSize: sf(10),
       fontWeight: '600',
       color: theme.textMuted,
     },
     statValue: {
-      fontSize: sf(wide ? 18 : 16),
+      fontSize: sf(compact ? 14 : wide ? 17 : 15),
       fontWeight: '800',
       color: theme.text,
     },
@@ -721,19 +759,45 @@ function makeStyles(
       margin: 0.5,
       borderRadius: 3,
     },
+    controlDock: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: compact ? 12 : 16,
+      flexShrink: 0,
+      paddingTop: 2,
+    },
+    controlDockSplit: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
+    dpad: {
+      gap: compact ? 4 : 6,
+    },
+    dpadRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: compact ? 4 : 6,
+    },
+    dpadSpacer: {
+      width: ctrlSize,
+      height: ctrlSize,
+    },
     nextBox: {
       alignItems: 'center',
-      gap: 6,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+      justifyContent: 'center',
+      gap: 4,
+      paddingVertical: compact ? 6 : 8,
+      paddingHorizontal: compact ? 8 : 10,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      alignSelf: 'center',
+      minWidth: compact ? 68 : 76,
     },
     nextLabel: {
-      fontSize: sf(12),
+      fontSize: sf(10),
       fontWeight: '700',
       color: theme.textMuted,
     },
@@ -744,16 +808,9 @@ function makeStyles(
     miniCell: {
       borderRadius: 2,
     },
-    controls: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      justifyContent: 'center',
-      alignSelf: 'stretch',
-    },
     ctrlBtn: {
-      width: wide ? 52 : 48,
-      height: wide ? 52 : 48,
+      width: ctrlSize,
+      height: ctrlSize,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -774,30 +831,6 @@ function makeStyles(
     },
     ctrlBtnPressed: {
       opacity: 0.85,
-    },
-    actions: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: 10,
-    },
-    actionBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    actionBtnPressed: {
-      opacity: 0.88,
-    },
-    actionBtnText: {
-      fontSize: sf(14),
-      fontWeight: '700',
-      color: theme.green,
     },
   });
 }

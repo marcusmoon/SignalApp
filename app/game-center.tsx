@@ -36,7 +36,7 @@ import { loadGameProgressSummaries } from '@/services/gameProgressStore';
 import { loadGameRecords } from '@/services/gameRecordsStore';
 
 type GameCard = {
-  id: 'sum-trail' | 'sudoku';
+  id: 'sum-trail' | 'sudoku' | 'block-puzzle';
   href: Href;
   icon: ComponentProps<typeof FontAwesome>['name'];
   titleId: MessageId;
@@ -57,6 +57,13 @@ const GAMES: GameCard[] = [
     icon: 'table',
     titleId: 'gameSudokuTitle',
     bodyId: 'gameSudokuCardBody',
+  },
+  {
+    id: 'block-puzzle',
+    href: '/games/block-puzzle' as Href,
+    icon: 'th-large',
+    titleId: 'gameBlockPuzzleTitle',
+    bodyId: 'gameBlockPuzzleCardBody',
   },
 ];
 
@@ -80,10 +87,18 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
   );
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [records, setRecords] = useState<GameRecordsState>(emptyGameRecords);
-  const [resume, setResume] = useState<{ sumTrail: boolean; sudoku: boolean; sumLevel: number }>({
+  const [resume, setResume] = useState<{
+    sumTrail: boolean;
+    sudoku: boolean;
+    blockPuzzle: boolean;
+    sumLevel: number;
+    blockScore: number;
+  }>({
     sumTrail: false,
     sudoku: false,
+    blockPuzzle: false,
     sumLevel: 0,
+    blockScore: 0,
   });
 
   const refreshMeta = useCallback(() => {
@@ -92,7 +107,9 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
       setResume({
         sumTrail: p.sumTrail != null,
         sudoku: p.sudoku != null,
+        blockPuzzle: p.blockPuzzle != null,
         sumLevel: p.sumTrail?.state.level ?? 0,
+        blockScore: p.blockPuzzle?.state.score ?? 0,
       });
     });
   }, []);
@@ -117,12 +134,24 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
       }
       return t('gameHubNoRecordsYet');
     }
-    if (resume.sudoku) return t('gameHubResume');
-    const best = records.sudoku.byDifficulty.normal.bestTimeMs
-      ?? records.sudoku.byDifficulty.easy.bestTimeMs
-      ?? records.sudoku.byDifficulty.hard.bestTimeMs;
-    if (best != null) return t('gameHubBestTime', { time: formatDurationMs(best) });
-    if (records.sudoku.clears > 0) return t('gameHubClears', { count: records.sudoku.clears });
+    if (id === 'sudoku') {
+      if (resume.sudoku) return t('gameHubResume');
+      const best = records.sudoku.byDifficulty.normal.bestTimeMs
+        ?? records.sudoku.byDifficulty.easy.bestTimeMs
+        ?? records.sudoku.byDifficulty.hard.bestTimeMs;
+      if (best != null) return t('gameHubBestTime', { time: formatDurationMs(best) });
+      if (records.sudoku.clears > 0) return t('gameHubClears', { count: records.sudoku.clears });
+      return t('gameHubNoRecordsYet');
+    }
+    if (id === 'block-puzzle') {
+      if (resume.blockPuzzle) {
+        return t('gameHubResumeScore', { score: resume.blockScore });
+      }
+      if (records.blockPuzzle.bestScore > 0) {
+        return t('gameHubBestScore', { score: records.blockPuzzle.bestScore });
+      }
+      return t('gameHubNoRecordsYet');
+    }
     return t('gameHubNoRecordsYet');
   };
 
@@ -167,7 +196,8 @@ export function GameHubContent({ wideRoot = false }: GameHubContentProps) {
           {GAMES.map((game) => {
             const hasResume =
               (game.id === 'sum-trail' && resume.sumTrail) ||
-              (game.id === 'sudoku' && resume.sudoku);
+              (game.id === 'sudoku' && resume.sudoku) ||
+              (game.id === 'block-puzzle' && resume.blockPuzzle);
             return (
               <Pressable
                 key={game.id}

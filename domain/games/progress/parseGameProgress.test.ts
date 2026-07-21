@@ -4,9 +4,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { createBlockPuzzleGame } from '../blockPuzzle/blockPuzzle.ts';
 import { createSudokuGame } from '../sudoku/sudoku.ts';
 import { createSumTrailGame } from '../sumTrail/sumTrail.ts';
-import { parseSudokuProgress, parseSumTrailProgress } from './parseGameProgress.ts';
+import {
+  parseBlockPuzzleProgress,
+  parseSudokuProgress,
+  parseSumTrailProgress,
+} from './parseGameProgress.ts';
 
 describe('parseGameProgress', () => {
   it('round-trips sum trail progress', () => {
@@ -46,5 +51,29 @@ describe('parseGameProgress', () => {
     assert.ok(parsed);
     assert.equal(parsed!.elapsedMs, 45000);
     assert.equal(parsed!.state.status, 'playing');
+  });
+
+  it('parses playing block puzzle progress', () => {
+    const state = createBlockPuzzleGame('normal', 5);
+    const parsed = parseBlockPuzzleProgress({
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      difficulty: 'normal',
+      state,
+    });
+    assert.ok(parsed);
+    assert.equal(parsed!.state.score, 0);
+    assert.equal(parsed!.state.status, 'playing');
+  });
+
+  it('rejects gameover block puzzle progress', () => {
+    const state = { ...createBlockPuzzleGame('easy', 6), status: 'gameover' as const };
+    assert.equal(
+      parseBlockPuzzleProgress({
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        difficulty: 'easy',
+        state,
+      }),
+      null,
+    );
   });
 });

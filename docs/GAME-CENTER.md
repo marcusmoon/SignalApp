@@ -25,7 +25,7 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 |---|---|
 | 게임 허브 화면 | `app/game-center.tsx` (`GameHubContent`) |
 | 개별 게임 화면 | `app/games/<game-id>.tsx` |
-| 게임 UI | `components/games/` (`SumTrail*`, `Sudoku*`, `GameRecordsSheet`) |
+| 게임 UI | `components/games/` (`SumTrail*`, `Sudoku*`, `BlockPuzzle*`, `GameRecordsSheet`) |
 | 규칙·순수 로직 | `domain/games/<gameId>/` |
 | 허브 타일 메타 | `app/(tabs)/more.tsx` `HUB_META.gameCenter` |
 | 사이드바 | `components/signal/SignalSidebarTabBar.tsx` |
@@ -48,8 +48,8 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 
 | 구분 | 저장 | 내용 |
 |---|---|---|
-| 진행 | `gameProgressStore` | 합 트레일·스도쿠 보드 스냅샷. 재진입 시 자동 복원. 난이도 변경·스도쿠 완주 시 해당 진행 삭제 |
-| 기록 | `gameRecordsStore` | 플레이 횟수, 레벨/완주 수, 최고 레벨·점수, 스도쿠 난이도별 최단 시간·최소 실수 |
+| 진행 | `gameProgressStore` | 합 트레일·스도쿠·**블록 퍼즐** 보드 스냅샷. 재진입 시 자동 복원. 난이도 변경·스도쿠 완주·블록 퍼즐 게임 오버 시 해당 진행 삭제 |
+| 기록 | `gameRecordsStore` | 플레이 횟수, 레벨/완주 수, 최고 레벨·점수, 스도쿠 난이도별 최단 시간·최소 실수, **블록 퍼즐 최고 점수·줄** |
 | UI | 게임 허브 **게임 기록** 시트 · 카드 **이어하기** 배지 | `GameRecordsSheet` |
 
 규칙 정규화·이벤트는 `domain/games/records`, 스냅샷 파서는 `domain/games/progress`.
@@ -99,6 +99,23 @@ UI·테마는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 레이아웃은 [SCREEN-LAYO
 - 메모(연필) 모드
 - 힌트 포인트 구매
 
+## 블록 퍼즐 (Block Puzzle)
+
+떨어지는 7종 블록을 10×20 격자에 쌓아 가로 줄을 지우는 액션 퍼즐. (상표명 Tetris 미사용)
+
+| 항목 | 값 |
+|---|---|
+| 라우트 | `/games/block-puzzle` |
+| 로직 | `domain/games/blockPuzzle/blockPuzzle.ts` |
+| UI | `components/games/BlockPuzzleGame.tsx` |
+| 난이도 | `easy` · `normal` · `hard` (낙하 간격) |
+| 조작 | 좌/우 · 회전 · 빠른 낙하 · 즉시 낙하 · 새 게임 |
+| 점수 | 1/2/3/4줄 삭제 보너스 × 레벨 · 소프트/하드 드롭 가산 |
+| 이어하기 | 플레이 중 스냅샷 저장. 게임 오버 시 기록 반영 후 삭제 |
+| 기록 | 최고 점수 · 최다 줄 · 최고 레벨 (난이도별) |
+| 연출 | 줄 삭제·게임 오버 버스트 · 보드 펄스/흔들림 |
+| 레이아웃 | 합 트레일·스도쿠와 동일 — 폰 fill · `?` 바텀 시트 · 와이드 2열 |
+
 ## UI 규칙
 
 - 테마 hex 직접 사용 금지 — `theme` / `scaleFont`만
@@ -115,4 +132,4 @@ npm test          # domain/games 포함
 npm run typecheck
 ```
 
-수동: 더보기·사이드바 → 게임 → 합 트레일·스도쿠에서 난이도 전환·클리어·와이드 레이아웃을 확인한다.
+수동: 더보기·사이드바 → 게임 → 합 트레일·스도쿠·블록 퍼즐에서 난이도 전환·클리어·와이드 레이아웃을 확인한다.

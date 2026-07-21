@@ -7,6 +7,8 @@ import { describe, it } from 'node:test';
 import {
   emptyGameRecords,
   formatDurationMs,
+  recordBlockPuzzleGameOver,
+  recordBlockPuzzleRunStarted,
   normalizeGameRecords,
   recordSudokuCleared,
   recordSudokuRunStarted,
@@ -48,5 +50,23 @@ describe('gameRecords', () => {
     assert.equal(formatDurationMs(0), '0:00');
     assert.equal(formatDurationMs(65_000), '1:05');
     assert.equal(formatDurationMs(3_661_000), '1:01:01');
+  });
+
+  it('records block puzzle game overs and bests', () => {
+    let r = emptyGameRecords();
+    r = recordBlockPuzzleRunStarted(r);
+    r = recordBlockPuzzleGameOver(r, 'normal', 1200, 8, 2);
+    r = recordBlockPuzzleGameOver(r, 'normal', 900, 12, 3);
+    assert.equal(r.blockPuzzle.runsStarted, 1);
+    assert.equal(r.blockPuzzle.bestScore, 1200);
+    assert.equal(r.blockPuzzle.bestLines, 12);
+    assert.equal(r.blockPuzzle.byDifficulty.normal.bestScore, 1200);
+    assert.equal(r.blockPuzzle.byDifficulty.normal.bestLines, 12);
+    assert.equal(r.blockPuzzle.byDifficulty.normal.gamesPlayed, 2);
+  });
+
+  it('normalizes legacy records without block puzzle', () => {
+    const r = normalizeGameRecords({ version: 1, sumTrail: {}, sudoku: {} });
+    assert.equal(r.blockPuzzle.bestScore, 0);
   });
 });

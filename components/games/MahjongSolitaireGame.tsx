@@ -49,7 +49,7 @@ import {
 import { updateGameRecords } from '@/services/gameRecordsStore';
 
 const DIFFICULTIES: MahjongDifficulty[] = ['easy', 'normal', 'hard'];
-const LAYER_PAD = 3;
+const LAYER_DEPTH = 0.34;
 
 type BoardFx = { id: number; kind: 'match' | 'win' | 'stuck' };
 
@@ -324,18 +324,22 @@ export function MahjongSolitaireGame({
     () => state.tiles.filter((t) => !t.removed).reduce((m, t) => Math.max(m, t.layer), 0),
     [state.tiles],
   );
-  const layerPad = LAYER_PAD * (maxLayer + 1);
-  const fallbackW = wide ? 420 : Math.min(360, viewportHeight * 0.92);
-  const fallbackH = fill
-    ? Math.max(260, viewportHeight * 0.5)
-    : Math.max(220, viewportHeight * 0.42);
-  const boxW = playArea.w > 0 ? playArea.w - 8 : fallbackW;
-  const boxH = playArea.h > 0 ? playArea.h - 8 : fallbackH;
-  const unit = Math.min((boxW - layerPad) / boardW, (boxH - layerPad) / boardH);
+  const reservedChrome = compact ? 210 : split ? 0 : 190;
+  const fallbackW = wide ? 420 : Math.min(380, viewportHeight * 0.92);
+  const fallbackH = Math.max(
+    280,
+    Math.min(viewportHeight - reservedChrome, viewportHeight * 0.58),
+  );
+  const availW = playArea.w > 0 ? playArea.w : fallbackW;
+  const availH = playArea.h > 0 ? playArea.h : fallbackH;
+  const depthUnits = maxLayer * LAYER_DEPTH;
+  const unit = Math.min(availW / (boardW + depthUnits), availH / (boardH + depthUnits));
+  const layerStep = unit * LAYER_DEPTH;
+  const depthPad = maxLayer * layerStep;
   const tileW = TILE_W * unit;
   const tileH = TILE_H * unit;
-  const canvasW = boardW * unit + layerPad;
-  const canvasH = boardH * unit + layerPad;
+  const canvasW = boardW * unit + depthPad;
+  const canvasH = boardH * unit + depthPad;
 
   const sortedTiles = useMemo(
     () =>
@@ -405,7 +409,7 @@ export function MahjongSolitaireGame({
       <View style={[styles.boardInner, { width: canvasW, height: canvasH }]}>
         {sortedTiles.map((tile) => {
           const free = isTileFree(state, tile.id);
-          const layerOff = tile.layer * LAYER_PAD;
+          const layerOff = tile.layer * layerStep;
           const left = (tile.x - bounds.minX) * unit + layerOff;
           const top = (tile.y - bounds.minY) * unit - layerOff;
           return (
@@ -570,10 +574,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
     fillRoot: { flex: 1, minHeight: 0, gap: compact ? 6 : 8 },
     playArea: {
       flex: 1,
-      minHeight: compact ? 240 : 280,
+      minHeight: 0,
       width: '100%',
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
     },
     splitRow: { flex: 1, flexDirection: 'row', gap: 16, minHeight: 0 },
     splitSide: { width: wide ? 260 : 220, gap: 10, justifyContent: 'center' },
@@ -633,10 +638,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
     statValue: { fontSize: sf(wide ? 16 : compact ? 13 : 14), fontWeight: '800', color: theme.text },
     boardOuter: { position: 'relative' },
     boardInner: {
+      position: 'relative',
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
+      overflow: 'visible',
     },
     tile: {
       flex: 1,

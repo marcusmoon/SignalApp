@@ -514,16 +514,6 @@ export function BlockPuzzleGame({
     <View style={[styles.controlDock, split && styles.controlDockSplit]}>
       <View style={styles.actionZone}>
         <ControlBtn
-          icon="rotate-right"
-          label={t('gameBlockPuzzleRotateA11y')}
-          onPress={onRotate}
-          disabled={state.status !== 'playing'}
-          theme={theme}
-          styles={styles}
-          primary
-          large
-        />
-        <ControlBtn
           icon="bolt"
           label={t('gameBlockPuzzleHardDropA11y')}
           onPress={onHardDrop}
@@ -531,6 +521,16 @@ export function BlockPuzzleGame({
           theme={theme}
           styles={styles}
           accent
+          large
+        />
+        <ControlBtn
+          icon="rotate-right"
+          label={t('gameBlockPuzzleRotateA11y')}
+          onPress={onRotate}
+          disabled={state.status !== 'playing'}
+          theme={theme}
+          styles={styles}
+          primary
           large
         />
       </View>

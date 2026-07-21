@@ -228,7 +228,7 @@ export const ja = {
   gameBlockPuzzleCardBody: '落ちるブロックを並べ、ラインを消してスコアを伸ばすアクション',
   gameBlockPuzzleKicker: '横一列を揃えて消そう',
   gameBlockPuzzleBlurb:
-    '左右・回転・高速落下でブロックを配置します。横一列が揃うと消えて得点。10ラインごとに速度アップ。積み上がりきるとゲームオーバーです。',
+    '左ボタン（または盤面を上スワイプ）で回転・即落下、右ボタン（またはスワイプ）で移動・落下です。横一列が揃うと消えて得点。10ラインごとに速度アップ。積み上がりきるとゲームオーバーです。',
   gameBlockPuzzleHowTo: '遊び方',
   gameBlockPuzzleHelpShowA11y: '遊び方を見る',
   gameBlockPuzzleDiffEasy: 'かんたん',

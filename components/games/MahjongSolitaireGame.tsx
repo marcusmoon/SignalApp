@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps 
 import {
   Animated,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -13,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 
 import { GameBurstOverlay } from '@/components/games/GameBurstOverlay';
 import { MahjongSolitaireHelpSheet } from '@/components/games/MahjongSolitaireHelpSheet';
+import { mahjongTileTint } from '@/components/games/mahjongTileColors';
 import { runBoardPulse, runCellPop } from '@/components/games/gameBoardFx';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
@@ -35,7 +35,6 @@ import {
   restartMahjongGame,
   tapMahjongTile,
   tileLabel,
-  tileSuitColor,
   undoMahjong,
   useMahjongHint,
   type MahjongDifficulty,
@@ -50,24 +49,9 @@ import {
 import { updateGameRecords } from '@/services/gameRecordsStore';
 
 const DIFFICULTIES: MahjongDifficulty[] = ['easy', 'normal', 'hard'];
+const LAYER_PAD = 3;
 
 type BoardFx = { id: number; kind: 'match' | 'win' | 'stuck' };
-
-function suitColors(theme: AppTheme, kind: string): { bg: string; border: string; text: string } {
-  const suit = tileSuitColor(kind);
-  switch (suit) {
-    case 'dot':
-      return { bg: theme.greenDim, border: theme.greenBorder, text: theme.green };
-    case 'bamboo':
-      return { bg: theme.warningDim, border: theme.warning, text: theme.warning };
-    case 'char':
-      return { bg: theme.dangerDim, border: theme.danger, text: theme.danger };
-    case 'flower':
-      return { bg: theme.bgElevated, border: theme.border, text: theme.text };
-    default:
-      return { bg: theme.card, border: theme.border, text: theme.text };
-  }
-}
 
 function MahjongTileView({
   tile,
@@ -99,7 +83,7 @@ function MahjongTileView({
   popTick: number;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const colors = suitColors(theme, tile.kind);
+  const colors = mahjongTileTint(theme, tile.kind);
 
   useEffect(() => {
     if (popTick <= 0) return;
@@ -116,7 +100,7 @@ function MahjongTileView({
         height: h,
         zIndex: tile.layer * 10 + 1,
         transform: [{ scale: selected ? 1.06 : 1 }],
-        opacity: free ? 1 : 0.72,
+        opacity: free ? 1 : 0.78,
       }}>
       <Pressable
         onPress={onPress}
@@ -153,7 +137,7 @@ export function MahjongSolitaireGame({
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const compact = !wide && !split;
-  const [boardBox, setBoardBox] = useState({ w: 0, h: 0 });
+  const [playArea, setPlayArea] = useState({ w: 0, h: 0 });
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, wide, compact),
     [theme, scaleFont, wide, compact],
@@ -326,9 +310,9 @@ export function MahjongSolitaireGame({
     setHintIds([]);
   }, []);
 
-  const onBoardLayout = useCallback((e: LayoutChangeEvent) => {
+  const onPlayAreaLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    setBoardBox((p) =>
+    setPlayArea((p) =>
       Math.abs(p.w - width) < 1 && Math.abs(p.h - height) < 1 ? p : { w: width, h: height },
     );
   }, []);
@@ -336,18 +320,22 @@ export function MahjongSolitaireGame({
   const bounds = useMemo(() => boardBounds(state), [state]);
   const boardW = bounds.maxX - bounds.minX;
   const boardH = bounds.maxY - bounds.minY;
-  const boxW = boardBox.w > 0 ? boardBox.w : wide ? 420 : Math.min(360, viewportHeight * 0.55);
-  const boxH =
-    boardBox.h > 0
-      ? boardBox.h
-      : fill
-        ? Math.max(220, viewportHeight * 0.42)
-        : Math.max(200, viewportHeight * 0.38);
-  const unit = Math.min(boxW / boardW, boxH / boardH);
+  const maxLayer = useMemo(
+    () => state.tiles.filter((t) => !t.removed).reduce((m, t) => Math.max(m, t.layer), 0),
+    [state.tiles],
+  );
+  const layerPad = LAYER_PAD * (maxLayer + 1);
+  const fallbackW = wide ? 420 : Math.min(360, viewportHeight * 0.92);
+  const fallbackH = fill
+    ? Math.max(260, viewportHeight * 0.5)
+    : Math.max(220, viewportHeight * 0.42);
+  const boxW = playArea.w > 0 ? playArea.w - 8 : fallbackW;
+  const boxH = playArea.h > 0 ? playArea.h - 8 : fallbackH;
+  const unit = Math.min((boxW - layerPad) / boardW, (boxH - layerPad) / boardH);
   const tileW = TILE_W * unit;
   const tileH = TILE_H * unit;
-  const canvasW = boardW * unit + 8;
-  const canvasH = boardH * unit + 8;
+  const canvasW = boardW * unit + layerPad;
+  const canvasH = boardH * unit + layerPad;
 
   const sortedTiles = useMemo(
     () =>
@@ -357,34 +345,46 @@ export function MahjongSolitaireGame({
     [state.tiles],
   );
 
-  const difficultyRow = (
-    <View style={styles.diffRow}>
-      {DIFFICULTIES.map((d) => {
-        const active = difficulty === d;
-        const label =
-          d === 'easy'
-            ? t('gameMahjongDiffEasy')
-            : d === 'normal'
-              ? t('gameMahjongDiffNormal')
-              : t('gameMahjongDiffHard');
-        return (
-          <Pressable
-            key={d}
-            onPress={() => onDifficulty(d)}
-            style={[styles.diffChip, active && styles.diffChipActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}>
-            <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
-          </Pressable>
-        );
-      })}
-      <Pressable
-        onPress={() => setHelpOpen(true)}
-        style={styles.helpShowBtn}
-        accessibilityRole="button"
-        accessibilityLabel={t('gameMahjongHelpShowA11y')}>
-        <FontAwesome name="question-circle" size={16} color={theme.green} />
-      </Pressable>
+  const headerBar = (
+    <View style={styles.headerBar}>
+      <View style={styles.diffRow}>
+        {DIFFICULTIES.map((d) => {
+          const active = difficulty === d;
+          const label =
+            d === 'easy'
+              ? t('gameMahjongDiffEasy')
+              : d === 'normal'
+                ? t('gameMahjongDiffNormal')
+                : t('gameMahjongDiffHard');
+          return (
+            <Pressable
+              key={d}
+              onPress={() => onDifficulty(d)}
+              style={[styles.diffChip, active && styles.diffChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}>
+              <Text style={[styles.diffChipText, active && styles.diffChipTextActive]}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable
+          onPress={onNewGame}
+          style={styles.headerIconBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameMahjongNewGame')}>
+          <FontAwesome name="refresh" size={15} color={theme.textMuted} />
+        </Pressable>
+        <Pressable
+          onPress={() => setHelpOpen(true)}
+          style={styles.headerIconBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('gameMahjongHelpShowA11y')}>
+          <FontAwesome name="question-circle" size={16} color={theme.green} />
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -401,13 +401,13 @@ export function MahjongSolitaireGame({
       style={[
         styles.boardOuter,
         { width: canvasW, height: canvasH, transform: [{ scale: boardPulse }] },
-      ]}
-      onLayout={onBoardLayout}>
+      ]}>
       <View style={[styles.boardInner, { width: canvasW, height: canvasH }]}>
         {sortedTiles.map((tile) => {
           const free = isTileFree(state, tile.id);
-          const left = (tile.x - bounds.minX) * unit + tile.layer * 2;
-          const top = (tile.y - bounds.minY) * unit - tile.layer * 2;
+          const layerOff = tile.layer * LAYER_PAD;
+          const left = (tile.x - bounds.minX) * unit + layerOff;
+          const top = (tile.y - bounds.minY) * unit - layerOff;
           return (
             <MahjongTileView
               key={tile.id}
@@ -474,49 +474,36 @@ export function MahjongSolitaireGame({
         styles={styles}
         theme={theme}
       />
-      <ActionBtn
-        icon="refresh"
-        label={t('gameMahjongNewGame')}
-        onPress={onNewGame}
-        styles={styles}
-        theme={theme}
-      />
+    </View>
+  );
+
+  const playAreaView = (
+    <View style={styles.playArea} onLayout={onPlayAreaLayout}>
+      {boardView}
     </View>
   );
 
   const body = split ? (
     <View style={styles.splitRow}>
-      <ScrollView
-        style={styles.splitBoardScroll}
-        contentContainerStyle={styles.splitBoardContent}
-        showsVerticalScrollIndicator={false}>
-        {boardView}
-      </ScrollView>
+      {playAreaView}
       <View style={styles.splitSide}>
-        {difficultyRow}
+        {headerBar}
         {statsRow}
         {actions}
       </View>
     </View>
   ) : fill ? (
-    <View style={styles.fillCol}>
-      {difficultyRow}
+    <View style={styles.fillRoot}>
+      {headerBar}
       {statsRow}
-      <ScrollView
-        style={styles.fillBoardScroll}
-        contentContainerStyle={styles.fillBoardContent}
-        showsVerticalScrollIndicator={false}>
-        {boardView}
-      </ScrollView>
+      {playAreaView}
       {actions}
     </View>
   ) : (
     <View style={styles.stack}>
-      {difficultyRow}
+      {headerBar}
       {statsRow}
-      <ScrollView contentContainerStyle={styles.scrollBoard} showsVerticalScrollIndicator={false}>
-        {boardView}
-      </ScrollView>
+      {playAreaView}
       {actions}
     </View>
   );
@@ -579,37 +566,31 @@ function ActionBtn({
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, compact: boolean) {
   return StyleSheet.create({
-    stack: { gap: compact ? 10 : 12, alignItems: 'center' },
-    fillCol: { flex: 1, minHeight: 0, gap: 8 },
-    fillBoardScroll: { flex: 1, minHeight: 0, width: '100%' },
-    fillBoardContent: { alignItems: 'center', paddingVertical: 8 },
-    scrollBoard: { alignItems: 'center', paddingVertical: 4 },
-    splitRow: { flex: 1, flexDirection: 'row', gap: 16, minHeight: 0 },
-    splitBoardScroll: { flex: 1, minWidth: 0 },
-    splitBoardContent: { alignItems: 'center', justifyContent: 'center', minHeight: 280 },
-    splitSide: { width: wide ? 260 : 220, gap: 12, justifyContent: 'center' },
-    diffRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
+    stack: { gap: compact ? 8 : 10, alignItems: 'stretch' },
+    fillRoot: { flex: 1, minHeight: 0, gap: compact ? 6 : 8 },
+    playArea: {
+      flex: 1,
+      minHeight: compact ? 240 : 280,
+      width: '100%',
       alignItems: 'center',
-      alignSelf: 'stretch',
+      justifyContent: 'center',
     },
-    diffChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
+    splitRow: { flex: 1, flexDirection: 'row', gap: 16, minHeight: 0 },
+    splitSide: { width: wide ? 260 : 220, gap: 10, justifyContent: 'center' },
+    headerBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
     },
-    diffChipActive: { borderColor: theme.greenBorder, backgroundColor: theme.greenDim },
-    diffChipText: { fontSize: sf(13), fontWeight: '700', color: theme.textMuted },
-    diffChipTextActive: { color: theme.green },
-    helpShowBtn: {
+    headerActions: {
+      flexDirection: 'row',
+      gap: 6,
       marginLeft: 'auto',
-      width: 36,
-      height: 36,
+    },
+    headerIconBtn: {
+      width: compact ? 34 : 36,
+      height: compact ? 34 : 36,
       borderRadius: UI_RADIUS_CARD,
       alignItems: 'center',
       justifyContent: 'center',
@@ -617,11 +598,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       borderColor: theme.border,
       backgroundColor: theme.card,
     },
-    statsRow: { flexDirection: 'row', gap: 8, alignSelf: 'stretch' },
+    diffRow: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: compact ? 6 : 8,
+      alignItems: 'center',
+    },
+    diffChip: {
+      paddingHorizontal: compact ? 10 : 12,
+      paddingVertical: compact ? 6 : 8,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    diffChipActive: { borderColor: theme.greenBorder, backgroundColor: theme.greenDim },
+    diffChipText: { fontSize: sf(compact ? 12 : 13), fontWeight: '700', color: theme.textMuted },
+    diffChipTextActive: { color: theme.green },
+    statsRow: { flexDirection: 'row', gap: compact ? 6 : 8, flexShrink: 0 },
     stat: {
       flex: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 8,
+      minWidth: 0,
+      paddingVertical: compact ? 6 : 8,
+      paddingHorizontal: compact ? 4 : 8,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -629,9 +629,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       alignItems: 'center',
       gap: 2,
     },
-    statLabel: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted },
-    statValue: { fontSize: sf(wide ? 16 : 14), fontWeight: '800', color: theme.text },
-    boardOuter: { position: 'relative', alignSelf: 'center' },
+    statLabel: { fontSize: sf(10), fontWeight: '600', color: theme.textMuted },
+    statValue: { fontSize: sf(wide ? 16 : compact ? 13 : 14), fontWeight: '800', color: theme.text },
+    boardOuter: { position: 'relative' },
     boardInner: {
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
@@ -651,12 +651,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, wide: boolean, c
       gap: 8,
       justifyContent: 'center',
       alignSelf: 'stretch',
+      flexShrink: 0,
     },
     actionBtn: {
+      flex: 1,
+      minWidth: 120,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
-      paddingVertical: 10,
+      paddingVertical: compact ? 10 : 12,
       paddingHorizontal: 12,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,

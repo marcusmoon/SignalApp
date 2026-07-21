@@ -47,7 +47,7 @@ export function BlockPuzzleContent({ embedded = false, onBack }: BlockPuzzleScre
         style={[
           styles.fill,
           {
-            paddingTop: wide ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP,
+            paddingTop: wide ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : 8,
             paddingBottom: wide
               ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + insets.bottom
               : stackScreenScrollBottomPadding(insets.bottom),

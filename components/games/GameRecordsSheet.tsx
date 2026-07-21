@@ -52,6 +52,7 @@ export function GameRecordsSheet({ visible, onClose }: Props) {
   const st = records.sumTrail;
   const su = records.sudoku;
   const bp = records.blockPuzzle;
+  const mj = records.mahjong;
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -163,6 +164,38 @@ export function GameRecordsSheet({ visible, onClose }: Props) {
                       styles={styles}
                       compact
                     />
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={styles.section}>{t('gameMahjongTitle')}</Text>
+            <View style={styles.card}>
+              <Row label={t('gameRecordsRuns')} value={String(mj.runsStarted)} styles={styles} />
+              <Row label={t('gameRecordsClears')} value={String(mj.clears)} styles={styles} />
+              <Row label={t('gameRecordsBestScore')} value={String(mj.bestScore)} styles={styles} />
+              {(['easy', 'normal', 'hard'] as const).map((d) => {
+                const row = mj.byDifficulty[d];
+                const diffLabel =
+                  d === 'easy'
+                    ? t('gameMahjongDiffEasy')
+                    : d === 'normal'
+                      ? t('gameMahjongDiffNormal')
+                      : t('gameMahjongDiffHard');
+                const time =
+                  row.bestTimeMs != null ? formatDurationMs(row.bestTimeMs) : t('gameRecordsEmpty');
+                const score =
+                  row.bestScore != null ? String(row.bestScore) : t('gameRecordsEmpty');
+                return (
+                  <View key={d} style={styles.diffBlock}>
+                    <Text style={styles.diffTitle}>{diffLabel}</Text>
+                    <Row
+                      label={t('gameRecordsClears')}
+                      value={String(row.clears)}
+                      styles={styles}
+                      compact
+                    />
+                    <Row label={t('gameRecordsBestTime')} value={time} styles={styles} compact />
+                    <Row label={t('gameRecordsBestScore')} value={score} styles={styles} compact />
                   </View>
                 );
               })}

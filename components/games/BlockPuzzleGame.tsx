@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import {
   Animated,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -187,16 +188,16 @@ export function BlockPuzzleGame({
     playArea.w > 0 && playArea.h > 0
       ? Math.floor(Math.min(playArea.w - 4, (playArea.h * COLS) / VISIBLE_ROWS))
       : 0;
-  const reservedChrome = compact ? 200 : split ? 0 : 180;
+  const reservedChrome = compact ? 148 : split ? 0 : 160;
   const fallbackBoard = split
     ? Math.max(280, Math.min(400, Math.floor(viewportHeight * 0.52)))
     : wide
       ? 360
       : Math.max(
-          220,
+          240,
           Math.min(
-            320,
-            Math.floor(Math.min(viewportHeight - reservedChrome, viewportHeight * 0.5) * (COLS / VISIBLE_ROWS)),
+            360,
+            Math.floor(Math.min(viewportHeight - reservedChrome, viewportHeight * 0.58) * (COLS / VISIBLE_ROWS)),
           ),
         );
   const boardWidth = measuredBoard > 0 ? measuredBoard : fallbackBoard;
@@ -362,6 +363,28 @@ export function BlockPuzzleGame({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, [handleEvents]);
 
+  const boardGestures = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => state.status === 'playing',
+        onMoveShouldSetPanResponder: (_, g) =>
+          state.status === 'playing' && (Math.abs(g.dx) > 10 || Math.abs(g.dy) > 10),
+        onPanResponderRelease: (_, g) => {
+          const { dx, dy } = g;
+          if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            if (dx > 0) onRight();
+            else onLeft();
+          } else if (dy > 0) {
+            onSoftDrop();
+          } else {
+            onRotate();
+          }
+        },
+      }),
+    [state.status, onLeft, onRight, onSoftDrop, onRotate],
+  );
+
   const onPlayAreaLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setPlayArea((prev) =>
@@ -421,6 +444,17 @@ export function BlockPuzzleGame({
       <Stat icon="star" label={t('gameBlockPuzzleScore')} value={String(state.score)} theme={theme} styles={styles} />
       <Stat icon="minus" label={t('gameBlockPuzzleLines')} value={String(state.lines)} theme={theme} styles={styles} />
       <Stat icon="flag" label={t('gameBlockPuzzleLevel')} value={String(state.level)} theme={theme} styles={styles} />
+      {!split ? (
+        <View style={styles.nextBoxInline}>
+          <Text style={styles.nextLabel}>{t('gameBlockPuzzleNext')}</Text>
+          <MiniPreview
+            type={state.next}
+            theme={theme}
+            cell={Math.max(10, Math.floor(cellSize * 0.28))}
+            styles={styles}
+          />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -438,6 +472,7 @@ export function BlockPuzzleGame({
 
   const boardView = (
     <Animated.View
+      {...boardGestures.panHandlers}
       style={[
         styles.boardWrap,
         {
@@ -477,22 +512,8 @@ export function BlockPuzzleGame({
 
   const controlDock = (
     <View style={[styles.controlDock, split && styles.controlDockSplit]}>
-      {!split ? nextPreview : null}
-      <View style={styles.dpad}>
-        <View style={styles.dpadRow}>
-          <View style={styles.dpadSpacer} />
-          <ControlBtn
-            icon="rotate-right"
-            label={t('gameBlockPuzzleRotateA11y')}
-            onPress={onRotate}
-            disabled={state.status !== 'playing'}
-            theme={theme}
-            styles={styles}
-            primary
-          />
-          <View style={styles.dpadSpacer} />
-        </View>
-        <View style={styles.dpadRow}>
+      <View style={styles.moveZone}>
+        <View style={styles.moveRow}>
           <ControlBtn
             icon="arrow-left"
             label={t('gameBlockPuzzleMoveLeftA11y')}
@@ -500,6 +521,7 @@ export function BlockPuzzleGame({
             disabled={state.status !== 'playing'}
             theme={theme}
             styles={styles}
+            large
           />
           <ControlBtn
             icon="arrow-down"
@@ -508,6 +530,7 @@ export function BlockPuzzleGame({
             disabled={state.status !== 'playing'}
             theme={theme}
             styles={styles}
+            large
           />
           <ControlBtn
             icon="arrow-right"
@@ -516,21 +539,31 @@ export function BlockPuzzleGame({
             disabled={state.status !== 'playing'}
             theme={theme}
             styles={styles}
+            large
           />
         </View>
-        <View style={styles.dpadRow}>
-          <View style={styles.dpadSpacer} />
-          <ControlBtn
-            icon="bolt"
-            label={t('gameBlockPuzzleHardDropA11y')}
-            onPress={onHardDrop}
-            disabled={state.status !== 'playing'}
-            theme={theme}
-            styles={styles}
-            accent
-          />
-          <View style={styles.dpadSpacer} />
-        </View>
+      </View>
+      <View style={styles.actionZone}>
+        <ControlBtn
+          icon="rotate-right"
+          label={t('gameBlockPuzzleRotateA11y')}
+          onPress={onRotate}
+          disabled={state.status !== 'playing'}
+          theme={theme}
+          styles={styles}
+          primary
+          large
+        />
+        <ControlBtn
+          icon="bolt"
+          label={t('gameBlockPuzzleHardDropA11y')}
+          onPress={onHardDrop}
+          disabled={state.status !== 'playing'}
+          theme={theme}
+          styles={styles}
+          accent
+          large
+        />
       </View>
     </View>
   );
@@ -606,6 +639,7 @@ function ControlBtn({
   styles,
   primary,
   accent,
+  large,
 }: {
   icon: ComponentProps<typeof FontAwesome>['name'];
   label: string;
@@ -615,6 +649,7 @@ function ControlBtn({
   styles: ReturnType<typeof makeStyles>;
   primary?: boolean;
   accent?: boolean;
+  large?: boolean;
 }) {
   return (
     <Pressable
@@ -622,6 +657,7 @@ function ControlBtn({
       disabled={disabled}
       style={({ pressed }) => [
         styles.ctrlBtn,
+        large && styles.ctrlBtnLarge,
         primary && styles.ctrlBtnPrimary,
         accent && styles.ctrlBtnAccent,
         disabled && styles.ctrlBtnDisabled,
@@ -631,7 +667,7 @@ function ControlBtn({
       accessibilityLabel={label}>
       <FontAwesome
         name={icon}
-        size={primary ? 18 : 16}
+        size={large ? (primary ? 20 : 18) : primary ? 18 : 16}
         color={accent ? theme.warning : primary ? theme.green : theme.text}
       />
     </Pressable>
@@ -646,7 +682,7 @@ function makeStyles(
   boardWidth: number,
 ) {
   const gap = compact ? 6 : wide ? 12 : 10;
-  const ctrlSize = compact ? 42 : wide ? 50 : 46;
+  const ctrlSize = compact ? 56 : wide ? 50 : 48;
   return StyleSheet.create({
     stack: {
       gap,
@@ -742,6 +778,7 @@ function makeStyles(
     },
     stat: {
       flex: 1,
+      minWidth: 0,
       paddingVertical: compact ? 5 : 8,
       paddingHorizontal: compact ? 4 : 8,
       borderRadius: UI_RADIUS_CARD,
@@ -779,27 +816,45 @@ function makeStyles(
     controlDock: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: compact ? 12 : 16,
+      justifyContent: 'space-between',
+      gap: compact ? 10 : 16,
       flexShrink: 0,
       paddingTop: 2,
+      width: '100%',
     },
     controlDockSplit: {
       flexDirection: 'column',
       alignItems: 'stretch',
+      gap: 10,
     },
-    dpad: {
-      gap: compact ? 4 : 6,
+    moveZone: {
+      flex: 1,
+      alignItems: 'flex-start',
+      justifyContent: 'center',
     },
-    dpadRow: {
+    moveRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: compact ? 4 : 6,
+      gap: compact ? 6 : 8,
     },
-    dpadSpacer: {
-      width: ctrlSize,
-      height: ctrlSize,
+    actionZone: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: compact ? 6 : 8,
+    },
+    nextBoxInline: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      paddingVertical: compact ? 4 : 6,
+      paddingHorizontal: compact ? 6 : 8,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      minWidth: compact ? 52 : 60,
     },
     nextBox: {
       alignItems: 'center',
@@ -834,6 +889,10 @@ function makeStyles(
       backgroundColor: theme.card,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    ctrlBtnLarge: {
+      width: ctrlSize,
+      height: ctrlSize,
     },
     ctrlBtnPrimary: {
       borderColor: theme.greenBorder,

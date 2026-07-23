@@ -131,4 +131,21 @@ describe('reduceSidebarSubTabs', () => {
     });
     assert.equal(state.activeKey, 'coin');
   });
+
+  it('keeps board owner tabs when clear is from another owner (post drill must not wipe via news clear)', () => {
+    let state = reduceSidebarSubTabs(INITIAL_SIDEBAR_SUB_TABS_STATE, {
+      type: 'setTabs',
+      owner: 'board',
+      tabs: [
+        { key: 'all', label: '전체' },
+        { key: 'save_user_news', label: '세이브' },
+      ],
+      activeKey: 'save_user_news',
+    });
+    // Unrelated owner clear must not remove board submenu (wide post drill keeps board mounted).
+    state = reduceSidebarSubTabs(state, { type: 'clear', owner: 'news' });
+    assert.equal(state.owner, 'board');
+    assert.equal(state.activeKey, 'save_user_news');
+    assert.equal(state.tabs.length, 2);
+  });
 });

@@ -376,6 +376,12 @@ const sidebarLayoutStyles = StyleSheet.create({
     maxHeight: '100%',
     overflow: 'hidden',
   },
+  /** Keep board list mounted under post detail so left channel submenu stays. */
+  boardStack: {
+    flex: 1,
+    minHeight: 0,
+    position: 'relative',
+  },
   tabsHost: {
     ...webTabNavigatorHostStyle,
     overflow: 'hidden',
@@ -514,16 +520,26 @@ function IpadWideTabLayout({
                 termsType={termsType}
                 onBack={subpaneBack}
               />
-            ) : contentPane === 'board' ? (
-              <BoardContent
-                embedded
-                onBack={subpaneBack}
-                active
-                initialSource={boardSource}
-                lockedSource={boardSourceLocked ? boardSource : null}
-              />
-            ) : contentPane === 'community' && communityPostId ? (
-              <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />
+            ) : contentPane === 'board' || (contentPane === 'community' && communityPostId) ? (
+              <View style={sidebarLayoutStyles.boardStack}>
+                <View
+                  style={
+                    contentPane === 'board'
+                      ? sidebarLayoutStyles.tabsHostVisible
+                      : sidebarLayoutStyles.tabsHostHidden
+                  }>
+                  <BoardContent
+                    embedded
+                    onBack={contentPane === 'board' ? subpaneBack : undefined}
+                    active
+                    initialSource={boardSource}
+                    lockedSource={boardSourceLocked ? boardSource : null}
+                  />
+                </View>
+                {contentPane === 'community' && communityPostId ? (
+                  <CommunityPostContent embedded id={communityPostId} onBack={subpaneBack} />
+                ) : null}
+              </View>
             ) : contentPane === 'symbol' && symbolTicker ? (
               <SymbolDetailContent embedded ticker={symbolTicker} onBack={subpaneBack} />
             ) : contentPane === 'watchlist' ? (

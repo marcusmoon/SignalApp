@@ -146,6 +146,8 @@ type IpadSidebarNavActions = {
     options?: { from?: 'account' | 'terms-history' } & WidePaneDrillOptions,
   ) => void;
   showBoard: (options?: WidePaneDrillOptions & { source?: string }) => void;
+  /** Wide board channel sync — keeps submenu selection across post drill. */
+  setBoardSourceFilter: (source: CommunitySourceFilter) => void;
   showCommunityPost: (id: string, options?: WidePaneDrillOptions) => void;
   showSymbol: (ticker: string, options?: WidePaneDrillOptions) => void;
   showWatchlist: (options?: WidePaneDrillOptions & { segment?: QuoteSegmentKey }) => void;
@@ -211,6 +213,7 @@ const defaultActions: IpadSidebarNavActions = {
   showTermsHistory: () => {},
   showTerms: () => {},
   showBoard: () => {},
+  setBoardSourceFilter: () => {},
   showCommunityPost: () => {},
   showSymbol: () => {},
   showWatchlist: () => {},
@@ -300,6 +303,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [symbolTicker, setSymbolTicker] = useState<string | null>(null);
   const [boardSource, setBoardSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [boardSourceLocked, setBoardSourceLocked] = useState(false);
+  const boardSourceRef = useRef(boardSource);
+  const boardSourceLockedRef = useRef(boardSourceLocked);
+  boardSourceRef.current = boardSource;
+  boardSourceLockedRef.current = boardSourceLocked;
   const [quotesDrillSegment, setQuotesDrillSegment] = useState<QuoteSegmentKey>('watch');
   const [newsFeedSegment, setNewsFeedSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [calendarFromAccount, setCalendarFromAccount] = useState(false);
@@ -970,6 +977,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     [beginWideOverlay, router, useTwoPane],
   );
 
+  const setBoardSourceFilter = useCallback((source: CommunitySourceFilter) => {
+    boardSourceRef.current = source;
+    setBoardSource(source);
+  }, []);
+
   const showCommunityPost = useCallback(
     (id: string, options?: WidePaneDrillOptions) => {
       const postId = String(id || '').trim();
@@ -1072,10 +1084,20 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
           },
         } as never);
       } else if (target === 'board') {
-        applyOverlayKind('board', {});
+        const source = boardSourceRef.current;
+        const locked = boardSourceLockedRef.current;
+        applyOverlayKind('board', {
+          ...(source !== COMMUNITY_SOURCE_ALL ? { source } : {}),
+          ...(locked ? { lock: '1' } : {}),
+        });
         router.navigate({
           pathname: WIDE_HOME_ROUTE,
-          params: { ...WIDE_OVERLAY_CLEAR_PARAMS, overlay: 'board' },
+          params: {
+            ...WIDE_OVERLAY_CLEAR_PARAMS,
+            overlay: 'board',
+            ...(source !== COMMUNITY_SOURCE_ALL ? { source } : {}),
+            ...(locked ? { lock: '1' } : {}),
+          },
         } as never);
       } else if (target === 'etfInsights') {
         applyOverlayKind('etf-insights', {});
@@ -1302,6 +1324,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showTermsHistory,
       showTerms,
       showBoard,
+      setBoardSourceFilter,
       showCommunityPost,
       showSymbol,
       showWatchlist,
@@ -1335,6 +1358,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showTermsHistory,
       showTerms,
       showBoard,
+      setBoardSourceFilter,
       showCommunityPost,
       showSymbol,
       showWatchlist,

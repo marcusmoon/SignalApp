@@ -40,7 +40,7 @@ import {
   WEB_FLATLIST_WINDOW,
   isWeb,
 } from '@/constants/webLayout';
-import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNavActions, useIpadSidebarNavState } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -114,6 +114,7 @@ export function BoardContent({
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNavActions();
+  const { contentPane } = useIpadSidebarNavState();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useOwnedSidebarSubTabs('board');
   const [source, setSource] = useState<CommunitySourceFilter>(
     () =>
@@ -228,6 +229,10 @@ export function BoardContent({
       sourceRef.current = next;
       setSource(next);
       if (useTwoPane) setActiveSubTabKey(next);
+      // Keep wide nav boardSource in sync so post→back restores the channel.
+      if (embedded && ipadNav.isAvailable) {
+        ipadNav.setBoardSourceFilter(next);
+      }
       setError(null);
       setItems([]);
       setMeta(null);
@@ -238,7 +243,7 @@ export function BoardContent({
       }
       void loadRef.current({ sourceFilter: next });
     },
-    [embedded, setActiveSubTabKey, setRouteParams, useTwoPane],
+    [embedded, ipadNav, setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
   useEffect(() => {
@@ -260,11 +265,27 @@ export function BoardContent({
         label: t(SOURCE_LABEL[key]),
         href: embedded ? undefined : '/(tabs)/board',
         params: embedded ? undefined : { source: key },
-        onPress: () => changeSource(key),
+        onPress: () => {
+          changeSource(key);
+          // Post detail keeps the board list mounted; channel tap returns to the list.
+          if (embedded && contentPane === 'community' && ipadNav.isAvailable) {
+            ipadNav.goBackWidePane();
+          }
+        },
       })),
       source,
     );
-  }, [changeSource, embedded, lockedSource, setSubTabs, source, t, useTwoPane]);
+  }, [
+    changeSource,
+    contentPane,
+    embedded,
+    ipadNav,
+    lockedSource,
+    setSubTabs,
+    source,
+    t,
+    useTwoPane,
+  ]);
 
   // 포커스/락 생명주기만 clear — register 콜백을 deps에 넣지 않는다.
   useEffect(() => {

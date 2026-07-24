@@ -7,7 +7,7 @@ type FeedNewContentChipProps = {
   onPress: () => void;
 };
 
-/** 백그라운드 폴링으로 새 콘텐츠가 있을 때 피드 상단(리스트 위)에 두는 chip */
+/** 백그라운드 폴링 새 소식 — 리스트 위 compact pill (OTA 풀폭 카드와 구분) */
 export function FeedNewContentChip({ visible, refreshing, message, onPress }: FeedNewContentChipProps) {
   if (!visible || refreshing) return null;
 

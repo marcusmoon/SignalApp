@@ -31,6 +31,7 @@ import {
 } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
+  SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
@@ -458,7 +459,7 @@ export default function SignalScreen({
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const newContentAvailable = activeTabKey ? newContentTabs.has(activeTabKey) : false;
-  const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
+  const { ref: scrollRef, scrollToTop: scrollBriefingToTop } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
     resyncDeps: [activeBriefing?.id, marketBriefings.length],
   });
   const scrollResetKey = `${activeTabKey ?? 'none'}:${selectedYmd}`;
@@ -631,7 +632,10 @@ export default function SignalScreen({
           visible={newContentAvailable}
           refreshing={refreshing}
           message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
+          onPress={() => {
+            scrollBriefingToTop(true);
+            void onRefresh();
+          }}
         />
       ) : null}
 
@@ -651,7 +655,18 @@ export default function SignalScreen({
           scrollResetKey={scrollResetKey}
           contentRevision={[activeBriefing?.id, marketBriefings.length]}
           style={styles.scroll}
-          contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
+          contentContainerStyle={[
+            styles.content,
+            useTwoPane && styles.contentWide,
+            {
+              paddingTop: newContentAvailable
+                ? SCREEN_CHIP_LIST_CONTENT_PADDING_TOP
+                : useTwoPane
+                  ? SCREEN_WIDE_CONTENT_PADDING_TOP
+                  : SCREEN_LIST_CONTENT_PADDING_TOP,
+              paddingBottom: scrollBottomPadding,
+            },
+          ]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           {!error ? (
             activeBriefing ? (
@@ -755,11 +770,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     content: {
       width: '100%',
       paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
-    contentWide: {
-      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
-    },
+    contentWide: {},
     dateNavigator: {
       width: '100%',
     },

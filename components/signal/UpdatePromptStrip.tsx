@@ -1,5 +1,13 @@
-import { useMemo, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
@@ -14,6 +22,14 @@ const stripStyles = StyleSheet.create({
     paddingHorizontal: APP_CONTENT_SIDE_PADDING,
     paddingTop: 8,
     paddingBottom: 8,
+  },
+  /** 새 소식 chip — 가운데 compact pill용 strip (위·아래 균형) */
+  chipStrip: {
+    width: '100%',
+    paddingHorizontal: APP_CONTENT_SIDE_PADDING,
+    paddingTop: 6,
+    paddingBottom: 6,
+    alignItems: 'center',
   },
 });
 
@@ -34,7 +50,7 @@ type UpdatePromptCardProps = {
   accessibilityLabel?: string;
 };
 
-/** card 배경 + green 테두리 셸. onPress가 있으면 Pressable */
+/** card 배경 + green 테두리 셸. onPress가 있으면 Pressable — OTA 등 강조용 */
 export function UpdatePromptCard({ children, style, onPress, accessibilityLabel }: UpdatePromptCardProps) {
   const { theme } = useSignalTheme();
   const cardStyles = useMemo(() => makeCardStyles(theme), [theme]);
@@ -60,22 +76,40 @@ type FeedUpdatePromptPillProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** 단일 탭 액션 pill (새 콘텐츠 chip 등) */
+/**
+ * 새 소식 chip — OTA 풀폭 카드와 구분되는 compact pill.
+ * 가운데 정렬 · hairline 테두리 · soft tint · 짧은 fade/slide 등장.
+ */
 export function FeedUpdatePromptPill({ message, onPress, style }: FeedUpdatePromptPillProps) {
   const { theme, scaleFont } = useSignalTheme();
-  const { messageStyle, iconColor } = useMemo(() => makePillContentStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makePillStyles(theme, scaleFont), [theme, scaleFont]);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(-6)).current;
+
+  useEffect(() => {
+    opacity.setValue(0);
+    translateY.setValue(-6);
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }, [opacity, translateY]);
 
   return (
-    <UpdatePromptStrip style={style}>
-      <UpdatePromptCard onPress={onPress} accessibilityLabel={message}>
-        <View style={contentRowStyles.row}>
-          <FontAwesome name="arrow-up" size={12} color={iconColor} />
-          <Text style={messageStyle} numberOfLines={2}>
+    <View style={[stripStyles.chipStrip, style]}>
+      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={message}
+          style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
+          <FontAwesome name="arrow-up" size={11} color={styles.iconColor} />
+          <Text style={styles.message} numberOfLines={1}>
             {message}
           </Text>
-        </View>
-      </UpdatePromptCard>
-    </UpdatePromptStrip>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -115,29 +149,36 @@ function makeCardStyles(theme: AppTheme) {
   });
 }
 
-function makePillContentStyles(theme: AppTheme, sf: (n: number) => number) {
+function makePillStyles(theme: AppTheme, sf: (n: number) => number) {
   const pillText = isWeb ? WEB_SIGNAL_CSS.text : theme.text;
   const iconColor = isWeb ? WEB_SIGNAL_CSS.green : theme.green;
+  const border = isWeb ? WEB_SIGNAL_CSS.green : theme.greenBorder;
+  const fill = theme.greenDim;
 
   return {
     iconColor,
-    messageStyle: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      color: pillText,
+    pill: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      alignSelf: 'center' as const,
+      gap: 8,
+      maxWidth: '100%' as const,
+      paddingVertical: 7,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: border,
+      backgroundColor: fill,
+    },
+    pressed: {
+      opacity: 0.86,
+    },
+    message: {
+      flexShrink: 1,
+      fontSize: sf(12),
+      lineHeight: sf(16),
       fontWeight: '600' as const,
-      textAlign: 'center' as const,
+      color: pillText,
     },
   };
 }
-
-const contentRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    width: '100%',
-  },
-});

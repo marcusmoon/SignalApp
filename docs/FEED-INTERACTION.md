@@ -177,10 +177,12 @@ compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED
 
 ### UI
 
-- 컴포넌트: `FeedNewContentChip` → `UpdatePromptStrip` / `UpdatePromptCard`
+- 컴포넌트: `FeedNewContentChip` → compact pill (`FeedUpdatePromptPill`). OTA는 풀폭 `UpdatePromptCard` 유지
 - 위치: **리스트 바로 위** (고정 `topFixed` 아래, 스크롤 밖)
-- 스타일: `theme.card` + green 2px 테두리
-- OTA 배너(`OtaUpdateBanner`)도 같은 strip/card 셸 사용
+- 스타일: soft green tint · hairline 테두리 · 가운데 정렬 pill (풀폭 2px 카드 아님)
+- 탭 시: **상단 스크롤 복귀 + 새로고침**
+- chip 표시 중 리스트 `paddingTop`은 `SCREEN_CHIP_LIST_CONTENT_PADDING_TOP`(4)로 위·아래 간격 균형
+- OTA 배너(`OtaUpdateBanner`)는 같은 strip 셸을 쓰되 **풀폭 강조 카드**로 구분
 
 ### 표시 조건
 

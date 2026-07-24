@@ -806,7 +806,7 @@ export const ko = {
   feedErrorLoad: '뉴스를 불러오지 못했습니다.',
   feedErrorRefresh: '새로고침 실패',
   feedEmpty: '표시할 뉴스가 없습니다.',
-  feedNewContentAvailable: '새 소식이 있어요 · 탭하여 새로고침',
+  feedNewContentAvailable: '새 소식 · 새로고침',
   feedRefreshNoticeNews: '새 뉴스 {{count}}개가 있습니다.',
   feedRefreshNoticeVideo: '새 영상 {{count}}개가 있습니다.',
   disclosuresRefreshNotice: '새 공시 {{count}}개가 있습니다.',

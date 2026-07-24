@@ -220,7 +220,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 - 고정 UI는 `ListHeaderComponent`에 넣지 않는다 → `topFixed` 사용
 - 그룹 카드: `UI_RADIUS_GROUPED_FEED`, 카드 간 `COMFORT_MARGIN_GROUP`
-- 새 소식 chip: `FeedNewContentChip` — `theme.card` + green 2px 테두리, 리스트 바로 위
+- 새 소식 chip: `FeedNewContentChip` — compact pill (soft tint · hairline). OTA와 구분. 리스트 바로 위
 
 ### 다이제스트 가로 스트립
 

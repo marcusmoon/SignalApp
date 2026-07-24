@@ -809,7 +809,7 @@ export const ja = {
   feedErrorLoad: 'ニュースを読み込めませんでした。',
   feedErrorRefresh: '更新に失敗しました',
   feedEmpty: '表示するニュースがありません。',
-  feedNewContentAvailable: '新着情報があります · タップして更新',
+  feedNewContentAvailable: '新着 · 更新',
   feedRefreshNoticeNews: '新着ニュースが{{count}}件あります。',
   feedRefreshNoticeVideo: '新着動画が{{count}}件あります。',
   disclosuresRefreshNotice: '新着開示が{{count}}件あります。',

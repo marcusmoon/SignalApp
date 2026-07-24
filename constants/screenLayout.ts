@@ -22,6 +22,9 @@ export const SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP = 12;
 /** 고정 헤더 아래 스크롤 리스트 상단 */
 export const SCREEN_LIST_CONTENT_PADDING_TOP = 12;
 
+/** 새 소식 chip이 리스트 위에 있을 때 — chip strip 여백과 맞춰 위·아래 균형 */
+export const SCREEN_CHIP_LIST_CONTENT_PADDING_TOP = 4;
+
 /** iPad·넓은 웹 2-pane 본문 컬럼 상단 */
 export const SCREEN_WIDE_CONTENT_PADDING_TOP = 16;
 

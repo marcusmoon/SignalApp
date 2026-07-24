@@ -811,7 +811,7 @@ export const en = {
   feedErrorLoad: 'Could not load news.',
   feedErrorRefresh: 'Refresh failed',
   feedEmpty: 'No news to show.',
-  feedNewContentAvailable: 'New content available · Tap to refresh',
+  feedNewContentAvailable: 'New · Refresh',
   feedRefreshNoticeNews: '{{count}} new headlines are available.',
   feedRefreshNoticeVideo: '{{count}} new videos are available.',
   disclosuresRefreshNotice: '{{count}} new disclosures are available.',

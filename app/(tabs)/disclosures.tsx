@@ -24,6 +24,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
+  SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
@@ -574,7 +575,10 @@ export default function DisclosuresScreen() {
                   visible={newContentAvailable}
                   refreshing={refreshing}
                   message={t('feedNewContentAvailable')}
-                  onPress={() => void onRefresh()}
+                  onPress={() => {
+                    scrollListToTop(true);
+                    void onRefresh();
+                  }}
                 />
               ) : null}
               <WebWheelFlatList
@@ -586,9 +590,11 @@ export default function DisclosuresScreen() {
                 contentContainerStyle={[
                   useTwoPane ? styles.wideListContent : styles.listContent,
                   {
-                    paddingTop: showDigest
-                      ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
-                      : SCREEN_LIST_CONTENT_PADDING_TOP,
+                    paddingTop: newContentAvailable
+                      ? SCREEN_CHIP_LIST_CONTENT_PADDING_TOP
+                      : showDigest
+                        ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
+                        : SCREEN_LIST_CONTENT_PADDING_TOP,
                     paddingBottom: bottomPad,
                   },
                 ]}

@@ -12,6 +12,7 @@ import { NewsCard } from '@/components/signal/NewsCard';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
+  SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -86,7 +87,7 @@ export function ItNewsFeedPanel({ panelRef }: Props) {
   serverRowsRef.current = serverRows;
   itemsRef.current = items;
 
-  const { ref: listRef } = useScrollToTopOnChange([locale], { resyncDeps: [items] });
+  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([locale], { resyncDeps: [items] });
   const scrollResetKey = locale;
 
   const syncServerRows = useCallback((rows: SignalApiNewsItem[]) => {
@@ -241,8 +242,9 @@ export function ItNewsFeedPanel({ panelRef }: Props) {
 
   const onChipPress = useCallback(() => {
     setNewContentAvailable(false);
+    scrollListToTop(true);
     void onRefreshBase();
-  }, [onRefreshBase]);
+  }, [onRefreshBase, scrollListToTop]);
 
   return (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
@@ -274,7 +276,12 @@ export function ItNewsFeedPanel({ panelRef }: Props) {
           style={styles.list}
           contentContainerStyle={[
             styles.listContent,
-            { paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP, paddingBottom: listBottomPad },
+            {
+              paddingTop: newContentAvailable
+                ? SCREEN_CHIP_LIST_CONTENT_PADDING_TOP
+                : SCREEN_LIST_CONTENT_PADDING_TOP,
+              paddingBottom: listBottomPad,
+            },
           ]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefreshBase()} />}
           onEndReached={() => void loadMore()}

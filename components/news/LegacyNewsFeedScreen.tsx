@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   fabStackBottom,
+  SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET,
@@ -978,7 +979,10 @@ export function LegacyNewsFeedScreen({
                   visible={newContentAvailable}
                   refreshing={refreshing}
                   message={t('feedNewContentAvailable')}
-                  onPress={() => void onRefresh()}
+                  onPress={() => {
+                    scrollFeedToTop(true);
+                    void onRefresh();
+                  }}
                 />
               ) : null}
               <WebWheelFlatList
@@ -1046,9 +1050,11 @@ export function LegacyNewsFeedScreen({
                 contentContainerStyle={[
                   styles.listContent,
                   {
-                    paddingTop: showDigest
-                      ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
-                      : SCREEN_LIST_CONTENT_PADDING_TOP,
+                    paddingTop: newContentAvailable
+                      ? SCREEN_CHIP_LIST_CONTENT_PADDING_TOP
+                      : showDigest
+                        ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
+                        : SCREEN_LIST_CONTENT_PADDING_TOP,
                     paddingBottom: bottomPad,
                   },
                 ]}

@@ -14,6 +14,7 @@ import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
+  SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -108,7 +109,7 @@ export default function AlertsScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
-  const { ref: listRef } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
+  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
   const listScrollResetKey = filter;
   useResetRefreshingOnTabBlur(setRefreshing);
 
@@ -418,7 +419,10 @@ export default function AlertsScreen({
             visible={newContentAvailable}
             refreshing={refreshing}
             message={t('feedNewContentAvailable')}
-            onPress={() => void onRefresh()}
+            onPress={() => {
+              scrollListToTop(true);
+              void onRefresh();
+            }}
           />
         ) : null}
         <WebWheelFlatList
@@ -437,6 +441,11 @@ export default function AlertsScreen({
           contentContainerStyle={[
             styles.listContent,
             useTwoPane && styles.listContentWide,
+            {
+              paddingTop: newContentAvailable
+                ? SCREEN_CHIP_LIST_CONTENT_PADDING_TOP
+                : SCREEN_LIST_CONTENT_PADDING_TOP,
+            },
             { paddingBottom: bottomPad },
             filteredItems.length === 0 ? styles.listContentEmpty : null,
           ]}
@@ -476,8 +485,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minHeight: 0,
     },
-    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
-    listContentWide: { paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    listContent: { paddingHorizontal: 16 },
+    listContentWide: {},
     listContentEmpty: { flexGrow: 1 },
     filterRow: {
       flexDirection: 'row',

@@ -54,6 +54,7 @@ import {
 } from '@/services/calendarEventTypeFilterPreference';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
+import { calendarTypeAccent, calendarTypeSoftFill } from '@/domain/calendar/typeAccent';
 import type { CalendarEvent } from '@/types/signal';
 import { localeTagForAppLocale, toYmd, calendarEventDisplayYmd } from '@/utils/date';
 
@@ -416,14 +417,13 @@ export default function CalendarScreen({
   const listHeader = useMemo(
     () => (
       <View style={styles.daySection}>
-        <Text style={styles.daySectionMeta}>
-          {selectedDayEvents.length > 0
-            ? `${t('calendarScreenSectionTitle')} · ${selectedDayEvents.length}`
-            : t('calendarScreenSectionTitle')}
-        </Text>
+        <Text style={styles.daySectionTitle}>{t('calendarScreenSectionTitle')}</Text>
+        {selectedDayEvents.length > 0 ? (
+          <Text style={styles.daySectionMeta}>{selectedDayEvents.length}</Text>
+        ) : null}
       </View>
     ),
-    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
+    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, styles.daySectionTitle, t],
   );
 
   const showTodayNav = selectedYmd !== todayYmd;
@@ -493,6 +493,7 @@ export default function CalendarScreen({
           </Pressable>
           {CALENDAR_EVENT_TYPE_ORDER.map((type) => {
             const active = !allEventTypesSelected && enabledTypes.has(type);
+            const swatch = calendarTypeAccent(theme, type);
             return (
               <Pressable
                 key={type}
@@ -500,6 +501,7 @@ export default function CalendarScreen({
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}>
+                <View style={[styles.filterChipSwatch, { backgroundColor: swatch }]} />
                 <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                   {t(CALENDAR_FILTER_LABEL[type])}
                 </Text>
@@ -561,7 +563,6 @@ export default function CalendarScreen({
               todayYmd={todayYmd}
               theme={theme}
               locale={locale}
-              compact
             />
             <View style={styles.modalFoot}>
               <Pressable
@@ -619,36 +620,49 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       ...fixedHeader.stripWide,
     },
     daySection: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: 10,
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 8,
+      paddingBottom: 12,
     },
     listLoadingRow: {
       alignItems: 'center',
       justifyContent: 'center',
       paddingBottom: 8,
     },
+    daySectionTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(15),
+      lineHeight: ft.ff(20),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+    },
     daySectionMeta: {
-      fontSize: ft.ff(11),
-      fontWeight: ft.metaWeight,
+      fontSize: ft.ff(13),
+      fontWeight: ft.emphasisWeight,
       color: theme.textMuted,
+      fontVariant: ['tabular-nums'],
     },
     emptyDayBox: {
       marginTop: 4,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      paddingVertical: 22,
+      paddingVertical: 28,
       paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
     emptyDayText: {
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(14),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       textAlign: 'center',
-      lineHeight: ft.ff(19),
+      lineHeight: ft.ff(20),
     },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: {
@@ -659,28 +673,36 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     filterChips: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 7,
-      marginTop: 16,
+      gap: 8,
+      marginTop: 14,
     },
     filterChip: {
-      minHeight: 30,
-      paddingHorizontal: 10,
+      minHeight: 34,
+      paddingHorizontal: 11,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       alignItems: 'center',
       justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 6,
     },
     filterChipActive: {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
+    filterChipSwatch: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      flexShrink: 0,
+    },
     filterChipText: {
-      fontSize: sf(11),
+      fontSize: sf(12),
       lineHeight: sf(16),
       fontWeight: '600',
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     filterChipTextActive: {
       color: theme.green,
@@ -696,39 +718,41 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     card: {
       backgroundColor: theme.card,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingHorizontal: 10,
-      paddingVertical: 10,
-      marginBottom: 6,
+      borderLeftWidth: 3,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      marginBottom: 10,
+      gap: 8,
     },
-    cardRow: {
+    cardTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 16,
+      justifyContent: 'space-between',
+      gap: 10,
     },
-    titleBlock: { flex: 1, minWidth: 0 },
-    titleLine: {
+    metaRow: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      alignItems: 'flex-start',
-      gap: 8,
+      alignItems: 'center',
+      gap: 6,
     },
     typeTag: {
       borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      marginTop: 1,
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
     },
-    typeTagText: { fontSize: sf(9), fontWeight: '600' },
+    typeTagText: { fontSize: sf(11), fontWeight: '700', letterSpacing: 0.1 },
     impactTag: {
       borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      marginTop: 1,
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
     },
@@ -740,45 +764,54 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.accentBlue + '77',
       backgroundColor: theme.accentBlue + '18',
     },
-    impactTagText: { fontSize: sf(9), fontWeight: '600', color: theme.textMuted },
+    impactTagText: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted },
     symbolTag: {
       borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      marginTop: 1,
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
       borderColor: theme.green + '88',
       backgroundColor: theme.green + '18',
     },
-    symbolTagText: { fontSize: sf(9), fontWeight: '700', color: theme.green },
-    time: { fontSize: ft.ff(10), fontWeight: ft.metaWeight, color: theme.textMuted, marginTop: 1, flexShrink: 0 },
+    symbolTagText: { fontSize: sf(11), fontWeight: '700', color: theme.green },
+    time: {
+      flexShrink: 0,
+      maxWidth: '42%',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textDim,
+      textAlign: 'right',
+      fontVariant: ['tabular-nums'],
+    },
     title: {
-      flexGrow: 1,
-      flexShrink: 1,
-      minWidth: 0,
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: ft.ff(18),
+      lineHeight: ft.ff(21),
     },
     metricRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 7,
-      marginTop: 7,
+      gap: 8,
     },
-    metricText: { fontSize: ft.ff(10), fontWeight: ft.metaWeight, color: theme.textMuted },
+    metricText: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
     surpriseText: {
-      marginTop: 6,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
       color: theme.textDim,
     },
     sourceFooter: {
-      marginTop: 8,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      marginTop: 2,
     },
     modalBackdrop: {
       flex: 1,
@@ -872,24 +905,8 @@ const CalendarEventCard = memo(function CalendarEventCard({
   const isEarnings = ev.type === 'earnings';
   const isHoliday = ev.type === 'holiday';
   const sourceEntries = calendarProviderSourceEntries(ev.provider);
-
-  const typeTagStyle = isEarnings
-    ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
-    : ev.type === 'macro'
-      ? { borderColor: theme.accentBlue + '88', backgroundColor: theme.accentBlue + '22' }
-      : ev.type === 'fed'
-        ? { borderColor: theme.accentOrange + '77', backgroundColor: theme.accentOrange + '18' }
-        : isHoliday
-          ? { borderColor: theme.textMuted + '66', backgroundColor: theme.bgElevated }
-          : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
-
-  const typeTagTextStyle = isEarnings
-    ? { color: theme.green }
-    : ev.type === 'macro'
-      ? { color: theme.accentBlue }
-      : isHoliday
-        ? { color: theme.textMuted }
-        : { color: theme.accentOrange };
+  const accent = calendarTypeAccent(theme, ev.type);
+  const softFill = calendarTypeSoftFill(theme, ev.type);
 
   const typeTagLabel = isEarnings
     ? t('calendarTagEarnings')
@@ -901,78 +918,83 @@ const CalendarEventCard = memo(function CalendarEventCard({
           ? t('calendarTagHoliday')
           : t('calendarTagMacro');
 
+  const timeLabel = calendarEventTimeLabel(ev, locale);
+
   return (
-    <View style={styles.card}>
-      <View style={styles.cardRow}>
-        <View style={styles.titleBlock}>
-          <View style={styles.titleLine}>
-            <View style={[styles.typeTag, typeTagStyle]}>
-              <Text style={[styles.typeTagText, typeTagTextStyle]}>{typeTagLabel}</Text>
-            </View>
-            {isEarnings && ev.symbol ? (
-              <View style={styles.symbolTag}>
-                <Text style={styles.symbolTagText}>{ev.symbol}</Text>
-              </View>
-            ) : null}
-            {!isEarnings && ev.impact ? (
-              <View
-                style={[
-                  styles.impactTag,
-                  ev.impact === 'high' && styles.impactHigh,
-                  ev.impact === 'medium' && styles.impactMedium,
-                ]}>
-                <Text
-                  style={[
-                    styles.impactTagText,
-                    ev.impact === 'high' && { color: theme.accentOrange },
-                    ev.impact === 'medium' && { color: theme.accentBlue },
-                  ]}>
-                  {ev.impact === 'high'
-                    ? t('calendarImpactHigh')
-                    : ev.impact === 'medium'
-                      ? t('calendarImpactMedium')
-                      : t('calendarImpactLow')}
-                </Text>
-              </View>
-            ) : null}
-            <Text style={styles.title} numberOfLines={3}>
-              {ev.title}
-            </Text>
+    <View style={[styles.card, { borderLeftColor: accent }]}>
+      <View style={styles.cardTop}>
+        <View style={styles.metaRow}>
+          <View style={[styles.typeTag, { borderColor: `${accent}66`, backgroundColor: softFill }]}>
+            <Text style={[styles.typeTagText, { color: accent }]}>{typeTagLabel}</Text>
           </View>
-          {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
-            <View style={styles.metricRow}>
-              {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
-                <Text style={styles.metricText}>
-                  FY{ev.fiscalYear} Q{ev.fiscalQuarter}
-                </Text>
-              ) : null}
-              {ev.earningsHour ? <Text style={styles.metricText}>{ev.earningsHour}</Text> : null}
+          {isEarnings && ev.symbol ? (
+            <View style={styles.symbolTag}>
+              <Text style={styles.symbolTagText}>{ev.symbol}</Text>
             </View>
           ) : null}
-          {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
-            <View style={styles.metricRow}>
-              <Text style={styles.metricText}>
-                {isEarnings ? 'EPS ' : ''}{t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
+          {!isEarnings && ev.impact ? (
+            <View
+              style={[
+                styles.impactTag,
+                ev.impact === 'high' && styles.impactHigh,
+                ev.impact === 'medium' && styles.impactMedium,
+              ]}>
+              <Text
+                style={[
+                  styles.impactTagText,
+                  ev.impact === 'high' && { color: theme.accentOrange },
+                  ev.impact === 'medium' && { color: theme.accentBlue },
+                ]}>
+                {ev.impact === 'high'
+                  ? t('calendarImpactHigh')
+                  : ev.impact === 'medium'
+                    ? t('calendarImpactMedium')
+                    : t('calendarImpactLow')}
               </Text>
-              <Text style={styles.metricText}>
-                {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
-              </Text>
-              {!isEarnings ? (
-                <Text style={styles.metricText}>
-                  {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-          {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
-          {sourceEntries.length > 0 ? (
-            <View style={styles.sourceFooter}>
-              <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
             </View>
           ) : null}
         </View>
-        <Text style={styles.time}>{calendarEventTimeLabel(ev, locale)}</Text>
+        <Text style={styles.time} numberOfLines={1}>
+          {timeLabel}
+        </Text>
       </View>
+
+      <Text style={styles.title} numberOfLines={3}>
+        {ev.title}
+      </Text>
+
+      {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
+        <View style={styles.metricRow}>
+          {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
+            <Text style={styles.metricText}>
+              FY{ev.fiscalYear} Q{ev.fiscalQuarter}
+            </Text>
+          ) : null}
+          {ev.earningsHour ? <Text style={styles.metricText}>{ev.earningsHour}</Text> : null}
+        </View>
+      ) : null}
+      {ev.actual != null || ev.estimate != null || ev.prev != null ? (
+        <View style={styles.metricRow}>
+          <Text style={styles.metricText}>
+            {isEarnings ? 'EPS ' : ''}
+            {t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
+          </Text>
+          <Text style={styles.metricText}>
+            {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
+          </Text>
+          {!isEarnings ? (
+            <Text style={styles.metricText}>
+              {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
+      {sourceEntries.length > 0 ? (
+        <View style={styles.sourceFooter}>
+          <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
+        </View>
+      ) : null}
     </View>
   );
 });

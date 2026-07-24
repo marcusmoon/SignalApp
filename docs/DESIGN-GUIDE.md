@@ -184,6 +184,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **히어로·뉴스·ETF 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` · 뉴스 행 → `/news-digest` · 섹터 흐름 → `/etf-insight` (알림과 동일 단건 상세)
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF/뉴스 바텀시트
 - **일정 칩**: 뉴스 흐름 아래. `D-2 FOMC` 식 3~5개. 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
+- **투자 캘린더** (`app/calendar.tsx`): 날짜 내비 + 타입 필터(색 스와치) + **일별 리스트**. 카드는 좌측 타입 rail · 메타(타입/종목/임팩트) · 제목 · 시각. 월 그리드는 시트로 선택(일정 있는 날 점 표시). 타입 색: 실적 green · 지표 blue · 연준 orange · FOMC danger · 휴장 muted.
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
   - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 사이드바

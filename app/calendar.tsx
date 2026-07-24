@@ -721,7 +721,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
-      borderLeftWidth: 3,
       paddingHorizontal: 12,
       paddingVertical: 12,
       marginBottom: 10,
@@ -921,7 +920,7 @@ const CalendarEventCard = memo(function CalendarEventCard({
   const timeLabel = calendarEventTimeLabel(ev, locale);
 
   return (
-    <View style={[styles.card, { borderLeftColor: accent }]}>
+    <View style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.metaRow}>
           <View style={[styles.typeTag, { borderColor: `${accent}66`, backgroundColor: softFill }]}>

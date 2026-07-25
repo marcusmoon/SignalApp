@@ -1,7 +1,8 @@
 -- SIGNAL PostgreSQL baseline (schema + runtime seed).
 -- Squashed end-state through former V23 (prior baseline was historical V1–V29).
 -- Fresh DBs: flyway migrate from this file only.
--- Existing DBs: flyway clean + migrate, or drop/recreate — do not apply over an old V23 history.
+-- Existing DBs already at former V23: do NOT re-run this file — clear history and
+--   flyway baseline -baselineVersion=1 (see server/db/scripts/rebaseFlywayHistoryToV1.sql).
 -- Prior incrementals: server/db/migrations/_archive/postgres/
 
 -- =============================================================================

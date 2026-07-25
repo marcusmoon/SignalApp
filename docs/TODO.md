@@ -20,7 +20,7 @@
 
 ## Server
 
-- **신규/재생성 DB**: Flyway `V1` baseline만 적용 — 글로벌은 Finnhub+FJ 정책, `market_news_globenewswire_earnings`(실적 PR RSS) 비활성. 실적 일정은 `calendar_earnings`. 기존 V23 DB는 clean+migrate 또는 drop/recreate.
+- **Flyway squash 배포**: 기존 V23 DB는 데이터 유지 + `rebaseFlywayHistoryToV1.sql` 후 `flyway baseline -baselineVersion=1` (V1 SQL 재실행 금지). 신규만 `flyway migrate`. 글로벌 Finnhub+FJ, 실적 PR RSS off.
 - Postgres 운영 고도화: public API direct SQL 범위를 확대하고 heavy read 경로의 인덱스/쿼리 플랜을 정기 점검한다.
 - DB 접근 계층 정리: Kysely repository를 기능별로 확대하고 legacy raw SQL 집중도를 낮춘다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.

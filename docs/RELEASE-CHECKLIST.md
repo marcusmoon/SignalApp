@@ -27,7 +27,7 @@
 
 ## 서버
 
-- [ ] 운영 DB에 Flyway `V1` baseline 선적용 (IT RSS·`geeknews`·알림함·ETF 테이블 포함; 기존 이력 DB는 clean+migrate)
+- [ ] 운영 DB Flyway: 기존 DB는 `rebaseFlywayHistoryToV1.sql` + `baseline -baselineVersion=1` 후 `validate` (V1 재실행 금지). 신규만 `migrate`
 - [ ] `npm --prefix server run start` 기동 확인
 - [ ] `/health` 확인
 - [ ] `/web`, `/web/news`, `/web/signal` 웹 클라이언트 route 확인

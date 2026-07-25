@@ -9,7 +9,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { AiBadge } from '@/components/signal/AiBadge';
-import { FreshBadge } from '@/components/signal/FreshBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
@@ -86,9 +85,12 @@ const DigestCard = memo(function DigestCard({
     sources: String(digest.sources.length),
   });
   const countText = t('feedDigestCount', { count: String(digest.count) });
-  const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
+  const createdIso = newsDigestCreatedIso(digest);
+  const createdLabel = formatFeedItemTimeLabel(createdIso, locale as AppLocale);
+  const isFresh = isDigestFresh(createdIso);
   const footerMeta = [
     sourceEntries.length > 0 ? countText : summaryText,
+    isFresh ? t('digestFreshBadge') : null,
     createdLabel !== '—' ? createdLabel : null,
   ]
     .filter(Boolean)
@@ -98,13 +100,11 @@ const DigestCard = memo(function DigestCard({
   const showCountChip = !digest.aiGenerated && topicChips.length === 0 && digest.count > 0;
   const iconSize = pairLayout ? 16 : 18;
   const iconMax = pairLayout ? 3 : 4;
-  const isFresh = isDigestFresh(newsDigestCreatedIso(digest));
 
   return (
     <View style={styles.card}>
       <View style={styles.badgeRow}>
         {digest.aiGenerated ? <AiBadge /> : null}
-        {isFresh ? <FreshBadge /> : null}
         {topicChips.map((topic) => (
           <Text key={topic} style={styles.topicChip} numberOfLines={1}>
             {topic}
@@ -128,7 +128,10 @@ const DigestCard = memo(function DigestCard({
           {sourceEntries.length > 0 ? (
             <SourceIconStack sources={sourceEntries} size={iconSize} maxVisible={iconMax} />
           ) : null}
-          <Text style={styles.footer} numberOfLines={1}>
+          <Text
+            style={[styles.footer, isFresh && styles.footerFresh]}
+            numberOfLines={1}
+            accessibilityLabel={isFresh ? t('digestFreshBadgeA11y') : undefined}>
             {footerMeta}
           </Text>
         </View>

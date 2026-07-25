@@ -117,6 +117,9 @@ export function makeDigestStripCardStyles(
       flex: 1,
       minWidth: 0,
     },
+    footerFresh: {
+      color: theme.green,
+    },
     detailBtn: {
       width: 28,
       height: 28,

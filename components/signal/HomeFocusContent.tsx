@@ -21,7 +21,6 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
-import { FreshBadge } from '@/components/signal/FreshBadge';
 import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
@@ -765,13 +764,6 @@ export function HomeFocusContent({
                 bordered={index < rows.length - 1}
                 isFresh={isFresh}
                 onPress={() => openIssueDetail(row)}
-                badges={
-                  isFresh ? (
-                    <View style={styles.badgeRow}>
-                      <FreshBadge />
-                    </View>
-                  ) : undefined
-                }
                 footerLead={
                   <View
                     accessible
@@ -1051,11 +1043,6 @@ function makeStyles(
     boardSourceMark: {
       borderWidth: 0,
       backgroundColor: 'transparent',
-    },
-    badgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
     },
     quoteTileContent: {
       flex: 1,

@@ -166,6 +166,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **관심 종목** | quotes watchlist |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
+  - **홈 뉴스 흐름 NEW**: 섹션 헤더 우측(`trailingBadge`). 표시 목록 최신 `generatedAt`이 **1시간 이내**일 때만 (`isHomeNewsFlowNew`). 행마다 NEW 없음
 - **홈 섹션 순서**
   - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 관심 종목 → (조건부) 섹터 흐름
   - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 관심 종목 숨김

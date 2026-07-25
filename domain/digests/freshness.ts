@@ -1,42 +1,54 @@
 /**
- * 다이제스트 최근 갱신 판단 로직
- * 
- * 뉴스 다이제스트는 하루 6번(약 4시간 간격) 갱신됨.
- * 갱신 주기의 절반인 2시간을 "최근(fresh)" 기준으로 사용.
+ * 다이제스트 신선도 규칙.
+ * - 리스트(뉴스/공시 흐름 상세 등): 기본 2시간
+ * - 홈 뉴스 흐름 섹션 NEW: 1시간 (생성 주기 2h의 전반만 강조)
  */
 
-/** 최근 갱신 기준 (밀리초) - 기본 2시간 */
+/** 리스트·상세 푸터 “최신” 기준 (기본 2시간) */
 export const DIGEST_FRESH_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+
+/** 홈 뉴스 흐름 섹션 헤더 NEW 기준 (1시간) */
+export const HOME_NEWS_FLOW_NEW_THRESHOLD_MS = 60 * 60 * 1000;
 
 /**
  * 다이제스트가 최근 생성되었는지 판단
  * @param generatedAt ISO 8601 날짜 문자열
  * @param thresholdMs 기준 시간 (밀리초). 기본값: 2시간
- * @returns 최근 생성 여부
+ * @param nowMs 기준 시각 (테스트용)
  */
 export function isDigestFresh(
   generatedAt: string | null | undefined,
   thresholdMs: number = DIGEST_FRESH_THRESHOLD_MS,
+  nowMs: number = Date.now(),
 ): boolean {
   if (!generatedAt) return false;
-  
+
   const generated = new Date(generatedAt).getTime();
   if (!Number.isFinite(generated)) return false;
-  
-  const now = Date.now();
-  const ageMs = now - generated;
-  
+
+  const ageMs = nowMs - generated;
   return ageMs >= 0 && ageMs <= thresholdMs;
+}
+
+/** 홈 뉴스 흐름 섹션 NEW — 최신 항목 `generatedAt`이 1시간 이내 */
+export function isHomeNewsFlowNew(
+  generatedAt: string | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  return isDigestFresh(generatedAt, HOME_NEWS_FLOW_NEW_THRESHOLD_MS, nowMs);
 }
 
 /**
  * 다이제스트 생성 경과 시간 (밀리초)
  */
-export function getDigestAgeMs(generatedAt: string | null | undefined): number | null {
+export function getDigestAgeMs(
+  generatedAt: string | null | undefined,
+  nowMs: number = Date.now(),
+): number | null {
   if (!generatedAt) return null;
-  
+
   const generated = new Date(generatedAt).getTime();
   if (!Number.isFinite(generated)) return null;
-  
-  return Date.now() - generated;
+
+  return nowMs - generated;
 }

@@ -17,6 +17,7 @@ export const ja = {
   homeSignalOpenFull: '市場を見る',
   homeSignalOpenFullA11y: '市場タブでブリーフィングを開く',
   homeAiGeneratedA11y: 'AI生成の要約',
+  homeNewsFlowNewA11y: '1時間以内に更新されたニュースフロー',
   digestFreshBadge: '最新',
   digestFreshBadgeA11y: '最近更新されました',
   commonComingSoon: '準備中',

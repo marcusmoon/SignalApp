@@ -25,6 +25,7 @@ import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
+import { NewBadge } from '@/components/signal/NewBadge';
 import {
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
@@ -51,7 +52,7 @@ import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayou
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
-import { isDigestFresh } from '@/domain/digests/freshness';
+import { isHomeNewsFlowNew } from '@/domain/digests/freshness';
 import {
   filterCalendarChipsForHome,
   homeCalendarChipLabel,
@@ -353,6 +354,12 @@ export function HomeFocusContent({
         .slice(0, newsFlowDisplayCount),
     [issues, newsFlowDisplayCount],
   );
+
+  const homeNewsFlowNew = useMemo(() => {
+    const newest = homeIssues[0];
+    if (!newest) return false;
+    return isHomeNewsFlowNew(newsDigestCreatedIso(newest.item));
+  }, [homeIssues]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -871,7 +878,6 @@ export function HomeFocusContent({
             const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
             const trailText = [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ');
             const createdIso = newsDigestCreatedIso(row.item);
-            const isFresh = isDigestFresh(createdIso);
             return (
               <HomeDigestFeedRow
                 key={row.item.id}
@@ -882,7 +888,6 @@ export function HomeFocusContent({
                 summary={null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
-                isFresh={isFresh}
                 onPress={() => openIssueDetail(row)}
                 footerLead={
                   <View
@@ -960,7 +965,11 @@ export function HomeFocusContent({
           ) : null}
 
           <View style={styles.section}>
-            <HomeSectionHeader title={t('newsIssuesTitle')} badge={<AiBadge />} />
+            <HomeSectionHeader
+              title={t('newsIssuesTitle')}
+              badge={<AiBadge />}
+              trailingBadge={homeNewsFlowNew ? <NewBadge /> : null}
+            />
             {homeIssues.length > 0 ? (
               renderIssueCard(homeIssues)
             ) : (

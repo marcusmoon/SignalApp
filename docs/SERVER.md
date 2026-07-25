@@ -50,14 +50,15 @@ DB 변경이 필요한 작업은 배포보다 Flyway가 먼저다.
 
 ### Migration 경로
 
-- 활성 migration: `server/db/migrations/postgres/` (`V1__signal_baseline.sql`부터 순번 증가)
-- 참고용 SQL 보관: `server/db/migrations/_archive/postgres/` (런타임 Flyway 경로 아님)
+- 활성 migration: `server/db/migrations/postgres/` — 현재는 `V1__signal_baseline.sql` 단일 baseline (이후 변경은 `V2__…`부터 다시 증가)
+- 참고용 SQL 보관: `server/db/migrations/_archive/postgres/` (런타임 Flyway 경로 아님). 직전 증분(`V2`–`V23`)은 `pre-squash-v2-v23/`
+- baseline 재생성 스크립트: `node server/db/scripts/squashFlywayToV1.mjs` (로컬에서 증분을 다시 압축할 때)
 
 **DB를 처음부터 다시 만들 때**
 
 1. 서버·worker를 중지한다.
 2. Postgres DB를 drop/create하거나 `flyway clean` 후 `migrate`한다. (`clean`은 모든 객체를 지우므로 운영에서는 DB 단위 재생성을 권장한다.)
-3. `flyway migrate`로 baseline부터 순서대로 적용한다.
+3. `flyway migrate`로 `V1` baseline을 적용한다. (이미 옛 `V23` 이력이 있는 DB에 새 `V1`만 덮어쓰지 말 것 — checksum/history 충돌)
 4. Admin에서 provider API 키를 다시 입력한다. (`apiKey`는 migration seed에 빈 문자열)
 5. 필요 시 `ADMIN_USERS`로 초기 관리자를 넣고 서버·worker를 기동한다.
 

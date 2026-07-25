@@ -1,5 +1,8 @@
 -- SIGNAL PostgreSQL baseline (schema + runtime seed).
--- Squashed from historical V1–V29. Use on a fresh database only.
+-- Squashed end-state through former V23 (prior baseline was historical V1–V29).
+-- Fresh DBs: flyway migrate from this file only.
+-- Existing DBs: flyway clean + migrate, or drop/recreate — do not apply over an old V23 history.
+-- Prior incrementals: server/db/migrations/_archive/postgres/
 
 -- =============================================================================
 -- SCHEMA
@@ -70,7 +73,8 @@ CREATE TABLE app_users (
   auth_provider text NOT NULL DEFAULT 'password',
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL,
-  updated_at timestamptz NOT NULL
+  updated_at timestamptz NOT NULL,
+  notification_prefs jsonb NOT NULL DEFAULT '{"pushEnabled":true,"briefingPushEnabled":true}'::jsonb
 );
 
 CREATE TABLE app_user_sessions (
@@ -408,7 +412,6 @@ CREATE TABLE market_briefings (
   session text NOT NULL,
   briefing_date date NOT NULL,
   published_at timestamptz NOT NULL,
-  push_candidate boolean NOT NULL DEFAULT false,
   payload jsonb NOT NULL,
   updated_at timestamptz NOT NULL
 );
@@ -429,6 +432,8 @@ CREATE TABLE disclosures (
   period_end_date date,
   payload jsonb NOT NULL,
   updated_at timestamptz NOT NULL
+,
+  type_category text
 );
 
 CREATE TABLE disclosure_digest_items (
@@ -443,23 +448,8 @@ CREATE TABLE disclosure_digest_items (
 );
 
 -- ---------------------------------------------------------------------------
--- Insights & notifications
+-- Notifications
 -- ---------------------------------------------------------------------------
-
-CREATE TABLE insight_items (
-  id text PRIMARY KEY,
-  position integer NOT NULL DEFAULT 0,
-  kind text,
-  display_key text,
-  level text,
-  score integer,
-  generated_date date,
-  generated_at timestamptz,
-  expires_at timestamptz,
-  push_candidate boolean NOT NULL DEFAULT false,
-  payload jsonb NOT NULL,
-  updated_at timestamptz NOT NULL
-);
 
 CREATE TABLE notification_items (
   id text PRIMARY KEY,
@@ -480,6 +470,88 @@ CREATE TABLE notification_items (
   payload jsonb NOT NULL,
   updated_at timestamptz NOT NULL
 );
+
+-- ---------------------------------------------------------------------------
+-- Today briefings, community, notification inbox/state, ETF insights
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE today_briefings (
+  id text PRIMARY KEY,
+  position integer NOT NULL DEFAULT 0,
+  locale text NOT NULL DEFAULT 'ko',
+  briefing_date date NOT NULL,
+  published_at timestamptz NOT NULL,
+  generated_at timestamptz,
+  status text NOT NULL DEFAULT 'published',
+  payload jsonb NOT NULL,
+  updated_at timestamptz NOT NULL
+);
+
+CREATE INDEX idx_today_briefings_locale_date_published
+  ON today_briefings(locale, briefing_date DESC, published_at DESC);
+
+CREATE INDEX idx_today_briefings_status_published
+  ON today_briefings(status, published_at DESC);
+
+CREATE TABLE community_posts (
+  id text PRIMARY KEY,
+  position integer NOT NULL DEFAULT 0,
+  source text NOT NULL,
+  provider text NOT NULL,
+  provider_item_id text NOT NULL,
+  title text NOT NULL DEFAULT '',
+  body text NOT NULL DEFAULT '',
+  source_url text,
+  published_at timestamptz,
+  fetched_at timestamptz,
+  updated_at timestamptz NOT NULL,
+  UNIQUE (source, provider_item_id)
+);
+
+CREATE INDEX idx_community_posts_source_published
+  ON community_posts (source, published_at DESC);
+
+CREATE INDEX idx_community_posts_published
+  ON community_posts (published_at DESC);
+
+CREATE TABLE user_notification_inbox (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  notification_id text NOT NULL REFERENCES notification_items(id) ON DELETE CASCADE,
+  delivered_at timestamptz NOT NULL,
+  read_at timestamptz,
+  deleted_at timestamptz,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  CONSTRAINT uq_user_notification_inbox_user_notification UNIQUE (user_id, notification_id)
+);
+
+CREATE INDEX idx_user_notification_inbox_user_list
+  ON user_notification_inbox (user_id, deleted_at, delivered_at DESC);
+
+CREATE INDEX idx_user_notification_inbox_user_unread
+  ON user_notification_inbox (user_id, read_at)
+  WHERE deleted_at IS NULL;
+
+CREATE TABLE user_notification_state (
+  user_id text PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  last_notification_id text REFERENCES notification_items(id) ON DELETE SET NULL,
+  last_delivered_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL
+);
+
+CREATE TABLE etf_insights (
+  id text PRIMARY KEY,
+  position integer NOT NULL DEFAULT 0,
+  period text NOT NULL DEFAULT 'daily',
+  insight_date date,
+  published_at timestamptz,
+  updated_at timestamptz NOT NULL,
+  payload jsonb NOT NULL
+);
+
+CREATE INDEX etf_insights_date_idx ON etf_insights (insight_date DESC, published_at DESC);
+
 
 -- ---------------------------------------------------------------------------
 -- Indexes
@@ -598,15 +670,14 @@ CREATE INDEX idx_disclosures_market_filed ON disclosures(market, filed_at DESC);
 CREATE INDEX idx_disclosures_symbol_filed ON disclosures(symbol, filed_at DESC);
 CREATE INDEX idx_disclosures_provider_filed ON disclosures(provider, filed_at DESC);
 CREATE INDEX idx_disclosures_form_filed ON disclosures(form_type, filed_at DESC);
+CREATE INDEX idx_disclosures_type_category_filed
+  ON disclosures (type_category, filed_at DESC);
 CREATE INDEX idx_disclosure_digest_market_date_score
   ON disclosure_digest_items(market, digest_date DESC, generated_at DESC, score DESC);
 CREATE INDEX idx_disclosure_digest_generated
   ON disclosure_digest_items(generated_at DESC, score DESC);
 
--- Insights & notifications
-CREATE INDEX idx_insight_items_generated ON insight_items(generated_at DESC, score DESC);
-CREATE INDEX idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at DESC);
-CREATE INDEX idx_insight_items_display ON insight_items(generated_date DESC, display_key, generated_at DESC);
+-- Notifications
 CREATE INDEX idx_notification_items_status ON notification_items(status, scheduled_at);
 CREATE INDEX idx_notification_items_type ON notification_items(type, status, scheduled_at);
 CREATE INDEX idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
@@ -624,7 +695,7 @@ INSERT INTO signal_meta (name, payload, updated_at) VALUES ('db', $json$
   "createdAt": "2026-06-07T00:00:00.000Z",
   "updatedAt": "2026-06-07T00:00:00.000Z",
   "schemaVersion": 1,
-  "migrationBaseline": "V1-squash",
+  "migrationBaseline": "V1-squash-v23",
   "rssSourcesCatalogVersion": 1
 }$json$::jsonb, '2026-06-07T00:00:00.000Z');
 INSERT INTO app_settings (id, payload, updated_at) VALUES ('app', $json$
@@ -694,10 +765,10 @@ WITH rows AS (SELECT value AS payload, ordinality::int AS position FROM jsonb_ar
 [
   {
     "locale": "ko",
-    "provider": "mock",
+    "provider": "openai",
     "enabled": true,
-    "autoTranslateNews": true,
-    "updatedAt": "2026-06-07T00:00:00.000Z"
+    "autoTranslateNews": false,
+    "updatedAt": "2026-07-01T00:00:00.000Z"
   },
   {
     "locale": "ja",
@@ -706,7 +777,8 @@ WITH rows AS (SELECT value AS payload, ordinality::int AS position FROM jsonb_ar
     "autoTranslateNews": false,
     "updatedAt": "2026-06-07T00:00:00.000Z"
   }
-]$json$::jsonb) WITH ORDINALITY)
+]
+$json$::jsonb) WITH ORDINALITY)
 INSERT INTO translation_settings (locale, position, provider, enabled, payload, updated_at)
 SELECT payload->>'locale', position - 1, payload->>'provider', COALESCE((payload->>'enabled')::boolean, true), payload, COALESCE((payload->>'updatedAt')::timestamptz, '2026-06-07T00:00:00.000Z'::timestamptz) FROM rows
 ON CONFLICT (locale) DO NOTHING;
@@ -716,42 +788,147 @@ WITH rows AS (
   FROM jsonb_array_elements($json$
 [
   {
-    "id": "financial_juice", "name": "Financial Juice", "providerId": "financial_juice",
-    "sourceName": "Financial Juice", "feedUrl": "https://www.financialjuice.com/feed.ashx?xy=rss",
-    "category": "global", "enabled": true, "hidden": false, "order": 1,
-    "defaultLimit": 40, "daysBack": 0, "includeKeywords": [], "excludeKeywords": [],
+    "id": "financial_juice",
+    "name": "Financial Juice",
+    "providerId": "financial_juice",
+    "sourceName": "Financial Juice",
+    "feedUrl": "https://www.financialjuice.com/feed.ashx?xy=rss",
+    "category": "global",
+    "enabled": true,
+    "hidden": false,
+    "order": 1,
+    "defaultLimit": 40,
+    "daysBack": 0,
+    "includeKeywords": [],
+    "excludeKeywords": [],
     "updatedAt": "2026-06-07T00:00:00.000Z"
   },
   {
-    "id": "globenewswire_earnings", "name": "GlobeNewswire 실적", "providerId": "globenewswire",
+    "id": "globenewswire_earnings",
+    "name": "GlobeNewswire 실적",
+    "providerId": "globenewswire",
     "sourceName": "GlobeNewswire",
     "feedUrl": "https://www.globenewswire.com/RssFeed/subjectcode/13-Earnings%20Releases%20and%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings%20Releases%20and%20Operating%20Results",
-    "category": "earnings", "enabled": true, "hidden": false, "order": 2,
-    "defaultLimit": 40, "daysBack": 7,
-    "includeKeywords": ["earnings","results","revenue","guidance","quarter"], "excludeKeywords": [],
-    "updatedAt": "2026-06-07T00:00:00.000Z"
+    "category": "earnings",
+    "enabled": false,
+    "hidden": true,
+    "order": 2,
+    "defaultLimit": 40,
+    "daysBack": 7,
+    "includeKeywords": [
+      "earnings",
+      "results",
+      "revenue",
+      "guidance",
+      "quarter"
+    ],
+    "excludeKeywords": [],
+    "updatedAt": "2026-07-23T00:00:00.000Z"
   },
   {
-    "id": "prnewswire_earnings", "name": "PR Newswire 실적", "providerId": "prnewswire",
-    "sourceName": "PR Newswire", "feedUrl": "https://www.prnewswire.com/rss/news-releases-list.rss",
-    "category": "earnings", "enabled": true, "hidden": false, "order": 3,
-    "defaultLimit": 40, "daysBack": 7,
-    "includeKeywords": ["earnings","results","revenue","guidance","quarter"], "excludeKeywords": [],
-    "updatedAt": "2026-06-07T00:00:00.000Z"
+    "id": "prnewswire_earnings",
+    "name": "PR Newswire 실적",
+    "providerId": "prnewswire",
+    "sourceName": "PR Newswire",
+    "feedUrl": "https://www.prnewswire.com/rss/news-releases-list.rss",
+    "category": "earnings",
+    "enabled": false,
+    "hidden": true,
+    "order": 3,
+    "defaultLimit": 40,
+    "daysBack": 7,
+    "includeKeywords": [
+      "earnings",
+      "results",
+      "revenue",
+      "guidance",
+      "quarter"
+    ],
+    "excludeKeywords": [],
+    "updatedAt": "2026-07-23T00:00:00.000Z"
   },
   {
-    "id": "mk_economy", "name": "매일경제 경제", "providerId": "mk", "sourceName": "매일경제",
-    "feedUrl": "https://www.mk.co.kr/rss/30100041/", "category": "korea",
-    "enabled": true, "hidden": false, "order": 4, "defaultLimit": 40, "daysBack": 3,
-    "includeKeywords": [], "excludeKeywords": [], "updatedAt": "2026-06-19T00:00:00.000Z"
+    "id": "mk_economy",
+    "name": "매일경제 경제",
+    "providerId": "mk",
+    "sourceName": "매일경제",
+    "feedUrl": "https://www.mk.co.kr/rss/30100041/",
+    "category": "korea",
+    "enabled": true,
+    "hidden": false,
+    "order": 4,
+    "defaultLimit": 40,
+    "daysBack": 3,
+    "includeKeywords": [],
+    "excludeKeywords": [],
+    "updatedAt": "2026-06-19T00:00:00.000Z"
   },
   {
-    "id": "mk_securities", "name": "매일경제 증권", "providerId": "mk", "sourceName": "매일경제",
-    "feedUrl": "https://www.mk.co.kr/rss/50200011/", "category": "korea",
-    "enabled": true, "hidden": false, "order": 5, "defaultLimit": 40, "daysBack": 3,
-    "includeKeywords": [], "excludeKeywords": [], "updatedAt": "2026-06-19T00:00:00.000Z"
+    "id": "mk_securities",
+    "name": "매일경제 증권",
+    "providerId": "mk",
+    "sourceName": "매일경제",
+    "feedUrl": "https://www.mk.co.kr/rss/50200011/",
+    "category": "korea",
+    "enabled": true,
+    "hidden": false,
+    "order": 5,
+    "defaultLimit": 40,
+    "daysBack": 3,
+    "includeKeywords": [],
+    "excludeKeywords": [],
+    "updatedAt": "2026-06-19T00:00:00.000Z"
+  },
+  {
+    "id": "hankyung_economy",
+    "name": "한국경제 경제",
+    "providerId": "hankyung",
+    "sourceName": "한국경제",
+    "feedUrl": "https://www.hankyung.com/feed/economy",
+    "category": "korea",
+    "enabled": true,
+    "hidden": false,
+    "order": 6,
+    "defaultLimit": 40,
+    "daysBack": 3,
+    "includeKeywords": [],
+    "excludeKeywords": [],
+    "updatedAt": "2026-07-11T00:00:00.000Z"
+  },
+  {
+    "id": "hankyung_finance",
+    "name": "한국경제 증권",
+    "providerId": "hankyung",
+    "sourceName": "한국경제",
+    "feedUrl": "https://www.hankyung.com/feed/finance",
+    "category": "korea",
+    "enabled": true,
+    "hidden": false,
+    "order": 7,
+    "defaultLimit": 40,
+    "daysBack": 3,
+    "includeKeywords": [],
+    "excludeKeywords": [],
+    "updatedAt": "2026-07-11T00:00:00.000Z"
+  },
+  {
+    "id": "geeknews",
+    "name": "GeekNews",
+    "providerId": "geeknews",
+    "sourceName": "GeekNews",
+    "feedUrl": "https://news.hada.io/rss/news",
+    "category": "it",
+    "enabled": true,
+    "hidden": false,
+    "order": 1,
+    "defaultLimit": 40,
+    "daysBack": 3,
+    "includeKeywords": [],
+    "excludeKeywords": [],
+    "updatedAt": "2026-07-18T00:00:00.000Z"
   }
-]$json$::jsonb) WITH ORDINALITY
+]
+$json$::jsonb) WITH ORDINALITY
 )
 INSERT INTO rss_sources (source_id, position, provider_id, source_name, category, enabled, hidden, payload, updated_at)
 SELECT payload->>'id', position - 1, payload->>'providerId', payload->>'sourceName', payload->>'category',
@@ -765,21 +942,23 @@ WITH rows AS (
 [
   {
     "jobKey": "market_news_global",
-    "displayName": "글로벌 뉴스 수집·보정",
-    "description": "Finnhub 글로벌 시장 뉴스를 수집한 뒤 같은 실행에서 보정 구간을 다시 조회합니다.",
+    "displayName": "글로벌 뉴스 · Finnhub",
+    "description": "글로벌 뉴스(Finnhub general). Financial Juice와 함께 수집. 매체·티커 보강용. 실적 PR RSS는 쓰지 않는다.",
     "area": "news",
     "stage": "ingest",
     "domain": "news",
     "operation": "sync",
     "provider": "finnhub",
     "handler": "market_news",
-    "enabled": false,
+    "enabled": true,
     "intervalSeconds": 1800,
     "params": {
       "category": "general",
       "reconcile": {}
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-07-23T00:00:00.000Z",
+    "lockTtlSeconds": 900,
+    "staleLockSeconds": 1800
   },
   {
     "jobKey": "market_news_crypto",
@@ -797,19 +976,21 @@ WITH rows AS (
       "category": "crypto",
       "reconcile": {}
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-06-17T12:00:00.000Z",
+    "lockTtlSeconds": 900,
+    "staleLockSeconds": 1800
   },
   {
     "jobKey": "market_news_financial_juice",
-    "displayName": "Financial Juice (RSS) 수집·보정",
-    "description": "Financial Juice RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
+    "displayName": "글로벌 뉴스 · Financial Juice",
+    "description": "글로벌 뉴스 실시간 와이어(Financial Juice RSS). Finnhub general과 함께 수집. 실적 PR RSS는 쓰지 않는다.",
     "area": "news",
     "stage": "ingest",
     "domain": "news",
     "operation": "sync",
     "provider": "rss",
     "handler": "financial_juice",
-    "enabled": false,
+    "enabled": true,
     "intervalSeconds": 300,
     "params": {
       "rssSourceId": "financial_juice",
@@ -818,7 +999,9 @@ WITH rows AS (
         "limit": 60
       }
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-07-23T00:00:00.000Z",
+    "lockTtlSeconds": 900,
+    "staleLockSeconds": 1800
   },
   {
     "jobKey": "market_news_sec_edgar_filings",
@@ -850,8 +1033,8 @@ WITH rows AS (
   },
   {
     "jobKey": "market_news_globenewswire_earnings",
-    "displayName": "뉴스와이어 실적 RSS",
-    "description": "등록된 실적/운영결과 RSS를 수집해 공식 보도자료 기반 뉴스로 저장합니다.",
+    "displayName": "뉴스와이어 실적 RSS (비활성)",
+    "description": "비활성. 실적 일정은 calendar_earnings(Finnhub). Globe/PR 실적 보도자료는 뉴스 피드에 넣지 않는다.",
     "area": "news",
     "stage": "ingest",
     "domain": "news",
@@ -876,7 +1059,7 @@ WITH rows AS (
         "quarter"
       ]
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-07-23T00:00:00.000Z"
   },
   {
     "jobKey": "calendar_economic",
@@ -898,12 +1081,14 @@ WITH rows AS (
         "daysAhead": 30
       }
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-06-17T12:00:00.000Z",
+    "lockTtlSeconds": 600,
+    "staleLockSeconds": 1200
   },
   {
     "jobKey": "calendar_earnings",
     "displayName": "실적 캘린더 수집·보정",
-    "description": "실적 발표 일정을 수집한 뒤 넓은 구간으로 다시 조회해 EPS 변경을 반영합니다.",
+    "description": "실적 발표 일정을 수집·보정한다(EPS/시각). 앱 투자 캘린더 earnings. 뉴스와이어 실적 PR는 수집하지 않는다.",
     "area": "calendar",
     "stage": "ingest",
     "domain": "calendar",
@@ -922,7 +1107,7 @@ WITH rows AS (
         "daysAhead": 45
       }
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-07-23T00:00:00.000Z"
   },
   {
     "jobKey": "youtube_economy_latest",
@@ -942,7 +1127,9 @@ WITH rows AS (
         "limit": 80
       }
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-06-17T12:00:00.000Z",
+    "lockTtlSeconds": 900,
+    "staleLockSeconds": 1800
   },
   {
     "jobKey": "youtube_economy_popular",
@@ -1013,7 +1200,9 @@ WITH rows AS (
       "sourceListKey": "mcap_universe",
       "targetListKey": "mcap_top_symbols"
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-06-17T12:00:00.000Z",
+    "lockTtlSeconds": 1200,
+    "staleLockSeconds": 2400
   },
   {
     "jobKey": "market_quotes_mcap",
@@ -1031,7 +1220,9 @@ WITH rows AS (
       "segment": "mcap",
       "listKey": "mcap_top_symbols"
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-06-17T12:00:00.000Z",
+    "lockTtlSeconds": 1200,
+    "staleLockSeconds": 2400
   },
   {
     "jobKey": "market_coins_top",
@@ -1055,7 +1246,7 @@ WITH rows AS (
   {
     "jobKey": "market_price_series_daily",
     "displayName": "주식 일봉 추세 저장",
-    "description": "인기·시총·기본 관심종목의 Yahoo 일봉 OHLCV를 저장해 종목 상세 차트에 사용합니다.",
+    "description": "인기·시총·기본·국내 관심종목의 Yahoo 일봉 OHLCV를 저장해 종목 상세 차트에 사용합니다.",
     "area": "market",
     "stage": "ingest",
     "domain": "market",
@@ -1072,15 +1263,16 @@ WITH rows AS (
       "listKeys": [
         "popular_symbols",
         "mcap_top_symbols",
-        "default_watchlist"
+        "default_watchlist",
+        "korea_watchlist"
       ]
     },
-    "updatedAt": "2026-06-17T12:00:00.000Z"
+    "updatedAt": "2026-07-16T00:00:00.000Z"
   },
   {
     "jobKey": "market_news_mk_rss",
-    "displayName": "매일경제 RSS 수집·보정",
-    "description": "매일경제 경제·증권 RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
+    "displayName": "국내 경제지 RSS 수집·보정",
+    "description": "매일경제·한국경제 경제·증권 RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
     "area": "news",
     "stage": "ingest",
     "domain": "news",
@@ -1092,7 +1284,9 @@ WITH rows AS (
     "params": {
       "rssSourceIds": [
         "mk_economy",
-        "mk_securities"
+        "mk_securities",
+        "hankyung_economy",
+        "hankyung_finance"
       ],
       "limit": 40,
       "daysBack": 3,
@@ -1100,7 +1294,9 @@ WITH rows AS (
         "limit": 60
       }
     },
-    "updatedAt": "2026-06-19T00:00:00.000Z"
+    "updatedAt": "2026-07-11T00:00:00.000Z",
+    "lockTtlSeconds": 900,
+    "staleLockSeconds": 1800
   },
   {
     "jobKey": "market_news_dart_filings",
@@ -1155,6 +1351,82 @@ WITH rows AS (
     "lastRunAt": null,
     "nextRunAt": null,
     "updatedAt": "2026-06-17T00:00:00.000Z"
+  },
+  {
+    "jobKey": "community_naver_likeusstock_free",
+    "displayName": "미주미 자유게시판",
+    "description": "네이버 카페 미주미(likeusstock) 자유게시판 글을 수집합니다.",
+    "area": "community",
+    "stage": "ingest",
+    "domain": "community",
+    "operation": "sync",
+    "provider": "naver_cafe",
+    "handler": "likeusstock_free",
+    "enabled": true,
+    "intervalSeconds": 1800,
+    "params": {
+      "pageSize": 30
+    },
+    "updatedAt": "2026-07-04T00:00:00.000Z"
+  },
+  {
+    "jobKey": "community_save_user_news",
+    "displayName": "세이브 유저뉴스",
+    "description": "세이브(SAVE) 커뮤니티 유저뉴스 글을 수집합니다.",
+    "area": "community",
+    "stage": "ingest",
+    "domain": "community",
+    "operation": "sync",
+    "provider": "save",
+    "handler": "user_news",
+    "enabled": true,
+    "intervalSeconds": 1800,
+    "params": {
+      "pageSize": 30
+    },
+    "updatedAt": "2026-07-04T00:00:00.000Z"
+  },
+  {
+    "jobKey": "market_quotes_korea",
+    "displayName": "국내 종목 시세",
+    "description": "korea_watchlist의 KRX 6자리 종목을 Yahoo(.KS→.KQ)로 조회해 market_quotes에 저장합니다.",
+    "area": "market",
+    "stage": "ingest",
+    "domain": "market",
+    "operation": "latest",
+    "provider": "yahoo",
+    "handler": "market_quotes_kr",
+    "enabled": true,
+    "intervalSeconds": 300,
+    "params": {
+      "segment": "korea",
+      "listKey": "korea_watchlist"
+    },
+    "updatedAt": "2026-07-16T00:00:00.000Z"
+  },
+  {
+    "jobKey": "market_news_it_rss",
+    "displayName": "IT 뉴스 RSS 수집·보정",
+    "description": "GeekNews(news.hada.io) Atom 피드를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.",
+    "area": "news",
+    "stage": "ingest",
+    "domain": "news",
+    "operation": "sync",
+    "provider": "rss",
+    "handler": "newswire_rss",
+    "enabled": true,
+    "intervalSeconds": 900,
+    "params": {
+      "rssSourceIds": [
+        "geeknews"
+      ],
+      "limit": 40,
+      "daysBack": 3,
+      "reconcile": {
+        "limit": 60
+      }
+    },
+    "updatedAt": "2026-07-18T00:00:00.000Z"
   }
 ]
 $json$::jsonb) WITH ORDINALITY
@@ -1440,14 +1712,33 @@ WITH rows AS (SELECT value AS payload, ordinality::int AS position FROM jsonb_ar
   {
     "key": "korea_watchlist",
     "displayName": "국내 관심종목",
-    "description": "DART 공시 수집 Job에서 조회할 KRX 6자리 종목 목록입니다.",
+    "description": "DART 공시·국내 시세(Yahoo) Job에서 쓰는 KRX 6자리 종목 목록입니다.",
     "symbols": [
-      "005930","000660","402340","005380","009150","373220","032830","028260","329180","105560",
-      "012330","000270","207940","034020","012450","055550","066570","006400","034730","035420"
+      "005930",
+      "000660",
+      "402340",
+      "005380",
+      "009150",
+      "373220",
+      "032830",
+      "028260",
+      "329180",
+      "105560",
+      "012330",
+      "000270",
+      "207940",
+      "034020",
+      "012450",
+      "055550",
+      "066570",
+      "006400",
+      "034730",
+      "035420"
     ],
-    "updatedAt": "2026-06-19T00:00:00.000Z"
+    "updatedAt": "2026-07-16T00:00:00.000Z"
   }
-]$json$::jsonb) WITH ORDINALITY)
+]
+$json$::jsonb) WITH ORDINALITY)
 INSERT INTO market_lists (list_key, position, payload, updated_at)
 SELECT payload->>'key', position - 1, payload, COALESCE((payload->>'updatedAt')::timestamptz, '2026-06-07T00:00:00.000Z'::timestamptz) FROM rows
 ON CONFLICT (list_key) DO NOTHING;

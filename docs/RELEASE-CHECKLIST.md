@@ -27,7 +27,7 @@
 
 ## 서버
 
-- [ ] 운영 DB에 Flyway migration 선적용 (`V19` IT RSS·`geeknews` 포함)
+- [ ] 운영 DB에 Flyway `V1` baseline 선적용 (IT RSS·`geeknews`·알림함·ETF 테이블 포함; 기존 이력 DB는 clean+migrate)
 - [ ] `npm --prefix server run start` 기동 확인
 - [ ] `/health` 확인
 - [ ] `/web`, `/web/news`, `/web/signal` 웹 클라이언트 route 확인

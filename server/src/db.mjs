@@ -749,42 +749,6 @@ async function seedLegalTermsIfEmpty(client) {
   console.warn('[db] legal_terms is empty. Run Flyway seed migrations before enabling app signup.');
 }
 
-const ETF_INSIGHTS_PURGE_MARKER = 'purge_etf_insights_v21';
-
-/** One-shot: clear legacy ETF briefings when Flyway is not run on deploy. */
-async function purgeLegacyEtfInsightsOnce(client) {
-  const marker = await client.query('SELECT 1 AS ok FROM signal_meta WHERE name = $1 LIMIT 1', [
-    ETF_INSIGHTS_PURGE_MARKER,
-  ]);
-  if (marker.rows[0]) return;
-
-  await client.query(`
-    DELETE FROM user_notification_inbox
-    WHERE notification_id IN (
-      SELECT id FROM notification_items
-      WHERE type = 'etf_insight' OR source_type = 'etf_insight'
-    )
-  `);
-  await client.query(`
-    DELETE FROM notification_items
-    WHERE type = 'etf_insight' OR source_type = 'etf_insight'
-  `);
-  const deleted = await client.query('DELETE FROM etf_insights');
-  await client.query(
-    `INSERT INTO signal_meta (name, payload, updated_at)
-     VALUES ($1, $2::jsonb, $3)
-     ON CONFLICT (name) DO NOTHING`,
-    [
-      ETF_INSIGHTS_PURGE_MARKER,
-      JSON.stringify({ deleted: Number(deleted.rowCount) || 0 }),
-      nowIso(),
-    ],
-  );
-  console.info(
-    `[db] purged legacy etf_insights (${Number(deleted.rowCount) || 0} rows) marker=${ETF_INSIGHTS_PURGE_MARKER}`,
-  );
-}
-
 async function ensureSeeded() {
   if (seedChecked) return;
   await withKyselyTransaction(async (client) => {
@@ -793,7 +757,6 @@ async function ensureSeeded() {
         console.warn('[db] default runtime data is missing. Run Flyway migrations before deploying.');
       }
       await seedAdminUsersIfEmpty(client);
-      await purgeLegacyEtfInsightsOnce(client);
       seedChecked = true;
     } catch (error) {
       throw error;

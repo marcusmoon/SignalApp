@@ -79,7 +79,7 @@ import {
   quoteLookupKeys,
   type QuoteRow,
 } from '@/domain/quotes/rows';
-import { resolveWatchlistHomeAsOf } from '@/domain/quotes/watchlistHomeAsOf';
+import { isCoinQuote, resolveWatchlistHomeAsOf } from '@/domain/quotes/watchlistHomeAsOf';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
@@ -103,6 +103,7 @@ import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBrie
 import { fetchSignalCoins, fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
+import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import type {
   SignalApiEtfInsight,
   SignalApiMarketBriefing,
@@ -650,8 +651,24 @@ export function HomeFocusContent({
     [ipadNav, router],
   );
 
+  /** Stocks → in-app detail. Coins have no detail pane → Yahoo (Quotes tab coin pattern). */
+  const openHomeQuote = useCallback(
+    (row: QuoteRow, opts?: { coin?: boolean }) => {
+      const trimmed = row.symbol.trim().toUpperCase();
+      if (!trimmed || trimmed === '—') return;
+      if (opts?.coin || isCoinQuote(row.quote)) {
+        void openYahooFinanceQuote(trimmed, 'coin', {
+          yahooSymbol: row.quote?.regularSession?.yahooSymbol,
+        });
+        return;
+      }
+      openSymbolDetail(trimmed);
+    },
+    [openSymbolDetail],
+  );
+
   const renderHomeQuoteTile = useCallback(
-    (row: QuoteRow, key: string) => {
+    (row: QuoteRow, key: string, opts?: { coin?: boolean }) => {
       const pct = row.quote?.changePercent;
       const hasPct = typeof pct === 'number' && Number.isFinite(pct);
       const up = hasPct && pct >= 0;
@@ -659,7 +676,7 @@ export function HomeFocusContent({
       return (
         <Pressable
           key={key}
-          onPress={() => openSymbolDetail(row.symbol)}
+          onPress={() => openHomeQuote(row, opts)}
           accessibilityRole="button"
           accessibilityLabel={row.symbol}
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
@@ -694,7 +711,7 @@ export function HomeFocusContent({
         </Pressable>
       );
     },
-    [openSymbolDetail, quoteChange.colors.down, quoteChange.colors.up, styles, t],
+    [openHomeQuote, quoteChange.colors.down, quoteChange.colors.up, styles, t],
   );
 
   const openCalendar = useCallback(() => {
@@ -1014,7 +1031,7 @@ export function HomeFocusContent({
                         ) : null}
                         <View style={styles.quoteGrid}>
                           {homeAnchorCoinRows.map((row, index) =>
-                            renderHomeQuoteTile(row, `anchor-${index}`),
+                            renderHomeQuoteTile(row, `anchor-${index}`, { coin: true }),
                           )}
                         </View>
                       </>

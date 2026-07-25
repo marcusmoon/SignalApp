@@ -25,7 +25,6 @@ import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
-import { NewBadge } from '@/components/signal/NewBadge';
 import {
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
@@ -968,7 +967,7 @@ export function HomeFocusContent({
             <HomeSectionHeader
               title={t('newsIssuesTitle')}
               badge={<AiBadge />}
-              trailingBadge={homeNewsFlowNew ? <NewBadge /> : null}
+              meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
             />
             {homeIssues.length > 0 ? (
               renderIssueCard(homeIssues)

@@ -43,7 +43,8 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 2. **시간 범위**: 기본 24시간. 속보는 6~12시간, 실적·공시는 이벤트 날짜 기준.
 3. **대상**: 종목, 기업명, 섹터, 매크로 키워드가 겹치는지 확인한다.
 4. **이벤트 타입**: 실적, 제품, 규제, M&A, 공시, 매크로, 가격 급등락 등을 분리한다.
-5. **출처 다양성**: 서로 다른 출처가 같은 내용을 다루면 묶음 신뢰도를 높인다.
+5. **출처 다양성**: 서로 다른 출처가 같은 내용을 다루면 묶음 신뢰도를 높인다. **같은 출처(provider/sourceName) 반복은 `sourceRefs`에 1건만** 넣고, 묶인 원문 수는 `count`로만 표현한다.
+6. **`sourceRefs` 상한**: 이슈당 **최대 3** (primary 1 + supporting ≤2). 서로 다른 출처를 우선한다. 와이어 중복 헤드라인으로 refs를 채우지 않는다.
 
 ## items 필드
 
@@ -56,7 +57,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 - `generatedDate`: UTC 기준 생성일 `YYYY-MM-DD`
 - `generatedAt`: UTC ISO 시각
 - `groupKey`: 사람이 읽을 수 있는 묶음 키
-- `sourceRefs`: 원문 뉴스 목록 — **v2 ingest**에서는 `type`+`id`(+`relation`)만 넣는다. `title`·`url`·`sourceName`은 생략. 앱 표시는 read 시 `news_items`·번역을 hydrate([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)).
+- `sourceRefs`: 원문 뉴스 목록 — **최대 3**. **v2 ingest**에서는 `type`+`id`(+`relation`)만 넣는다. `title`·`url`·`sourceName`은 생략. 앱 표시는 read 시 `news_items`·번역을 hydrate([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)). 같은 출처 중복은 넣지 않는다.
 
 권장 필드:
 

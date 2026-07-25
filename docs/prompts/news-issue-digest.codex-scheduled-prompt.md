@@ -45,9 +45,10 @@ Signal Server에 이미 수집된 최신 뉴스 중 최근 24시간의 글로벌
 1. URL 동일, 제목 거의 동일, 같은 출처 반복 송출은 중복 제거한다.
 2. 같은 종목/기업/섹터/매크로 키워드가 같은 시간대에 반복되면 하나의 이슈로 묶는다.
 3. 같은 단어만 있다고 무조건 묶지 않는다. 이벤트 타입이 다르면 분리한다.
-4. 서로 다른 출처가 같은 내용을 다루면 confidence를 높인다.
+4. 서로 다른 출처가 같은 내용을 다루면 confidence를 높인다. 같은 출처(provider) 반복은 sourceRefs에 1건만 넣고, 묶인 원문 수는 count로만 적는다.
 5. 카테고리별 최대 3개, 전체 최대 9개 이슈만 만든다.
 6. 중요도는 items 배열 순서로 표현한다. score 필드는 만들지 않는다.
+7. sourceRefs는 이슈당 최대 3개(primary 1 + supporting 최대 2). 서로 다른 출처를 우선하고, 동일 와이어 중복 헤드라인으로 채우지 않는다.
 
 출력 JSON 스키마:
 docs/schemas/news-issue-digest.v2.schema.json 구조를 따른다. schemaVersion은 2.
@@ -93,7 +94,7 @@ docs/schemas/news-issue-digest.v2.schema.json 구조를 따른다. schemaVersion
 - aiGenerated: true
 - cluster: kind, eventType, confidence, timeWindowHours, dedupeKey, reason
 - impact: direction, horizon, affectedAreas, watchSymbols
-- sourceRefs: 원문 목록. 최소 1개. news/disclosure는 type, id, relation만 넣는다. title, url, sourceName은 넣지 않는다.
+- sourceRefs: 원문 목록. 최소 1개 · 최대 3개. news/disclosure는 type, id, relation만 넣는다. title, url, sourceName은 넣지 않는다. 같은 출처는 1건만.
 
 검증:
 - sourceRefs의 news 항목 id는 Signal Server `/v1/news` 응답의 id만 사용한다.

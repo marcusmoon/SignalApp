@@ -99,7 +99,7 @@ const DigestCard = memo(function DigestCard({
   const topicChips = digest.topics.slice(0, pairLayout ? 2 : 3);
   const showCountChip = !digest.aiGenerated && topicChips.length === 0 && digest.count > 0;
   const iconSize = pairLayout ? 16 : 18;
-  const iconMax = pairLayout ? 3 : 4;
+  const iconMax = 2;
 
   return (
     <View style={styles.card}>

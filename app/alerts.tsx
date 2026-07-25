@@ -316,7 +316,7 @@ export default function AlertsScreen({
           {sourceEntries.length > 0 || a.high ? (
             <View style={styles.alertFooter}>
               {sourceEntries.length > 0 ? (
-                <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
+                <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
               ) : (
                 <View />
               )}

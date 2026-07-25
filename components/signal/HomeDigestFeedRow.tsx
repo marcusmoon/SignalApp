@@ -84,7 +84,7 @@ export function HomeDigestFeedRow({
       <View style={styles.footerLead}>
         {footerLead}
         {sourceEntries.length > 0 ? (
-          <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
+          <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
         ) : null}
         {trailText?.trim() ? (
           <Text style={styles.trailText} numberOfLines={1}>

@@ -229,7 +229,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - `WebHorizontalScrollStrip` — **자유 스크롤** (페이지 스냅·dots 금지)
 - 다음 카드 peek: compact 36px / wide 2열 0.48 비율 (`digestStripLayout.ts`)
 - 끝 refresh 타일: `DigestRefreshTail`
-- 출처: 카드 우측 「출처」→ `DigestSourcesSheet` (인라인 펼치기 금지)
+- 출처: 카드 우측 「출처」→ `DigestSourcesSheet` (인라인 펼치기 금지). 리스트·홈 `SourceIconStack`은 **최대 2**. ingest `sourceRefs`는 이슈당 **최대 3**(같은 출처 1건)
 
 ### 게시판 (Board)
 

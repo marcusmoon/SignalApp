@@ -20,7 +20,7 @@
 
 ## Server
 
-- **배포 직후**: Flyway `V22` 적용 — `market_news_global`·`market_news_globenewswire_earnings` 비활성, FJ가 글로벌 메인인지 Admin에서 확인. `calendar_earnings`로 실적 일정 수집.
+- **배포 직후**: Flyway `V23` 적용 — 글로벌은 Finnhub+FJ 유지, `market_news_globenewswire_earnings`(실적 PR RSS)만 비활성. 실적 일정은 `calendar_earnings`.
 - Postgres 운영 고도화: public API direct SQL 범위를 확대하고 heavy read 경로의 인덱스/쿼리 플랜을 정기 점검한다.
 - DB 접근 계층 정리: Kysely repository를 기능별로 확대하고 legacy raw SQL 집중도를 낮춘다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.

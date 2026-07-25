@@ -120,8 +120,8 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 주요 Job (reconcile 쌍은 `sync`로 통합):
 
 - 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART).
-  - **글로벌 메인**: `market_news_financial_juice` (Financial Juice RSS). Finnhub `market_news_global`(general) · Globe/PR 실적 RSS(`market_news_globenewswire_earnings`)는 **비활성** — 다매체·PR 중복을 피한다.
-  - **실적 일정**: 뉴스가 아니라 `calendar_earnings`(Finnhub). 투자 캘린더 earnings 타입.
+  - **글로벌**: `market_news_global` (Finnhub general) + `market_news_financial_juice` (Financial Juice RSS). Finnhub는 매체·티커, FJ는 실시간 와이어.
+  - **실적 PR RSS 제외**: `market_news_globenewswire_earnings`(Globe/PR)는 **비활성**. 실적 **일정**은 `calendar_earnings`(Finnhub).
   - **한국**: `market_news_mk_rss` (MK·한경 RSS)
   - **크립토**: `market_news_crypto` (Finnhub crypto)
   - **IT**: `market_news_it_rss` — GeekNews(`https://news.hada.io/rss/news`, Atom), 저장 `category=it`. 앱은 More·사이드바 IT 뉴스(`GET /v1/news?category=it`)

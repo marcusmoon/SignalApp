@@ -1,5 +1,5 @@
 /**
- * 홈 관심 종목 as-of — 주말·종가·코인 분기.
+ * 홈 시세 as-of — 주말·종가·코인 분기.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

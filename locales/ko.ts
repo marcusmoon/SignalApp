@@ -145,7 +145,6 @@ export const ko = {
   homeFocusBoardSubtitle: '미주미 · 세이브 커뮤니티',
   homeFocusBoardEmpty: '최신 글이 없습니다',
   homeFocusSignalEmpty: '표시할 장중 브리핑이 없습니다.',
-  moreHubEtfShort: 'ETF',
   screenGameCenter: '게임',
   gameCenterLead: '짧게 머리를 식힐 수 있는 숫자 퍼즐을 모았습니다.',
   gameHubResumeBadge: '이어하기',

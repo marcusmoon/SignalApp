@@ -72,7 +72,7 @@ const SIDEBAR_TABS: TabDef[] = [
     route: '/etf-insights',
     iconOutline: 'pie-chart-outline',
     iconFilled: 'pie-chart',
-    labelId: 'moreHubEtfShort',
+    labelId: 'homeEtfInsightTitle',
   },
   {
     name: 'board',

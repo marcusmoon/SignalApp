@@ -147,7 +147,6 @@ export const en = {
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE community',
   homeFocusBoardEmpty: 'No recent posts',
   homeFocusSignalEmpty: 'No session briefing to show.',
-  moreHubEtfShort: 'ETF',
   screenGameCenter: 'Games',
   gameCenterLead: 'Short number puzzles to reset your focus.',
   gameHubResumeBadge: 'Resume',

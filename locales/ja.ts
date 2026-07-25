@@ -147,7 +147,6 @@ export const ja = {
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE コミュニティ',
   homeFocusBoardEmpty: '新着投稿はありません',
   homeFocusSignalEmpty: '表示する場中ブリーフィングがありません。',
-  moreHubEtfShort: 'ETF',
   screenGameCenter: 'ゲーム',
   gameCenterLead: '頭を休められる短い数字パズルを集めました。',
   gameHubResumeBadge: '続きから',

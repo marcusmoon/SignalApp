@@ -173,7 +173,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·ETF·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):
-      1. 리프(일정·ETF·공시·설정) → 이름만
+      1. 리프(일정·섹터 흐름·공시·설정) → 이름만
       2. 그룹 기본(보드 `all`) → **상위만** (`게시판`)
       3. 그 외 → **`상위·하위`** (중점 `·`, 공백 없음). 예: `시세·코인` · `뉴스·글로벌` · `게시판·세이브`
       4. 하위는 탭 정식명이 아니라 **홈 전용 짧은 표기** (`homeTile*` — 인기순→인기, Crypto→Coin, YouTube→영상/YT, 가상통화→コイン)
@@ -188,7 +188,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **투자 캘린더** (`app/calendar.tsx`): 날짜 내비 + 타입 필터(색 스와치) + **일별 리스트**. 카드는 타입/종목/임팩트 태그·제목을 한 줄로, 시각은 우측. 월 그리드는 컴팩트 시트로 선택(일정 있는 날 점 표시). 타입 색: 실적 green · 지표 blue · 연준 orange · FOMC danger · 휴장 muted.
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
-  - **메인 진입**: 더보기 허브 타일(짧은 라벨 ETF) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 사이드바
+  - **메인 진입**: 더보기·사이드바·홈 숏컷 라벨 **섹터 흐름** (`homeEtfInsightTitle`) → `/etf-insights` 리스트 (iPhone). iPad·웹은 wide overlay / 사이드바. API 키는 `etf-insights` 유지
   - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 히트맵 미니뷰 우선. 카드 탭 → `/etf-insight` 상세
   - 발행 알림: ingest 푸시·알림함 (일상 발견 경로)
   - ingest 계약: [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
@@ -238,9 +238,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 · My info
 
-- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 내 정보·공시·**ETF**(짧은 라벨)·게시판·**게임** 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
+- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 내 정보·공시·**섹터 흐름**·게시판·**게임** 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
   - **게임**: 진입·새 게임 추가·합 트레일 규칙은 [GAME-CENTER.md](./GAME-CENTER.md).
-- **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · **ETF** · 게시판 · **게임** · **내 정보**. 설정은 내 정보 허브에서 진입.
+- **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · **섹터 흐름** · 게시판 · **게임** · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
 - **퀵 설정** (`QuickSettingsSheet`): 헤더 우측 options 아이콘. 언어·화면 모드. 푸터 **More settings** → 전체 설정(pill 탭 표시, iPhone·iPad 동일).
 - **설정** (`app/settings.tsx`): 탭 순서 `constants/settingsTabs.ts`.

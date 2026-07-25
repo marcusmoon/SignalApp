@@ -967,6 +967,10 @@ export const ko = {
   quotesPendingHint: '잠시 후 새로고침해 주세요',
   quotesEmptyWatch: '관심 종목이 없습니다. + 버튼으로 티커를 추가해 주세요.',
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
+  /** 홈 관심 종목 섹션 우측 — 당일 마감 후 */
+  quotesAsOfTodayClose: '오늘 종가',
+  /** 홈 관심 종목 섹션 우측 — 주말·이전 거래일 (when=금 / 7월 24일) */
+  quotesAsOfNamedClose: '{{when}} 종가',
 
   briefingHubEmptyTitle: '아직 브리핑이 없습니다.',
   briefingHubEmptyBody: '시간이 되면 곧 표시됩니다.',

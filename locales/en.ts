@@ -143,7 +143,7 @@ export const en = {
   todayBriefingDetailKicker: "Today's Wrap",
   ipadHomeLoadError: 'Could not load home summary.',
   homeFocusSourceCount: '{{count}} sources',
-  homeFocusWatchTitle: 'Watchlist',
+  homeFocusWatchTitle: 'Quotes',
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE community',
   homeFocusBoardEmpty: 'No recent posts',
   homeFocusSignalEmpty: 'No session briefing to show.',

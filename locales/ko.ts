@@ -141,7 +141,7 @@ export const ko = {
   todayBriefingDetailKicker: '오늘 정리',
   ipadHomeLoadError: '홈 정보를 불러오지 못했습니다.',
   homeFocusSourceCount: '출처 {{count}}개',
-  homeFocusWatchTitle: '관심 종목',
+  homeFocusWatchTitle: '시세',
   homeFocusBoardSubtitle: '미주미 · 세이브 커뮤니티',
   homeFocusBoardEmpty: '최신 글이 없습니다',
   homeFocusSignalEmpty: '표시할 장중 브리핑이 없습니다.',

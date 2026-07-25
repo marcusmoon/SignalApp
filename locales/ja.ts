@@ -143,7 +143,7 @@ export const ja = {
   todayBriefingDetailKicker: '今日のまとめ',
   ipadHomeLoadError: 'ホーム情報を読み込めませんでした。',
   homeFocusSourceCount: '出典 {{count}}件',
-  homeFocusWatchTitle: 'ウォッチリスト',
+  homeFocusWatchTitle: '相場',
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE コミュニティ',
   homeFocusBoardEmpty: '新着投稿はありません',
   homeFocusSignalEmpty: '表示する場中ブリーフィングがありません。',

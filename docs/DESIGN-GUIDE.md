@@ -164,12 +164,12 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | ETF 보조 | **섹터 흐름** | `etf_insights` |
   | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
-  | 워치리스트 | **관심 종목** | quotes watchlist |
+  | 워치리스트 | **시세** | quotes watchlist + 시총 상위 코인 |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 뉴스 흐름 NEW**: 섹션 헤더 우측(`trailingBadge`). 표시 목록 최신 `generatedAt`이 **1시간 이내**일 때만 (`isHomeNewsFlowNew`). 행마다 NEW 없음
 - **홈 섹션 순서**
-  - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 관심 종목 → (조건부) 섹터 흐름
-  - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 관심 종목 숨김
+  - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
+  - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·ETF·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):
@@ -208,8 +208,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **섹터 중복 방지**: 첫 행 = 이름·%. 본문 = 해석 문장만 (`stripSectorSummaryQuotePreamble`)
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
-- 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름). 히어로·일정 칩은 자동
-- 홈 관심 종목 그리드: 폰 **2열** · 와이드(웹/iPad) **3열**
+- 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정 칩은 자동
+- 홈 시세 그리드: 워치리스트 + 시총 상위 코인(별도 섹션 없음). 폰 **2열** · 와이드(웹/iPad) **3열**
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

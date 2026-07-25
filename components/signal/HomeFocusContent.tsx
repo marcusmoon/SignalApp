@@ -64,7 +64,9 @@ import {
   selectHomeHeroBriefing,
 } from '@/domain/home/selectHomeHeroBriefing';
 import {
+  HOME_ANCHOR_COIN_FETCH_POOL,
   filterHomeAnchorCoinsNotInWatchlist,
+  homeAnchorCoinCount,
   pickHomeAnchorCoinsFromList,
 } from '@/domain/home/homeAnchorCoins';
 import {
@@ -398,13 +400,14 @@ export function HomeFocusContent({
     [quotes, watchlistDisplayCount],
   );
 
+  /** compact 2 · wide(PC) 3 — 시총순 풀에서 워치리스트 중복을 건너뛰고 채움 */
   const homeAnchorCoinRows = useMemo(
     () =>
       filterHomeAnchorCoinsNotInWatchlist(
         anchorCoins,
         homeWatchRows.map((row) => row.symbol),
-      ),
-    [anchorCoins, homeWatchRows],
+      ).slice(0, homeAnchorCoinCount(useTwoPane)),
+    [anchorCoins, homeWatchRows, useTwoPane],
   );
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
@@ -501,7 +504,10 @@ export function HomeFocusContent({
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
       );
-      setAnchorCoins(pickHomeAnchorCoinsFromList(coinRows).map(mapSignalCoinToRow));
+      // 시총순 여유분만 보관 — 화면 폭·워치리스트 중복은 렌더 시 다시 고른다
+      setAnchorCoins(
+        pickHomeAnchorCoinsFromList(coinRows, HOME_ANCHOR_COIN_FETCH_POOL).map(mapSignalCoinToRow),
+      );
       setBriefings(
         uniqueVisibleBriefings(
           [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),

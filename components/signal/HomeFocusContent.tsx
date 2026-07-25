@@ -63,7 +63,20 @@ import {
   homeHeroHeadline,
   selectHomeHeroBriefing,
 } from '@/domain/home/selectHomeHeroBriefing';
-import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
+import {
+  filterHomeAnchorCoinsNotInWatchlist,
+  pickHomeAnchorCoinsFromList,
+} from '@/domain/home/homeAnchorCoins';
+import {
+  formatQuoteDpPct,
+  formatUsd,
+  formatKrw,
+  isKoreaStockQuote,
+  mapSignalCoinToRow,
+  mapSignalQuoteToRow,
+  quoteLookupKeys,
+  type QuoteRow,
+} from '@/domain/quotes/rows';
 import { resolveWatchlistHomeAsOf } from '@/domain/quotes/watchlistHomeAsOf';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -85,7 +98,7 @@ import { etfInsightDetailIso } from '@/domain/briefings/detailTime';
 import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility';
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
-import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalCoins, fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import type {
@@ -310,6 +323,7 @@ export function HomeFocusContent({
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [etfInsight, setEtfInsight] = useState<SignalApiEtfInsight | null>(null);
@@ -357,7 +371,7 @@ export function HomeFocusContent({
 
   /**
    * 관심 종목 as-of: 주식은 주말·마감 후 종가 라벨, 코인만이면 상대시간.
-   * 주식이 있으면 코인 시각으로 섹션 메타를 덮지 않는다.
+   * 하단 BTC·ETH 앵커는 메타에 넣지 않는다 (주말 종가 라벨과 충돌 방지).
    */
   const watchlistSectionMeta = useMemo(() => {
     const resolved = resolveWatchlistHomeAsOf(quotes.slice(0, watchlistDisplayCount));
@@ -378,6 +392,20 @@ export function HomeFocusContent({
         : formatLocalYmdLabel(resolved.ymd, locale, { month: 'short', day: 'numeric' });
     return t('quotesAsOfNamedClose', { when });
   }, [locale, quotes, t, watchlistDisplayCount]);
+
+  const homeWatchRows = useMemo(
+    () => quotes.slice(0, watchlistDisplayCount),
+    [quotes, watchlistDisplayCount],
+  );
+
+  const homeAnchorCoinRows = useMemo(
+    () =>
+      filterHomeAnchorCoinsNotInWatchlist(
+        anchorCoins,
+        homeWatchRows.map((row) => row.symbol),
+      ),
+    [anchorCoins, homeWatchRows],
+  );
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -421,6 +449,7 @@ export function HomeFocusContent({
     if (!hasSignalApi()) {
       setIssues([]);
       setQuotes([]);
+      setAnchorCoins([]);
       setBriefings([]);
       setTodayBriefing(null);
       setCalendarEvents([]);
@@ -431,14 +460,16 @@ export function HomeFocusContent({
     setError(null);
     try {
       const watchlist = await loadWatchlistSymbols();
-      const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
+      const isToday = selectedYmd === todayYmd;
+      const symbols = isToday ? watchlist.slice(0, watchlistDisplayCount) : [];
       const isDateChange = loadedYmdRef.current !== selectedYmd;
       if (isDateChange) {
         setBriefings([]);
       }
       setCalendarEvents([]);
 
-      const [nextTodayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight] = await Promise.all([
+      const [nextTodayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight, coinRows] =
+        await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -451,6 +482,9 @@ export function HomeFocusContent({
           { cacheMode },
         ).catch(() => [] as SignalApiMarketBriefing[]),
         fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }).catch(() => null),
+        isToday
+          ? fetchSignalCoins({ limit: 40 }, { cacheMode }).catch(() => [])
+          : Promise.resolve([]),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -467,6 +501,7 @@ export function HomeFocusContent({
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
       );
+      setAnchorCoins(pickHomeAnchorCoinsFromList(coinRows).map(mapSignalCoinToRow));
       setBriefings(
         uniqueVisibleBriefings(
           [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
@@ -601,6 +636,53 @@ export function HomeFocusContent({
       router.push(`/symbol/${encodeURIComponent(trimmed)}` as never);
     },
     [ipadNav, router],
+  );
+
+  const renderHomeQuoteTile = useCallback(
+    (row: QuoteRow, key: string) => {
+      const pct = row.quote?.changePercent;
+      const hasPct = typeof pct === 'number' && Number.isFinite(pct);
+      const up = hasPct && pct >= 0;
+      const hasQuote = Boolean(row.quote);
+      return (
+        <Pressable
+          key={key}
+          onPress={() => openSymbolDetail(row.symbol)}
+          accessibilityRole="button"
+          accessibilityLabel={row.symbol}
+          style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
+          <View style={styles.quoteTileContent}>
+            <View style={styles.quoteTileLead}>
+              <SymbolLogo symbol={row.symbol} imageUrl={row.imageUrl} size={22} />
+              <Text style={styles.quoteSymbol} numberOfLines={1}>
+                {row.symbol}
+              </Text>
+            </View>
+            <View style={styles.quoteTileFooter}>
+              {hasQuote ? (
+                <>
+                  <Text style={styles.priceText} numberOfLines={1}>
+                    {formatPrice(row)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.changeText,
+                      { color: up ? quoteChange.colors.up : quoteChange.colors.down },
+                    ]}>
+                    {formatQuoteDpPct(pct)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.quotePendingText} numberOfLines={2}>
+                  {t('quotesPending')}
+                </Text>
+              )}
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [openSymbolDetail, quoteChange.colors.down, quoteChange.colors.up, styles, t],
   );
 
   const openCalendar = useCallback(() => {
@@ -899,53 +981,31 @@ export function HomeFocusContent({
           {selectedIsExactToday ? (
             <View style={styles.section}>
               <HomeSectionHeader title={t('homeFocusWatchTitle')} meta={watchlistSectionMeta} />
-              <View style={styles.quoteGrid}>
-                {quotes.length === 0 ? (
+              <View style={styles.quoteStack}>
+                {homeWatchRows.length === 0 && homeAnchorCoinRows.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
                 ) : (
-                  quotes.slice(0, watchlistDisplayCount).map((row, index) => {
-                    const pct = row.quote?.changePercent;
-                    const hasPct = typeof pct === 'number' && Number.isFinite(pct);
-                    const up = hasPct && pct >= 0;
-                    const hasQuote = Boolean(row.quote);
-                    return (
-                      <Pressable
-                        key={`${row.symbol}-${index}`}
-                        onPress={() => openSymbolDetail(row.symbol)}
-                        accessibilityRole="button"
-                        accessibilityLabel={row.symbol}
-                        style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
-                        <View style={styles.quoteTileContent}>
-                          <View style={styles.quoteTileLead}>
-                            <SymbolLogo symbol={row.symbol} size={22} />
-                            <Text style={styles.quoteSymbol} numberOfLines={1}>
-                              {row.symbol}
-                            </Text>
-                          </View>
-                          <View style={styles.quoteTileFooter}>
-                            {hasQuote ? (
-                              <>
-                                <Text style={styles.priceText} numberOfLines={1}>
-                                  {formatPrice(row)}
-                                </Text>
-                                <Text
-                                  style={[
-                                    styles.changeText,
-                                    { color: up ? quoteChange.colors.up : quoteChange.colors.down },
-                                  ]}>
-                                  {formatQuoteDpPct(pct)}
-                                </Text>
-                              </>
-                            ) : (
-                              <Text style={styles.quotePendingText} numberOfLines={2}>
-                                {t('quotesPending')}
-                              </Text>
-                            )}
-                          </View>
+                  <>
+                    {homeWatchRows.length > 0 ? (
+                      <View style={styles.quoteGrid}>
+                        {homeWatchRows.map((row, index) =>
+                          renderHomeQuoteTile(row, `watch-${index}`),
+                        )}
+                      </View>
+                    ) : null}
+                    {homeAnchorCoinRows.length > 0 ? (
+                      <>
+                        {homeWatchRows.length > 0 ? (
+                          <View style={styles.quoteAnchorDivider} />
+                        ) : null}
+                        <View style={styles.quoteGrid}>
+                          {homeAnchorCoinRows.map((row, index) =>
+                            renderHomeQuoteTile(row, `anchor-${index}`),
+                          )}
                         </View>
-                      </Pressable>
-                    );
-                  })
+                      </>
+                    ) : null}
+                  </>
                 )}
               </View>
             </View>
@@ -1054,6 +1114,13 @@ function makeStyles(
     },
     section: {
       gap: COMFORT_GAP_SM,
+    },
+    quoteStack: {
+      gap: COMFORT_GAP_MD,
+    },
+    quoteAnchorDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
     },
     quoteGrid: {
       flexDirection: 'row',

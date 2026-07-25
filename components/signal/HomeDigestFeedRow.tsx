@@ -93,20 +93,16 @@ export function HomeDigestFeedRow({
         ) : null}
       </View>
       {hasTime || isFresh ? (
-        <View
-          style={styles.timeCluster}
+        <Text
+          style={[styles.timeText, isFresh && styles.timeTextFresh]}
+          numberOfLines={1}
           accessibilityLabel={isFresh ? t('digestFreshBadgeA11y') : undefined}>
-          {isFresh ? (
-            <Text style={styles.freshMark} numberOfLines={1}>
-              {t('digestFreshBadge')}
-            </Text>
-          ) : null}
-          {hasTime ? (
-            <Text style={[styles.timeText, isFresh && styles.timeTextFresh]} numberOfLines={1}>
-              {timeLabel}
-            </Text>
-          ) : null}
-        </View>
+          {isFresh && hasTime
+            ? `${t('digestFreshBadge')} · ${timeLabel}`
+            : isFresh
+              ? t('digestFreshBadge')
+              : timeLabel}
+        </Text>
       ) : null}
     </View>
   ) : null;
@@ -190,29 +186,18 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
-    timeCluster: {
-      flexShrink: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      maxWidth: '46%',
-    },
-    freshMark: {
-      flexShrink: 0,
-      fontSize: metaSize,
-      lineHeight: sf(14),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-    },
     timeText: {
-      flexShrink: 1,
+      flexShrink: 0,
+      maxWidth: '46%',
       fontSize: metaSize,
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
+      textAlign: 'right',
     },
     timeTextFresh: {
       color: theme.green,
+      fontWeight: ft.emphasisWeight,
     },
     summary: {
       fontSize: ft.ff(FEED_SUMMARY_PX),

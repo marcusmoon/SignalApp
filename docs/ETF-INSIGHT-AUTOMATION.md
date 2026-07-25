@@ -14,7 +14,7 @@
 
 본문 UI: 장중 브리핑과 **보완** — lead · 히트맵 · 테마 · 수급 · 출처. **서버에 없는 섹션·필드는 앱에서 숨긴다**(빈 배열·빈 문자열·빈 rotation 표시 금지). 역할 표는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md).
 
-Admin 데이터 초기화에 **섹터 흐름 / ETF**(`etfInsights`) 대상이 있다. 기존 적재분 정리: Flyway `V21__purge_etf_insights.sql` + 서버 `ensureSeeded` 1회 마커(`purge_etf_insights_v21`)로 `etf_insights`·관련 알림을 비운다.
+Admin 데이터 초기화에 **섹터 흐름 / ETF**(`etfInsights`) 대상이 있다. 테이블·시드는 baseline `V1__signal_baseline.sql`의 `etf_insights`에 포함된다. 운영 데이터 비우기는 Admin 초기화(또는 SQL)로 한다.
 
 홈 조회: `insightDate` 정확 일치 → 없으면 `insightDate ≤ 선택일` 최신 1건 → 그다음 7일 freshness 게이트. UTC는 [DATE-TIME.md](./DATE-TIME.md).
 
@@ -119,6 +119,6 @@ Admin: `GET/PATCH/DELETE /admin/api/etf-insights`.
 
 ## 저장
 
-- 테이블: `etf_insights` (migration `V20__etf_insights.sql`)
+- 테이블: `etf_insights` (`V1__signal_baseline.sql`)
 - upsert 컬렉션 키: `etfInsights`
 - 앱 캐시: `integrations/signal-api/cache/etfInsightsCache.ts` (TTL 2분)

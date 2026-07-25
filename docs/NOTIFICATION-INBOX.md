@@ -17,7 +17,7 @@
 - **신규 사용자**: 커서 row가 없으면 `app_users.created_at` 이후 알림만 첫 연결한다. sync 후 전역 최신 알림으로 커서를 갱신한다.
 - **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재 대상이다.
 - **푸시 발송**: `app_user_devices` 활성 토큰 + `app_users.notification_prefs` (`pushEnabled`, `briefingPushEnabled`)를 만족할 때만 Expo/mock sender가 전송한다.
-- **DB**: Flyway `V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_state.sql`.
+- **DB**: Flyway baseline `V1__signal_baseline.sql` (`user_notification_inbox`, `user_notification_state`, `app_users.notification_prefs`).
 
 ## 구조
 
@@ -111,7 +111,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 
 | 영역 | 파일 |
 |---|---|
-| DB | `server/db/migrations/postgres/V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_state.sql` |
+| DB | `server/db/migrations/postgres/V1__signal_baseline.sql` (`user_notification_inbox`, `user_notification_state`, `notification_prefs`) |
 | publish | `server/src/notifications/publish.mjs`, `server/src/notifications/notificationItem.mjs` |
 | 서버 repo | `server/src/db/repositories/notificationInboxRepository.mjs` |
 | 푸시 prefs | `server/src/notifications/notificationPreferences.mjs` |

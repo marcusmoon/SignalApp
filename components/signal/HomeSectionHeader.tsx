@@ -10,6 +10,8 @@ type HomeSectionHeaderProps = {
   subtitle?: string;
   badge?: ReactNode;
   trailingBadge?: ReactNode;
+  /** 섹션 타이틀 행 우측 끝 메타 (예: 섹터 흐름 기준 시각) */
+  meta?: string | null;
   onPress?: () => void;
   accessibilityLabel?: string;
   showChevron?: boolean;
@@ -20,12 +22,14 @@ export function HomeSectionHeader({
   subtitle,
   badge,
   trailingBadge,
+  meta,
   onPress,
   accessibilityLabel,
   showChevron = true,
 }: HomeSectionHeaderProps) {
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const metaLabel = String(meta || '').trim();
 
   const content = (
     <View style={styles.row}>
@@ -39,6 +43,11 @@ export function HomeSectionHeader({
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
+      {metaLabel ? (
+        <Text style={styles.meta} numberOfLines={1}>
+          {metaLabel}
+        </Text>
+      ) : null}
       {onPress && showChevron ? <FontAwesome name="chevron-right" size={12} color={theme.textDim} /> : null}
     </View>
   );
@@ -96,6 +105,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(18),
       fontWeight: '600',
       color: theme.textMuted,
+    },
+    meta: {
+      flexShrink: 0,
+      maxWidth: '42%',
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '600',
+      color: theme.textDim,
+      textAlign: 'right',
     },
     pressed: {
       opacity: 0.72,

@@ -80,6 +80,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { etfInsightDetailIso } from '@/domain/briefings/detailTime';
 import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility';
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
@@ -346,6 +347,12 @@ export function HomeFocusContent({
       displayPercent: cell.changePercent,
     }));
   }, [etfInsight, sectorFlowDisplayCount]);
+
+  const etfSectionMeta = useMemo(() => {
+    if (!etfInsight) return null;
+    const label = formatFeedItemTimeLabel(etfInsightDetailIso(etfInsight), locale);
+    return label && label !== '—' ? label : null;
+  }, [etfInsight, locale]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -921,7 +928,11 @@ export function HomeFocusContent({
 
           {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeEtfInsightTitle')} badge={<AiBadge />} />
+              <HomeSectionHeader
+                title={t('homeEtfInsightTitle')}
+                badge={<AiBadge />}
+                meta={etfSectionMeta}
+              />
               {renderEtfSectionBody()}
             </View>
           ) : null}

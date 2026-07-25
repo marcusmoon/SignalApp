@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
-import { accentAlpha } from '@/constants/sourceAccent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -10,7 +9,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** 홈 뉴스 흐름 등 최근 갱신 표시용 뱃지 */
+/** 홈 뉴스 흐름 등 최근 갱신 표시용 뱃지 — 단색 칩 + 흰 글자 */
 export function NewBadge({ style }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
@@ -27,22 +26,18 @@ export function NewBadge({ style }: Props) {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const accent = theme.green;
-  const isDark = theme.colorScheme === 'dark';
   return StyleSheet.create({
     chip: {
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 999,
-      backgroundColor: accentAlpha(accent, isDark ? 0.16 : 0.1),
-      borderWidth: 1,
-      borderColor: accentAlpha(accent, isDark ? 0.32 : 0.2),
+      backgroundColor: theme.green,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
     },
     text: {
-      color: accentAlpha(accent, isDark ? 0.92 : 0.82),
+      color: '#FFFFFF',
       fontSize: sf(9),
       lineHeight: sf(13),
       fontWeight: '700',

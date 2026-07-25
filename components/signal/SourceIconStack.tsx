@@ -132,7 +132,7 @@ export function SourceIcon({
   );
 }
 
-export function SourceIconStack({ sources, maxVisible = 4, size = 22 }: Props) {
+export function SourceIconStack({ sources, maxVisible = 2, size = 22 }: Props) {
   const { theme } = useSignalTheme();
   const unique = useMemo(() => dedupeSources(sources), [sources]);
   const visible = unique.slice(0, maxVisible);

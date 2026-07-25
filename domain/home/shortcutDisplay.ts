@@ -19,7 +19,7 @@ export { homeShortcutCompoundLabel } from '@/domain/home/shortcutCompoundLabel';
  * 홈 바로가기 타일 라벨 규칙
  *
  * 1. 한 줄 (`HomeShortcutsStrip` numberOfLines=1).
- * 2. 리프(일정·섹터 흐름·공시·설정) → 이름만.
+ * 2. 리프(일정·섹터·공시·설정) → 이름만.
  * 3. 그룹 기본(보드 all) → 상위만 (`게시판`).
  * 4. 그 외 그룹 → `상위·하위` (중점, 공백 없음).
  * 5. 하위는 탭 정식명이 아니라 홈 전용 짧은 표기(`homeTile*`).
@@ -70,7 +70,7 @@ const BOARD_CHILD_FORMAL: Record<'save_user_news' | 'naver_likeusstock_free', Me
 
 const SIMPLE_TITLE: Record<'calendar' | 'etf' | 'disclosures' | 'settings', MessageId> = {
   calendar: 'ipadHomeCalendarTitle',
-  etf: 'homeEtfInsightTitle',
+  etf: 'moreHubEtfShort',
   disclosures: 'tabDisclosures',
   settings: 'screenSettings',
 };

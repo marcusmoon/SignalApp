@@ -2,15 +2,17 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FEED_BADGE_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
 type HomeSectionHeaderProps = {
   title: string;
   subtitle?: string;
   badge?: ReactNode;
   trailingBadge?: ReactNode;
-  /** 섹션 타이틀 행 우측 끝 메타 (예: 섹터 흐름 기준 시각) */
+  /** 섹션 타이틀 행 우측 끝 메타 — 세션 태그와 동일 칩 스타일 */
   meta?: string | null;
   onPress?: () => void;
   accessibilityLabel?: string;
@@ -27,8 +29,8 @@ export function HomeSectionHeader({
   accessibilityLabel,
   showChevron = true,
 }: HomeSectionHeaderProps) {
-  const { theme, scaleFont } = useSignalTheme();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const metaLabel = String(meta || '').trim();
 
   const content = (
@@ -44,9 +46,11 @@ export function HomeSectionHeader({
         </View>
       </View>
       {metaLabel ? (
-        <Text style={styles.meta} numberOfLines={1}>
-          {metaLabel}
-        </Text>
+        <View style={styles.metaChip} accessibilityRole="text">
+          <Text style={styles.metaChipText} numberOfLines={1}>
+            {metaLabel}
+          </Text>
+        </View>
       ) : null}
       {onPress && showChevron ? <FontAwesome name="chevron-right" size={12} color={theme.textDim} /> : null}
     </View>
@@ -65,13 +69,13 @@ export function HomeSectionHeader({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 20,
+      gap: 12,
     },
     titleRow: {
       flex: 1,
@@ -106,13 +110,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '600',
       color: theme.textMuted,
     },
-    meta: {
+    /** BriefingSessionTag 와 동일 톤 */
+    metaChip: {
       flexShrink: 0,
       maxWidth: '42%',
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '600',
-      color: theme.textDim,
+      alignSelf: 'center',
+      borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    metaChipText: {
+      fontSize: ft.ff(FEED_BADGE_PX + 1),
+      lineHeight: sf(13),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
       textAlign: 'right',
     },
     pressed: {

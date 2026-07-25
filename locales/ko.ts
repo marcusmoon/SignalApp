@@ -16,6 +16,8 @@ export const ko = {
   homeSignalOpenFullA11y: '시장 탭에서 브리핑 열기',
   homeAiGeneratedA11y: 'AI가 생성한 요약',
   homeNewsFlowNewMeta: 'NEW',
+  /** 더보기·사이드바·홈 숏컷 짧은 라벨 (홈 섹션 제목은 homeEtfInsightTitle) */
+  moreHubEtfShort: '섹터',
   digestFreshBadge: '최신',
   digestFreshBadgeA11y: '최근 갱신됨',
   commonComingSoon: '준비 중',

@@ -15,6 +15,8 @@ export const ko = {
   homeSignalOpenFull: '시장 보기',
   homeSignalOpenFullA11y: '시장 탭에서 브리핑 열기',
   homeAiGeneratedA11y: 'AI가 생성한 요약',
+  digestFreshBadge: '최신',
+  digestFreshBadgeA11y: '최근 갱신됨',
   commonComingSoon: '준비 중',
   commonAd: '광고',
   commonLoadingA11y: '불러오는 중',

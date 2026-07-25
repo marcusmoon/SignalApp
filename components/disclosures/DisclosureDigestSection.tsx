@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
+import { FreshBadge } from '@/components/signal/FreshBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
@@ -28,6 +29,7 @@ import {
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
+import { isDigestFresh } from '@/domain/digests/freshness';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
@@ -98,10 +100,12 @@ const DigestCard = memo(function DigestCard({
 
   const showDetail = Boolean(item.title?.trim() || summaryBody || item.sourceRefs.length > 0);
   const showCountChip = topicChips.length === 0 && item.count > 0;
+  const isFresh = isDigestFresh(disclosureDigestCreatedIso(item));
 
   return (
     <View style={styles.card}>
       <View style={styles.badgeRow}>
+        {isFresh ? <FreshBadge /> : null}
         {topicChips.map((chip) => (
           <Text
             key={chip.key}

@@ -21,6 +21,7 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
+import { FreshBadge } from '@/components/signal/FreshBadge';
 import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
@@ -51,6 +52,7 @@ import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayou
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
+import { isDigestFresh } from '@/domain/digests/freshness';
 import {
   filterCalendarChipsForHome,
   homeCalendarChipLabel,
@@ -749,17 +751,27 @@ export function HomeFocusContent({
           {rows.map((row, index) => {
             const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
             const trailText = [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ');
+            const createdIso = newsDigestCreatedIso(row.item);
+            const isFresh = isDigestFresh(createdIso);
             return (
               <HomeDigestFeedRow
                 key={row.item.id}
                 title={row.item.title}
                 titleLines={2}
-                timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
+                timeLabel={formatFeedItemTimeLabel(createdIso, locale)}
                 trailText={trailText || null}
                 summary={null}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
+                isFresh={isFresh}
                 onPress={() => openIssueDetail(row)}
+                badges={
+                  isFresh ? (
+                    <View style={styles.badgeRow}>
+                      <FreshBadge />
+                    </View>
+                  ) : undefined
+                }
                 footerLead={
                   <View
                     accessible
@@ -1039,6 +1051,11 @@ function makeStyles(
     boardSourceMark: {
       borderWidth: 0,
       backgroundColor: 'transparent',
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     quoteTileContent: {
       flex: 1,

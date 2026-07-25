@@ -35,6 +35,8 @@ type Props = {
   bordered?: boolean;
   /** 푸터 왼쪽 커스텀 영역 (홈 게시판 출처 아이콘+이름 등) */
   footerLead?: ReactNode;
+  /** 최근 갱신 항목 여부 (시간 표시 강조) */
+  isFresh?: boolean;
   onPress?: () => void;
 };
 
@@ -54,6 +56,7 @@ export function HomeDigestFeedRow({
   badges,
   bordered = false,
   footerLead,
+  isFresh = false,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -85,7 +88,7 @@ export function HomeDigestFeedRow({
         ) : null}
       </View>
       {timeLabel && timeLabel !== '—' ? (
-        <Text style={styles.timeText} numberOfLines={1}>
+        <Text style={[styles.timeText, isFresh && styles.timeTextFresh]} numberOfLines={1}>
           {timeLabel}
         </Text>
       ) : null}
@@ -177,6 +180,10 @@ function makeStyles(
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
+    },
+    timeTextFresh: {
+      color: theme.green,
+      fontWeight: ft.emphasisWeight,
     },
     summary: {
       fontSize: ft.ff(FEED_SUMMARY_PX),

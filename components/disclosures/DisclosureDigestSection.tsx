@@ -6,7 +6,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
-import { FreshBadge } from '@/components/signal/FreshBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
@@ -72,7 +71,9 @@ const DigestCard = memo(function DigestCard({
     count: String(item.count),
     symbols: String(item.symbols.length),
   });
-  const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
+  const createdIso = disclosureDigestCreatedIso(item);
+  const createdLabel = formatFeedItemTimeLabel(createdIso, locale as AppLocale);
+  const isFresh = isDigestFresh(createdIso);
   const important = isImportantDisclosureDigest(item);
   const meaningIds = disclosureMeaningLabelIdsForForms(
     item.forms,
@@ -100,12 +101,17 @@ const DigestCard = memo(function DigestCard({
 
   const showDetail = Boolean(item.title?.trim() || summaryBody || item.sourceRefs.length > 0);
   const showCountChip = topicChips.length === 0 && item.count > 0;
-  const isFresh = isDigestFresh(disclosureDigestCreatedIso(item));
+  const footerMeta = [
+    summaryMeta,
+    isFresh ? t('digestFreshBadge') : null,
+    createdLabel !== '—' ? createdLabel : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <View style={styles.card}>
       <View style={styles.badgeRow}>
-        {isFresh ? <FreshBadge /> : null}
         {topicChips.map((chip) => (
           <Text
             key={chip.key}
@@ -133,9 +139,11 @@ const DigestCard = memo(function DigestCard({
       </View>
 
       <View style={styles.footerRow}>
-        <Text style={styles.footer} numberOfLines={1}>
-          {summaryMeta}
-          {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
+        <Text
+          style={[styles.footer, isFresh && styles.footerFresh]}
+          numberOfLines={1}
+          accessibilityLabel={isFresh ? t('digestFreshBadgeA11y') : undefined}>
+          {footerMeta}
         </Text>
         {showDetail ? (
           <Pressable

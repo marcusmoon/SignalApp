@@ -13,6 +13,7 @@ import {
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -42,7 +43,8 @@ type Props = {
 
 /**
  * 홈 뉴스 플로우·마켓 브리핑 공통 행 레이아웃
- * [badges?] → 제목 → [요약?] → [출처 아이콘 스택 · 보조텍스트 | 시간]
+ * [badges?] → 제목 → [요약?] → [출처 아이콘 스택 · 보조텍스트 | (최신) 시간]
+ * 최근 갱신은 제목 위 뱃지가 아니라 시간 메타 옆에 붙인다.
  */
 export function HomeDigestFeedRow({
   title,
@@ -60,6 +62,7 @@ export function HomeDigestFeedRow({
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const { t } = useLocale();
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, variant),
     [theme, scaleFont, feedTypo, variant],
@@ -67,11 +70,13 @@ export function HomeDigestFeedRow({
   const resolvedTitleLines =
     titleLines === null ? undefined : titleLines != null ? titleLines : variant === 'signal' ? undefined : 2;
   const resolvedSummaryLines = summaryLines === null ? undefined : summaryLines;
+  const hasTime = Boolean(timeLabel?.trim() && timeLabel !== '—');
   const hasFooter =
     Boolean(footerLead) ||
     sourceEntries.length > 0 ||
     Boolean(trailText?.trim()) ||
-    Boolean(timeLabel?.trim() && timeLabel !== '—');
+    hasTime ||
+    isFresh;
   const trimmedSummary = summary?.trim() || '';
 
   const footer = hasFooter ? (
@@ -87,10 +92,21 @@ export function HomeDigestFeedRow({
           </Text>
         ) : null}
       </View>
-      {timeLabel && timeLabel !== '—' ? (
-        <Text style={[styles.timeText, isFresh && styles.timeTextFresh]} numberOfLines={1}>
-          {timeLabel}
-        </Text>
+      {hasTime || isFresh ? (
+        <View
+          style={styles.timeCluster}
+          accessibilityLabel={isFresh ? t('digestFreshBadgeA11y') : undefined}>
+          {isFresh ? (
+            <Text style={styles.freshMark} numberOfLines={1}>
+              {t('digestFreshBadge')}
+            </Text>
+          ) : null}
+          {hasTime ? (
+            <Text style={[styles.timeText, isFresh && styles.timeTextFresh]} numberOfLines={1}>
+              {timeLabel}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
     </View>
   ) : null;
@@ -174,8 +190,22 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
-    timeText: {
+    timeCluster: {
       flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      maxWidth: '46%',
+    },
+    freshMark: {
+      flexShrink: 0,
+      fontSize: metaSize,
+      lineHeight: sf(14),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+    },
+    timeText: {
+      flexShrink: 1,
       fontSize: metaSize,
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
@@ -183,7 +213,6 @@ function makeStyles(
     },
     timeTextFresh: {
       color: theme.green,
-      fontWeight: ft.emphasisWeight,
     },
     summary: {
       fontSize: ft.ff(FEED_SUMMARY_PX),

@@ -9,12 +9,10 @@ export const JOB_PRESETS = {
     labelKey: 'jobPresetNewsRefresh',
     descriptionKey: 'jobPresetNewsRefreshDesc',
     jobKeys: [
-      'market_news_global',
-      'market_news_crypto',
       'market_news_financial_juice',
+      'market_news_crypto',
       'market_news_mk_rss',
       'market_news_it_rss',
-      'market_news_globenewswire_earnings',
     ],
   },
   disclosures_refresh: {

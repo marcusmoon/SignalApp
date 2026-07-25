@@ -20,7 +20,7 @@
 
 ## Server
 
-- **배포 직후**: Flyway `V19` 적용·`market_news_it_rss` 수동/자동 실행·`GET /v1/news?category=it` 응답 확인.
+- **배포 직후**: Flyway `V22` 적용 — `market_news_global`·`market_news_globenewswire_earnings` 비활성, FJ가 글로벌 메인인지 Admin에서 확인. `calendar_earnings`로 실적 일정 수집.
 - Postgres 운영 고도화: public API direct SQL 범위를 확대하고 heavy read 경로의 인덱스/쿼리 플랜을 정기 점검한다.
 - DB 접근 계층 정리: Kysely repository를 기능별로 확대하고 legacy raw SQL 집중도를 낮춘다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.

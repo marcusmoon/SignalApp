@@ -64,6 +64,7 @@ import {
   selectHomeHeroBriefing,
 } from '@/domain/home/selectHomeHeroBriefing';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
+import { resolveWatchlistHomeAsOf } from '@/domain/quotes/watchlistHomeAsOf';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
@@ -354,24 +355,29 @@ export function HomeFocusContent({
     return label && label !== '—' ? label : null;
   }, [etfInsight, locale]);
 
-  /** 관심 종목 시세는 실시간이 아님 — 표시 중인 행 중 가장 최근 quoteTime/fetchedAt */
+  /**
+   * 관심 종목 as-of: 주식은 주말·마감 후 종가 라벨, 코인만이면 상대시간.
+   * 주식이 있으면 코인 시각으로 섹션 메타를 덮지 않는다.
+   */
   const watchlistSectionMeta = useMemo(() => {
-    let bestMs = Number.NEGATIVE_INFINITY;
-    let bestIso: string | null = null;
-    for (const row of quotes.slice(0, watchlistDisplayCount)) {
-      const quote = row.quote;
-      if (!quote) continue;
-      const iso = String(quote.quoteTime || quote.fetchedAt || '').trim();
-      if (!iso) continue;
-      const ms = new Date(iso).getTime();
-      if (!Number.isFinite(ms) || ms <= bestMs) continue;
-      bestMs = ms;
-      bestIso = iso;
+    const resolved = resolveWatchlistHomeAsOf(quotes.slice(0, watchlistDisplayCount));
+    if (!resolved) return null;
+    if (resolved.mode === 'relative') {
+      const label = formatFeedItemTimeLabel(resolved.iso, locale);
+      return label && label !== '—' ? label : null;
     }
-    if (!bestIso) return null;
-    const label = formatFeedItemTimeLabel(bestIso, locale);
-    return label && label !== '—' ? label : null;
-  }, [locale, quotes, watchlistDisplayCount]);
+    if (resolved.mode === 'today_close') return t('quotesAsOfTodayClose');
+    const asOfDate = new Date(`${resolved.ymd}T12:00:00`);
+    const now = new Date();
+    const ageDays = Math.floor(
+      Math.abs(now.getTime() - asOfDate.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    const when =
+      ageDays <= 6
+        ? formatLocalYmdLabel(resolved.ymd, locale, { weekday: 'short' })
+        : formatLocalYmdLabel(resolved.ymd, locale, { month: 'short', day: 'numeric' });
+    return t('quotesAsOfNamedClose', { when });
+  }, [locale, quotes, t, watchlistDisplayCount]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],

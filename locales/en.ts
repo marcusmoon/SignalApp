@@ -971,6 +971,8 @@ export const en = {
   quotesPendingHint: 'Pull to refresh in a moment',
   quotesEmptyWatch: 'No watchlist tickers. Tap + to add a ticker.',
   quotesEmptyGeneric: 'No quotes to show.',
+  quotesAsOfTodayClose: "Today's close",
+  quotesAsOfNamedClose: '{{when}} close',
 
   briefingHubEmptyTitle: 'No market briefing yet.',
   briefingHubEmptyBody: 'It will appear here soon.',

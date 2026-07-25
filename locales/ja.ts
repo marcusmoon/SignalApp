@@ -968,6 +968,8 @@ export const ja = {
   quotesPendingHint: 'しばらくしてから更新してください',
   quotesEmptyWatch: 'ウォッチがありません。+ ボタンでティッカーを追加してください。',
   quotesEmptyGeneric: '表示する相場がありません。',
+  quotesAsOfTodayClose: '本日終値',
+  quotesAsOfNamedClose: '{{when}}終値',
 
   briefingHubEmptyTitle: 'まだ市場ブリーフィングがありません。',
   briefingHubEmptyBody: '時間になればすぐ表示されます。',

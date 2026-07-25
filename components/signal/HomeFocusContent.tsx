@@ -400,14 +400,13 @@ export function HomeFocusContent({
     [quotes, watchlistDisplayCount],
   );
 
-  /** compact 2 · wide(PC) 3 — 시총 상위, 워치리스트 중복은 다음 순위로 채움 */
+  /** compact 2 · wide(PC) 3 — 시총순 풀에서 워치리스트 중복을 건너뛰고 채움 */
   const homeAnchorCoinRows = useMemo(
     () =>
-      pickHomeAnchorCoinsFromList(
+      filterHomeAnchorCoinsNotInWatchlist(
         anchorCoins,
-        homeAnchorCoinCount(useTwoPane),
         homeWatchRows.map((row) => row.symbol),
-      ),
+      ).slice(0, homeAnchorCoinCount(useTwoPane)),
     [anchorCoins, homeWatchRows, useTwoPane],
   );
 

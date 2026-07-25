@@ -17,6 +17,8 @@ export const en = {
   homeSignalOpenFull: 'Open market',
   homeSignalOpenFullA11y: 'Open briefing in the Market tab',
   homeAiGeneratedA11y: 'AI-generated summary',
+  digestFreshBadge: 'New',
+  digestFreshBadgeA11y: 'Recently updated',
   commonComingSoon: 'Coming soon',
   commonAd: 'Ad',
   commonLoadingA11y: 'Loading',

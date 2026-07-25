@@ -9,6 +9,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { AiBadge } from '@/components/signal/AiBadge';
+import { FreshBadge } from '@/components/signal/FreshBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
@@ -25,6 +26,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsDigestItem } from '@/domain/news';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
+import { isDigestFresh } from '@/domain/digests/freshness';
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
@@ -96,11 +98,13 @@ const DigestCard = memo(function DigestCard({
   const showCountChip = !digest.aiGenerated && topicChips.length === 0 && digest.count > 0;
   const iconSize = pairLayout ? 16 : 18;
   const iconMax = pairLayout ? 3 : 4;
+  const isFresh = isDigestFresh(newsDigestCreatedIso(digest));
 
   return (
     <View style={styles.card}>
       <View style={styles.badgeRow}>
         {digest.aiGenerated ? <AiBadge /> : null}
+        {isFresh ? <FreshBadge /> : null}
         {topicChips.map((topic) => (
           <Text key={topic} style={styles.topicChip} numberOfLines={1}>
             {topic}

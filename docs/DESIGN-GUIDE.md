@@ -173,7 +173,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):
-      1. 리프(일정·섹터 흐름·공시·설정) → 이름만
+      1. 리프(일정·섹터·공시·설정) → 이름만
       2. 그룹 기본(보드 `all`) → **상위만** (`게시판`)
       3. 그 외 → **`상위·하위`** (중점 `·`, 공백 없음). 예: `시세·코인` · `뉴스·글로벌` · `게시판·세이브`
       4. 하위는 탭 정식명이 아니라 **홈 전용 짧은 표기** (`homeTile*` — 인기순→인기, Crypto→Coin, YouTube→영상/YT, 가상통화→コイン)

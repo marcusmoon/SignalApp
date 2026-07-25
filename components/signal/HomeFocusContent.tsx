@@ -80,6 +80,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { etfInsightDetailIso } from '@/domain/briefings/detailTime';
 import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility';
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
@@ -346,6 +347,31 @@ export function HomeFocusContent({
       displayPercent: cell.changePercent,
     }));
   }, [etfInsight, sectorFlowDisplayCount]);
+
+  const etfSectionMeta = useMemo(() => {
+    if (!etfInsight) return null;
+    const label = formatFeedItemTimeLabel(etfInsightDetailIso(etfInsight), locale);
+    return label && label !== '—' ? label : null;
+  }, [etfInsight, locale]);
+
+  /** 관심 종목 시세는 실시간이 아님 — 표시 중인 행 중 가장 최근 quoteTime/fetchedAt */
+  const watchlistSectionMeta = useMemo(() => {
+    let bestMs = Number.NEGATIVE_INFINITY;
+    let bestIso: string | null = null;
+    for (const row of quotes.slice(0, watchlistDisplayCount)) {
+      const quote = row.quote;
+      if (!quote) continue;
+      const iso = String(quote.quoteTime || quote.fetchedAt || '').trim();
+      if (!iso) continue;
+      const ms = new Date(iso).getTime();
+      if (!Number.isFinite(ms) || ms <= bestMs) continue;
+      bestMs = ms;
+      bestIso = iso;
+    }
+    if (!bestIso) return null;
+    const label = formatFeedItemTimeLabel(bestIso, locale);
+    return label && label !== '—' ? label : null;
+  }, [locale, quotes, watchlistDisplayCount]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -866,7 +892,7 @@ export function HomeFocusContent({
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeFocusWatchTitle')} />
+              <HomeSectionHeader title={t('homeFocusWatchTitle')} meta={watchlistSectionMeta} />
               <View style={styles.quoteGrid}>
                 {quotes.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
@@ -921,7 +947,11 @@ export function HomeFocusContent({
 
           {etfInsight && shouldShowEtfBriefingOnHome(etfInsight.insightDate, selectedYmd) ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeEtfInsightTitle')} badge={<AiBadge />} />
+              <HomeSectionHeader
+                title={t('homeEtfInsightTitle')}
+                badge={<AiBadge />}
+                meta={etfSectionMeta}
+              />
               {renderEtfSectionBody()}
             </View>
           ) : null}

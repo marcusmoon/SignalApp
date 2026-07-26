@@ -486,7 +486,7 @@ async function buildKrPoolSnapshot() {
       seriesBackfill: seriesBackfill.fetched || 0,
       exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Universe from korea_screener_universe with venue. Pool job self-backfills quotes + 1y bars; fills RSI/turnover and momentum (return3m/6m/12m, ma20–200, alignedMa, pctFrom52wHigh, volumeRatio). foreign/institution and fundamentals still null. Caps kospi30/kosdaq50. asOf=job UTC; stale if age>24h.',
+        'Single screener job: reads korea_screener_universe (venue), fetches Yahoo quotes+1y bars, fills RSI/turnover/momentum into screener_snapshots. No dependency on app quote/daily-bar jobs. Caps kospi30/kosdaq50. foreign/institution/fundamentals null without feeds. asOf=job UTC; stale if age>24h.',
     },
     policy: buildPoolPolicy('kr'),
     symbols: ranked,

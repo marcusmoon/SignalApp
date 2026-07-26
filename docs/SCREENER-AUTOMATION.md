@@ -165,8 +165,18 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 | deepLink | `/screener?market=&method=` |
 | 행 탭 | 종목 상세 |
 
+## 권장 주기
+
+| 레이어 | 주기 |
+|---|---|
+| `screener_pool_kr` | hourly (스킬 전 07시대 KST 권장) |
+| method dry-run·ingest | 장전 ~08:00 KST 1회 |
+
+앱 시세/일봉 Job 주기와 **맞출 필요 없음**.
+
 ## 운영 원칙
 
 - dry-run은 `draft`로 올려 앱 노출을 막고, 확인 후 `published`로 재ingest  
 - 풀에 없는 수치·종목 금지  
-- market당 풀 공유 (method별 유니버스 복제 금지)
+- market당 풀 공유 (method별 유니버스 복제 금지)  
+- 스크리너 Job은 하나 (`screener_pool_kr`). quotes/일봉 Job에 의존하지 않음

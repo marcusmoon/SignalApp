@@ -6,10 +6,17 @@
  * (0 YoY means flat growth; inventing 0 would falsely pass/fail filters.)
  *
  * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload.
+ *
+ * Self-backfill: when DB quotes/price_series are sparse, this job fetches Yahoo
+ * for missing universe symbols so the pool does not wait on other job cycles.
  */
+import { upsertCollectionRows } from '../db.mjs';
 import { queryKysely } from '../db/kysely/client.mjs';
+import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
+import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import {
   koreaScreenerVenueMap,
+  preferredYahooFromVenues,
   venuesFromMarketListPayload,
   yahooSymbolForVenue,
 } from './koreaScreenerUniverse.mjs';
@@ -226,6 +233,84 @@ function emptyPoolSnapshot(market, note) {
   };
 }
 
+function quoteNeedsBackfill(quote) {
+  if (!quote) return true;
+  const price = numOrNull(quote.currentPrice);
+  const volume = numOrNull(quote.volume ?? quote.dayVolume);
+  const turnover = numOrNull(quote.turnoverKrw);
+  return price == null || (volume == null && turnover == null);
+}
+
+async function backfillMissingQuotes(universeSymbols, seedVenues, quotes) {
+  const missing = universeSymbols.filter((symbol) => quoteNeedsBackfill(quotes.get(symbol)));
+  if (!missing.length) return { fetched: 0 };
+  const venueBySymbol = Object.fromEntries(
+    missing.map((symbol) => [symbol, seedVenues.get(symbol) || 'kospi']),
+  );
+  const rows = await fetchYahooKrxMarketQuotes({
+    symbols: missing,
+    segment: 'korea',
+    venueBySymbol,
+    preferredYahooBySymbol: preferredYahooFromVenues(
+      new Map(Object.entries(venueBySymbol)),
+    ),
+    concurrency: 4,
+  });
+  for (const row of rows) {
+    const code = normalizeKrCode(row.krxSymbol || row.symbol);
+    if (!code) continue;
+    quotes.set(code, row);
+  }
+  if (rows.length) {
+    try {
+      await upsertCollectionRows('marketQuotes', rows);
+    } catch (error) {
+      console.warn('[screener_pool] quote backfill persist failed', error?.message || error);
+    }
+  }
+  return { fetched: rows.length, requested: missing.length };
+}
+
+async function backfillMissingRsiAndVolume(universeSymbols, seedVenues, rsiBySymbol, volumeBySymbol) {
+  const missing = universeSymbols.filter((symbol) => !rsiBySymbol.has(symbol));
+  if (!missing.length) return { fetched: 0 };
+  const instruments = missing.map((symbol) => {
+    const venue = seedVenues.get(symbol) || 'kospi';
+    const yahooSymbol = yahooSymbolForVenue(symbol, venue);
+    return {
+      symbol,
+      displaySymbol: symbol,
+      name: symbol,
+      currency: 'KRW',
+      yahooSymbol,
+    };
+  });
+  const seriesRows = await fetchYahooDailyPriceSeries({
+    instruments,
+    range: '6mo',
+    requestDelayMs: 60,
+  });
+  for (const row of seriesRows) {
+    const code = normalizeKrCode(row.krxSymbol || row.symbol);
+    if (!code) continue;
+    const closes = (Array.isArray(row.bars) ? row.bars : [])
+      .map((bar) => numOrNull(bar?.close))
+      .filter((n) => n != null);
+    const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
+    if (rsi != null) rsiBySymbol.set(code, rsi);
+    const lastVol = lastVolumeFromPriceSeriesPayload({ bars: row.bars });
+    if (lastVol != null) volumeBySymbol.set(code, lastVol);
+  }
+  if (seriesRows.length) {
+    try {
+      await upsertCollectionRows('priceSeries', seriesRows);
+    } catch (error) {
+      console.warn('[screener_pool] price_series backfill persist failed', error?.message || error);
+    }
+  }
+  return { fetched: seriesRows.length, requested: missing.length };
+}
+
 async function buildKrPoolSnapshot() {
   const {
     symbols: universeSymbols,
@@ -233,16 +318,23 @@ async function buildKrPoolSnapshot() {
     venues: seedVenues,
   } = await loadKoreaUniverseSymbols();
   const quotes = await loadKoreaQuotes();
+  const quoteBackfill = await backfillMissingQuotes(universeSymbols, seedVenues, quotes);
+
   // Preserve list order for ranking when marketCap is missing.
   const listRank = new Map(universeSymbols.map((s, i) => [s, i + 1]));
-  const symbolSet = new Set([...universeSymbols, ...quotes.keys()]);
-  const symbols = [...symbolSet];
+  // Pool = curated universe only (do not inflate with unrelated korea quotes).
+  const symbols = universeSymbols.length ? [...universeSymbols] : [...quotes.keys()];
   const { rsiBySymbol, volumeBySymbol } = await loadRsiAndVolumeBySymbol(symbols);
+  const seriesBackfill = await backfillMissingRsiAndVolume(
+    symbols,
+    seedVenues,
+    rsiBySymbol,
+    volumeBySymbol,
+  );
 
   const rows = [];
   let excludedCount = 0;
   for (const symbol of symbols) {
-    // Prefer symbols in the curated universe; still allow quote-only extras ranked last.
     const quote = quotes.get(symbol) || null;
     const name = cleanText(quote?.name) || symbol;
     const exclusion = shouldExcludeFromKrUniverse({ symbol, name, quote });
@@ -362,9 +454,11 @@ async function buildKrPoolSnapshot() {
       asOf,
       source: listSource,
       excludedCount,
+      quoteBackfill: quoteBackfill.fetched || 0,
+      seriesBackfill: seriesBackfill.fetched || 0,
       exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Universe from korea_screener_universe with explicit venue (kospi/kosdaq → Yahoo .KS/.KQ). Caps kospiTop=30 kosdaqTop=50. turnoverKrw from quote volume or price_series×price. Fundamentals null without a fundamentals feed. Pool asOf is job run time (UTC); skill treats age >24h as stale.',
+        'Universe from korea_screener_universe with venue. Pool job self-backfills missing Yahoo quotes + daily bars for RSI/turnover (does not wait on other jobs). Caps kospi30/kosdaq50. Momentum slots (return/ma/…) and fundamentals still null until implemented. asOf=job UTC; stale if age>24h.',
     },
     policy: buildPoolPolicy('kr'),
     symbols: ranked,

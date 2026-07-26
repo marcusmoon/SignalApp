@@ -140,11 +140,11 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 | 레이어 | 상태 |
 |---|---|
 | Flyway | `V2`–`V4` (`korea_screener_universe` + **venue** map) |
-| Job | `screener_pool_kr` (hourly; 08:00 KST 전 갱신 권장) |
-| 유니버스 | `korea_screener_universe` (~80, `venues`로 kospi/kosdaq 명시 → Yahoo `.KS`/`.KQ`). **정식 KRX 시총 피드 후속** |
-| 시세·대금 | Yahoo quotes에 `volume`/`turnoverKrw` 적재. 없으면 일봉 volume×price 폴백 |
-| 재무 | quote에 있을 때만. **현재 피드 없음 → per/pbr/YoY/배당 null → fujimoto 통과 0개 가능** |
-| RS/Trend 지표 | 슬롯만 (값 후속) |
+| Job | `screener_pool_kr` (hourly; 08:00 KST 전 갱신 권장). **누락 시세·일봉은 풀 잡이 Yahoo로 self-backfill** |
+| 유니버스 | `korea_screener_universe` (~80, `venues` → `.KS`/`.KQ`). **정식 KRX 시총 피드 후속** |
+| 시세·대금·RSI | quotes/일봉 Job + 풀 잡 백필. `turnoverKrw`·RSI 채움 |
+| 재무 | 피드 없음 → null (fujimoto 통과 0 가능) |
+| 모멘텀 슬롯 | `return*`/`ma*`/`alignedMa` 등 **아직 미구현** (슬롯만 null) |
 
 ## 앱 UI
 

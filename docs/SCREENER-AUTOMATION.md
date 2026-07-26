@@ -6,21 +6,32 @@
 - **pool**: market당 공용 유니버스·지표 스냅샷. **모든 method가 동일 풀을 읽는다.**
 - **method**: 큐레이션 방식(모델). 예: `fujimoto`. 이후 method를 추가해도 풀 API는 그대로다.
 
-서버 Job이 market별 풀 스냅샷을 적재하고, Codex/Claude(스킬)가 method별 후보 JSON을 만든 뒤 ingest한다. 앱은 GET으로만 읽는다.
-
 에이전트 브리프: [`docs/prompts/screener.agent-brief.md`](./prompts/screener.agent-brief.md)  
 예약 dry-run: [`docs/prompts/screener.codex-scheduled-prompt.md`](./prompts/screener.codex-scheduled-prompt.md)  
 예제: [`docs/examples/screener.ingest.example.json`](./examples/screener.ingest.example.json)
 
-## 역할 분담
+## 심플 구조 (Job 하나)
 
-| 담당 | 역할 |
-|---|---|
-| 서버 Job | market별 풀 선정·가격·거래대금·RSI·(가능 시) 재무 스냅샷 |
-| 스킬/에이전트 | `GET …/pool/snapshot`만 읽어 method 필터·정렬·note JSON → dry-run 후 ingest |
-| 앱 | `GET /v1/screener?market=&method=` (published만). 외부 provider 호출 금지 |
+스크리너 데이터 경로는 **`screener_pool_kr` 하나**다. 앱 시세/일봉 Job과 **스케줄 순서를 맞출 필요 없다.**
 
-모델이 PER·PBR·RSI·실적을 **추정·검색으로 채우면 안 된다.**
+```text
+screener_pool_kr
+  → universe 읽기 → Yahoo 시세·1y 일봉 직접 조회
+  → RSI·turnover·모멘텀 계산 → screener_snapshots 저장
+
+스킬 → GET pool/snapshot → method 필터 → POST runs/ingest → screener_runs
+앱  → GET /v1/screener?market=&method=  (published만)
+```
+
+| 담당 | 역할 | 테이블 |
+|---|---|---|
+| **`screener_pool_kr`** | 유니버스·Yahoo 조회·지표·풀 스냅샷 (스크리너 전용 Job) | `screener_snapshots` |
+| 스킬/에이전트 | pool GET → method 큐레이션 → runs ingest | `screener_runs` |
+| 앱 시세/일봉 Job | **앱** 시세·차트만 (`korea_watchlist` 등). 스크리너와 무관 | `market_quotes`, `price_series` |
+| 앱 UI | published 큐레이션만 표시 | — |
+
+모델이 PER·PBR·RSI·실적을 **추정·검색으로 채우면 안 된다.**  
+(풀 Job이 이미 넣은 숫자만 사용. 재무·외인/기관 피드가 없으면 null.)
 
 ## 시장·유니버스
 
@@ -139,12 +150,12 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 
 | 레이어 | 상태 |
 |---|---|
-| Flyway | `V2`–`V4` (`korea_screener_universe` + **venue** map) |
-| Job | `screener_pool_kr` (hourly; 08:00 KST 전 갱신 권장). **누락 시세·일봉은 풀 잡이 Yahoo로 self-backfill** |
-| 유니버스 | `korea_screener_universe` (~80, `venues` → `.KS`/`.KQ`). **정식 KRX 시총 피드 후속** |
-| 시세·대금·RSI | quotes/일봉 Job + 풀 잡 백필. `turnoverKrw`·RSI 채움 |
-| 재무 | 피드 없음 → null (fujimoto 통과 0 가능) |
-| 모멘텀 슬롯 | 일봉으로 계산: `return3m/6m/12m`(비율), `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio`. 외인/기관·재무는 여전히 null |
+| Flyway | `V2`–`V5` (테이블·universe+venue·**one-job 디커플**) |
+| 스크리너 Job | **`screener_pool_kr`만** (Yahoo self-fetch + 지표 + `screener_snapshots`) |
+| 앱 Job | `market_quotes_korea` / `market_price_series_daily` — watchlist·차트용, 스크리너 비의존 |
+| 유니버스 | `korea_screener_universe` (~80, `venues`). 정식 KRX 시총 피드 후속 |
+| 모멘텀 | 풀 Job이 일봉으로 계산 (`return*`/`ma*`/`alignedMa`/`pctFrom52wHigh`/`volumeRatio`) |
+| 재무·외인/기관 | 피드 없음 → null |
 
 ## 앱 UI
 

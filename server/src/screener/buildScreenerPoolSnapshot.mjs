@@ -7,8 +7,9 @@
  *
  * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload.
  *
- * Self-backfill: when DB quotes/price_series are sparse, this job fetches Yahoo
- * for missing universe symbols so the pool does not wait on other job cycles.
+ * Single screener job path: fetch Yahoo quotes + 1y bars for the universe,
+ * compute RSI/turnover/momentum, write screener_snapshots. App quote/daily-bar
+ * jobs are unrelated (no schedule coupling).
  */
 import { upsertCollectionRows } from '../db.mjs';
 import { queryKysely } from '../db/kysely/client.mjs';

@@ -43,30 +43,51 @@ function venueFromYahooHint(yahooSymbol, quoteMarket) {
   return 'kospi';
 }
 
-function closesFromPriceSeriesPayload(payload) {
-  const bars = Array.isArray(payload?.bars)
+function barsFromPriceSeriesPayload(payload) {
+  return Array.isArray(payload?.bars)
     ? payload.bars
     : Array.isArray(payload?.candles)
       ? payload.candles
       : Array.isArray(payload?.daily)
         ? payload.daily
         : [];
+}
+
+function closesFromPriceSeriesPayload(payload) {
   const closes = [];
-  for (const bar of bars) {
+  for (const bar of barsFromPriceSeriesPayload(payload)) {
     const c = numOrNull(bar?.c ?? bar?.close ?? bar?.Close);
     if (c != null) closes.push(c);
   }
   return closes;
 }
 
-async function loadKoreaWatchlistSymbols() {
+/** Last bar volume (shares) — never invent 0. */
+function lastVolumeFromPriceSeriesPayload(payload) {
+  const bars = barsFromPriceSeriesPayload(payload);
+  for (let i = bars.length - 1; i >= 0; i--) {
+    const v = numOrNull(bars[i]?.v ?? bars[i]?.volume ?? bars[i]?.Volume);
+    if (v != null && v > 0) return v;
+  }
+  return null;
+}
+
+async function loadMarketListSymbols(listKey) {
   const result = await queryKysely(
-    `SELECT payload FROM market_lists WHERE list_key = 'korea_watchlist' LIMIT 1`,
-    [],
+    `SELECT payload FROM market_lists WHERE list_key = $1 LIMIT 1`,
+    [listKey],
   );
   const payload = result.rows[0]?.payload;
   const symbols = Array.isArray(payload?.symbols) ? payload.symbols : [];
   return symbols.map(normalizeKrCode).filter(Boolean);
+}
+
+/** Prefer screener universe (~80); fall back to korea_watchlist. */
+async function loadKoreaUniverseSymbols() {
+  const screener = await loadMarketListSymbols('korea_screener_universe');
+  if (screener.length) return { symbols: screener, source: 'korea_screener_universe' };
+  const watchlist = await loadMarketListSymbols('korea_watchlist');
+  return { symbols: watchlist, source: 'korea_watchlist' };
 }
 
 async function loadKoreaQuotes() {
@@ -91,8 +112,10 @@ async function loadKoreaQuotes() {
   return bySymbol;
 }
 
-async function loadRsiBySymbol(symbols) {
-  if (!symbols.length) return new Map();
+async function loadRsiAndVolumeBySymbol(symbols) {
+  const rsiBySymbol = new Map();
+  const volumeBySymbol = new Map();
+  if (!symbols.length) return { rsiBySymbol, volumeBySymbol };
   const upper = symbols.map((s) => s.toUpperCase());
   const result = await queryKysely(
     `
@@ -102,24 +125,29 @@ async function loadRsiBySymbol(symbols) {
          OR upper(COALESCE(symbol, '')) = ANY($1::text[])
          OR regexp_replace(upper(COALESCE(yahoo_symbol, '')), '\\.(KS|KQ)$', '') = ANY($1::text[])
          OR upper(COALESCE(payload->>'krxSymbol', '')) = ANY($1::text[])
-      LIMIT 200
+      LIMIT 400
     `,
     [upper],
   );
-  const map = new Map();
   for (const row of result.rows) {
     const code =
       normalizeKrCode(row.payload?.krxSymbol) ||
       normalizeKrCode(row.display_symbol) ||
       normalizeKrCode(row.yahoo_symbol) ||
       normalizeKrCode(row.symbol);
-    if (!code || map.has(code)) continue;
-    const closes = closesFromPriceSeriesPayload(row.payload);
-    const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
-    // Failure → null (never 0).
-    if (rsi != null) map.set(code, rsi);
+    if (!code) continue;
+    if (!rsiBySymbol.has(code)) {
+      const closes = closesFromPriceSeriesPayload(row.payload);
+      const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
+      // Failure → null (never 0).
+      if (rsi != null) rsiBySymbol.set(code, rsi);
+    }
+    if (!volumeBySymbol.has(code)) {
+      const vol = lastVolumeFromPriceSeriesPayload(row.payload);
+      if (vol != null) volumeBySymbol.set(code, vol);
+    }
   }
-  return map;
+  return { rsiBySymbol, volumeBySymbol };
 }
 
 function metricFromQuote(quote, key) {
@@ -182,15 +210,18 @@ function emptyPoolSnapshot(market, note) {
 }
 
 async function buildKrPoolSnapshot() {
-  const watchlist = await loadKoreaWatchlistSymbols();
+  const { symbols: universeSymbols, source: listSource } = await loadKoreaUniverseSymbols();
   const quotes = await loadKoreaQuotes();
-  const symbolSet = new Set([...watchlist, ...quotes.keys()]);
+  // Preserve list order for ranking when marketCap is missing.
+  const listRank = new Map(universeSymbols.map((s, i) => [s, i + 1]));
+  const symbolSet = new Set([...universeSymbols, ...quotes.keys()]);
   const symbols = [...symbolSet];
-  const rsiBySymbol = await loadRsiBySymbol(symbols);
+  const { rsiBySymbol, volumeBySymbol } = await loadRsiAndVolumeBySymbol(symbols);
 
   const rows = [];
   let excludedCount = 0;
   for (const symbol of symbols) {
+    // Prefer symbols in the curated universe; still allow quote-only extras ranked last.
     const quote = quotes.get(symbol) || null;
     const name = cleanText(quote?.name) || symbol;
     const exclusion = shouldExcludeFromKrUniverse({ symbol, name, quote });
@@ -218,8 +249,9 @@ async function buildKrPoolSnapshot() {
       metricFromQuote(quote, 'turnoverKrw');
     if (turnoverKrw == null) {
       const price = numOrNull(quote?.currentPrice);
-      const vol = numOrNull(quote?.volume ?? quote?.dayVolume);
-      if (price != null && vol != null) turnoverKrw = Math.round(price * vol);
+      const vol =
+        numOrNull(quote?.volume ?? quote?.dayVolume) ?? volumeBySymbol.get(symbol) ?? null;
+      if (price != null && vol != null && vol > 0) turnoverKrw = Math.round(price * vol);
     }
 
     rows.push({
@@ -228,6 +260,7 @@ async function buildKrPoolSnapshot() {
       name,
       market: venue,
       marketCap,
+      listRank: listRank.get(symbol) ?? 10_000,
       currentPrice: numOrNull(quote?.currentPrice),
       changePercent: numOrNull(quote?.changePercent),
       per: metricFromQuote(quote, 'per') ?? metricFromQuote(quote, 'peTTM'),
@@ -243,26 +276,36 @@ async function buildKrPoolSnapshot() {
     });
   }
 
-  const kospi = rows
-    .filter((r) => r.market === 'kospi')
-    .sort((a, b) => (b.marketCap ?? -1) - (a.marketCap ?? -1))
-    .slice(0, 30);
-  const kosdaq = rows
-    .filter((r) => r.market === 'kosdaq')
-    .sort((a, b) => (b.marketCap ?? -1) - (a.marketCap ?? -1))
-    .slice(0, 50);
+  function rankRows(list) {
+    return [...list].sort((a, b) => {
+      const capA = a.marketCap;
+      const capB = b.marketCap;
+      if (capA != null && capB != null && capA !== capB) return capB - capA;
+      if (capA != null && capB == null) return -1;
+      if (capA == null && capB != null) return 1;
+      return a.listRank - b.listRank;
+    });
+  }
+
+  const kospi = rankRows(rows.filter((r) => r.market === 'kospi')).slice(0, 30);
+  const kosdaq = rankRows(rows.filter((r) => r.market === 'kosdaq')).slice(0, 50);
 
   let universeRows = [...kospi, ...kosdaq];
-  if (universeRows.length === 0) {
-    universeRows = [...rows]
-      .sort((a, b) => (b.marketCap ?? -1) - (a.marketCap ?? -1))
-      .slice(0, 80);
+  if (universeRows.length < 40) {
+    // Venue tags missing: take list-order / mcap top 80 from full pool.
+    const picked = new Set(universeRows.map((r) => r.symbol));
+    for (const row of rankRows(rows)) {
+      if (picked.has(row.symbol)) continue;
+      universeRows.push(row);
+      picked.add(row.symbol);
+      if (universeRows.length >= 80) break;
+    }
   }
 
   const asOf = new Date().toISOString();
   const generatedDate = asOf.slice(0, 10);
   const ranked = universeRows.map((row, index) => {
-    const { marketCap: _mc, ...rest } = row;
+    const { marketCap: _mc, listRank: _lr, ...rest } = row;
     return {
       id: `screener-pool:kr:${generatedDate}:${row.symbol}`,
       ...rest,
@@ -286,11 +329,11 @@ async function buildKrPoolSnapshot() {
       kosdaqTop: 50,
       size: ranked.length,
       asOf,
-      source: 'market_quotes_korea_watchlist',
+      source: listSource,
       excludedCount,
       exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Interim universe from korea quotes/watchlist ranked by marketCap when available. Expand when full KRX mcap feed exists. Pool asOf is job run time (UTC); skill should treat age >24h as stale.',
+        'Universe from korea_screener_universe (approx large-cap ordinary shares) until live KRX mcap feed exists. turnoverKrw from quote volume or price_series last bar × price. Fundamentals still null without a fundamentals feed. Pool asOf is job run time (UTC); skill should treat age >24h as stale.',
     },
     policy: buildPoolPolicy('kr'),
     symbols: ranked,

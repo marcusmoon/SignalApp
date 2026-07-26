@@ -139,10 +139,11 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 
 | 레이어 | 상태 |
 |---|---|
-| Flyway | `V2__screener.sql` — snapshots / runs(+status, pool_snapshot_id unique) |
+| Flyway | `V2__screener.sql` + `V3__korea_screener_universe.sql` |
 | Job | `screener_pool_kr` (hourly; 08:00 KST 전 갱신 권장) |
-| 유니버스 | watchlist·시세 임시 + 제외 휴리스틱. 정식 시총 피드 후속 |
-| 재무 | quote에 있을 때만. 없으면 null → 통과 0개 가능 |
+| 유니버스 | `korea_screener_universe` (~80 근사 대형 보통주). **정식 KRX 시총 피드 후속** |
+| 시세·대금 | Yahoo quotes에 `volume`/`turnoverKrw` 적재. 없으면 일봉 volume×price 폴백 |
+| 재무 | quote에 있을 때만. **현재 피드 없음 → per/pbr/YoY/배당 null → fujimoto 통과 0개 가능** |
 | RS/Trend 지표 | 슬롯만 (값 후속) |
 
 ## 앱 UI

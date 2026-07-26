@@ -49,8 +49,14 @@ export async function resolveYahooKrxQuote(krxSymbol, preferredYahooSymbol = nul
 function normalizeMarketQuote(krxSymbol, yahooSymbol, quote, segment) {
   const price = finiteNumber(quote?.price);
   const previousClose = finiteNumber(quote?.previousClose);
+  const volume = finiteNumber(quote?.volume);
   let change = null;
   if (price != null && previousClose != null) change = price - previousClose;
+  // Daily turnover (KRW) = price × shares traded. Keep null if either side missing.
+  let turnoverKrw = null;
+  if (price != null && volume != null && volume > 0) {
+    turnoverKrw = Math.round(price * volume);
+  }
   return {
     id: `market-quote-${segment}-${krxSymbol}`,
     provider: 'yahoo',
@@ -67,7 +73,10 @@ function normalizeMarketQuote(krxSymbol, yahooSymbol, quote, segment) {
     low: null,
     open: null,
     previousClose,
-    marketCapitalization: null,
+    volume,
+    dayVolume: volume,
+    turnoverKrw,
+    marketCapitalization: finiteNumber(quote?.marketCap),
     quoteTime: new Date().toISOString(),
     fetchedAt: new Date().toISOString(),
     yahooSymbol,
@@ -77,6 +86,7 @@ function normalizeMarketQuote(krxSymbol, yahooSymbol, quote, segment) {
       krxSymbol,
       yahooSymbol,
       currency: quote?.currency || 'KRW',
+      volume,
     },
   };
 }

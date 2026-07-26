@@ -14,7 +14,7 @@ function finiteNumber(value) {
 
 /**
  * Fetches a real-time quote for a single Yahoo Finance symbol.
- * Returns { price, changePercent, previousClose, currency, name } or null on failure.
+ * Returns { price, changePercent, previousClose, currency, name, volume, marketCap } or null.
  */
 export async function fetchYahooQuote(yahooSymbol) {
   const symbol = String(yahooSymbol || '').trim();
@@ -30,6 +30,7 @@ export async function fetchYahooQuote(yahooSymbol) {
   if (!result) return null;
 
   const meta = result.meta || {};
+  const quoteInd = result.indicators?.quote?.[0] || {};
 
   // Current price: regularMarketPrice is available intraday
   const price = finiteNumber(meta.regularMarketPrice);
@@ -41,7 +42,7 @@ export async function fetchYahooQuote(yahooSymbol) {
   // Solution: walk backwards from second-to-last position in the RAW array to find
   // the most recent non-null close — this correctly returns yesterday's close regardless
   // of whether today's bar is null (market open) or settled (market closed).
-  const allCloses = result.indicators?.quote?.[0]?.close ?? [];
+  const allCloses = quoteInd.close ?? [];
   let previousClose = null;
   for (let i = allCloses.length - 2; i >= 0; i--) {
     if (allCloses[i] != null) {
@@ -58,6 +59,19 @@ export async function fetchYahooQuote(yahooSymbol) {
     changePercent = (price - previousClose) / previousClose * 100;
   }
 
+  // Volume: prefer meta.regularMarketVolume; else last non-null daily bar volume.
+  let volume = finiteNumber(meta.regularMarketVolume);
+  if (volume == null) {
+    const allVolumes = Array.isArray(quoteInd.volume) ? quoteInd.volume : [];
+    for (let i = allVolumes.length - 1; i >= 0; i--) {
+      const v = finiteNumber(allVolumes[i]);
+      if (v != null && v > 0) {
+        volume = v;
+        break;
+      }
+    }
+  }
+
   const name = String(meta.shortName || meta.longName || '').trim() || null;
 
   return {
@@ -66,6 +80,8 @@ export async function fetchYahooQuote(yahooSymbol) {
     previousClose,
     currency: String(meta.currency || '').trim() || null,
     name,
+    volume,
+    marketCap: finiteNumber(meta.marketCap),
   };
 }
 

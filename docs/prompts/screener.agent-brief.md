@@ -41,6 +41,9 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 서버 Job `screener_pool_kr`가 KR 풀을 채운다. 에이전트는 **읽기 + method 큐레이션 JSON**이 본업이다.  
 같은 market의 다른 method도 **동일 풀**을 읽는다.
 
+유니버스는 `korea_screener_universe`(~80). `turnoverKrw`는 Yahoo volume(또는 일봉×가격)으로 채워질 수 있다.  
+**재무(per/pbr/YoY/배당) 피드가 없으면 null → fujimoto 통과 0개 → `items:[]` draft가 정상.**
+
 ---
 
 ## 서버·인증

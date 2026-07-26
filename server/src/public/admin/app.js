@@ -1129,44 +1129,63 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       document.addEventListener('click', async (event) => {
-        const target = event.target;
+        const rawTarget = event.target;
+        const target = rawTarget instanceof Element ? rawTarget : rawTarget?.parentElement;
+        const byId = (id) => {
+          if (!target) return null;
+          if (typeof target.closest === 'function') {
+            const safeId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(id) : String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+            return target.closest(`#${safeId}`);
+          }
+          return target.id === id ? target : null;
+        };
         try {
-          if (target?.dataset?.newsEdit) {
-            openNewsEditDialog(target.dataset.newsEdit);
+          const newsEditEl = target?.closest?.('[data-news-edit]');
+          if (newsEditEl?.dataset?.newsEdit) {
+            openNewsEditDialog(newsEditEl.dataset.newsEdit);
             return;
           }
-          if (target?.dataset?.newsEditLocale) {
-            state.newsEditLocale = target.dataset.newsEditLocale;
+          const newsEditLocaleEl = target?.closest?.('[data-news-edit-locale]');
+          if (newsEditLocaleEl?.dataset?.newsEditLocale) {
+            state.newsEditLocale = newsEditLocaleEl.dataset.newsEditLocale;
             renderNewsEditDialog();
             return;
           }
-          if (target?.id === 'closeNewsEditDialog' || target?.id === 'cancelNewsEditDialog') {
+          if (byId('closeNewsEditDialog') || byId('cancelNewsEditDialog')) {
             closeNewsEditDialog();
             return;
           }
-          if (target?.id === 'newsEditDialog') {
+          if (byId('newsEditDialog') && target?.id === 'newsEditDialog') {
             closeNewsEditDialog();
             return;
           }
-          if (target?.dataset?.errorDetail) {
-            openErrorDetailDialog(target.dataset.errorDetail);
+          const errorDetailEl = target?.closest?.('[data-error-detail]');
+          if (errorDetailEl?.dataset?.errorDetail) {
+            openErrorDetailDialog(errorDetailEl.dataset.errorDetail);
             return;
           }
-          if (target?.id === 'closeErrorDetailDialog' || target?.id === 'cancelErrorDetailDialog') {
+          if (byId('closeErrorDetailDialog') || byId('cancelErrorDetailDialog')) {
             closeErrorDetailDialog();
             return;
           }
-          if (target?.id === 'errorDetailDialog') {
+          if (byId('errorDetailDialog') && target?.id === 'errorDetailDialog') {
             closeErrorDetailDialog();
             return;
           }
-          if (target?.id === 'hamburgerBtn') {
+          if (byId('hamburgerBtn')) {
             document.body.classList.toggle('sideOpen');
-            if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
+            const open = document.body.classList.contains('sideOpen');
+            const overlay = $('sideOverlay');
+            if (overlay) {
+              overlay.classList.toggle('hidden', !open);
+              overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+            }
+            byId('hamburgerBtn')?.setAttribute('aria-expanded', open ? 'true' : 'false');
             return;
           }
-          if (target?.dataset?.mobileFilterToggle) {
-            const bar = target.closest('.filterBar');
+          const mobileFilterToggle = target?.closest?.('[data-mobile-filter-toggle]');
+          if (mobileFilterToggle) {
+            const bar = mobileFilterToggle.closest('.filterBar');
             bar?.classList.toggle('mobileFilterCollapsed');
             updateMobileFilterToggle(bar);
             return;
@@ -1179,39 +1198,41 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if (btn) btn.textContent = document.body.classList.contains('sideCollapsed') ? '▸' : '◂';
             return;
           }
-          if (target?.id === 'sideOverlay') {
+          if (byId('sideOverlay') && target?.id === 'sideOverlay') {
             document.body.classList.remove('sideOpen');
             $('sideOverlay')?.classList.add('hidden');
+            $('sideOverlay')?.setAttribute('aria-hidden', 'true');
+            $('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
             return;
           }
-          if (target?.id === 'jobEditOverlay') {
+          if (byId('jobEditOverlay') && target?.id === 'jobEditOverlay') {
             document.querySelectorAll('.jobCardEdit:not(.hidden)').forEach((el) => el.classList.add('hidden'));
             $('jobEditOverlay')?.classList.add('hidden');
             return;
           }
-          if (target?.id === 'headerNotifBtn') {
+          if (byId('headerNotifBtn')) {
             await refreshNotifications();
             openPanel('notifPanel');
             return;
           }
-          if (target?.id === 'closeNotifPanel') {
+          if (byId('closeNotifPanel')) {
             closePanel('notifPanel');
             return;
           }
-          if (target?.id === 'headerProfileBtn') {
+          if (byId('headerProfileBtn')) {
             openPanel('profileMenu');
             return;
           }
-          if (target?.id === 'closeProfileMenu') {
+          if (byId('closeProfileMenu')) {
             closePanel('profileMenu');
             return;
           }
-          if (target?.id === 'profileLogoutBtn') {
+          if (byId('profileLogoutBtn')) {
             closePanel('profileMenu');
             $('logoutBtn')?.click();
             return;
           }
-          if (target?.id === 'headerSearchBtn') {
+          if (byId('headerSearchBtn')) {
             if ($('globalSearchQuery')) $('globalSearchQuery').value = '';
             if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults('');
             openPanel('globalSearchPanel');
@@ -1332,12 +1353,27 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             return;
           }
-          if (target?.id === 'headerHelpBtn') {
+          if (byId('headerHelpBtn')) {
             showToast(
               textFor('ariaHelp'),
               textFor('helpToastContent'),
               { kind: 'info' },
             );
+            return;
+          }
+          const intervalPresetTarget = target?.closest?.('[data-job-interval-preset]');
+          if (intervalPresetTarget) {
+            const key = intervalPresetTarget.dataset.jobIntervalPreset;
+            const seconds = String(intervalPresetTarget.dataset.seconds || '').trim();
+            const input = document.querySelector(`[data-job-interval="${esc(key)}"]`);
+            if (input && seconds) {
+              input.value = seconds;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            const scope = intervalPresetTarget.closest(`[data-job-edit-scope="${key}"]`) || document;
+            scope.querySelectorAll(`[data-job-interval-preset="${esc(key)}"]`).forEach((btn) => {
+              btn.classList.toggle('active', btn === intervalPresetTarget);
+            });
             return;
           }
           const jobEditOpenTarget = target?.closest?.('[data-job-edit-open]');
@@ -1523,11 +1559,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           const viewTarget = target instanceof Element ? target.closest('[data-view]') : null;
           if (viewTarget?.dataset?.view) {
             await switchView(viewTarget.dataset.view);
-            // Close sidebar overlay after navigation (tablet)
+            // Close sidebar overlay after navigation (tablet/mobile)
             if (document.body.classList.contains('sideOpen')) {
               document.body.classList.remove('sideOpen');
               $('sideOverlay')?.classList.add('hidden');
+              $('sideOverlay')?.setAttribute('aria-hidden', 'true');
+              $('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
             }
+            return;
           }
           const appUsersTabTarget = target instanceof Element ? target.closest('[data-app-users-tab]') : null;
           if (appUsersTabTarget?.dataset?.appUsersTab) {
@@ -1603,12 +1642,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               document.querySelector(`[data-job-name="${esc(key)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 0);
           }
-          if (target.dataset.openJobLog) {
+          const openJobLogTarget = target?.closest?.('[data-open-job-log]');
+          if (openJobLogTarget?.dataset?.openJobLog) {
             await switchView('jobs');
             setJobTab('runs');
-            $('jobRunJob').value = target.dataset.openJobLog;
+            $('jobRunJob').value = openJobLogTarget.dataset.openJobLog;
             state.jobRunsPage = 1;
             await loadJobRuns();
+            return;
           }
           if (target.id === 'loginBtn') {
             try {
@@ -1627,9 +1668,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await api('/admin/api/logout', { method: 'POST' });
             await refreshSession();
           }
-          if (target.dataset.jobSave) {
-            const key = target.dataset.jobSave;
-            const scope = target.closest(`[data-job-edit-scope="${key}"]`) || document;
+          const jobSaveTarget = target?.closest?.('[data-job-save]');
+          if (jobSaveTarget?.dataset?.jobSave) {
+            const key = jobSaveTarget.dataset.jobSave;
+            const scope = jobSaveTarget.closest(`[data-job-edit-scope="${key}"]`) || document;
             const optionalNumber = (selector) => {
               const raw = String(scope.querySelector(selector)?.value || '').trim();
               return raw ? Number(raw) : null;
@@ -1724,10 +1766,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 ...(hasParamsPatch ? { params: paramsPatch || {} } : {}),
               }),
             });
+            $('jobEditOverlay')?.classList.add('hidden');
             await Promise.all([loadJobs(), loadDashboard()]);
+            return;
           }
-          if (target.dataset.jobForceUnlock) {
-            const jobKey = target.dataset.jobForceUnlock;
+          const jobForceUnlockTarget = target?.closest?.('[data-job-force-unlock]');
+          if (jobForceUnlockTarget?.dataset?.jobForceUnlock) {
+            const jobKey = jobForceUnlockTarget.dataset.jobForceUnlock;
             openConfirm({
               title: textFor('confirmJobForceUnlockTitle'),
               desc: textFor('confirmJobForceUnlockDesc'),
@@ -1768,11 +1813,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             return;
           }
-          if (target.dataset.jobRun) {
-            const jobKey = target.dataset.jobRun;
+          const jobRunTarget = target?.closest?.('[data-job-run]');
+          if (jobRunTarget?.dataset?.jobRun) {
+            const jobKey = jobRunTarget.dataset.jobRun;
             await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/run`, { method: 'POST' });
             showToast(textFor('toastRunAcceptedTitle'), textFor('toastRunAcceptedBody'), { kind: 'success' });
             await refreshAfterJobRun();
+            return;
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;
@@ -2765,6 +2812,25 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           else selected.delete(key);
           state.jobListSelected = [...selected];
           await loadJobs();
+        }
+        if (event.target.dataset.jobQuickEnabled) {
+          const jobKey = event.target.dataset.jobQuickEnabled;
+          const enabled = !!event.target.checked;
+          try {
+            await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ enabled }),
+            });
+            showToast(
+              textFor('jobQuickEnabledToastTitle'),
+              enabled ? textFor('jobQuickEnabledToastOn') : textFor('jobQuickEnabledToastOff'),
+              { kind: 'success' },
+            );
+            await Promise.all([loadJobs(), loadDashboard()]);
+          } catch (err) {
+            event.target.checked = !enabled;
+            showToast(textFor('toastErrorTitle') || 'Error', String(err?.message || err), { kind: 'error' });
+          }
         }
         if (event.target.id === 'jobRunsSelectAll') {
           const checked = !!event.target.checked;

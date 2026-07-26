@@ -7482,9 +7482,9 @@ body.adminShellV2 .jobAdvancedParams .jobParamsField {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   body.adminShellV2 .jobCardLine {
-    padding: 14px;
+    padding: 12px;
   }
 
   body.adminShellV2 .jobCardSide {
@@ -7492,11 +7492,12 @@ body.adminShellV2 .jobAdvancedParams .jobParamsField {
   }
 
   body.adminShellV2 .jobCardEdit {
-    margin: 0 14px 14px;
+    margin: 0 12px 12px;
   }
 
+  /* Keep facts as a compact 3-up strip on phones. */
   body.adminShellV2 .jobCardFacts {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   body.adminShellV2 .jobEditSectionHead {
@@ -7695,7 +7696,7 @@ body.adminShellV2 .jobEditPanel .jobReadonlyGrid {
   margin-bottom: 12px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
   body.adminShellV2 .jobCardEdit:not(.hidden) {
     width: 100vw;
     border-radius: 20px 20px 0 0;
@@ -7704,8 +7705,31 @@ body.adminShellV2 .jobEditPanel .jobReadonlyGrid {
   }
 
   body.adminShellV2 .jobSettingsIdentity,
-  body.adminShellV2 .jobSettingsSchedule {
+  body.adminShellV2 .jobSettingsSchedule,
+  body.adminShellV2 .jobEditPanel .jobReadonlyGrid {
     grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .jobEditPanelHead {
+    padding: 14px 16px 12px;
+  }
+
+  body.adminShellV2 .jobEditPanel .jobEditSection {
+    margin: 12px 14px 0;
+    padding: 12px;
+  }
+
+  body.adminShellV2 .jobEditPanel .jobAdvancedParams {
+    margin: 12px 14px 0;
+  }
+
+  body.adminShellV2 .jobEditPanel .jobEditActions {
+    margin: 12px 14px 0;
+  }
+
+  body.adminShellV2 .jobEditPanel .jobEditActions button {
+    width: 100%;
+    min-width: 0;
   }
 }
 

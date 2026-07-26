@@ -21,6 +21,7 @@
 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
 | [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
 | [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) | ETF 브리핑 ingest·홈 노출 |
+| [KR-SCREENER-AUTOMATION.md](./KR-SCREENER-AUTOMATION.md) | 한국주 스크리너(코스피30·코스닥50) Job·Codex ingest |
 | [GAME-CENTER.md](./GAME-CENTER.md) | 더보기·사이드바 게임 허브·미니게임 개발 |
 | [EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md) | Expo/EAS·Xcode 빌드 |
 | [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "notifyInbox": true,
+  "sendPush": false,
+  "run": {
+    "id": "kr-screener:2026-07-26T06:20:00Z",
+    "generatedAt": "2026-07-26T06:20:00Z",
+    "generatedDate": "2026-07-26",
+    "locale": "ko",
+    "preset": "fujimoto",
+    "title": "성장·저평가 눌림",
+    "universe": {
+      "kospiTop": 30,
+      "kosdaqTop": 50,
+      "asOf": "2026-07-26T05:00:00Z"
+    },
+    "snapshotAsOf": "2026-07-26T06:15:00Z",
+    "policy": {
+      "ranking": "rsi_asc_then_change_percent_asc",
+      "maxItems": 20,
+      "requireAllMetrics": true
+    }
+  },
+  "items": [
+    {
+      "id": "kr-screener:2026-07-26:005930",
+      "symbol": "005930",
+      "name": "삼성전자",
+      "market": "kospi",
+      "universeRank": 1,
+      "passed": true,
+      "currentPrice": 71200,
+      "changePercent": -1.8,
+      "per": 12.4,
+      "pbr": 0.92,
+      "revenueYoY": 0.08,
+      "operatingProfitYoY": 0.15,
+      "netProfitYoY": 0.11,
+      "dividend": true,
+      "dividendGrowthCapacity": true,
+      "turnoverKrw": 850000000000,
+      "rsi": 28.5,
+      "note": "증수·증익·저평가 구간에 RSI가 과매도 쪽에 있습니다.",
+      "aiGenerated": true
+    },
+    {
+      "id": "kr-screener:2026-07-26:035420",
+      "symbol": "035420",
+      "name": "NAVER",
+      "market": "kospi",
+      "universeRank": 12,
+      "passed": true,
+      "currentPrice": 198500,
+      "changePercent": -2.4,
+      "per": 14.1,
+      "pbr": 0.88,
+      "revenueYoY": 0.06,
+      "operatingProfitYoY": 0.09,
+      "netProfitYoY": 0.07,
+      "dividend": true,
+      "dividendGrowthCapacity": false,
+      "turnoverKrw": 120000000000,
+      "rsi": 29.2,
+      "note": "실적 성장과 PBR 1배 이하 조건을 함께 충족한 눌림 후보입니다.",
+      "aiGenerated": true
+    }
+  ]
+}

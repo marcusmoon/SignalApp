@@ -42,6 +42,10 @@ import {
 } from './jobRunProgress.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
 import { buildScreenerPoolSnapshotFromDb } from '../screener/buildScreenerPoolSnapshot.mjs';
+import {
+  preferredYahooFromVenues,
+  venuesFromMarketListPayload,
+} from '../screener/koreaScreenerUniverse.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
@@ -352,9 +356,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       ? params.symbols
       : marketListSymbols(dbBefore, listKey);
     const segment = String(params?.segment || 'korea').trim() || 'korea';
-    const { venuesFromMarketListPayload, preferredYahooFromVenues } = await import(
-      '../screener/koreaScreenerUniverse.mjs'
-    );
     const venueBySymbol = venuesFromMarketListPayload(list);
     // Venue-derived Yahoo suffix wins over a poisoned preferred (.KS on kosdaq).
     const preferredYahooBySymbol = {

@@ -67,7 +67,6 @@
 | `marketBriefingsCache` | 시장 브리핑 | 2분 |
 | `todayBriefingsCache` | 오늘의 브리핑 | 2분 |
 | `etfInsightsCache` | ETF 브리핑 | 2분 |
-| `screenerCache` | 스크리너 큐레이션 (`market`+`method`) | 2분 |
 | `marketCache` | 시세·코인·마켓 리스트 | 5분 / 10분(리스트) |
 | `calendarCache` | 캘린더 | 15분 |
 

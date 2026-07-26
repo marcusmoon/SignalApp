@@ -10,7 +10,7 @@ Cursor/Codex/Claude 에이전트에 **그대로 붙여 넣을** 작업 지시서
 ## 한 줄 목표
 
 지정 **market**의 공용 풀 스냅샷만 읽어 **method** 규칙으로 후보 JSON을 만들고, 사람 확인 후 `POST /v1/screener/runs/ingest`로 올린다.  
-앱 `/screener?market=&method=`는 **published** ingest만 보여 준다.
+앱 전용 스크리너 화면은 없다. **published** ingest는 API·알림용이다.
 
 기본 작업: `market=kr`, `method=momentum` (모멘텀).
 
@@ -54,8 +54,6 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 | Base URL | `$SIGNAL_SERVER_URL` |
 | Ingest 헤더 | `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN` |
 | Content-Type | `application/json` |
-
-앱 경로(`/screener`)와 API(`/v1/screener…`)는 **다르다**.
 
 ---
 

@@ -19,13 +19,6 @@ export const en = {
   homeAiGeneratedA11y: 'AI-generated summary',
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'Sector',
-  moreHubScreener: 'Screener',
-  screenerTitle: 'Momentum',
-  screenerGuide:
-    'Momentum/trend candidates. 1:2:6 is a portfolio guide only — no auto-trading or orders.',
-  screenerEmpty: 'No screener candidates yet.',
-  screenerLoadError: 'Could not load the screener.',
-  screenerMetricsLine: '3M {{r3}} · 52w {{h52}} · Vol {{vol}} · RSI {{rsi}}',
   digestFreshBadge: 'New',
   digestFreshBadgeA11y: 'Recently updated',
   commonComingSoon: 'Coming soon',

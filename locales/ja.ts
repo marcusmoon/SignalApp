@@ -19,13 +19,6 @@ export const ja = {
   homeAiGeneratedA11y: 'AI生成の要約',
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'セクター',
-  moreHubScreener: 'スクリーナー',
-  screenerTitle: 'モメンタム',
-  screenerGuide:
-    'モメンタム・トレンド候補です。1:2:6は参考ガイドで、自動売買・注文はありません。',
-  screenerEmpty: '表示するスクリーナー候補がありません。',
-  screenerLoadError: 'スクリーナーを読み込めませんでした。',
-  screenerMetricsLine: '3M {{r3}} · 52週 {{h52}} · Vol {{vol}} · RSI {{rsi}}',
   digestFreshBadge: '最新',
   digestFreshBadgeA11y: '最近更新されました',
   commonComingSoon: '準備中',

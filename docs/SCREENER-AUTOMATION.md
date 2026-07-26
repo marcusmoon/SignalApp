@@ -1,6 +1,6 @@
 # 스크리너 자동화 연동
 
-더보기 **스크리너** 메뉴용 큐레이션이다.
+스크리너 Job·API·스킬 ingest용 큐레이션이다. **앱 전용 화면/메뉴는 없다** (알림 deepLink·API만).
 
 - **market**: `kr` | `global` — 시장별 종목풀(풀)을 분리한다.
 - **pool**: market당 공용 유니버스·지표 스냅샷. **모든 method가 동일 풀을 읽는다.**
@@ -20,7 +20,7 @@ screener_pool_kr
   → RSI·turnover·모멘텀 계산 → screener_snapshots 저장
 
 스킬 → GET pool/snapshot → method 필터 → POST runs/ingest → screener_runs
-앱  → GET /v1/screener?market=&method=  (published만)
+API → GET /v1/screener?market=&method=  (published만; 앱 화면 없음)
 ```
 
 일봉 깊이: `return12m`은 종가 **253개**, `ma200`/`alignedMa`는 **200개**가 필요하다.  
@@ -33,7 +33,6 @@ Yahoo `1y`(~245–252세션)는 경계라 지표가 null로 떨어져 후보가 
 | **`screener_pool_kr`** | 유니버스·Yahoo 조회·지표·풀 스냅샷 (스크리너 전용 Job) | `screener_snapshots` |
 | 스킬/에이전트 | pool GET → method 큐레이션 → runs ingest | `screener_runs` |
 | 앱 시세/일봉 Job | **앱** 시세·차트만 (`korea_watchlist` 등). 스크리너와 무관 | `market_quotes`, `price_series` |
-| 앱 UI | published 큐레이션만 표시 | — |
 
 모델이 PER·PBR·RSI·실적을 **추정·검색으로 채우면 안 된다.**  
 (풀 Job이 이미 넣은 숫자만 사용. 재무·외인/기관 피드가 없으면 null.)
@@ -120,7 +119,7 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 | `GET` | `/v1/screener/runs?market=&method=` | 목록 (기본 `status=published`) |
 | `GET` | `/v1/screener/runs/:id` | 단건 (draft 포함) |
 | `POST` | `/v1/screener/runs/ingest` | method 큐레이션 ingest |
-| `GET` | `/v1/screener?market=&method=` | 앱용 최신 **published** |
+| `GET` | `/v1/screener?market=&method=` | 최신 **published** (API/알림용) |
 
 ### Runs ingest
 
@@ -172,12 +171,7 @@ RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — �
 
 ## 앱 UI
 
-| 경로 | 동작 |
-|---|---|
-| 더보기 **스크리너** (iPhone) | `/screener` (기본 `market=kr`, `method=momentum`) |
-| iPad·웹 사이드바 | 섹터 다음 **스크리너** → `/screener` |
-| deepLink | `/screener?market=&method=` |
-| 행 탭 | 종목 상세 |
+앱 메뉴·`/screener` 화면은 **제거됨**. published ingest는 알림(`deepLink: /screener?…`)·API 조회용으로만 남는다.
 
 ## 권장 주기
 

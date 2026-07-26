@@ -189,7 +189,6 @@ function RootLayoutNav() {
         'market-briefing',
         'etf-insights',
         'etf-insight',
-        'screener',
         'game-center',
         'games/sum-trail',
         'games/sudoku',
@@ -255,7 +254,6 @@ function RootLayoutNav() {
           'market-briefing': t('ipadHomeSignalTitle'),
           'etf-insights': t('homeEtfInsightTitle'),
           'etf-insight': t('etfInsightDetailKicker'),
-          screener: t('screenerTitle'),
           watchlist: t('homeFocusWatchTitle'),
           'home-news': t('tabNews'),
         };

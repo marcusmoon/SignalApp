@@ -128,6 +128,7 @@ npm run verify   # tsc + domain unit tests (CI)
 | 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |
 | 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) |
 | 마감 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
+| 한국주 스크리너 자동화 | [KR-SCREENER-AUTOMATION.md](./KR-SCREENER-AUTOMATION.md), [prompts/kr-screener.codex-scheduled-prompt.md](./prompts/kr-screener.codex-scheduled-prompt.md) |
 | Signal API | `integrations/signal-api/` |
 | Admin | `server/src/public/admin/` |
 | DB | `server/src/db/` |

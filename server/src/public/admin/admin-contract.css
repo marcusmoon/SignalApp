@@ -497,17 +497,22 @@ body.adminShellV2[data-admin-theme='dark'] .settingsHero {
 body.adminShellV2[data-admin-theme='dark'] .settingsHeroIcon { background: rgba(96,165,250,0.14); color: #60a5fa; }
 body.adminShellV2[data-admin-theme='dark'] .actionBox { background: rgba(96,165,250,0.06); border-color: rgba(96,165,250,0.15); }
 
-/* ── Job cards — one scannable row with key facts ─────────── */
+/* ── Job cards — one full-width row; identity | facts/actions ─ */
 body.adminShellV2 .jobCardsGrid {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
+  grid-template-columns: none !important;
   gap: 8px;
 }
 body.adminShellV2 .jobCard {
+  display: block;
+  gap: 0;
+  padding: 0;
   background: var(--adm-surface, #fff);
   border: 0.5px solid var(--adm-border, #e8e6dc);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: none;
 }
 body.adminShellV2 .jobCard:hover {
   border-color: var(--adm-border-strong, #d4d0c4);
@@ -524,16 +529,16 @@ body.adminShellV2 .jobCard--disabled {
 }
 body.adminShellV2 .jobCardLine {
   display: grid;
-  grid-template-columns: auto minmax(220px, 1.4fr) minmax(280px, 1.1fr) minmax(220px, auto);
-  gap: 14px;
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr) minmax(300px, 420px);
+  gap: 16px;
+  align-items: center;
   min-width: 0;
   padding: 14px 16px;
 }
 body.adminShellV2 .jobCardSelect {
   display: flex;
-  align-items: flex-start;
-  padding-top: 4px;
+  align-items: center;
+  padding-top: 0;
 }
 body.adminShellV2 .jobCardMain {
   display: grid;
@@ -611,11 +616,18 @@ body.adminShellV2 .jobCardBadges {
   gap: 5px;
   min-width: 0;
 }
+body.adminShellV2 .jobCardSide {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  justify-items: stretch;
+}
 body.adminShellV2 .jobCardFacts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+  align-items: stretch;
 }
 body.adminShellV2 .jobCardFacts > div {
   display: grid;
@@ -625,12 +637,14 @@ body.adminShellV2 .jobCardFacts > div {
   border-radius: 10px;
   background: var(--adm-surface-muted, #f7f5ef);
 }
-body.adminShellV2 .jobCardFacts > div.jobCardAlert {
-  grid-column: 1 / -1;
+body.adminShellV2 .jobCardAlert {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
   background: rgba(192, 57, 43, 0.08);
 }
 body.adminShellV2 .jobCardFacts span {
@@ -649,11 +663,17 @@ body.adminShellV2 .jobCardFacts strong {
 }
 body.adminShellV2 .jobCardActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  padding-top: 0;
+}
+body.adminShellV2 .jobCardActions button {
+  min-height: 32px;
+  padding-inline: 10px;
+  white-space: nowrap;
 }
 body.adminShellV2 .compactBtn {
   height: 32px;
@@ -674,16 +694,26 @@ body.adminShellV2 .jobIntervalPresets .compactBtn.active {
   color: #c46745;
 }
 
-@media (max-width: 1180px) {
+/* Wide PC: keep a stable 3-column card (select | identity | side). */
+@media (min-width: 1280px) {
+  body.adminShellV2 .jobCardLine {
+    grid-template-columns: auto minmax(0, 1fr) minmax(340px, 460px);
+    align-items: center;
+  }
+}
+
+/* Tablet / mid width: stack side under identity, stay full-width. */
+@media (max-width: 1279px) {
   body.adminShellV2 .jobCardLine {
     grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
   }
-  body.adminShellV2 .jobCardFacts,
-  body.adminShellV2 .jobCardActions {
+  body.adminShellV2 .jobCardSide {
     grid-column: 2;
   }
   body.adminShellV2 .jobCardActions {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -693,14 +723,17 @@ body.adminShellV2 .jobIntervalPresets .compactBtn.active {
     padding: 12px;
     gap: 10px;
   }
-  body.adminShellV2 .jobCardFacts {
+  body.adminShellV2 .jobCardSide {
     grid-column: 1 / -1;
+  }
+  body.adminShellV2 .jobCardFacts {
     grid-template-columns: 1fr;
   }
-  body.adminShellV2 .jobCardActions {
-    grid-column: 1 / -1;
-  }
   body.adminShellV2 .jobCardHead {
+    flex-wrap: wrap;
+  }
+  body.adminShellV2 .jobCardActions {
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 }

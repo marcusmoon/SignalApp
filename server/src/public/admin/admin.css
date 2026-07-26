@@ -5806,9 +5806,10 @@ body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn .jobOp
 }
 
 .adminShellV2 .jobCardsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+  gap: 8px;
 }
 
 .adminShellV2 .jobCard {

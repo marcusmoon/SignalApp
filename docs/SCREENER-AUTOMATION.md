@@ -91,7 +91,7 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 
 ### 5) dry-run / status
 
-| 조건 | `run.status` | 앱 `GET /v1/screener` | 알림 |
+| 조건 | `run.status` | `GET /v1/screener` | 알림 |
 |---|---|---|---|
 | `notifyInbox=false` **그리고** `sendPush=false` | `draft` (기본) | **노출 안 됨** | 안 함 |
 | 그 외 또는 `status=published` | `published` | 노출 | 플래그 따름 |

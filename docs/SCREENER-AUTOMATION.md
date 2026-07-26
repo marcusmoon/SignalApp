@@ -164,7 +164,7 @@ RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — �
 | 레이어 | 상태 |
 |---|---|
 | Flyway | `V2`–`V5` (테이블·universe+venue·**one-job 디커플**) |
-| 스크리너 Job | **`screener_pool_kr`만** (Yahoo self-fetch + 지표 + `screener_snapshots`) |
+| 스크리너 Job | **`screener_pool_kr`만** (Yahoo self-fetch **2y** 일봉 + 지표 + `screener_snapshots`) |
 | 앱 Job | `market_quotes_korea` / `market_price_series_daily` — watchlist·차트용, 스크리너 비의존 |
 | 유니버스 | `korea_screener_universe` (~80, `venues`). 정식 KRX 시총 피드 후속 |
 | 모멘텀 | 풀 Job이 일봉으로 계산 (`return*`/`ma*`/`alignedMa`/`pctFrom52wHigh`/`volumeRatio`) |

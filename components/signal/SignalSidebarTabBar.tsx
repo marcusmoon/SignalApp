@@ -1,6 +1,6 @@
 /**
  * iPad·웹 좌측 사이드바 내비게이션.
- * - 메인 탭(홈·뉴스·시장·시세·공시·게시판·내 정보)
+ * - 메인 탭(홈·뉴스·시장·시세·공시·섹터·스크리너·게시판·게임·내 정보)
  * - 설정은 내 정보 허브에서 진입 (More 탭 없음)
  * - 퀵 링크는 하단 슬림 도크
  */
@@ -73,6 +73,13 @@ const SIDEBAR_TABS: TabDef[] = [
     iconOutline: 'pie-chart-outline',
     iconFilled: 'pie-chart',
     labelId: 'moreHubEtfShort',
+  },
+  {
+    name: 'screener',
+    route: '/screener',
+    iconOutline: 'filter-outline',
+    iconFilled: 'filter',
+    labelId: 'moreHubScreener',
   },
   {
     name: 'board',
@@ -166,27 +173,37 @@ export function SignalSidebarTabBar({
     ipadState.contentPane === 'board' || ipadState.contentPane === 'community';
   const gameCenterActive =
     pathname.startsWith('/game-center') || pathname.startsWith('/games/');
+  const screenerActive = pathname.startsWith('/screener');
   const homeActive =
-    ipadState.isHomePaneActive && !accountActive && !etfActive && !boardActive && !gameCenterActive;
+    ipadState.isHomePaneActive &&
+    !accountActive &&
+    !etfActive &&
+    !boardActive &&
+    !gameCenterActive &&
+    !screenerActive;
 
   const activeTabName = accountActive
     ? 'account'
     : etfActive
       ? 'etfBriefing'
-      : boardActive
-        ? 'board'
-        : gameCenterActive
-          ? 'gameCenter'
-          : homeActive
-            ? null
-            : SIDEBAR_TABS.find(
-                (tab) =>
-                  tab.name !== 'account' &&
-                  tab.name !== 'etfBriefing' &&
-                  tab.name !== 'board' &&
-                  tab.name !== 'gameCenter' &&
-                  (pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', '')),
-              )?.name ?? 'news';
+      : screenerActive
+        ? 'screener'
+        : boardActive
+          ? 'board'
+          : gameCenterActive
+            ? 'gameCenter'
+            : homeActive
+              ? null
+              : SIDEBAR_TABS.find(
+                  (tab) =>
+                    tab.name !== 'account' &&
+                    tab.name !== 'etfBriefing' &&
+                    tab.name !== 'screener' &&
+                    tab.name !== 'board' &&
+                    tab.name !== 'gameCenter' &&
+                    (pathname.startsWith(`/${tab.name}`) ||
+                      pathname === tab.route.replace('/(tabs)', '')),
+                )?.name ?? 'news';
 
   const styles = useMemo(() => makeStyles(theme, scaleFont, insets.bottom), [theme, scaleFont, insets.bottom]);
 
@@ -208,6 +225,14 @@ export function SignalSidebarTabBar({
         return;
       }
       router.navigate('/etf-insights' as never);
+      return;
+    }
+    if (tab.name === 'screener') {
+      if (pathname.startsWith('/screener')) return;
+      if (ipadNav.isAvailable) {
+        ipadNav.showTabs();
+      }
+      router.navigate('/screener' as never);
       return;
     }
     if (tab.name === 'board') {
@@ -351,6 +376,7 @@ export function SignalSidebarTabBar({
                 tab.name !== 'youtube' &&
                 tab.name !== 'account' &&
                 tab.name !== 'etfBriefing' &&
+                tab.name !== 'screener' &&
                 tab.name !== 'gameCenter' &&
                 subTabs.length > 0 ? (
                   <View style={styles.subTabList}>

@@ -167,7 +167,8 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 
 | 경로 | 동작 |
 |---|---|
-| 더보기 **스크리너** | `/screener` (기본 `market=kr`, `method=fujimoto`) |
+| 더보기 **스크리너** (iPhone) | `/screener` (기본 `market=kr`, `method=fujimoto`) |
+| iPad·웹 사이드바 | 섹터 다음 **스크리너** → `/screener` |
 | deepLink | `/screener?market=&method=` |
 | 행 탭 | 종목 상세 |
 

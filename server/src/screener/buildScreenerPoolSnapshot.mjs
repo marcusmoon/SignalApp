@@ -21,6 +21,7 @@ import {
   yahooSymbolForVenue,
 } from './koreaScreenerUniverse.mjs';
 import { normalizeScreenerMarket } from './markets.mjs';
+import { computeMomentumMetrics } from './momentum.mjs';
 import { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
 import { computeRsi } from './rsi.mjs';
 import { shouldExcludeFromKrUniverse } from './universeExclude.mjs';
@@ -136,10 +137,33 @@ async function loadKoreaQuotes() {
   return bySymbol;
 }
 
-async function loadRsiAndVolumeBySymbol(symbols) {
+function applySeriesPayloadMetrics(code, payload, { rsiBySymbol, volumeBySymbol, momentumBySymbol }) {
+  if (!code || !payload) return;
+  const bars = barsFromPriceSeriesPayload(payload);
+  if (!rsiBySymbol.has(code)) {
+    const closes = closesFromPriceSeriesPayload(payload);
+    const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
+    if (rsi != null) rsiBySymbol.set(code, rsi);
+  }
+  if (!volumeBySymbol.has(code)) {
+    const vol = lastVolumeFromPriceSeriesPayload(payload);
+    if (vol != null) volumeBySymbol.set(code, vol);
+  }
+  if (bars.length) {
+    const metrics = computeMomentumMetrics(bars);
+    const prev = momentumBySymbol.get(code);
+    // Prefer complete (1y) metrics over short-series nulls.
+    if (!prev || !momentumNeedsBackfill(metrics) || momentumNeedsBackfill(prev)) {
+      momentumBySymbol.set(code, metrics);
+    }
+  }
+}
+
+async function loadSeriesMetricsBySymbol(symbols) {
   const rsiBySymbol = new Map();
   const volumeBySymbol = new Map();
-  if (!symbols.length) return { rsiBySymbol, volumeBySymbol };
+  const momentumBySymbol = new Map();
+  if (!symbols.length) return { rsiBySymbol, volumeBySymbol, momentumBySymbol };
   const upper = symbols.map((s) => s.toUpperCase());
   const result = await queryKysely(
     `
@@ -159,19 +183,13 @@ async function loadRsiAndVolumeBySymbol(symbols) {
       normalizeKrCode(row.display_symbol) ||
       normalizeKrCode(row.yahoo_symbol) ||
       normalizeKrCode(row.symbol);
-    if (!code) continue;
-    if (!rsiBySymbol.has(code)) {
-      const closes = closesFromPriceSeriesPayload(row.payload);
-      const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
-      // Failure → null (never 0).
-      if (rsi != null) rsiBySymbol.set(code, rsi);
-    }
-    if (!volumeBySymbol.has(code)) {
-      const vol = lastVolumeFromPriceSeriesPayload(row.payload);
-      if (vol != null) volumeBySymbol.set(code, vol);
-    }
+    applySeriesPayloadMetrics(code, row.payload || row, {
+      rsiBySymbol,
+      volumeBySymbol,
+      momentumBySymbol,
+    });
   }
-  return { rsiBySymbol, volumeBySymbol };
+  return { rsiBySymbol, volumeBySymbol, momentumBySymbol };
 }
 
 function metricFromQuote(quote, key) {
@@ -191,22 +209,34 @@ function boolFromQuote(quote, key) {
   return null;
 }
 
-/** Reserved metric slots for Fujimoto RS/Trend/Money Flow (null until feed exists). */
-function reservedMetricSlots() {
+/** Money-flow slots stay null until a dedicated feed exists. */
+function moneyFlowSlots() {
   return {
-    return3m: null,
-    return6m: null,
-    return12m: null,
-    ma20: null,
-    ma60: null,
-    ma120: null,
-    ma200: null,
-    alignedMa: null,
-    pctFrom52wHigh: null,
-    volumeRatio: null,
     foreignNetBuy: null,
     institutionNetBuy: null,
   };
+}
+
+function momentumSlotsOrEmpty(metrics) {
+  return {
+    return3m: metrics?.return3m ?? null,
+    return6m: metrics?.return6m ?? null,
+    return12m: metrics?.return12m ?? null,
+    ma20: metrics?.ma20 ?? null,
+    ma60: metrics?.ma60 ?? null,
+    ma120: metrics?.ma120 ?? null,
+    ma200: metrics?.ma200 ?? null,
+    alignedMa: typeof metrics?.alignedMa === 'boolean' ? metrics.alignedMa : null,
+    pctFrom52wHigh: metrics?.pctFrom52wHigh ?? null,
+    volumeRatio: metrics?.volumeRatio ?? null,
+    ...moneyFlowSlots(),
+  };
+}
+
+function momentumNeedsBackfill(metrics) {
+  if (!metrics) return true;
+  // Short series leave ma200/return12m null — refetch 1y bars.
+  return metrics.ma200 == null || metrics.return12m == null;
 }
 
 function emptyPoolSnapshot(market, note) {
@@ -271,8 +301,15 @@ async function backfillMissingQuotes(universeSymbols, seedVenues, quotes) {
   return { fetched: rows.length, requested: missing.length };
 }
 
-async function backfillMissingRsiAndVolume(universeSymbols, seedVenues, rsiBySymbol, volumeBySymbol) {
-  const missing = universeSymbols.filter((symbol) => !rsiBySymbol.has(symbol));
+async function backfillMissingSeriesMetrics(
+  universeSymbols,
+  seedVenues,
+  { rsiBySymbol, volumeBySymbol, momentumBySymbol },
+) {
+  // Need ~252 bars for return12m / ma200 — fetch 1y when RSI/momentum incomplete.
+  const missing = universeSymbols.filter(
+    (symbol) => !rsiBySymbol.has(symbol) || momentumNeedsBackfill(momentumBySymbol.get(symbol)),
+  );
   if (!missing.length) return { fetched: 0 };
   const instruments = missing.map((symbol) => {
     const venue = seedVenues.get(symbol) || 'kospi';
@@ -287,19 +324,13 @@ async function backfillMissingRsiAndVolume(universeSymbols, seedVenues, rsiBySym
   });
   const seriesRows = await fetchYahooDailyPriceSeries({
     instruments,
-    range: '6mo',
+    range: '1y',
     requestDelayMs: 60,
   });
   for (const row of seriesRows) {
     const code = normalizeKrCode(row.krxSymbol || row.symbol);
     if (!code) continue;
-    const closes = (Array.isArray(row.bars) ? row.bars : [])
-      .map((bar) => numOrNull(bar?.close))
-      .filter((n) => n != null);
-    const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
-    if (rsi != null) rsiBySymbol.set(code, rsi);
-    const lastVol = lastVolumeFromPriceSeriesPayload({ bars: row.bars });
-    if (lastVol != null) volumeBySymbol.set(code, lastVol);
+    applySeriesPayloadMetrics(code, row, { rsiBySymbol, volumeBySymbol, momentumBySymbol });
   }
   if (seriesRows.length) {
     try {
@@ -324,13 +355,9 @@ async function buildKrPoolSnapshot() {
   const listRank = new Map(universeSymbols.map((s, i) => [s, i + 1]));
   // Pool = curated universe only (do not inflate with unrelated korea quotes).
   const symbols = universeSymbols.length ? [...universeSymbols] : [...quotes.keys()];
-  const { rsiBySymbol, volumeBySymbol } = await loadRsiAndVolumeBySymbol(symbols);
-  const seriesBackfill = await backfillMissingRsiAndVolume(
-    symbols,
-    seedVenues,
-    rsiBySymbol,
-    volumeBySymbol,
-  );
+  const seriesMaps = await loadSeriesMetricsBySymbol(symbols);
+  const { rsiBySymbol, volumeBySymbol, momentumBySymbol } = seriesMaps;
+  const seriesBackfill = await backfillMissingSeriesMetrics(symbols, seedVenues, seriesMaps);
 
   const rows = [];
   let excludedCount = 0;
@@ -395,7 +422,7 @@ async function buildKrPoolSnapshot() {
       dividendGrowthCapacity: boolFromQuote(quote, 'dividendGrowthCapacity'),
       turnoverKrw,
       rsi: rsiBySymbol.get(symbol) ?? metricFromQuote(quote, 'rsi'),
-      ...reservedMetricSlots(),
+      ...momentumSlotsOrEmpty(momentumBySymbol.get(symbol)),
     });
   }
 
@@ -458,7 +485,7 @@ async function buildKrPoolSnapshot() {
       seriesBackfill: seriesBackfill.fetched || 0,
       exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Universe from korea_screener_universe with venue. Pool job self-backfills missing Yahoo quotes + daily bars for RSI/turnover (does not wait on other jobs). Caps kospi30/kosdaq50. Momentum slots (return/ma/…) and fundamentals still null until implemented. asOf=job UTC; stale if age>24h.',
+        'Universe from korea_screener_universe with venue. Pool job self-backfills quotes + 1y bars; fills RSI/turnover and momentum (return3m/6m/12m, ma20–200, alignedMa, pctFrom52wHigh, volumeRatio). foreign/institution and fundamentals still null. Caps kospi30/kosdaq50. asOf=job UTC; stale if age>24h.',
     },
     policy: buildPoolPolicy('kr'),
     symbols: ranked,

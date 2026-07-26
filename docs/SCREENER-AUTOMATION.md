@@ -144,7 +144,7 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 | 유니버스 | `korea_screener_universe` (~80, `venues` → `.KS`/`.KQ`). **정식 KRX 시총 피드 후속** |
 | 시세·대금·RSI | quotes/일봉 Job + 풀 잡 백필. `turnoverKrw`·RSI 채움 |
 | 재무 | 피드 없음 → null (fujimoto 통과 0 가능) |
-| 모멘텀 슬롯 | `return*`/`ma*`/`alignedMa` 등 **아직 미구현** (슬롯만 null) |
+| 모멘텀 슬롯 | 일봉으로 계산: `return3m/6m/12m`(비율), `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio`. 외인/기관·재무는 여전히 null |
 
 ## 앱 UI
 

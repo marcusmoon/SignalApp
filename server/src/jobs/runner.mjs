@@ -41,11 +41,7 @@ import {
   jobUsesMcapProgress,
 } from './jobRunProgress.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
-import { buildScreenerPoolSnapshotFromDb } from '../screener/buildScreenerPoolSnapshot.mjs';
-import {
-  preferredYahooFromVenues,
-  venuesFromMarketListPayload,
-} from '../screener/koreaScreenerUniverse.mjs';
+import { buildScreenerPoolSnapshot } from '../screener/buildScreenerPoolSnapshot.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
@@ -90,35 +86,17 @@ function dailyBarInstruments(db, params = {}) {
     ...listKeys.flatMap((key) => marketListSymbols(db, key)),
   ];
   const preferredYahoo = preferredYahooByKrxSymbols(db, symbols);
-  // Overlay screener-universe venues so kosdaq bars use .KQ even if quotes still have wrong .KS.
-  const venueYahoo = {};
-  for (const key of listKeys) {
-    const list = (db.marketLists || []).find((row) => row.key === key);
-    if (!list?.venues && !list?.entries) continue;
-    // Lazy sync import avoided — venues are plain objects on payload after V4.
-    const venues = list.venues && typeof list.venues === 'object' ? list.venues : {};
-    for (const [code, venue] of Object.entries(venues)) {
-      const sym = String(code || '').trim();
-      if (!/^\d{6}$/.test(sym)) continue;
-      venueYahoo[sym] = venue === 'kosdaq' ? `${sym}.KQ` : `${sym}.KS`;
-    }
-  }
   const bySymbol = new Map();
   for (const symbol of symbols) {
     const normalized = String(symbol || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!normalized || bySymbol.has(normalized)) continue;
     const isKr = /^\d{6}$/.test(normalized);
-    const yahoo =
-      (isKr && venueYahoo[normalized]) ||
-      (isKr && preferredYahoo[normalized]) ||
-      null;
     bySymbol.set(normalized, {
       symbol: normalized,
       displaySymbol: normalized,
       name: normalized,
       currency: isKr ? 'KRW' : 'USD',
-      // Venue-aware Yahoo suffix first; then quote-resolved .KS/.KQ.
-      ...(yahoo ? { yahooSymbol: yahoo } : {}),
+      ...(isKr && preferredYahoo[normalized] ? { yahooSymbol: preferredYahoo[normalized] } : {}),
     });
   }
   const explicit = Array.isArray(params.instruments) ? params.instruments : [];
@@ -350,25 +328,18 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(params || {}), symbols }) };
   }
   if (effective.provider === 'yahoo' && effective.handler === 'market_quotes_kr') {
+    // App quotes only (korea_watchlist). Screener has its own Yahoo fetch in screener_pool_kr.
     const listKey = params?.listKey || 'korea_watchlist';
-    const list = (dbBefore.marketLists || []).find((row) => row.key === listKey) || null;
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0
       ? params.symbols
       : marketListSymbols(dbBefore, listKey);
     const segment = String(params?.segment || 'korea').trim() || 'korea';
-    const venueBySymbol = venuesFromMarketListPayload(list);
-    // Venue-derived Yahoo suffix wins over a poisoned preferred (.KS on kosdaq).
-    const preferredYahooBySymbol = {
-      ...preferredYahooByKrxSymbols(dbBefore, symbols),
-      ...preferredYahooFromVenues(venueBySymbol),
-    };
     return {
       kind: 'marketQuotes',
       rows: await fetchYahooKrxMarketQuotes({
         symbols,
         segment,
-        preferredYahooBySymbol,
-        venueBySymbol,
+        preferredYahooBySymbol: preferredYahooByKrxSymbols(dbBefore, symbols),
       }),
     };
   }
@@ -416,7 +387,7 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'signal' && effective.handler === 'screener_pool_snapshot') {
     const market = String(params?.market || 'kr').trim().toLowerCase() || 'kr';
-    const snapshot = await buildScreenerPoolSnapshotFromDb({ market });
+    const snapshot = await buildScreenerPoolSnapshot({ market });
     return { kind: 'screenerSnapshot', rows: [snapshot] };
   }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);

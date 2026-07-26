@@ -83,7 +83,7 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 | `yahooSymbol` | 야후 조인 키 (`005930.KS` / `.KQ`) |
 | `market` (행) | venue `kospi` \| `kosdaq` (top-level `kr`와 다름) |
 
-quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞춘다. venue가 매핑 근거이므로 정확해야 한다.
+풀 Job이 venue로 Yahoo 심볼을 잡고, 응답·일봉 키는 `.KS`/`.KQ`를 strip해 6자리 `symbol`로 맞춘다. venue가 틀리면 시세·일봉이 비거나 잘못 붙는다.
 
 ### 5) dry-run / status
 
@@ -141,10 +141,16 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 
 정렬: RSI 오름차순 → 등락률 오름차순. `items` 최대 20.
 
-## 예약 지표 슬롯 (후속)
+## 풀 지표 슬롯
 
-풀 `symbols[]`에 null로 예약: `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio`, `foreignNetBuy`, `institutionNetBuy`.  
-채워지면 후지모토 RS·Trend·Money Flow 스코어링에 사용.
+| 슬롯 | 채움 | 비고 |
+|---|---|---|
+| `turnoverKrw`, `rsi` | Job (Yahoo 시세·일봉) | |
+| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (1y 일봉) | `policy.momentumLookbacks` / 비율 |
+| `per`, `pbr`, YoY, `dividend*` | 피드 없으면 null | 선택적 pool ingest |
+| `foreignNetBuy`, `institutionNetBuy` | 피드 없으면 null | Money Flow 후속 |
+
+`fujimoto` method는 현재 성장·저평가·RSI 눌림 규칙이며, 모멘텀 슬롯은 풀에만 채워 둔다(스킬 스코어링·후속 method용).
 
 ## 구현 상태
 

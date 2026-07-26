@@ -6,7 +6,7 @@ export const SCREENER_MARKETS = new Set(['kr', 'global']);
 export const SCREENER_METHODS = {
   fujimoto: {
     id: 'fujimoto',
-    title: { kr: '성장·저평가 눌림', global: 'Growth · value · oversold' },
+    title: { kr: '후지모토 모멘텀', global: 'Fujimoto momentum · trend' },
     markets: ['kr'], // global support can be added later
   },
 };

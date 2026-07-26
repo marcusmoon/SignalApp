@@ -128,18 +128,21 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 | `run.status` | `draft` \| `published` (생략 시 플래그로 추론) |
 | `notifyInbox` / `sendPush` | 알림·푸시 |
 
-## method: `fujimoto` (KR)
+## method: `fujimoto` (KR) — 모멘텀·추세 추종
 
-수치가 **모두 non-null**일 때만 통과.
+철학: **가장 강한 추세의 종목을 찾아 추세가 끝날 때까지 보유.** 바닥 매매·저평가 단독 추천 금지 (PER/PBR은 참고 필드일 뿐 통과 조건이 아니다).
 
-1. 매출 YoY > 0 AND 영업이익 YoY > 0 AND 순이익 YoY > 0  
-2. PER > 0 AND PER ≤ 15  
-3. PBR > 0 AND PBR ≤ 1  
-4. 배당 있음 또는 증배 여력  
+핵심 지표(`alignedMa`, `ma200`, `pctFrom52wHigh`, `volumeRatio`, `turnoverKrw`, `rsi`, `return3m`)가 **모두 non-null**일 때만 통과.
+
+1. `alignedMa` = true (ma20 > ma60 > ma120 정배열)  
+2. `currentPrice` > `ma200` (장기 추세 위)  
+3. `pctFrom52wHigh` ≥ -10 (52주 신고가 부근)  
+4. `volumeRatio` ≥ 1 (거래량 유지·증가)  
 5. 일 거래대금 ≥ `policy.minTurnoverKrw` (기본 100억)  
-6. RSI(14) ≤ 30  
 
-정렬: RSI 오름차순 → 등락률 오름차순. `items` 최대 20.
+RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — 과열 감점은 스킬 스코어링에서 처리).
+
+정렬: 수익률 블렌드(3/6/12개월, 50/30/20 — null 축 재가중) 내림차순 → 신고가 근접 순. `items` 최대 20 (스킬은 Top10 권장).
 
 ## 예약 지표 슬롯 (후속)
 

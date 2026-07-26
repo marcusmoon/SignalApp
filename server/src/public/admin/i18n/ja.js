@@ -639,6 +639,8 @@ export const baseJa = {
   settingsResetCoinsSub: 'コインマーケットキャッシュ',
   settingsResetEtfInsights: 'ETFブリーフィング',
   settingsResetEtfInsightsSub: '保存済みETFブリーフィング本文',
+  settingsResetKrScreener: '韓国株スクリーナー',
+  settingsResetKrScreenerSub: 'スクリーナースナップショット・キュレーション',
   settingsResetNotifications: '通知 Outbox',
   settingsResetNotificationsSub: 'プッシュ待機通知と配信結果',
   settingsResetJobRuns: 'Job 実行履歴',

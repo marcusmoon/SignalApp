@@ -25,6 +25,7 @@ import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
 import { handlePublicTodayBriefingRoutes } from './public/v1/todayBriefings.mjs';
 import { handlePublicEtfInsightRoutes } from './public/v1/etfInsights.mjs';
+import { handlePublicKrScreenerRoutes } from './public/v1/krScreener.mjs';
 import { handlePublicYoutubeRoutes } from './public/v1/youtube.mjs';
 import { handlePublicCommunityRoutes } from './public/v1/community.mjs';
 import { handlePublicMiscRoutes } from './public/routes.mjs';
@@ -45,6 +46,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicCommunityRoutes,
   handlePublicMarketRoutes,
   handlePublicEtfInsightRoutes,
+  handlePublicKrScreenerRoutes,
 ];
 
 const ADMIN_API_HANDLERS = [

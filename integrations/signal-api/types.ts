@@ -162,6 +162,51 @@ export type SignalApiEtfInsightSourceRef = {
   publishedAt?: string | null;
 };
 
+/** 한국주 스크리너 큐레이션 행 (후지모토식 ingest) */
+export type SignalApiKrScreenerItem = {
+  id: string;
+  symbol: string;
+  name: string;
+  market: string | null;
+  universeRank: number | null;
+  passed: boolean;
+  currentPrice: number | null;
+  changePercent: number | null;
+  per: number | null;
+  pbr: number | null;
+  revenueYoY: number | null;
+  operatingProfitYoY: number | null;
+  netProfitYoY: number | null;
+  dividend: boolean | null;
+  dividendGrowthCapacity: boolean | null;
+  turnoverKrw: number | null;
+  rsi: number | null;
+  note: string;
+  aiGenerated?: boolean;
+};
+
+export type SignalApiKrScreenerRun = {
+  id: string;
+  generatedAt: string | null;
+  generatedDate: string | null;
+  publishedAt: string | null;
+  locale: string;
+  preset: string;
+  title: string;
+  universe: {
+    kospiTop?: number;
+    kosdaqTop?: number;
+    asOf?: string | null;
+  } | null;
+  snapshotAsOf: string | null;
+  policy: Record<string, unknown> | null;
+  items: SignalApiKrScreenerItem[];
+  pushTitle?: string;
+  pushBody?: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 /** ETF 브리핑 — 외부 ingest 후 더보기·(신선할 때) 홈 노출 */
 export type SignalApiEtfInsight = {
   id: string;

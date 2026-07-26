@@ -18,6 +18,12 @@ export const ko = {
   homeNewsFlowNewMeta: 'NEW',
   /** 더보기·사이드바·홈 숏컷 짧은 라벨 (홈 섹션 제목은 homeEtfInsightTitle) */
   moreHubEtfShort: '섹터',
+  moreHubScreener: '스크리너',
+  screenerTitle: '성장·저평가 눌림',
+  screenerGuide: '후지모토식 프리셋 후보입니다. 1:2:6은 참고 가이드이며 자동매매·주문은 없습니다.',
+  screenerEmpty: '표시할 스크리너 후보가 없습니다.',
+  screenerLoadError: '스크리너를 불러오지 못했습니다.',
+  screenerMetricsLine: 'RSI {{rsi}} · PER {{per}} · PBR {{pbr}} · 매출YoY {{rev}}',
   digestFreshBadge: '최신',
   digestFreshBadgeA11y: '최근 갱신됨',
   commonComingSoon: '준비 중',

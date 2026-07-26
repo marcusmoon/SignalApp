@@ -639,6 +639,8 @@ export const baseEn = {
   settingsResetCoinsSub: 'Coin market cache',
   settingsResetEtfInsights: 'ETF briefing',
   settingsResetEtfInsightsSub: 'Stored ETF briefing payloads',
+  settingsResetKrScreener: 'KR screener',
+  settingsResetKrScreenerSub: 'Screener snapshots and curation runs',
   settingsResetNotifications: 'Notifications',
   settingsResetNotificationsSub: 'Queued push alerts and delivery results',
   settingsResetJobRuns: 'Job run history',

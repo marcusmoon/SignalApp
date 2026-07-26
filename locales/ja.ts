@@ -19,6 +19,13 @@ export const ja = {
   homeAiGeneratedA11y: 'AI生成の要約',
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'セクター',
+  moreHubScreener: 'スクリーナー',
+  screenerTitle: '成長・割安・押し目',
+  screenerGuide:
+    '藤本式プリセット候補です。1:2:6は参考ガイドで、自動売買・注文はありません。',
+  screenerEmpty: '表示するスクリーナー候補がありません。',
+  screenerLoadError: 'スクリーナーを読み込めませんでした。',
+  screenerMetricsLine: 'RSI {{rsi}} · PER {{per}} · PBR {{pbr}} · 売上YoY {{rev}}',
   digestFreshBadge: '最新',
   digestFreshBadgeA11y: '最近更新されました',
   commonComingSoon: '準備中',

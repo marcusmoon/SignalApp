@@ -41,6 +41,7 @@ import {
   jobUsesMcapProgress,
 } from './jobRunProgress.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
+import { buildKrScreenerSnapshotFromDb } from '../screener/buildKrScreenerSnapshot.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
@@ -384,6 +385,10 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   if (effective.provider === 'save' && effective.handler === 'user_news') {
     return { kind: 'community', rows: await fetchSaveUserNews(params || {}) };
   }
+  if (effective.provider === 'signal' && effective.handler === 'kr_screener_snapshot') {
+    const snapshot = await buildKrScreenerSnapshotFromDb();
+    return { kind: 'krScreenerSnapshot', rows: [snapshot] };
+  }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
@@ -395,6 +400,7 @@ async function persistHandlerResult(result, rows, { onHeartbeat } = {}) {
     priceSeries: 'priceSeries',
     coinMarkets: 'coinMarkets',
     community: 'communityPosts',
+    krScreenerSnapshot: 'krScreenerSnapshots',
   };
   const directCollection = directCollectionByKind[result.kind];
   if (directCollection) {

@@ -30,7 +30,17 @@
 - `generatedDate`: UTC `YYYY-MM-DD`
 - 서버 저장·API 필터는 [DATE-TIME.md](./DATE-TIME.md)를 따른다.
 
-## Endpoints (계약)
+## 구현 상태
+
+| 레이어 | 상태 |
+|---|---|
+| Flyway | `V2__kr_screener.sql` (`kr_screener_snapshots`, `kr_screener_runs` + Job seed) |
+| Job | `kr_screener_snapshot` — korea quotes/watchlist + `price_series` RSI. PER/PBR·실적은 quote payload에 있을 때만 |
+| API | GET universe/snapshot/curation · POST snapshot/ingest · POST curation ingest |
+| 앱 | 더보기 **스크리너** → `/screener` · 행 탭 → 종목 상세 |
+| 유니버스 | 당분간 watchlist·적재된 국내 시세 시총 순위(최대 80). 정식 코스피30·코스닥50 피드는 후속 |
+
+## Endpoints
 
 ### 유니버스·스냅샷 (Job 적재, 앱/에이전트 조회)
 
@@ -38,11 +48,20 @@
 GET /v1/screener/kr/universe
 GET /v1/screener/kr/snapshot
 GET /v1/screener/kr?preset=fujimoto
+GET /v1/screener/kr?preset=fujimoto&date=YYYY-MM-DD
 ```
 
 `/v1/screener/kr`는 최신 큐레이션(ingest 결과)을 반환한다. 스냅샷·유니버스는 Job 원천이다.
 
-### Ingest (외부 에이전트)
+### Snapshot ingest (Job·에이전트, 선택)
+
+- Method: `POST`
+- URL: `/v1/screener/kr/snapshot/ingest`
+- Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
+
+풍부한 재무 필드(PER/PBR/YoY/배당)를 외부에서 채울 때 사용. Job이 만든 스냅샷을 덮어쓸 수 있다.
+
+### Curation ingest (외부 에이전트)
 
 - Method: `POST`
 - URL: `/v1/screener/kr/ingest`

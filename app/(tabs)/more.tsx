@@ -52,6 +52,11 @@ const HUB_META: Record<
     icon: 'pie-chart',
     titleId: 'moreHubEtfShort',
   },
+  screener: {
+    href: '/screener' as Href,
+    icon: 'filter',
+    titleId: 'moreHubScreener',
+  },
   gameCenter: {
     href: '/game-center' as Href,
     icon: 'gamepad',
@@ -194,6 +199,10 @@ export default function MoreHubScreen() {
           return;
         }
         router.push('/etf-insights' as never);
+        return;
+      }
+      if (item === 'screener') {
+        router.push('/screener' as never);
         return;
       }
       if (item === 'account') {

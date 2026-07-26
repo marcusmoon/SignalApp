@@ -26,6 +26,7 @@ const WEB_ROOT_APP_PATHS = new Set([
   '/terms-history',
   '/today-briefing',
   '/etf-insights',
+  '/screener',
   '/etf-insight',
   '/youtube',
 ]);

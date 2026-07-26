@@ -19,6 +19,13 @@ export const en = {
   homeAiGeneratedA11y: 'AI-generated summary',
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'Sector',
+  moreHubScreener: 'Screener',
+  screenerTitle: 'Growth · value · oversold',
+  screenerGuide:
+    'Fujimoto-style preset candidates. 1:2:6 is a portfolio guide only — no auto-trading or orders.',
+  screenerEmpty: 'No screener candidates yet.',
+  screenerLoadError: 'Could not load the screener.',
+  screenerMetricsLine: 'RSI {{rsi}} · PER {{per}} · PBR {{pbr}} · Rev YoY {{rev}}',
   digestFreshBadge: 'New',
   digestFreshBadgeA11y: 'Recently updated',
   commonComingSoon: 'Coming soon',

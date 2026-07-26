@@ -387,7 +387,13 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'signal' && effective.handler === 'screener_pool_snapshot') {
     const market = String(params?.market || 'kr').trim().toLowerCase() || 'kr';
-    const snapshot = await buildScreenerPoolSnapshot({ market });
+    const dailyBarRange = String(params?.dailyBarRange || params?.range || '')
+      .trim()
+      .toLowerCase();
+    const snapshot = await buildScreenerPoolSnapshot({
+      market,
+      ...(dailyBarRange ? { dailyBarRange } : {}),
+    });
     return { kind: 'screenerSnapshot', rows: [snapshot] };
   }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);

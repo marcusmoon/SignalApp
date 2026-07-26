@@ -38,10 +38,11 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 | (확인 후) runs ingest | dry-run 전에 ingest |
 | | 해당 market 풀 밖 종목 추가 |
 
-스크리너 서버 Job은 **`screener_pool_kr` 하나**다 (Yahoo 시세·일봉 직접 조회 → `screener_snapshots`).  
+스크리너 서버 Job은 **`screener_pool_kr` 하나**다 (Yahoo 시세·**2y** 일봉 직접 조회 → `screener_snapshots`).  
 앱 시세/일봉 Job과 순서 의존 없음. 에이전트는 **풀 GET + method 큐레이션 JSON**이 본업이다.
 
 유니버스 `korea_screener_universe`(~80, venue). 풀에 `turnoverKrw`·RSI·모멘텀 슬롯이 채워진다 (비율).  
+모멘텀은 250거래일+ 이력이 있어야 `ma200`/`return12m`/`alignedMa`가 정확하다 (`universe.barsGe253` 확인).  
 **재무·외인/기관은 피드 없으면 null (통과 조건 아님).**
 
 ---

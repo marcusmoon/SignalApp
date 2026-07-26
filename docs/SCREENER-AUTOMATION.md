@@ -16,12 +16,17 @@
 
 ```text
 screener_pool_kr
-  → universe 읽기 → Yahoo 시세·1y 일봉 직접 조회
+  → universe 읽기 → Yahoo 시세·2y 일봉 직접 조회
   → RSI·turnover·모멘텀 계산 → screener_snapshots 저장
 
 스킬 → GET pool/snapshot → method 필터 → POST runs/ingest → screener_runs
 앱  → GET /v1/screener?market=&method=  (published만)
 ```
+
+일봉 깊이: `return12m`은 종가 **253개**, `ma200`/`alignedMa`는 **200개**가 필요하다.  
+Yahoo `1y`(~245–252세션)는 경계라 지표가 null로 떨어져 후보가 거의 안 나온다.  
+풀 Job은 `params.dailyBarRange: "2y"`(기본)로 ~500세션을 받아 **DB 별도 백필 없이** 매 실행마다 이력을 확보한다.  
+스냅샷 `universe.barCountMin` / `barsGe253`으로 깊이를 확인한다.
 
 | 담당 | 역할 | 테이블 |
 |---|---|---|
@@ -150,7 +155,7 @@ RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — �
 | 슬롯 | 채움 | 비고 |
 |---|---|---|
 | `turnoverKrw`, `rsi` | Job (Yahoo 시세·일봉) | RSI는 method 통과 조건 아님 |
-| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (1y 일봉) | `fujimoto` 통과·정렬에 사용 |
+| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (**2y** 일봉) | `fujimoto` 통과·정렬에 사용. 250거래일+ 필요 |
 | `per`, `pbr`, YoY, `dividend*` | 피드 없으면 null | 참고 필드 (통과 조건 아님) |
 | `foreignNetBuy`, `institutionNetBuy` | 피드 없으면 null | Money Flow 후속 |
 

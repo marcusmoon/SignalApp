@@ -1,8 +1,11 @@
 /**
  * Build KR screener pool snapshot — single job path.
  *
- * Flow: universe (venues) → Yahoo quotes + 1y bars → RSI / turnover / momentum
+ * Flow: universe (venues) → Yahoo quotes + 2y bars → RSI / turnover / momentum
  * → screener_snapshots only. Does not read or write app market_quotes / price_series.
+ *
+ * History depth: return12m needs 253 closes; ma200/alignedMa need 200.
+ * Yahoo `1y` sits on that edge — pool uses `2y` (~500 sessions).
  */
 import { queryKysely } from '../db/kysely/client.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
@@ -15,11 +18,21 @@ import {
 } from './koreaScreenerUniverse.mjs';
 import { normalizeScreenerMarket } from './markets.mjs';
 import { computeMomentumMetrics } from './momentum.mjs';
-import { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
+import {
+  buildPoolPolicy,
+  SCREENER_DAILY_BAR_RANGE,
+  SCREENER_MIN_BARS_FOR_RETURN12M,
+  SCREENER_RSI_PERIOD,
+} from './policy.mjs';
 import { computeRsi } from './rsi.mjs';
 import { shouldExcludeFromKrUniverse } from './universeExclude.mjs';
 
-export { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
+export {
+  buildPoolPolicy,
+  SCREENER_DAILY_BAR_RANGE,
+  SCREENER_MIN_BARS_FOR_RETURN12M,
+  SCREENER_RSI_PERIOD,
+} from './policy.mjs';
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -95,7 +108,7 @@ async function fetchUniverseQuotes(symbols, venues) {
   return map;
 }
 
-async function fetchUniverseBars(symbols, venues) {
+async function fetchUniverseBars(symbols, venues, range = SCREENER_DAILY_BAR_RANGE) {
   if (!symbols.length) return new Map();
   const instruments = symbols.map((symbol) => {
     const venue = venues.get(symbol) || 'kospi';
@@ -109,7 +122,7 @@ async function fetchUniverseBars(symbols, venues) {
   });
   const seriesRows = await fetchYahooDailyPriceSeries({
     instruments,
-    range: '1y',
+    range,
     requestDelayMs: 60,
   });
   const map = new Map();
@@ -118,6 +131,27 @@ async function fetchUniverseBars(symbols, venues) {
     if (code) map.set(code, row);
   }
   return map;
+}
+
+function barCountStats(barsBySymbol) {
+  const counts = [];
+  for (const row of barsBySymbol.values()) {
+    const n = Array.isArray(row?.bars) ? row.bars.length : 0;
+    if (n > 0) counts.push(n);
+  }
+  if (!counts.length) {
+    return { barCountMin: null, barCountMax: null, barCountMedian: null, barsGe253: 0 };
+  }
+  counts.sort((a, b) => a - b);
+  const mid = Math.floor(counts.length / 2);
+  const median =
+    counts.length % 2 === 0 ? Math.round((counts[mid - 1] + counts[mid]) / 2) : counts[mid];
+  return {
+    barCountMin: counts[0],
+    barCountMax: counts[counts.length - 1],
+    barCountMedian: median,
+    barsGe253: counts.filter((n) => n >= SCREENER_MIN_BARS_FOR_RETURN12M).length,
+  };
 }
 
 function metricsFromBars(seriesRow) {
@@ -150,10 +184,13 @@ function rankRows(list) {
   });
 }
 
-async function buildKrPoolSnapshot() {
+async function buildKrPoolSnapshot(options = {}) {
+  const dailyBarRange =
+    cleanText(options.dailyBarRange || options.range) || SCREENER_DAILY_BAR_RANGE;
   const { symbols: universeSymbols, venues, source } = await loadUniverse();
   const quotes = await fetchUniverseQuotes(universeSymbols, venues);
-  const barsBySymbol = await fetchUniverseBars(universeSymbols, venues);
+  const barsBySymbol = await fetchUniverseBars(universeSymbols, venues, dailyBarRange);
+  const barStats = barCountStats(barsBySymbol);
 
   const listRank = new Map(universeSymbols.map((s, i) => [s, i + 1]));
   const rows = [];
@@ -261,8 +298,10 @@ async function buildKrPoolSnapshot() {
       excludedCount,
       quoteFetched: quotes.size,
       seriesFetched: barsBySymbol.size,
+      dailyBarRange,
+      ...barStats,
       note:
-        'One job: Yahoo quotes + 1y bars → screener_snapshots. No app quotes/price_series dependency. Caps kospi30/kosdaq50. Fundamentals/money-flow null without feeds.',
+        `One job: Yahoo quotes + ${dailyBarRange} bars → screener_snapshots. Need ≥${SCREENER_MIN_BARS_FOR_RETURN12M} closes for return12m/ma200 accuracy. No app quotes/price_series dependency.`,
     },
     policy: buildPoolPolicy('kr'),
     symbols,
@@ -272,11 +311,11 @@ async function buildKrPoolSnapshot() {
 }
 
 /**
- * @param {{ market?: string }} [options]
+ * @param {{ market?: string, dailyBarRange?: string, range?: string }} [options]
  */
 export async function buildScreenerPoolSnapshot(options = {}) {
   const market = normalizeScreenerMarket(options.market);
-  if (market === 'kr') return buildKrPoolSnapshot();
+  if (market === 'kr') return buildKrPoolSnapshot(options);
   return emptyPoolSnapshot(
     market,
     `Pool builder for market=${market} is not wired yet.`,

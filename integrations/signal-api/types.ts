@@ -187,6 +187,19 @@ export type SignalApiScreenerItem = {
   turnoverUsd?: number | null;
   /** Wilder RSI; period in snapshot policy.rsiPeriod (default 14) */
   rsi: number | null;
+  /** Ratio returns / levels from pool momentum slots */
+  return3m?: number | null;
+  return6m?: number | null;
+  return12m?: number | null;
+  ma20?: number | null;
+  ma60?: number | null;
+  ma120?: number | null;
+  ma200?: number | null;
+  alignedMa?: boolean | null;
+  pctFrom52wHigh?: number | null;
+  volumeRatio?: number | null;
+  foreignNetBuy?: number | null;
+  institutionNetBuy?: number | null;
   note: string;
   aiGenerated?: boolean;
 };

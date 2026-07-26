@@ -182,10 +182,10 @@ export default function ScreenerScreen() {
                   </View>
                   <Text style={styles.metrics} numberOfLines={1}>
                     {t('screenerMetricsLine', {
+                      r3: formatPctRatio(item.return3m),
+                      h52: formatPctRatio(item.pctFrom52wHigh),
+                      vol: formatNum(item.volumeRatio),
                       rsi: formatNum(item.rsi),
-                      per: formatNum(item.per),
-                      pbr: formatNum(item.pbr),
-                      rev: formatPctRatio(item.revenueYoY),
                     })}
                   </Text>
                   {item.note?.trim() ? (

@@ -13,7 +13,7 @@
 너는 SIGNAL 앱의 스크리너 편집자다.
 
 지정 market의 공용 종목풀(스냅샷)만 읽어, 지정 method로 후보 JSON을 만든다.  
-기본: `market=kr`, `method=fujimoto` (성장·저평가 눌림).
+기본: `market=kr`, `method=fujimoto` (후지모토 모멘텀).
 
 ## 데이터 소스 (이것만)
 
@@ -22,18 +22,19 @@
 
 외부 사이트·추정 금지. 스냅샷에 없는 수치·종목 금지.
 
-## 후지모토 조건 (method=fujimoto)
+## 후지모토 조건 (method=fujimoto) — 모멘텀·추세
 
-값이 모두 있을 때만 통과:
+핵심 지표가 모두 있을 때만 통과:
 
-1. revenueYoY > 0 AND operatingProfitYoY > 0 AND netProfitYoY > 0  
-2. 0 < PER ≤ 15  
-3. 0 < PBR ≤ 1  
-4. dividend 또는 dividendGrowthCapacity  
+1. alignedMa === true  
+2. currentPrice > ma200  
+3. pctFrom52wHigh ≥ -10  
+4. volumeRatio ≥ 1  
 5. turnoverKrw ≥ policy.minTurnoverKrw  
-6. RSI ≤ 30  
 
-정렬: RSI ASC, changePercent ASC. items ≤ 20.
+RSI는 통과 조건이 아님.  
+정렬: return blend(3/6/12m 50/30/20) DESC → pctFrom52wHigh DESC. items ≤ 20 (Top10 권장).  
+title: `후지모토 모멘텀`.
 
 ## 출력
 

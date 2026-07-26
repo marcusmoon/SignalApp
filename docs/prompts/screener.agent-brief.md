@@ -12,7 +12,7 @@ Cursor/Codex/Claude 에이전트에 **그대로 붙여 넣을** 작업 지시서
 지정 **market**의 공용 풀 스냅샷만 읽어 **method** 규칙으로 후보 JSON을 만들고, 사람 확인 후 `POST /v1/screener/runs/ingest`로 올린다.  
 앱 `/screener?market=&method=`는 **published** ingest만 보여 준다.
 
-기본 작업: `market=kr`, `method=fujimoto` (성장·저평가 눌림).
+기본 작업: `market=kr`, `method=fujimoto` (후지모토 모멘텀).
 
 ### 풀 메타 복사 (필수)
 
@@ -23,7 +23,7 @@ Cursor/Codex/Claude 에이전트에 **그대로 붙여 넣을** 작업 지시서
 | `data.policy.minTurnoverKrw` | 필터 임계값 |
 
 `meta.asOfAgeHours > 24`이면 stale — dry-run으로 `items:[]` 또는 중단.  
-YoY는 비율(`0.08`=+8%). RSI는 14일. null은 통과 불가(0으로 채우지 말 것).  
+수익률·`pctFrom52wHigh`는 비율(`0.08`=+8%). RSI는 14일(통과 조건 아님). null은 통과 불가(0으로 채우지 말 것).  
 dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출). 확인 후 published.
 
 ---
@@ -42,7 +42,7 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 앱 시세/일봉 Job과 순서 의존 없음. 에이전트는 **풀 GET + method 큐레이션 JSON**이 본업이다.
 
 유니버스 `korea_screener_universe`(~80, venue). 풀에 `turnoverKrw`·RSI·모멘텀 슬롯이 채워진다 (비율).  
-**재무·외인/기관은 피드 없으면 null.**
+**재무·외인/기관은 피드 없으면 null (통과 조건 아님).**
 
 ---
 
@@ -71,19 +71,23 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 
 ---
 
-## method=`fujimoto` (KR)
+## method=`fujimoto` (KR) — 모멘텀·추세 추종
 
-값이 **모두 있을 때만** 통과.
+철학: 가장 강한 추세 종목을 찾아 추세가 끝날 때까지 보유. 바닥 매매·저평가 단독 추천 금지.
 
-1. 매출 YoY > 0 **그리고** 영업이익 YoY > 0 **그리고** 순이익 YoY > 0  
-2. PER > 0 **그리고** PER ≤ 15  
-3. PBR > 0 **그리고** PBR ≤ 1  
-4. `dividend === true` **또는** `dividendGrowthCapacity === true`  
+핵심 지표가 **모두 있을 때만** 통과: `alignedMa`, `ma200`, `pctFrom52wHigh`, `volumeRatio`, `turnoverKrw`, `rsi`, `return3m`.
+
+1. `alignedMa` = true (ma20 > ma60 > ma120)  
+2. `currentPrice` > `ma200`  
+3. `pctFrom52wHigh` ≥ -10  
+4. `volumeRatio` ≥ 1  
 5. `turnoverKrw` ≥ 스냅샷 `policy.minTurnoverKrw`  
-6. RSI ≤ 30  
 
-**정렬:** RSI 오름차순 → `changePercent` 오름차순  
-**개수:** 최대 20. 없으면 `items: []`
+RSI는 통과 조건이 아님(과열 감점은 스킬 스코어링).
+
+**정렬:** 수익률 블렌드(3/6/12개월 50/30/20, null 축 재가중) 내림차순 → 신고가 근접 순  
+**개수:** 최대 20 (Top10 권장). 없으면 `items: []`  
+**title:** `후지모토 모멘텀`
 
 ---
 
@@ -105,7 +109,7 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 | `id` | `screener:kr:fujimoto:<UTC generatedAt>` |
 | `market` | `kr` |
 | `method` | `fujimoto` |
-| `title` | `성장·저평가 눌림` |
+| `title` | `후지모토 모멘텀` |
 | `poolSnapshotId` | 읽은 풀 스냅샷 id |
 | `snapshotAsOf` | 풀 `asOf` |
 
@@ -143,13 +147,13 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/screener/runs/ingest" \
 
 1) GET $SIGNAL_SERVER_URL/v1/screener/pool/universe?market=kr
 2) GET $SIGNAL_SERVER_URL/v1/screener/pool/snapshot?market=kr
-만 읽고, 후지모토식(증수·증익·PER≤15·PBR≤1·배당/증배·거래대금≥minTurnoverKrw·RSI≤30)으로
-성장·저평가 눌림 후보 JSON을 만든다.
+만 읽고, 후지모토 모멘텀(정배열·가격>ma200·신고가 부근·거래량 유지·거래대금≥minTurnoverKrw)으로
+후보 JSON을 만든다. RSI는 통과 조건이 아니다.
 
 규칙:
 - 외부 조회·숫자 추정 금지. 스냅샷에 없는 값은 null, null 종목은 통과 불가.
-- symbol은 6자리만. items 최대 20. 정렬: RSI↑ 후 changePercent↑.
-- run.market=kr, run.method=fujimoto. note 한국어 1문장(≤80자), 매수 권유 금지.
+- symbol은 6자리만. items 최대 20(Top10 권장). 정렬: return blend↓ 후 신고가 근접.
+- run.market=kr, run.method=fujimoto, title=후지모토 모멘텀. note 한국어 1문장(≤80자), 매수 권유 금지.
 - dry-run: notifyInbox=false, sendPush=false. ingest 금지.
 - 최종 답변은 JSON만. 스키마는 docs/examples/screener.ingest.example.json.
 ```

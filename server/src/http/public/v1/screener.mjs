@@ -112,7 +112,7 @@ function normalizeScreenerItem(row, market) {
     turnoverKrw: numOrNull(row.turnoverKrw),
     turnoverUsd: numOrNull(row.turnoverUsd),
     rsi: numOrNull(row.rsi),
-    // Reserved for Fujimoto RS / Trend / Money Flow (null until feed exists).
+    // Momentum slots (filled by screener_pool_kr from daily bars).
     return3m: numOrNull(row.return3m),
     return6m: numOrNull(row.return6m),
     return12m: numOrNull(row.return12m),
@@ -235,7 +235,8 @@ function normalizeRunPayload(body) {
     snapshotAsOf: parseToUtcIsoOrNull(runIn?.snapshotAsOf),
     poolSnapshotId,
     policy: {
-      ranking: cleanText(runIn?.policy?.ranking) || 'rsi_asc_then_change_percent_asc',
+      ranking:
+        cleanText(runIn?.policy?.ranking) || 'return_blend_desc_then_pct_from_52w_high_desc',
       maxItems: numOrNull(runIn?.policy?.maxItems) ?? FUJIMOTO_MAX_ITEMS,
       requireAllMetrics: runIn?.policy?.requireAllMetrics !== false,
     },

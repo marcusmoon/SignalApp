@@ -128,29 +128,31 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 | `run.status` | `draft` \| `published` (생략 시 플래그로 추론) |
 | `notifyInbox` / `sendPush` | 알림·푸시 |
 
-## method: `fujimoto` (KR)
+## method: `fujimoto` (KR) — 모멘텀·추세 추종
 
-수치가 **모두 non-null**일 때만 통과.
+철학: **가장 강한 추세의 종목을 찾아 추세가 끝날 때까지 보유.** 바닥 매매·저평가 단독 추천 금지 (PER/PBR은 참고 필드일 뿐 통과 조건이 아니다).
 
-1. 매출 YoY > 0 AND 영업이익 YoY > 0 AND 순이익 YoY > 0  
-2. PER > 0 AND PER ≤ 15  
-3. PBR > 0 AND PBR ≤ 1  
-4. 배당 있음 또는 증배 여력  
+핵심 지표(`alignedMa`, `ma200`, `pctFrom52wHigh`, `volumeRatio`, `turnoverKrw`, `rsi`, `return3m`)가 **모두 non-null**일 때만 통과.
+
+1. `alignedMa` = true (ma20 > ma60 > ma120 정배열)  
+2. `currentPrice` > `ma200` (장기 추세 위)  
+3. `pctFrom52wHigh` ≥ -10 (52주 신고가 부근)  
+4. `volumeRatio` ≥ 1 (거래량 유지·증가)  
 5. 일 거래대금 ≥ `policy.minTurnoverKrw` (기본 100억)  
-6. RSI(14) ≤ 30  
 
-정렬: RSI 오름차순 → 등락률 오름차순. `items` 최대 20.
+RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — 과열 감점은 스킬 스코어링에서 처리).
+
+정렬: 수익률 블렌드(3/6/12개월, 50/30/20 — null 축 재가중) 내림차순 → 신고가 근접 순. `items` 최대 20 (스킬은 Top10 권장).  
+타이틀: `후지모토 모멘텀`.
 
 ## 풀 지표 슬롯
 
 | 슬롯 | 채움 | 비고 |
 |---|---|---|
-| `turnoverKrw`, `rsi` | Job (Yahoo 시세·일봉) | |
-| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (1y 일봉) | `policy.momentumLookbacks` / 비율 |
-| `per`, `pbr`, YoY, `dividend*` | 피드 없으면 null | 선택적 pool ingest |
+| `turnoverKrw`, `rsi` | Job (Yahoo 시세·일봉) | RSI는 method 통과 조건 아님 |
+| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (1y 일봉) | `fujimoto` 통과·정렬에 사용 |
+| `per`, `pbr`, YoY, `dividend*` | 피드 없으면 null | 참고 필드 (통과 조건 아님) |
 | `foreignNetBuy`, `institutionNetBuy` | 피드 없으면 null | Money Flow 후속 |
-
-`fujimoto` method는 현재 성장·저평가·RSI 눌림 규칙이며, 모멘텀 슬롯은 풀에만 채워 둔다(스킬 스코어링·후속 method용).
 
 ## 구현 상태
 

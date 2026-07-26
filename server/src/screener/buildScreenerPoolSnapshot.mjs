@@ -8,6 +8,11 @@
  * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload.
  */
 import { queryKysely } from '../db/kysely/client.mjs';
+import {
+  koreaScreenerVenueMap,
+  venuesFromMarketListPayload,
+  yahooSymbolForVenue,
+} from './koreaScreenerUniverse.mjs';
 import { normalizeScreenerMarket } from './markets.mjs';
 import { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
 import { computeRsi } from './rsi.mjs';
@@ -72,22 +77,34 @@ function lastVolumeFromPriceSeriesPayload(payload) {
   return null;
 }
 
-async function loadMarketListSymbols(listKey) {
+async function loadMarketListPayload(listKey) {
   const result = await queryKysely(
     `SELECT payload FROM market_lists WHERE list_key = $1 LIMIT 1`,
     [listKey],
   );
-  const payload = result.rows[0]?.payload;
-  const symbols = Array.isArray(payload?.symbols) ? payload.symbols : [];
-  return symbols.map(normalizeKrCode).filter(Boolean);
+  return result.rows[0]?.payload || null;
 }
 
 /** Prefer screener universe (~80); fall back to korea_watchlist. */
 async function loadKoreaUniverseSymbols() {
-  const screener = await loadMarketListSymbols('korea_screener_universe');
-  if (screener.length) return { symbols: screener, source: 'korea_screener_universe' };
-  const watchlist = await loadMarketListSymbols('korea_watchlist');
-  return { symbols: watchlist, source: 'korea_watchlist' };
+  const screenerPayload = await loadMarketListPayload('korea_screener_universe');
+  const screener = Array.isArray(screenerPayload?.symbols)
+    ? screenerPayload.symbols.map(normalizeKrCode).filter(Boolean)
+    : [];
+  if (screener.length) {
+    const venues = venuesFromMarketListPayload(screenerPayload);
+    // Code fallback if DB still on pre-V4 seed without venues.
+    const fallback = koreaScreenerVenueMap();
+    for (const [symbol, venue] of fallback) {
+      if (!venues.has(symbol)) venues.set(symbol, venue);
+    }
+    return { symbols: screener, source: 'korea_screener_universe', venues };
+  }
+  const watchlistPayload = await loadMarketListPayload('korea_watchlist');
+  const watchlist = Array.isArray(watchlistPayload?.symbols)
+    ? watchlistPayload.symbols.map(normalizeKrCode).filter(Boolean)
+    : [];
+  return { symbols: watchlist, source: 'korea_watchlist', venues: new Map() };
 }
 
 async function loadKoreaQuotes() {
@@ -210,7 +227,11 @@ function emptyPoolSnapshot(market, note) {
 }
 
 async function buildKrPoolSnapshot() {
-  const { symbols: universeSymbols, source: listSource } = await loadKoreaUniverseSymbols();
+  const {
+    symbols: universeSymbols,
+    source: listSource,
+    venues: seedVenues,
+  } = await loadKoreaUniverseSymbols();
   const quotes = await loadKoreaQuotes();
   // Preserve list order for ranking when marketCap is missing.
   const listRank = new Map(universeSymbols.map((s, i) => [s, i + 1]));
@@ -232,8 +253,18 @@ async function buildKrPoolSnapshot() {
 
     const yahooHint =
       quote?.regularSession?.yahooSymbol || quote?.yahooSymbol || quote?.symbol || '';
-    const venue = venueFromYahooHint(yahooHint, quote?.market || quote?.exchange);
+    // Seed venue wins (fixes default-all-kospi). Else quote market / Yahoo suffix.
+    const seedVenue = seedVenues.get(symbol) || null;
+    const venue =
+      seedVenue ||
+      (cleanText(quote?.market || quote?.exchange).toLowerCase() === 'kosdaq'
+        ? 'kosdaq'
+        : cleanText(quote?.market || quote?.exchange).toLowerCase() === 'kospi'
+          ? 'kospi'
+          : null) ||
+      venueFromYahooHint(yahooHint, quote?.market || quote?.exchange);
     const yahooSymbol =
+      (seedVenue ? yahooSymbolForVenue(symbol, seedVenue) : '') ||
       cleanText(yahooHint).match(/^\d{6}\.(KS|KQ)$/i)?.[0]?.toUpperCase() ||
       yahooFromVenue(symbol, venue);
 
@@ -333,7 +364,7 @@ async function buildKrPoolSnapshot() {
       excludedCount,
       exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Universe from korea_screener_universe (approx large-cap ordinary shares) until live KRX mcap feed exists. turnoverKrw from quote volume or price_series last bar × price. Fundamentals still null without a fundamentals feed. Pool asOf is job run time (UTC); skill should treat age >24h as stale.',
+        'Universe from korea_screener_universe with explicit venue (kospi/kosdaq → Yahoo .KS/.KQ). Caps kospiTop=30 kosdaqTop=50. turnoverKrw from quote volume or price_series×price. Fundamentals null without a fundamentals feed. Pool asOf is job run time (UTC); skill treats age >24h as stale.',
     },
     policy: buildPoolPolicy('kr'),
     symbols: ranked,

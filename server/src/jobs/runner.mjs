@@ -86,18 +86,35 @@ function dailyBarInstruments(db, params = {}) {
     ...listKeys.flatMap((key) => marketListSymbols(db, key)),
   ];
   const preferredYahoo = preferredYahooByKrxSymbols(db, symbols);
+  // Overlay screener-universe venues so kosdaq bars use .KQ even if quotes still have wrong .KS.
+  const venueYahoo = {};
+  for (const key of listKeys) {
+    const list = (db.marketLists || []).find((row) => row.key === key);
+    if (!list?.venues && !list?.entries) continue;
+    // Lazy sync import avoided — venues are plain objects on payload after V4.
+    const venues = list.venues && typeof list.venues === 'object' ? list.venues : {};
+    for (const [code, venue] of Object.entries(venues)) {
+      const sym = String(code || '').trim();
+      if (!/^\d{6}$/.test(sym)) continue;
+      venueYahoo[sym] = venue === 'kosdaq' ? `${sym}.KQ` : `${sym}.KS`;
+    }
+  }
   const bySymbol = new Map();
   for (const symbol of symbols) {
     const normalized = String(symbol || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!normalized || bySymbol.has(normalized)) continue;
     const isKr = /^\d{6}$/.test(normalized);
+    const yahoo =
+      (isKr && venueYahoo[normalized]) ||
+      (isKr && preferredYahoo[normalized]) ||
+      null;
     bySymbol.set(normalized, {
       symbol: normalized,
       displaySymbol: normalized,
       name: normalized,
       currency: isKr ? 'KRW' : 'USD',
-      // 시세 Job이 풀어둔 .KS/.KQ를 재사용해 KOSDAQ 일봉 누락을 줄인다.
-      ...(isKr && preferredYahoo[normalized] ? { yahooSymbol: preferredYahoo[normalized] } : {}),
+      // Venue-aware Yahoo suffix first; then quote-resolved .KS/.KQ.
+      ...(yahoo ? { yahooSymbol: yahoo } : {}),
     });
   }
   const explicit = Array.isArray(params.instruments) ? params.instruments : [];
@@ -330,16 +347,27 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'yahoo' && effective.handler === 'market_quotes_kr') {
     const listKey = params?.listKey || 'korea_watchlist';
+    const list = (dbBefore.marketLists || []).find((row) => row.key === listKey) || null;
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0
       ? params.symbols
       : marketListSymbols(dbBefore, listKey);
     const segment = String(params?.segment || 'korea').trim() || 'korea';
+    const { venuesFromMarketListPayload, preferredYahooFromVenues } = await import(
+      '../screener/koreaScreenerUniverse.mjs'
+    );
+    const venueBySymbol = venuesFromMarketListPayload(list);
+    // Venue-derived Yahoo suffix wins over a poisoned preferred (.KS on kosdaq).
+    const preferredYahooBySymbol = {
+      ...preferredYahooByKrxSymbols(dbBefore, symbols),
+      ...preferredYahooFromVenues(venueBySymbol),
+    };
     return {
       kind: 'marketQuotes',
       rows: await fetchYahooKrxMarketQuotes({
         symbols,
         segment,
-        preferredYahooBySymbol: preferredYahooByKrxSymbols(dbBefore, symbols),
+        preferredYahooBySymbol,
+        venueBySymbol,
       }),
     };
   }

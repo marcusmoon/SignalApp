@@ -139,9 +139,9 @@ quotes/price_series 조인 시 서버가 `.KS`/`.KQ`를 strip해 6자리로 맞�
 
 | 레이어 | 상태 |
 |---|---|
-| Flyway | `V2__screener.sql` + `V3__korea_screener_universe.sql` |
+| Flyway | `V2`–`V4` (`korea_screener_universe` + **venue** map) |
 | Job | `screener_pool_kr` (hourly; 08:00 KST 전 갱신 권장) |
-| 유니버스 | `korea_screener_universe` (~80 근사 대형 보통주). **정식 KRX 시총 피드 후속** |
+| 유니버스 | `korea_screener_universe` (~80, `venues`로 kospi/kosdaq 명시 → Yahoo `.KS`/`.KQ`). **정식 KRX 시총 피드 후속** |
 | 시세·대금 | Yahoo quotes에 `volume`/`turnoverKrw` 적재. 없으면 일봉 volume×price 폴백 |
 | 재무 | quote에 있을 때만. **현재 피드 없음 → per/pbr/YoY/배당 null → fujimoto 통과 0개 가능** |
 | RS/Trend 지표 | 슬롯만 (값 후속) |

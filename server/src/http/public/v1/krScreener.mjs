@@ -182,7 +182,8 @@ async function publishScreenerNotification(run, queuePush) {
 }
 
 export async function handlePublicKrScreenerRoutes({ req, res, url, pathname }) {
-  if (req.method === 'POST' && pathname === '/v1/screener/kr/snapshot/ingest') {
+  // Paths follow etf-insights style: /v1/kr-screener[…]
+  if (req.method === 'POST' && pathname === '/v1/kr-screener/snapshot/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
       return true;
@@ -199,7 +200,7 @@ export async function handlePublicKrScreenerRoutes({ req, res, url, pathname }) 
     return true;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/screener/kr/ingest') {
+  if (req.method === 'POST' && pathname === '/v1/kr-screener/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
       return true;
@@ -226,7 +227,7 @@ export async function handlePublicKrScreenerRoutes({ req, res, url, pathname }) 
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/screener/kr/universe') {
+  if (req.method === 'GET' && pathname === '/v1/kr-screener/universe') {
     const snapshot = await queryLatestKrScreenerSnapshot();
     if (!snapshot) {
       json(res, 200, {
@@ -259,7 +260,7 @@ export async function handlePublicKrScreenerRoutes({ req, res, url, pathname }) 
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/screener/kr/snapshot') {
+  if (req.method === 'GET' && pathname === '/v1/kr-screener/snapshot') {
     const snapshot = await queryLatestKrScreenerSnapshot();
     if (!snapshot) {
       json(res, 200, { data: null, meta: { empty: true } });
@@ -269,7 +270,7 @@ export async function handlePublicKrScreenerRoutes({ req, res, url, pathname }) 
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/screener/kr') {
+  if (req.method === 'GET' && pathname === '/v1/kr-screener') {
     const preset = cleanText(url.searchParams.get('preset')).toLowerCase() || FUJIMOTO_PRESET;
     const date = cleanText(url.searchParams.get('date'));
     if (date) {

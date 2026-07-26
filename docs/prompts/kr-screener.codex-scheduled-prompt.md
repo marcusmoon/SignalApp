@@ -7,7 +7,7 @@
 
 - 실행 주기: 장전 1회(예: 08:20 KST) + 장후 1회(예: 15:40 KST). 우선은 1일 1회도 가능
 - 출력 목적: 사람이 확인할 스크리너 큐레이션 JSON
-- 전송 금지: 이 예약은 `/v1/screener/kr/ingest`를 호출하지 않는다
+- 전송 금지: 이 예약은 `/v1/kr-screener/ingest`를 호출하지 않는다
 - 원천 데이터: Signal Server 스크리너 스냅샷·시세 API만 사용한다
 - 전제: 서버 Job이 **코스피 시총 상위 30 + 코스닥 시총 상위 50** 유니버스와 지표 스냅샷을 이미 적재해 두었을 것
 
@@ -25,8 +25,8 @@ Signal Server에 이미 적재된 한국주 스크리너 유니버스(코스피 
 - `SIGNAL_SERVER_URL` 값이 있으면 그 서버를 사용한다.
 - `SIGNAL_SERVER_URL` 값이 없으면 `https://signalapp.up.railway.app`를 사용한다.
 - 아래 API만 호출한다.
-  - GET `${SIGNAL_SERVER_URL}/v1/screener/kr/universe`
-  - GET `${SIGNAL_SERVER_URL}/v1/screener/kr/snapshot`
+  - GET `${SIGNAL_SERVER_URL}/v1/kr-screener/universe`
+  - GET `${SIGNAL_SERVER_URL}/v1/kr-screener/snapshot`
 - 스냅샷 API가 아직 없고 `universe`만 있으면, 유니버스 심볼 목록만 근거로 두고 수치가 없는 필드는 null로 둔다. 숫자를 추정해 채우지 않는다.
 - 외부 웹 검색, 네이버·Yahoo·KRX·뉴스 사이트 추가 조회는 하지 않는다.
 - Signal Server 응답에 있는 필드만 근거로 사용한다. 없는 PER·PBR·RSI·실적·거래대금을 만들어내지 않는다.
@@ -130,7 +130,7 @@ docs/KR-SCREENER-AUTOMATION.md 와 docs/examples/kr-screener.ingest.example.json
 - dry-run 그대로 ingest 금지: `notifyInbox: false`면 알림함에 안 쌓임
 
 ```bash
-curl -X POST "$SIGNAL_SERVER_URL/v1/screener/kr/ingest" \
+curl -X POST "$SIGNAL_SERVER_URL/v1/kr-screener/ingest" \
   -H "content-type: application/json" \
   -H "x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN" \
   --data @kr-screener.json

@@ -20,7 +20,7 @@ export async function fetchSignalKrScreenerRun(
     if (hit) return hit.run;
   }
   const json = await signalApi<{ data: SignalApiKrScreenerRun | null }>(
-    '/v1/screener/kr',
+    '/v1/kr-screener',
     { preset, date: date || undefined },
     { timeoutMs: 5000, attempts: 1 },
   );

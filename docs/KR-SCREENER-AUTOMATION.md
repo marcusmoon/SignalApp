@@ -11,7 +11,7 @@
 |---|---|
 | 서버 Job | 코스피 시총 상위 30 + 코스닥 시총 상위 50 선정, 가격·거래대금·RSI·(가능 시) PER·PBR·실적·배당 스냅샷 |
 | Codex/Claude | 스냅샷 GET만 읽어 프리셋 필터·정렬·note JSON 생성 → dry-run 후 ingest |
-| 앱 | `GET /v1/screener/kr` 등 스냅샷·큐레이션 조회. 외부 provider 호출 금지 |
+| 앱 | `GET /v1/kr-screener` 등 스냅샷·큐레이션 조회. 외부 provider 호출 금지 |
 
 모델이 PER·PBR·RSI·실적을 **추정·검색으로 채우면 안 된다.**
 
@@ -42,21 +42,32 @@
 
 ## Endpoints
 
+`etf-insights`와 같이 **리소스 접두사 kebab-case** (`/v1/kr-screener`).  
+앱 화면 경로는 `/screener`(푸시 deepLink 동일)로 API와 분리한다.
+
+| Method | Path | 용도 |
+|---|---|---|
+| `GET` | `/v1/kr-screener` | 최신 큐레이션 (`?preset=fujimoto`, 선택 `?date=YYYY-MM-DD`) |
+| `GET` | `/v1/kr-screener/universe` | 유니버스 심볼 목록 |
+| `GET` | `/v1/kr-screener/snapshot` | 지표 스냅샷(Job 원천) |
+| `POST` | `/v1/kr-screener/ingest` | 큐레이션 ingest (Codex/에이전트) |
+| `POST` | `/v1/kr-screener/snapshot/ingest` | 스냅샷 ingest (Job·에이전트, 선택) |
+
 ### 유니버스·스냅샷 (Job 적재, 앱/에이전트 조회)
 
 ```text
-GET /v1/screener/kr/universe
-GET /v1/screener/kr/snapshot
-GET /v1/screener/kr?preset=fujimoto
-GET /v1/screener/kr?preset=fujimoto&date=YYYY-MM-DD
+GET /v1/kr-screener/universe
+GET /v1/kr-screener/snapshot
+GET /v1/kr-screener?preset=fujimoto
+GET /v1/kr-screener?preset=fujimoto&date=YYYY-MM-DD
 ```
 
-`/v1/screener/kr`는 최신 큐레이션(ingest 결과)을 반환한다. 스냅샷·유니버스는 Job 원천이다.
+`/v1/kr-screener`는 최신 큐레이션(ingest 결과)을 반환한다. 스냅샷·유니버스는 Job 원천이다.
 
 ### Snapshot ingest (Job·에이전트, 선택)
 
 - Method: `POST`
-- URL: `/v1/screener/kr/snapshot/ingest`
+- URL: `/v1/kr-screener/snapshot/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
 풍부한 재무 필드(PER/PBR/YoY/배당)를 외부에서 채울 때 사용. Job이 만든 스냅샷을 덮어쓸 수 있다.
@@ -64,7 +75,7 @@ GET /v1/screener/kr?preset=fujimoto&date=YYYY-MM-DD
 ### Curation ingest (외부 에이전트)
 
 - Method: `POST`
-- URL: `/v1/screener/kr/ingest`
+- URL: `/v1/kr-screener/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
 | 필드 | 역할 |
@@ -118,6 +129,6 @@ dry-run JSON은 둘 다 `false`. 확인 전에는 ingest하지 않는다.
 
 ## 운영 원칙
 
-- dry-run 확인 전 `/v1/screener/kr/ingest` 호출 금지  
+- dry-run 확인 전 `/v1/kr-screener/ingest` 호출 금지  
 - Signal Server 응답에 없는 수치·종목을 만들지 않는다  
 - 푸시 `deepLink`는 `/screener` (또는 확정 시 `/screener?date=<generatedDate>`)

@@ -97,9 +97,10 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
 
 const webViewportStyle = {
   position: 'relative',
-  flex: 1,
+  flexGrow: 1,
+  flexShrink: 1,
+  flexBasis: 0,
   minHeight: 0,
-  height: '100%',
   maxHeight: '100%',
   overflowY: 'auto',
   overflowX: 'hidden',

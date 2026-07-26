@@ -28,12 +28,19 @@ export const webFlexFill = {
 
 /**
  * ScrollView / FlatList viewport inside a bounded column.
- * Web wide panes need an explicit 100% height cap; otherwise RN Web can let
- * ScrollView grow to content height, leaving no internal scroll range.
+ * Use flex remaining space (flexBasis:0), not height:100% — a 100% height
+ * viewport ignores fixed siblings above (e.g. news digest strip) and gets
+ * clipped by overflow:hidden ancestors on wide web.
  */
 export const webScrollViewportStyle =
   isWeb
-    ? ({ flex: 1, minHeight: 0, height: '100%', maxHeight: '100%' } as const)
+    ? ({
+        flexGrow: 1,
+        flexShrink: 1,
+        flexBasis: 0,
+        minHeight: 0,
+        maxHeight: '100%',
+      } as const)
     : webFlexFill;
 
 /** Bottom-tab scene wrapper: bounded height for list scroll on web. */

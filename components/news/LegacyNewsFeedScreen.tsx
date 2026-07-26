@@ -17,6 +17,7 @@ import {
   SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET,
+  SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -830,7 +831,9 @@ export function LegacyNewsFeedScreen({
         : t('feedEmpty')
       : null;
 
-  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const bottomPad = useTwoPane
+    ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
+    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const newsTitleFabBottom = useTwoPane
     ? fabStackBottom(0, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET)
     : fabStackBottom(tabBarHeight, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET);
@@ -949,22 +952,24 @@ export function LegacyNewsFeedScreen({
             </View>
           </View>
         ) : null}
+        {/* Wide: digest is a sibling of listColumn (not inside it) so the list
+            viewport can fill remaining height without clipping under overflow:hidden. */}
+        {showDigest && useTwoPane ? (
+          <View style={[styles.topFixedStack, styles.topFixedStackWide]}>
+            <View style={[styles.topFixedDigest, styles.topFixedDigestWide]}>
+              <DigestPager
+                batches={digestBatches}
+                columns={2}
+                onRefresh={() => void onRefresh()}
+                refreshing={refreshing}
+                onGoToList={goToFeedList}
+                goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
+              />
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.listColumn}>
-          {showDigest && useTwoPane ? (
-            <View style={[styles.topFixedStack, styles.topFixedStackWide, styles.listColumnDigestStrip]}>
-              <View style={[styles.topFixedDigest, styles.topFixedDigestWide]}>
-                <DigestPager
-                  batches={digestBatches}
-                  columns={2}
-                  onRefresh={() => void onRefresh()}
-                  refreshing={refreshing}
-                  onGoToList={goToFeedList}
-                  goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
-                />
-              </View>
-            </View>
-          ) : null}
           {segment === 'video' ? (
             <YoutubeFeedPanel
               ref={youtubePanelRef}

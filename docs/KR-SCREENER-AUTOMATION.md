@@ -2,6 +2,7 @@
 
 더보기 **스크리너** 메뉴용 큐레이션이다. 서버 Job이 유니버스·지표 스냅샷을 적재하고, Codex/Claude 예약 작업이 후지모토식 프리셋으로 후보 JSON을 만든 뒤 ingest한다. 앱은 GET으로만 읽는다.
 
+에이전트 브리프(붙여넣기용): [`docs/prompts/kr-screener.agent-brief.md`](./prompts/kr-screener.agent-brief.md)  
 예약 dry-run 프롬프트: [`docs/prompts/kr-screener.codex-scheduled-prompt.md`](./prompts/kr-screener.codex-scheduled-prompt.md)  
 예제: [`docs/examples/kr-screener.ingest.example.json`](./examples/kr-screener.ingest.example.json)
 

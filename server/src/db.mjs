@@ -636,6 +636,8 @@ const collectionSpecs = [
       position: index,
       market: textOrNull(row.market) || 'kr',
       method: textOrNull(row.method || row.preset) || 'fujimoto',
+      status: textOrNull(row.status) || 'published',
+      pool_snapshot_id: textOrNull(row.poolSnapshotId),
       generated_date: dateOrNull(row.generatedDate || row.publishedAt),
       published_at: isoOrNull(row.publishedAt || row.generatedAt),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),

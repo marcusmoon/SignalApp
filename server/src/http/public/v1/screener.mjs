@@ -3,6 +3,7 @@ import {
   queryLatestScreenerRun,
   queryLatestScreenerSnapshot,
   queryPublicScreenerRuns,
+  queryScreenerRunByPoolSnapshot,
 } from '../../../db/repositories/screenerRepository.mjs';
 import { config } from '../../../config.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
@@ -12,6 +13,7 @@ import {
   FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW,
   FUJIMOTO_MAX_ITEMS,
 } from '../../../screener/fujimoto.mjs';
+import { buildPoolPolicy, SCREENER_RSI_PERIOD } from '../../../screener/policy.mjs';
 import {
   defaultMethodTitle,
   listScreenerMethods,
@@ -49,6 +51,17 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
+/** Skill-friendly error: always include data:null alongside error.code */
+function jsonError(res, status, code, extra = {}) {
+  json(res, status, { data: null, error: { code, ...extra } });
+}
+
+function asOfAgeHours(asOfIso) {
+  const ms = Date.parse(asOfIso || '');
+  if (!Number.isFinite(ms)) return null;
+  return Math.round(((Date.now() - ms) / 3_600_000) * 10) / 10;
+}
+
 /** KR: 6-digit. Global: ticker letters/numbers (e.g. AAPL, BRK.B). */
 function normalizeSymbolCode(value, market) {
   const raw = cleanText(value);
@@ -61,16 +74,30 @@ function normalizeSymbolCode(value, market) {
   return '';
 }
 
+function normalizeYahooSymbol(value, symbol, venue, market) {
+  const raw = cleanText(value).toUpperCase();
+  if (market === 'kr') {
+    if (/^\d{6}\.(KS|KQ)$/.test(raw)) return raw;
+    if (/^\d{6}$/.test(symbol)) {
+      return venue === 'kosdaq' ? `${symbol}.KQ` : `${symbol}.KS`;
+    }
+    return null;
+  }
+  return raw || null;
+}
+
 function normalizeScreenerItem(row, market) {
   if (!row || typeof row !== 'object') return null;
   const symbol = normalizeSymbolCode(row.symbol, market);
   if (!symbol) return null;
+  const venue = cleanText(row.market).toLowerCase() || null;
   const id = cleanText(row.id) || `screener-item:${market}:${symbol}`;
   return {
     id,
     symbol,
+    yahooSymbol: normalizeYahooSymbol(row.yahooSymbol, symbol, venue, market),
     name: cleanText(row.name),
-    market: cleanText(row.market).toLowerCase() || null,
+    market: venue,
     universeRank: numOrNull(row.universeRank),
     passed: row.passed !== false,
     currentPrice: numOrNull(row.currentPrice),
@@ -85,6 +112,19 @@ function normalizeScreenerItem(row, market) {
     turnoverKrw: numOrNull(row.turnoverKrw),
     turnoverUsd: numOrNull(row.turnoverUsd),
     rsi: numOrNull(row.rsi),
+    // Reserved for Fujimoto RS / Trend / Money Flow (null until feed exists).
+    return3m: numOrNull(row.return3m),
+    return6m: numOrNull(row.return6m),
+    return12m: numOrNull(row.return12m),
+    ma20: numOrNull(row.ma20),
+    ma60: numOrNull(row.ma60),
+    ma120: numOrNull(row.ma120),
+    ma200: numOrNull(row.ma200),
+    alignedMa: boolOrNull(row.alignedMa),
+    pctFrom52wHigh: numOrNull(row.pctFrom52wHigh),
+    volumeRatio: numOrNull(row.volumeRatio),
+    foreignNetBuy: numOrNull(row.foreignNetBuy),
+    institutionNetBuy: numOrNull(row.institutionNetBuy),
     note: cleanText(row.note).slice(0, 80),
     aiGenerated: row.aiGenerated === true,
   };
@@ -93,15 +133,18 @@ function normalizeScreenerItem(row, market) {
 function normalizeSnapshotPayload(input) {
   const market = normalizeScreenerMarket(input?.market);
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || new Date().toISOString();
+  // Skill copies asOf → snapshotAsOf; never leave empty.
   const asOf = parseToUtcIsoOrNull(input?.asOf || input?.snapshotAsOf) || generatedAt;
   const generatedDate =
     utcDateOnlyOrNull(input?.generatedDate) || utcDateKeyFromInstant(generatedAt);
-  const id = cleanText(input?.id) || `screener-snapshot:${market}:${generatedAt}`;
+  // Skill copies id → poolSnapshotId; always set.
+  const id = cleanText(input?.id) || `screener-snapshot:${market}:${asOf}`;
   const symbols = cleanArray(input?.symbols)
     .map((row) => normalizeScreenerItem(row, market))
     .filter(Boolean)
     .slice(0, 200);
   const universe = input?.universe && typeof input.universe === 'object' ? input.universe : {};
+  const defaults = buildPoolPolicy(market);
   return {
     id,
     market,
@@ -118,16 +161,41 @@ function normalizeSnapshotPayload(input) {
       size: numOrNull(universe.size) ?? symbols.length,
     },
     policy: {
+      ...defaults,
       minTurnoverKrw:
         numOrNull(input?.policy?.minTurnoverKrw) ??
+        defaults.minTurnoverKrw ??
         (market === 'kr' ? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW : null),
       minTurnoverUsd: numOrNull(input?.policy?.minTurnoverUsd),
       requireAllMetrics: input?.policy?.requireAllMetrics !== false,
+      nullMeansFail: input?.policy?.nullMeansFail !== false,
+      yoyUnit: cleanText(input?.policy?.yoyUnit) || 'ratio',
+      rsiPeriod: numOrNull(input?.policy?.rsiPeriod) ?? SCREENER_RSI_PERIOD,
     },
     symbols,
     createdAt: cleanText(input?.createdAt) || generatedAt,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * dry-run semantics:
+ * - notifyInbox=false AND sendPush=false → status=draft (not shown on app list)
+ * - otherwise status=published (unless body explicitly sets status)
+ * notifyInbox/sendPush alone do NOT hide the run from GET /v1/screener when status=published.
+ */
+function resolveRunStatus(body, runIn) {
+  const explicit = cleanText(runIn?.status || body?.status).toLowerCase();
+  if (explicit === 'draft' || explicit === 'published') return explicit;
+  const notifyInbox = resolveIngestNotifyInbox(body);
+  const sendPush = resolveIngestSendPush(body);
+  if (!notifyInbox && !sendPush) return 'draft';
+  return 'published';
+}
+
+function deterministicRunId(market, method, poolSnapshotId) {
+  if (!poolSnapshotId) return '';
+  return `screener:${market}:${method}:pool:${poolSnapshotId}`;
 }
 
 function normalizeRunPayload(body) {
@@ -137,7 +205,10 @@ function normalizeRunPayload(body) {
   const generatedAt = parseToUtcIsoOrNull(runIn?.generatedAt) || new Date().toISOString();
   const generatedDate =
     utcDateOnlyOrNull(runIn?.generatedDate) || utcDateKeyFromInstant(generatedAt);
-  const id = cleanText(runIn?.id) || `screener:${market}:${method}:${generatedAt}`;
+  const poolSnapshotId = cleanText(runIn?.poolSnapshotId) || null;
+  const status = resolveRunStatus(body, runIn);
+  const stableId = deterministicRunId(market, method, poolSnapshotId);
+  const id = cleanText(runIn?.id) || stableId || `screener:${market}:${method}:${generatedAt}`;
   const items = cleanArray(body?.items ?? runIn?.items)
     .map((row) => normalizeScreenerItem(row, market))
     .filter((row) => row && row.passed !== false)
@@ -148,9 +219,13 @@ function normalizeRunPayload(body) {
     id,
     market,
     method,
+    status,
     generatedAt,
     generatedDate,
-    publishedAt: parseToUtcIsoOrNull(runIn?.publishedAt) || generatedAt,
+    publishedAt:
+      status === 'published'
+        ? parseToUtcIsoOrNull(runIn?.publishedAt) || generatedAt
+        : parseToUtcIsoOrNull(runIn?.publishedAt),
     locale: cleanText(runIn?.locale) || (market === 'kr' ? 'ko' : 'en'),
     title,
     universe: {
@@ -158,7 +233,7 @@ function normalizeRunPayload(body) {
       asOf: parseToUtcIsoOrNull(universe.asOf) || null,
     },
     snapshotAsOf: parseToUtcIsoOrNull(runIn?.snapshotAsOf),
-    poolSnapshotId: cleanText(runIn?.poolSnapshotId) || null,
+    poolSnapshotId,
     policy: {
       ranking: cleanText(runIn?.policy?.ranking) || 'rsi_asc_then_change_percent_asc',
       maxItems: numOrNull(runIn?.policy?.maxItems) ?? FUJIMOTO_MAX_ITEMS,
@@ -194,6 +269,7 @@ async function publishScreenerNotification(run, queuePush) {
         market: run.market,
         method: run.method,
         generatedDate: run.generatedDate,
+        status: run.status,
       },
     },
     { queuePush },
@@ -205,10 +281,28 @@ async function publishScreenerNotification(run, queuePush) {
 function requireMarketParam(url, res) {
   const market = normalizeScreenerMarket(url.searchParams.get('market'), { fallback: '' });
   if (!SCREENER_MARKETS.has(market)) {
-    json(res, 400, { error: 'MARKET_REQUIRED', markets: [...SCREENER_MARKETS] });
+    jsonError(res, 400, 'MARKET_REQUIRED', { markets: [...SCREENER_MARKETS] });
     return null;
   }
   return market;
+}
+
+function ensureSnapshotMeta(snapshot, market) {
+  if (!snapshot) return null;
+  const defaults = buildPoolPolicy(market);
+  const asOf = snapshot.asOf || snapshot.generatedAt || null;
+  const id = snapshot.id || (asOf ? `screener-snapshot:${market}:${asOf}` : null);
+  const policy = {
+    ...defaults,
+    ...(snapshot.policy && typeof snapshot.policy === 'object' ? snapshot.policy : {}),
+  };
+  if (policy.minTurnoverKrw == null && market === 'kr') {
+    policy.minTurnoverKrw = FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW;
+  }
+  if (policy.rsiPeriod == null) policy.rsiPeriod = SCREENER_RSI_PERIOD;
+  if (!policy.yoyUnit) policy.yoyUnit = 'ratio';
+  policy.nullMeansFail = policy.nullMeansFail !== false;
+  return { ...snapshot, id, asOf, policy };
 }
 
 export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
@@ -226,7 +320,7 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
    *   GET  /v1/screener/runs/:id
    *   POST /v1/screener/runs/ingest
    *
-   * Convenience (app)
+   * Convenience (app — published only)
    *   GET  /v1/screener?market=&method=
    */
 
@@ -242,14 +336,24 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
 
   if (req.method === 'POST' && pathname === '/v1/screener/pool/snapshot/ingest') {
     if (!hasIngestAccess(req)) {
-      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      jsonError(res, 401, 'AUTOMATION_INGEST_AUTH_REQUIRED');
       return true;
     }
     const body = await readBody(req);
     const input = body?.snapshot && typeof body.snapshot === 'object' ? body.snapshot : body;
     const snapshot = normalizeSnapshotPayload(input);
+    if (
+      !snapshot.id ||
+      !snapshot.asOf ||
+      (snapshot.market === 'kr' && snapshot.policy?.minTurnoverKrw == null)
+    ) {
+      jsonError(res, 400, 'INVALID_SCREENER_SNAPSHOT', {
+        required: ['id', 'asOf', 'policy.minTurnoverKrw'],
+      });
+      return true;
+    }
     if (!snapshot.symbols.length && !cleanText(input?.id)) {
-      json(res, 400, { error: 'INVALID_SCREENER_SNAPSHOT' });
+      jsonError(res, 400, 'INVALID_SCREENER_SNAPSHOT');
       return true;
     }
     await upsertCollectionRows('screenerSnapshots', [snapshot]);
@@ -259,26 +363,51 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
 
   if (req.method === 'POST' && pathname === '/v1/screener/runs/ingest') {
     if (!hasIngestAccess(req)) {
-      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      jsonError(res, 401, 'AUTOMATION_INGEST_AUTH_REQUIRED');
       return true;
     }
     const body = await readBody(req);
-    const run = normalizeRunPayload(body);
+    let run = normalizeRunPayload(body);
     if (!run.id || !run.method) {
-      json(res, 400, { error: 'INVALID_SCREENER_RUN' });
+      jsonError(res, 400, 'INVALID_SCREENER_RUN');
       return true;
     }
+
+    // Idempotency: same (market, method, poolSnapshotId) reuses prior row id.
+    if (run.poolSnapshotId) {
+      const existing = await queryScreenerRunByPoolSnapshot({
+        market: run.market,
+        method: run.method,
+        poolSnapshotId: run.poolSnapshotId,
+      });
+      if (existing?.id) {
+        run = {
+          ...run,
+          id: existing.id,
+          createdAt: existing.createdAt || run.createdAt,
+        };
+      } else {
+        const stable = deterministicRunId(run.market, run.method, run.poolSnapshotId);
+        if (stable) run.id = stable;
+      }
+    }
+
     await upsertCollectionRows('screenerRuns', [run]);
     const notifyInbox = resolveIngestNotifyInbox(body);
     const sendPush = resolveIngestSendPush(body);
-    const notification = notifyInbox ? await publishScreenerNotification(run, sendPush) : null;
+    const shouldNotify = run.status === 'published' && notifyInbox;
+    const notification = shouldNotify ? await publishScreenerNotification(run, sendPush) : null;
     json(res, 201, {
       data: run,
       meta: {
-        notifyInbox,
-        sendPush,
+        status: run.status,
+        notifyInbox: shouldNotify,
+        sendPush: shouldNotify && sendPush,
         inboxPublished: !!notification,
-        pushQueued: sendPush && !!notification,
+        pushQueued: shouldNotify && sendPush && !!notification,
+        idempotentKey: run.poolSnapshotId
+          ? `${run.market}:${run.method}:${run.poolSnapshotId}`
+          : null,
       },
     });
     return true;
@@ -287,20 +416,23 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/screener/pool/universe') {
     const market = requireMarketParam(url, res);
     if (!market) return true;
-    const snapshot = await queryLatestScreenerSnapshot(market);
+    const snapshot = ensureSnapshotMeta(await queryLatestScreenerSnapshot(market), market);
     if (!snapshot) {
       json(res, 200, {
-        data: { market, asOf: null, symbols: [] },
-        meta: { empty: true, market },
+        data: { market, id: null, asOf: null, symbols: [] },
+        meta: { empty: true, market, asOfAgeHours: null },
       });
       return true;
     }
     json(res, 200, {
       data: {
         market,
+        id: snapshot.id,
+        asOf: snapshot.asOf,
         ...snapshot.universe,
         symbols: snapshot.symbols.map((row) => ({
           symbol: row.symbol,
+          yahooSymbol: row.yahooSymbol || null,
           name: row.name,
           market: row.market,
           universeRank: row.universeRank,
@@ -309,8 +441,10 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
       meta: {
         snapshotId: snapshot.id,
         asOf: snapshot.asOf,
+        asOfAgeHours: asOfAgeHours(snapshot.asOf),
         count: snapshot.symbols.length,
         market,
+        policy: snapshot.policy,
       },
     });
     return true;
@@ -319,18 +453,27 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/screener/pool/snapshot') {
     const market = requireMarketParam(url, res);
     if (!market) return true;
-    const snapshot = await queryLatestScreenerSnapshot(market);
-    json(res, 200, { data: snapshot, meta: { market, empty: !snapshot } });
+    const snapshot = ensureSnapshotMeta(await queryLatestScreenerSnapshot(market), market);
+    json(res, 200, {
+      data: snapshot,
+      meta: {
+        market,
+        empty: !snapshot,
+        asOfAgeHours: asOfAgeHours(snapshot?.asOf),
+        /** Skill: treat asOfAgeHours > 24 as stale before screening at 08:00 KST. */
+        staleAfterHours: 24,
+      },
+    });
     return true;
   }
 
   const runById = pathname.match(/^\/v1\/screener\/runs\/([^/]+)$/);
   if (req.method === 'GET' && runById) {
     const id = decodeURIComponent(runById[1]);
-    const page = await queryPublicScreenerRuns({ id, limit: 1 });
+    const page = await queryPublicScreenerRuns({ id, limit: 1, status: '' });
     const row = page.rows[0];
     if (!row) {
-      json(res, 404, { error: 'NOT_FOUND' });
+      jsonError(res, 404, 'NOT_FOUND');
       return true;
     }
     json(res, 200, { data: row });
@@ -342,10 +485,12 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
     if (!market) return true;
     const method = normalizeScreenerMethod(url.searchParams.get('method'));
     const date = cleanText(url.searchParams.get('date'));
+    const status = cleanText(url.searchParams.get('status')) || 'published';
     const page = await queryPublicScreenerRuns({
       market,
       method,
       date,
+      status,
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
     });
@@ -354,6 +499,7 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
       meta: {
         market,
         method,
+        status,
         limit: page.limit,
         offset: page.offset,
         total: page.total,
@@ -369,15 +515,22 @@ export async function handlePublicScreenerRoutes({ req, res, url, pathname }) {
     if (!market) return true;
     const method = normalizeScreenerMethod(url.searchParams.get('method'));
     const date = cleanText(url.searchParams.get('date'));
+    // App convenience: published runs only (draft dry-runs stay hidden).
     if (date) {
-      const page = await queryPublicScreenerRuns({ market, method, date, limit: 1 });
+      const page = await queryPublicScreenerRuns({
+        market,
+        method,
+        date,
+        status: 'published',
+        limit: 1,
+      });
       json(res, 200, {
         data: page.rows[0] || null,
         meta: { market, method, date, empty: !page.rows[0] },
       });
       return true;
     }
-    const run = await queryLatestScreenerRun({ market, method });
+    const run = await queryLatestScreenerRun({ market, method, status: 'published' });
     json(res, 200, { data: run, meta: { market, method, empty: !run } });
     return true;
   }

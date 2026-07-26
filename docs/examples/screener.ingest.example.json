@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
-  "notifyInbox": true,
+  "notifyInbox": false,
   "sendPush": false,
   "run": {
-    "id": "screener:kr:fujimoto:2026-07-26T06:20:00Z",
+    "id": "screener:kr:fujimoto:pool:screener-snapshot:kr:2026-07-26T06:15:00.000Z",
     "market": "kr",
     "method": "fujimoto",
+    "status": "draft",
     "generatedAt": "2026-07-26T06:20:00Z",
     "generatedDate": "2026-07-26",
     "locale": "ko",
@@ -15,7 +16,7 @@
       "kosdaqTop": 50,
       "asOf": "2026-07-26T05:00:00Z"
     },
-    "snapshotAsOf": "2026-07-26T06:15:00Z",
+    "snapshotAsOf": "2026-07-26T06:15:00.000Z",
     "poolSnapshotId": "screener-snapshot:kr:2026-07-26T06:15:00.000Z",
     "policy": {
       "ranking": "rsi_asc_then_change_percent_asc",
@@ -27,6 +28,7 @@
     {
       "id": "screener:kr:2026-07-26:005930",
       "symbol": "005930",
+      "yahooSymbol": "005930.KS",
       "name": "삼성전자",
       "market": "kospi",
       "universeRank": 1,
@@ -48,6 +50,7 @@
     {
       "id": "screener:kr:2026-07-26:035420",
       "symbol": "035420",
+      "yahooSymbol": "035420.KS",
       "name": "NAVER",
       "market": "kospi",
       "universeRank": 12,

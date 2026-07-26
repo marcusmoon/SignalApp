@@ -20,6 +20,8 @@ CREATE TABLE screener_runs (
   position integer NOT NULL DEFAULT 0,
   market text NOT NULL DEFAULT 'kr',
   method text NOT NULL DEFAULT 'fujimoto',
+  status text NOT NULL DEFAULT 'published',
+  pool_snapshot_id text,
   generated_date date,
   published_at timestamptz,
   updated_at timestamptz NOT NULL,
@@ -29,7 +31,16 @@ CREATE TABLE screener_runs (
 CREATE INDEX screener_runs_market_method_date_idx
   ON screener_runs (market, method, generated_date DESC NULLS LAST, published_at DESC NULLS LAST);
 
--- KR pool snapshot Job (global Job can be added later with market=global).
+CREATE INDEX screener_runs_status_idx
+  ON screener_runs (status, market, method);
+
+-- Idempotency: one curation row per (market, method, pool snapshot).
+CREATE UNIQUE INDEX screener_runs_market_method_pool_uidx
+  ON screener_runs (market, method, pool_snapshot_id)
+  WHERE pool_snapshot_id IS NOT NULL AND pool_snapshot_id <> '';
+
+-- KR pool snapshot Job.
+-- Skill screens weekdays ~08:00 KST — keep this job fresh beforehand (hourly; ops may force 07:xx KST).
 WITH rows AS (
   SELECT value AS payload, ordinality::int AS position
   FROM jsonb_array_elements($json$
@@ -37,7 +48,7 @@ WITH rows AS (
   {
     "jobKey": "screener_pool_kr",
     "displayName": "스크리너 풀 · 한국",
-    "description": "한국 스크리너 공용 종목풀 스냅샷(시세·RSI 등). 여러 method가 동일 풀을 읽습니다.",
+    "description": "한국 스크리너 공용 종목풀(시세·RSI·turnover). 스킬 08:00 KST 이전 갱신 권장. asOf는 job 시각(UTC).",
     "area": "market",
     "stage": "ingest",
     "domain": "market",
@@ -47,7 +58,9 @@ WITH rows AS (
     "enabled": true,
     "intervalSeconds": 3600,
     "params": {
-      "market": "kr"
+      "market": "kr",
+      "preferredBeforeKst": "08:00",
+      "staleAfterHours": 24
     },
     "updatedAt": "2026-07-26T00:00:00.000Z"
   }

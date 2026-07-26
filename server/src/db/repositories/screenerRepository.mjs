@@ -32,6 +32,7 @@ function publicRun(item) {
     id: item.id,
     market: normalizeScreenerMarket(item.market),
     method: normalizeScreenerMethod(item.method || item.preset),
+    status: cleanText(item.status) || 'published',
     generatedAt: item.generatedAt || null,
     generatedDate: item.generatedDate || null,
     publishedAt: item.publishedAt || null,
@@ -64,6 +65,26 @@ export async function queryLatestScreenerSnapshot(market = 'kr') {
   return publicSnapshot(payloadFromRow(result.rows[0]));
 }
 
+export async function queryScreenerRunByPoolSnapshot({ market, method, poolSnapshotId }) {
+  const m = normalizeScreenerMarket(market);
+  const meth = normalizeScreenerMethod(method);
+  const poolId = cleanText(poolSnapshotId);
+  if (!poolId) return null;
+  const result = await queryKysely(
+    `
+      SELECT payload
+      FROM screener_runs
+      WHERE market = $1
+        AND method = $2
+        AND payload->>'poolSnapshotId' = $3
+      ORDER BY updated_at DESC NULLS LAST, position ASC
+      LIMIT 1
+    `,
+    [m, meth, poolId],
+  );
+  return publicRun(payloadFromRow(result.rows[0]));
+}
+
 export async function queryPublicScreenerRuns(options = {}) {
   const { limit, offset } = pageOptions(options, 10);
   const params = [];
@@ -73,6 +94,9 @@ export async function queryPublicScreenerRuns(options = {}) {
   const market = cleanText(options.market).toLowerCase();
   const method = cleanText(options.method || options.preset).toLowerCase();
   const date = cleanText(options.date);
+  // Default published for lists. Pass status:'' for no filter (by-id).
+  const hasStatusOption = Object.prototype.hasOwnProperty.call(options, 'status');
+  const status = !hasStatusOption ? 'published' : cleanText(options.status).toLowerCase();
 
   if (id) {
     params.push(id);
@@ -89,6 +113,10 @@ export async function queryPublicScreenerRuns(options = {}) {
   if (date) {
     params.push(date);
     where.push(`generated_date = $${params.length}::date`);
+  }
+  if (status) {
+    params.push(status);
+    where.push(`COALESCE(status, payload->>'status', 'published') = $${params.length}`);
   }
   const from = sqlUtcRangeFrom(options.from);
   if (from) {
@@ -125,10 +153,15 @@ export async function queryPublicScreenerRuns(options = {}) {
   };
 }
 
-export async function queryLatestScreenerRun({ market = 'kr', method = 'fujimoto' } = {}) {
+export async function queryLatestScreenerRun({
+  market = 'kr',
+  method = 'fujimoto',
+  status = 'published',
+} = {}) {
   const page = await queryPublicScreenerRuns({
     market: normalizeScreenerMarket(market),
     method: normalizeScreenerMethod(method),
+    status,
     limit: 1,
     offset: 0,
   });

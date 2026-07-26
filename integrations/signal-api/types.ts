@@ -166,6 +166,8 @@ export type SignalApiEtfInsightSourceRef = {
 export type SignalApiScreenerItem = {
   id: string;
   symbol: string;
+  /** Yahoo join key (e.g. 005930.KS) — pool symbols stay 6-digit */
+  yahooSymbol?: string | null;
   name: string;
   /** Venue within market (e.g. kospi/kosdaq) — not kr|global */
   market: string | null;
@@ -175,6 +177,7 @@ export type SignalApiScreenerItem = {
   changePercent: number | null;
   per: number | null;
   pbr: number | null;
+  /** Ratio: 0.08 = +8% (see policy.yoyUnit) */
   revenueYoY: number | null;
   operatingProfitYoY: number | null;
   netProfitYoY: number | null;
@@ -182,6 +185,7 @@ export type SignalApiScreenerItem = {
   dividendGrowthCapacity: boolean | null;
   turnoverKrw: number | null;
   turnoverUsd?: number | null;
+  /** Wilder RSI; period in snapshot policy.rsiPeriod (default 14) */
   rsi: number | null;
   note: string;
   aiGenerated?: boolean;
@@ -193,6 +197,8 @@ export type SignalApiScreenerRun = {
   market: string;
   /** e.g. fujimoto — multiple methods share the same pool */
   method: string;
+  /** draft = dry-run (hidden from app); published = app-visible */
+  status?: string;
   generatedAt: string | null;
   generatedDate: string | null;
   publishedAt: string | null;

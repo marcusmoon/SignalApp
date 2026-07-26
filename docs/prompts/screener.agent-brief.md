@@ -10,9 +10,21 @@ Cursor/Codex/Claude 에이전트에 **그대로 붙여 넣을** 작업 지시서
 ## 한 줄 목표
 
 지정 **market**의 공용 풀 스냅샷만 읽어 **method** 규칙으로 후보 JSON을 만들고, 사람 확인 후 `POST /v1/screener/runs/ingest`로 올린다.  
-앱 `/screener?market=&method=`는 ingest 결과만 보여 준다.
+앱 `/screener?market=&method=`는 **published** ingest만 보여 준다.
 
 기본 작업: `market=kr`, `method=fujimoto` (성장·저평가 눌림).
+
+### 풀 메타 복사 (필수)
+
+| 풀 | run |
+|---|---|
+| `data.id` | `run.poolSnapshotId` |
+| `data.asOf` | `run.snapshotAsOf` |
+| `data.policy.minTurnoverKrw` | 필터 임계값 |
+
+`meta.asOfAgeHours > 24`이면 stale — dry-run으로 `items:[]` 또는 중단.  
+YoY는 비율(`0.08`=+8%). RSI는 14일. null은 통과 불가(0으로 채우지 말 것).  
+dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출). 확인 후 published.
 
 ---
 

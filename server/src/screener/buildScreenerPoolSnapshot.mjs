@@ -1,15 +1,19 @@
 /**
  * Build a per-market screener pool snapshot (shared universe/metrics).
  * All curation methods for that market read the same pool.
- * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload —
- * agents must not invent them; Job only fills price/turnover/RSI when available.
+ *
+ * Null policy: calculation failures stay null — never coerce to 0.
+ * (0 YoY means flat growth; inventing 0 would falsely pass/fail filters.)
+ *
+ * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload.
  */
 import { queryKysely } from '../db/kysely/client.mjs';
-import {
-  FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW,
-} from './fujimoto.mjs';
 import { normalizeScreenerMarket } from './markets.mjs';
+import { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
 import { computeRsi } from './rsi.mjs';
+import { shouldExcludeFromKrUniverse } from './universeExclude.mjs';
+
+export { buildPoolPolicy, SCREENER_RSI_PERIOD } from './policy.mjs';
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -26,7 +30,13 @@ function normalizeKrCode(value) {
   return /^\d{6}$/.test(raw) ? raw : '';
 }
 
-function venueFromYahooHint(symbol, yahooSymbol, quoteMarket) {
+function yahooFromVenue(symbol, venue) {
+  const code = normalizeKrCode(symbol);
+  if (!code) return null;
+  return venue === 'kosdaq' ? `${code}.KQ` : `${code}.KS`;
+}
+
+function venueFromYahooHint(yahooSymbol, quoteMarket) {
   const hint = cleanText(quoteMarket || yahooSymbol).toUpperCase();
   if (hint.includes('.KQ') || hint === 'KOSDAQ') return 'kosdaq';
   if (hint.includes('.KS') || hint === 'KOSPI') return 'kospi';
@@ -105,7 +115,8 @@ async function loadRsiBySymbol(symbols) {
       normalizeKrCode(row.symbol);
     if (!code || map.has(code)) continue;
     const closes = closesFromPriceSeriesPayload(row.payload);
-    const rsi = computeRsi(closes, 14);
+    const rsi = computeRsi(closes, SCREENER_RSI_PERIOD);
+    // Failure → null (never 0).
     if (rsi != null) map.set(code, rsi);
   }
   return map;
@@ -128,6 +139,24 @@ function boolFromQuote(quote, key) {
   return null;
 }
 
+/** Reserved metric slots for Fujimoto RS/Trend/Money Flow (null until feed exists). */
+function reservedMetricSlots() {
+  return {
+    return3m: null,
+    return6m: null,
+    return12m: null,
+    ma20: null,
+    ma60: null,
+    ma120: null,
+    ma200: null,
+    alignedMa: null,
+    pctFrom52wHigh: null,
+    volumeRatio: null,
+    foreignNetBuy: null,
+    institutionNetBuy: null,
+  };
+}
+
 function emptyPoolSnapshot(market, note) {
   const asOf = new Date().toISOString();
   const generatedDate = asOf.slice(0, 10);
@@ -145,11 +174,7 @@ function emptyPoolSnapshot(market, note) {
       source: 'none',
       note,
     },
-    policy: {
-      minTurnoverKrw: market === 'kr' ? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW : null,
-      minTurnoverUsd: null,
-      requireAllMetrics: true,
-    },
+    policy: buildPoolPolicy(market),
     symbols: [],
     createdAt: asOf,
     updatedAt: asOf,
@@ -164,31 +189,43 @@ async function buildKrPoolSnapshot() {
   const rsiBySymbol = await loadRsiBySymbol(symbols);
 
   const rows = [];
+  let excludedCount = 0;
   for (const symbol of symbols) {
     const quote = quotes.get(symbol) || null;
-    const venue = venueFromYahooHint(
-      symbol,
-      quote?.regularSession?.yahooSymbol || quote?.yahooSymbol,
-      quote?.market || quote?.exchange,
-    );
+    const name = cleanText(quote?.name) || symbol;
+    const exclusion = shouldExcludeFromKrUniverse({ symbol, name, quote });
+    if (exclusion.exclude) {
+      excludedCount += 1;
+      continue;
+    }
+
+    const yahooHint =
+      quote?.regularSession?.yahooSymbol || quote?.yahooSymbol || quote?.symbol || '';
+    const venue = venueFromYahooHint(yahooHint, quote?.market || quote?.exchange);
+    const yahooSymbol =
+      cleanText(yahooHint).match(/^\d{6}\.(KS|KQ)$/i)?.[0]?.toUpperCase() ||
+      yahooFromVenue(symbol, venue);
+
     const marketCap =
       numOrNull(quote?.marketCapitalization) ??
       numOrNull(quote?.marketCap) ??
       metricFromQuote(quote, 'marketCap');
-    const turnoverKrw =
+
+    // Only set turnover when computable; never invent 0.
+    let turnoverKrw =
       numOrNull(quote?.turnoverKrw) ??
       numOrNull(quote?.dayVolumeValue) ??
-      metricFromQuote(quote, 'turnoverKrw') ??
-      (() => {
-        const price = numOrNull(quote?.currentPrice);
-        const vol = numOrNull(quote?.volume ?? quote?.dayVolume);
-        if (price != null && vol != null) return Math.round(price * vol);
-        return null;
-      })();
+      metricFromQuote(quote, 'turnoverKrw');
+    if (turnoverKrw == null) {
+      const price = numOrNull(quote?.currentPrice);
+      const vol = numOrNull(quote?.volume ?? quote?.dayVolume);
+      if (price != null && vol != null) turnoverKrw = Math.round(price * vol);
+    }
 
     rows.push({
       symbol,
-      name: cleanText(quote?.name) || symbol,
+      yahooSymbol,
+      name,
       market: venue,
       marketCap,
       currentPrice: numOrNull(quote?.currentPrice),
@@ -202,6 +239,7 @@ async function buildKrPoolSnapshot() {
       dividendGrowthCapacity: boolFromQuote(quote, 'dividendGrowthCapacity'),
       turnoverKrw,
       rsi: rsiBySymbol.get(symbol) ?? metricFromQuote(quote, 'rsi'),
+      ...reservedMetricSlots(),
     });
   }
 
@@ -249,13 +287,12 @@ async function buildKrPoolSnapshot() {
       size: ranked.length,
       asOf,
       source: 'market_quotes_korea_watchlist',
+      excludedCount,
+      exclusions: ['preferred', 'spac', 'restricted'],
       note:
-        'Interim universe from korea quotes/watchlist ranked by marketCap when available. Expand when full KRX mcap feed exists.',
+        'Interim universe from korea quotes/watchlist ranked by marketCap when available. Expand when full KRX mcap feed exists. Pool asOf is job run time (UTC); skill should treat age >24h as stale.',
     },
-    policy: {
-      minTurnoverKrw: FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW,
-      requireAllMetrics: true,
-    },
+    policy: buildPoolPolicy('kr'),
     symbols: ranked,
     createdAt: asOf,
     updatedAt: asOf,

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,9 +14,19 @@ type Props = {
   children: ReactNode;
 };
 
+function setWebChromeAttr(chrome: 'wide' | 'phone') {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  document.documentElement.dataset.signalChrome = chrome;
+}
+
 function WideWebShellFrame({ children }: Props) {
   const { theme } = useSignalTheme();
   const triggerHeaderRefresh = useWebHeaderRefreshTrigger();
+
+  useEffect(() => {
+    setWebChromeAttr('wide');
+    return () => setWebChromeAttr('phone');
+  }, []);
 
   return (
     <SafeAreaView
@@ -39,6 +50,10 @@ function WideWebShellFrame({ children }: Props) {
 /** Wide web/iPad: sidebar + header를 루트에 한 번만 두어 스택 전환 시 사이드바가 리마운트되지 않게 한다. */
 export function WideWebShell({ children }: Props) {
   const { useTwoPane } = useResponsiveLayout();
+
+  useEffect(() => {
+    setWebChromeAttr(useTwoPane ? 'wide' : 'phone');
+  }, [useTwoPane]);
 
   if (!useTwoPane) {
     return <>{children}</>;

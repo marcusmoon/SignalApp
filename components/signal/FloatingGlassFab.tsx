@@ -87,7 +87,11 @@ export function FloatingGlassFab({
   }, [effectiveDisabled, firePress]);
   const webDataProps = isWeb
     ? ({
-        dataSet: { signalFloatingFab: 'true' },
+        dataSet: {
+          signalFloatingFab: 'true',
+          // Lets +html CSS skip phone tab-bar clearance on wide chrome.
+          signalChrome: useTwoPane ? 'wide' : 'phone',
+        },
         onClick: triggerWebFallback,
         onPointerUp: triggerWebFallback,
       } as Record<string, unknown>)

@@ -26,7 +26,6 @@ const webListViewportStyle = {
   flexShrink: 1,
   flexBasis: 0,
   minHeight: 0,
-  maxHeight: '100%',
   overflowY: 'auto',
   overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',
@@ -58,6 +57,8 @@ function getDefaultKey<T>(item: T, index: number) {
 
 type WebWheelFlatListProps<T> = FlatListProps<T> & {
   scrollResetKey?: string | number | null;
+  /** Web virtualization fallback row height (defaults to WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT). */
+  estimatedItemHeight?: number;
 };
 
 function WebWheelFlatListInner<T>(
@@ -78,6 +79,7 @@ function WebWheelFlatListInner<T>(
     onContentSizeChange,
     refreshControl,
     scrollResetKey,
+    estimatedItemHeight: estimatedItemHeightProp,
     numColumns = 1,
     columnWrapperStyle,
     initialNumToRender,
@@ -107,7 +109,10 @@ function WebWheelFlatListInner<T>(
 
   const items = useMemo(() => Array.from(data ?? []), [data]);
   const initialWindow = typeof initialNumToRender === 'number' ? initialNumToRender : WEB_FLATLIST_INITIAL;
-  const estimatedItemHeight = WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT;
+  const estimatedItemHeight =
+    typeof estimatedItemHeightProp === 'number' && estimatedItemHeightProp > 0
+      ? estimatedItemHeightProp
+      : WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT;
   const overscan = WEB_FLATLIST_OVERSCAN;
   const cols = Math.max(1, numColumns);
 

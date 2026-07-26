@@ -28,9 +28,8 @@ export const webFlexFill = {
 
 /**
  * ScrollView / FlatList viewport inside a bounded column.
- * Use flex remaining space (flexBasis:0), not height:100% — a 100% height
- * viewport ignores fixed siblings above (e.g. news digest strip) and gets
- * clipped by overflow:hidden ancestors on wide web.
+ * Use flex remaining space (flexBasis:0), not height/maxHeight:100% — percentage
+ * caps ignore fixed siblings above and get clipped by overflow:hidden ancestors.
  */
 export const webScrollViewportStyle =
   isWeb
@@ -39,7 +38,6 @@ export const webScrollViewportStyle =
         flexShrink: 1,
         flexBasis: 0,
         minHeight: 0,
-        maxHeight: '100%',
       } as const)
     : webFlexFill;
 
@@ -72,6 +70,8 @@ export const WEB_FLATLIST_BATCH = 10;
 export const WEB_FLATLIST_OVERSCAN = 6;
 /** Fallback row height when getItemLayout / measure is unavailable. */
 export const WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT = 96;
+/** News grouped cards are taller than quote rows — underestimating clips scroll end. */
+export const WEB_NEWS_ESTIMATED_ITEM_HEIGHT = 168;
 
 /** Horizontal carousels on web — hide native scrollbars (use arrow nav instead). */
 export const webHorizontalCarouselScrollProps =

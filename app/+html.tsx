@@ -189,6 +189,7 @@ body {
 [data-signal-floating-fab="true"] {
   position: fixed !important;
   right: max(16px, env(safe-area-inset-right)) !important;
+  /* Phone: clear floating tab bar (~54) + gap. */
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 92px) !important;
   background-color: var(--signal-card) !important;
   border: 1px solid var(--signal-border) !important;
@@ -197,6 +198,12 @@ body {
   pointer-events: auto !important;
   touch-action: manipulation;
   transform: translateZ(0);
+}
+
+/* Wide (sidebar, no bottom tab bar): do not reserve phone tab-bar clearance. */
+html[data-signal-chrome="wide"] [data-signal-floating-fab="true"],
+[data-signal-floating-fab="true"][data-signal-chrome="wide"] {
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 12px) !important;
 }
 
 html[data-signal-theme="light"] {

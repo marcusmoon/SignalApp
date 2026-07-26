@@ -12,7 +12,7 @@ Cursor/Codex/Claude 에이전트에 **그대로 붙여 넣을** 작업 지시서
 지정 **market**의 공용 풀 스냅샷만 읽어 **method** 규칙으로 후보 JSON을 만들고, 사람 확인 후 `POST /v1/screener/runs/ingest`로 올린다.  
 앱 `/screener?market=&method=`는 **published** ingest만 보여 준다.
 
-기본 작업: `market=kr`, `method=fujimoto` (후지모토 모멘텀).
+기본 작업: `market=kr`, `method=momentum` (모멘텀).
 
 ### 풀 메타 복사 (필수)
 
@@ -66,13 +66,13 @@ dry-run: `notifyInbox=false`+`sendPush=false` → `status=draft`(앱 비노출).
 | `GET` | `/v1/screener/pool/universe?market=kr` | 유니버스 |
 | `GET` | `/v1/screener/pool/snapshot?market=kr` | 지표 스냅샷 |
 | `GET` | `/v1/screener/methods?market=kr` | method 목록 |
-| `GET` | `/v1/screener?market=kr&method=fujimoto` | (참고) 현재 큐레이션 |
+| `GET` | `/v1/screener?market=kr&method=momentum` | (참고) 현재 큐레이션 |
 | `POST` | `/v1/screener/runs/ingest` | **확인 후** 큐레이션 |
 | `POST` | `/v1/screener/pool/snapshot/ingest` | 재무 풀을 채울 때만 (선택) |
 
 ---
 
-## method=`fujimoto` (KR) — 모멘텀·추세 추종
+## method=`momentum` (KR) — 모멘텀·추세 추종
 
 철학: 가장 강한 추세 종목을 찾아 추세가 끝날 때까지 보유. 바닥 매매·저평가 단독 추천 금지.
 
@@ -88,7 +88,7 @@ RSI는 통과 조건이 아님(과열 감점은 스킬 스코어링).
 
 **정렬:** 수익률 블렌드(3/6/12개월 50/30/20, null 축 재가중) 내림차순 → 신고가 근접 순  
 **개수:** 최대 20 (Top10 권장). 없으면 `items: []`  
-**title:** `후지모토 모멘텀`
+**title:** `모멘텀`
 
 ---
 
@@ -107,10 +107,10 @@ RSI는 통과 조건이 아님(과열 감점은 스킬 스코어링).
 
 | 필드 | 예시 |
 |---|---|
-| `id` | `screener:kr:fujimoto:<UTC generatedAt>` |
+| `id` | `screener:kr:momentum:<UTC generatedAt>` |
 | `market` | `kr` |
-| `method` | `fujimoto` |
-| `title` | `후지모토 모멘텀` |
+| `method` | `momentum` |
+| `title` | `모멘텀` |
 | `poolSnapshotId` | 읽은 풀 스냅샷 id |
 | `snapshotAsOf` | 풀 `asOf` |
 
@@ -144,17 +144,17 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/screener/runs/ingest" \
 ## 붙여넣기용
 
 ```text
-너는 SIGNAL 스크리너 편집자다. market=kr, method=fujimoto.
+너는 SIGNAL 스크리너 편집자다. market=kr, method=momentum.
 
 1) GET $SIGNAL_SERVER_URL/v1/screener/pool/universe?market=kr
 2) GET $SIGNAL_SERVER_URL/v1/screener/pool/snapshot?market=kr
-만 읽고, 후지모토 모멘텀(정배열·가격>ma200·신고가 부근·거래량 유지·거래대금≥minTurnoverKrw)으로
+만 읽고, 모멘텀(정배열·가격>ma200·신고가 부근·거래량 유지·거래대금≥minTurnoverKrw)으로
 후보 JSON을 만든다. RSI는 통과 조건이 아니다.
 
 규칙:
 - 외부 조회·숫자 추정 금지. 스냅샷에 없는 값은 null, null 종목은 통과 불가.
 - symbol은 6자리만. items 최대 20(Top10 권장). 정렬: return blend↓ 후 신고가 근접.
-- run.market=kr, run.method=fujimoto, title=후지모토 모멘텀. note 한국어 1문장(≤80자), 매수 권유 금지.
+- run.market=kr, run.method=momentum, title=모멘텀. note 한국어 1문장(≤80자), 매수 권유 금지.
 - dry-run: notifyInbox=false, sendPush=false. ingest 금지.
 - 최종 답변은 JSON만. 스키마는 docs/examples/screener.ingest.example.json.
 ```

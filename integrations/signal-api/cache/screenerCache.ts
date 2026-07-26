@@ -13,7 +13,7 @@ export function buildSignalScreenerCacheKey(params?: {
   return [
     'screener',
     String(params?.market || 'kr').trim() || 'kr',
-    String(params?.method || 'fujimoto').trim() || 'fujimoto',
+    String(params?.method || 'momentum').trim() || 'momentum',
     String(params?.date || '').trim(),
   ].join('|');
 }

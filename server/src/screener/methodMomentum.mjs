@@ -1,10 +1,10 @@
 /**
- * Fujimoto-style KR screener preset (momentum / trend-following).
+ * KR screener method: momentum / trend-following (`method=momentum`).
  *
- * Philosophy: buy the strongest trending stocks and hold while the trend
- * lasts. Never bottom-fish; never recommend on low PER/PBR alone.
+ * Buy the strongest trending stocks and hold while the trend lasts.
+ * Never bottom-fish; never recommend on low PER/PBR alone.
  * Core rules (all metrics must be non-null — nullMeansFail):
- *   1. alignedMa === true            (ma20 > ma60 > ma120)
+ *   1. alignedMa === true            (ma20 > ma60 > ma120 > ma200)
  *   2. currentPrice > ma200          (long-term uptrend)
  *   3. pctFrom52wHigh >= -10         (near 52-week high)
  *   4. volumeRatio >= 1              (volume not shrinking)
@@ -14,15 +14,19 @@
  * null legs re-weighted) descending, then distance to 52w high.
  */
 
-export const FUJIMOTO_PRESET = 'fujimoto';
-export const FUJIMOTO_TITLE = '후지모토 모멘텀';
-export const FUJIMOTO_MAX_ITEMS = 20;
-/** Default daily turnover floor (KRW) when snapshot omits minTurnoverKrw. */
-export const FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW = 10_000_000_000;
-/** Near-high tolerance (%) vs 52-week high. */
-export const FUJIMOTO_MAX_PCT_FROM_52W_HIGH = -10;
+import {
+  SCREENER_DEFAULT_MIN_TURNOVER_KRW,
+  SCREENER_MAX_ITEMS,
+} from './policy.mjs';
+
+export const MOMENTUM_METHOD = 'momentum';
+export const MOMENTUM_METHOD_TITLE = '모멘텀';
+export { SCREENER_MAX_ITEMS, SCREENER_DEFAULT_MIN_TURNOVER_KRW };
+
+/** Near-high tolerance (ratio units vs 52-week high; -10 = -10%). */
+export const MOMENTUM_MAX_PCT_FROM_52W_HIGH = -10;
 /** Minimum volume ratio (last volume / 20-day average). */
-export const FUJIMOTO_MIN_VOLUME_RATIO = 1;
+export const MOMENTUM_MIN_VOLUME_RATIO = 1;
 
 function num(value) {
   if (value == null || value === '') return null;
@@ -31,7 +35,7 @@ function num(value) {
 }
 
 /** Blended relative-strength proxy: 3m/6m/12m returns at 50/30/20. Null legs re-weighted. */
-export function fujimotoReturnBlend(row) {
+export function momentumReturnBlend(row) {
   const legs = [
     [0.5, num(row?.return3m)],
     [0.3, num(row?.return6m)],
@@ -46,11 +50,10 @@ export function fujimotoReturnBlend(row) {
  * @param {object} row snapshot symbol metrics
  * @param {{ minTurnoverKrw?: number }} policy
  */
-export function passesFujimoto(row, policy = {}) {
+export function passesMomentumMethod(row, policy = {}) {
   const minTurnover =
-    num(policy.minTurnoverKrw) ?? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW;
+    num(policy.minTurnoverKrw) ?? SCREENER_DEFAULT_MIN_TURNOVER_KRW;
 
-  // Core metrics must all be present (nullMeansFail).
   const currentPrice = num(row?.currentPrice);
   const ma200 = num(row?.ma200);
   const pctFrom52wHigh = num(row?.pctFrom52wHigh);
@@ -70,25 +73,20 @@ export function passesFujimoto(row, policy = {}) {
     return false;
   }
 
-  // 1. Moving averages aligned (uptrend structure).
   if (row?.alignedMa !== true) return false;
-  // 2. Above the 200-day line.
   if (!(currentPrice > ma200)) return false;
-  // 3. Near the 52-week high (no bottom-fishing).
-  if (pctFrom52wHigh < FUJIMOTO_MAX_PCT_FROM_52W_HIGH) return false;
-  // 4. Volume holding up.
-  if (volumeRatio < FUJIMOTO_MIN_VOLUME_RATIO) return false;
-  // 5. Liquidity floor.
+  if (pctFrom52wHigh < MOMENTUM_MAX_PCT_FROM_52W_HIGH) return false;
+  if (volumeRatio < MOMENTUM_MIN_VOLUME_RATIO) return false;
   if (turnoverKrw < minTurnover) return false;
 
   return true;
 }
 
 /** Strongest first: return blend desc, then closer to the 52-week high. */
-export function sortFujimotoItems(items) {
+export function sortMomentumMethodItems(items) {
   return [...items].sort((a, b) => {
-    const blendA = fujimotoReturnBlend(a) ?? Number.NEGATIVE_INFINITY;
-    const blendB = fujimotoReturnBlend(b) ?? Number.NEGATIVE_INFINITY;
+    const blendA = momentumReturnBlend(a) ?? Number.NEGATIVE_INFINITY;
+    const blendB = momentumReturnBlend(b) ?? Number.NEGATIVE_INFINITY;
     if (blendA !== blendB) return blendB - blendA;
     const distA = num(a?.pctFrom52wHigh) ?? Number.NEGATIVE_INFINITY;
     const distB = num(b?.pctFrom52wHigh) ?? Number.NEGATIVE_INFINITY;
@@ -100,13 +98,13 @@ export function sortFujimotoItems(items) {
  * Build curation items from a snapshot payload.
  * @param {object} snapshot
  */
-export function applyFujimotoToSnapshot(snapshot) {
+export function applyMomentumMethodToSnapshot(snapshot) {
   const symbols = Array.isArray(snapshot?.symbols) ? snapshot.symbols : [];
   const minTurnoverKrw =
-    num(snapshot?.policy?.minTurnoverKrw) ?? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW;
+    num(snapshot?.policy?.minTurnoverKrw) ?? SCREENER_DEFAULT_MIN_TURNOVER_KRW;
   const passed = [];
   for (const row of symbols) {
-    if (!passesFujimoto(row, { minTurnoverKrw })) continue;
+    if (!passesMomentumMethod(row, { minTurnoverKrw })) continue;
     passed.push({
       ...row,
       passed: true,
@@ -114,5 +112,5 @@ export function applyFujimotoToSnapshot(snapshot) {
       note: row.note || '',
     });
   }
-  return sortFujimotoItems(passed).slice(0, FUJIMOTO_MAX_ITEMS);
+  return sortMomentumMethodItems(passed).slice(0, SCREENER_MAX_ITEMS);
 }

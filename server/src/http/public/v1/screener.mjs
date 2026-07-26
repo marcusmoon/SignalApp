@@ -10,10 +10,11 @@ import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs'
 import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import {
-  FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW,
-  FUJIMOTO_MAX_ITEMS,
-} from '../../../screener/fujimoto.mjs';
-import { buildPoolPolicy, SCREENER_RSI_PERIOD } from '../../../screener/policy.mjs';
+  buildPoolPolicy,
+  SCREENER_DEFAULT_MIN_TURNOVER_KRW,
+  SCREENER_MAX_ITEMS,
+  SCREENER_RSI_PERIOD,
+} from '../../../screener/policy.mjs';
 import {
   defaultMethodTitle,
   listScreenerMethods,
@@ -165,7 +166,7 @@ function normalizeSnapshotPayload(input) {
       minTurnoverKrw:
         numOrNull(input?.policy?.minTurnoverKrw) ??
         defaults.minTurnoverKrw ??
-        (market === 'kr' ? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW : null),
+        (market === 'kr' ? SCREENER_DEFAULT_MIN_TURNOVER_KRW : null),
       minTurnoverUsd: numOrNull(input?.policy?.minTurnoverUsd),
       requireAllMetrics: input?.policy?.requireAllMetrics !== false,
       nullMeansFail: input?.policy?.nullMeansFail !== false,
@@ -212,7 +213,7 @@ function normalizeRunPayload(body) {
   const items = cleanArray(body?.items ?? runIn?.items)
     .map((row) => normalizeScreenerItem(row, market))
     .filter((row) => row && row.passed !== false)
-    .slice(0, FUJIMOTO_MAX_ITEMS);
+    .slice(0, SCREENER_MAX_ITEMS);
   const title = cleanText(runIn?.title) || defaultMethodTitle(market, method);
   const universe = runIn?.universe && typeof runIn.universe === 'object' ? runIn.universe : {};
   return {
@@ -237,7 +238,7 @@ function normalizeRunPayload(body) {
     policy: {
       ranking:
         cleanText(runIn?.policy?.ranking) || 'return_blend_desc_then_pct_from_52w_high_desc',
-      maxItems: numOrNull(runIn?.policy?.maxItems) ?? FUJIMOTO_MAX_ITEMS,
+      maxItems: numOrNull(runIn?.policy?.maxItems) ?? SCREENER_MAX_ITEMS,
       requireAllMetrics: runIn?.policy?.requireAllMetrics !== false,
     },
     items,
@@ -298,7 +299,7 @@ function ensureSnapshotMeta(snapshot, market) {
     ...(snapshot.policy && typeof snapshot.policy === 'object' ? snapshot.policy : {}),
   };
   if (policy.minTurnoverKrw == null && market === 'kr') {
-    policy.minTurnoverKrw = FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW;
+    policy.minTurnoverKrw = SCREENER_DEFAULT_MIN_TURNOVER_KRW;
   }
   if (policy.rsiPeriod == null) policy.rsiPeriod = SCREENER_RSI_PERIOD;
   if (!policy.yoyUnit) policy.yoyUnit = 'ratio';

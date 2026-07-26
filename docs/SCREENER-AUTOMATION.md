@@ -4,7 +4,7 @@
 
 - **market**: `kr` | `global` — 시장별 종목풀(풀)을 분리한다.
 - **pool**: market당 공용 유니버스·지표 스냅샷. **모든 method가 동일 풀을 읽는다.**
-- **method**: 큐레이션 방식(모델). 예: `fujimoto`. 이후 method를 추가해도 풀 API는 그대로다.
+- **method**: 큐레이션 방식(모델). 예: `momentum`. 이후 method를 추가해도 풀 API는 그대로다.
 
 에이전트 브리프: [`docs/prompts/screener.agent-brief.md`](./prompts/screener.agent-brief.md)  
 예약 dry-run: [`docs/prompts/screener.codex-scheduled-prompt.md`](./prompts/screener.codex-scheduled-prompt.md)  
@@ -133,7 +133,7 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 | `run.status` | `draft` \| `published` (생략 시 플래그로 추론) |
 | `notifyInbox` / `sendPush` | 알림·푸시 |
 
-## method: `fujimoto` (KR) — 모멘텀·추세 추종
+## method: `momentum` (KR) — 모멘텀·추세 추종
 
 철학: **가장 강한 추세의 종목을 찾아 추세가 끝날 때까지 보유.** 바닥 매매·저평가 단독 추천 금지 (PER/PBR은 참고 필드일 뿐 통과 조건이 아니다).
 
@@ -148,14 +148,14 @@ KR: 보통주만. Job이 우선주·스팩·관리/정리매매·거래정지 �
 RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — 과열 감점은 스킬 스코어링에서 처리).
 
 정렬: 수익률 블렌드(3/6/12개월, 50/30/20 — null 축 재가중) 내림차순 → 신고가 근접 순. `items` 최대 20 (스킬은 Top10 권장).  
-타이틀: `후지모토 모멘텀`.
+타이틀: `모멘텀`.
 
 ## 풀 지표 슬롯
 
 | 슬롯 | 채움 | 비고 |
 |---|---|---|
 | `turnoverKrw`, `rsi` | Job (Yahoo 시세·일봉) | RSI는 method 통과 조건 아님 |
-| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (**2y** 일봉) | `fujimoto` 통과·정렬에 사용. 250거래일+ 필요 |
+| `return3m/6m/12m`, `ma20/60/120/200`, `alignedMa`, `pctFrom52wHigh`, `volumeRatio` | Job (**2y** 일봉) | `momentum` 통과·정렬에 사용. 250거래일+ 필요 |
 | `per`, `pbr`, YoY, `dividend*` | 피드 없으면 null | 참고 필드 (통과 조건 아님) |
 | `foreignNetBuy`, `institutionNetBuy` | 피드 없으면 null | Money Flow 후속 |
 
@@ -174,7 +174,7 @@ RSI는 통과 조건이 아니다 (모멘텀 주도주는 과열이 정상 — �
 
 | 경로 | 동작 |
 |---|---|
-| 더보기 **스크리너** (iPhone) | `/screener` (기본 `market=kr`, `method=fujimoto`) |
+| 더보기 **스크리너** (iPhone) | `/screener` (기본 `market=kr`, `method=momentum`) |
 | iPad·웹 사이드바 | 섹터 다음 **스크리너** → `/screener` |
 | deepLink | `/screener?market=&method=` |
 | 행 탭 | 종목 상세 |

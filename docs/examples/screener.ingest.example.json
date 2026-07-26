@@ -3,14 +3,14 @@
   "notifyInbox": false,
   "sendPush": false,
   "run": {
-    "id": "screener:kr:fujimoto:pool:screener-snapshot:kr:2026-07-26T06:15:00.000Z",
+    "id": "screener:kr:momentum:pool:screener-snapshot:kr:2026-07-26T06:15:00.000Z",
     "market": "kr",
-    "method": "fujimoto",
+    "method": "momentum",
     "status": "draft",
     "generatedAt": "2026-07-26T06:20:00Z",
     "generatedDate": "2026-07-26",
     "locale": "ko",
-    "title": "후지모토 모멘텀",
+    "title": "모멘텀",
     "universe": {
       "kospiTop": 30,
       "kosdaqTop": 50,

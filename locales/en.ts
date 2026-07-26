@@ -20,9 +20,9 @@ export const en = {
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'Sector',
   moreHubScreener: 'Screener',
-  screenerTitle: 'Fujimoto momentum',
+  screenerTitle: 'Momentum',
   screenerGuide:
-    'Fujimoto-style momentum/trend candidates. 1:2:6 is a portfolio guide only — no auto-trading or orders.',
+    'Momentum/trend candidates. 1:2:6 is a portfolio guide only — no auto-trading or orders.',
   screenerEmpty: 'No screener candidates yet.',
   screenerLoadError: 'Could not load the screener.',
   screenerMetricsLine: '3M {{r3}} · 52w {{h52}} · Vol {{vol}} · RSI {{rsi}}',

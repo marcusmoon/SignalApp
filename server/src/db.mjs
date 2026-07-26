@@ -635,7 +635,7 @@ const collectionSpecs = [
     columns: (row, index) => ({
       position: index,
       market: textOrNull(row.market) || 'kr',
-      method: textOrNull(row.method || row.preset) || 'fujimoto',
+      method: textOrNull(row.method || row.preset) || 'momentum',
       status: textOrNull(row.status) || 'published',
       pool_snapshot_id: textOrNull(row.poolSnapshotId),
       generated_date: dateOrNull(row.generatedDate || row.publishedAt),

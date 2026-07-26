@@ -1,12 +1,14 @@
 /** Screener markets and method ids. */
 
+import { SCREENER_DEFAULT_METHOD } from './policy.mjs';
+
 export const SCREENER_MARKETS = new Set(['kr', 'global']);
 
 /** Known methods (extensible). Unknown methods still store/serve if ingested. */
 export const SCREENER_METHODS = {
-  fujimoto: {
-    id: 'fujimoto',
-    title: { kr: '후지모토 모멘텀', global: 'Fujimoto momentum · trend' },
+  momentum: {
+    id: 'momentum',
+    title: { kr: '모멘텀', global: 'Momentum · trend' },
     markets: ['kr'], // global support can be added later
   },
 };
@@ -19,8 +21,11 @@ export function normalizeScreenerMarket(value, { fallback = 'kr' } = {}) {
   return fallback;
 }
 
-export function normalizeScreenerMethod(value, { fallback = 'fujimoto' } = {}) {
-  const method = String(value || '')
+export function normalizeScreenerMethod(
+  value,
+  { fallback = SCREENER_DEFAULT_METHOD } = {},
+) {
+  let method = String(value || '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '');

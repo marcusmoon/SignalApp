@@ -1,7 +1,11 @@
-import { FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW } from './fujimoto.mjs';
-
 /** Wilder RSI period used in pool snapshots. */
 export const SCREENER_RSI_PERIOD = 14;
+
+/** Default max items for method curation runs. */
+export const SCREENER_MAX_ITEMS = 20;
+
+/** Default daily turnover floor (KRW) when snapshot omits minTurnoverKrw. */
+export const SCREENER_DEFAULT_MIN_TURNOVER_KRW = 10_000_000_000;
 
 /**
  * Yahoo chart range for pool daily bars.
@@ -13,9 +17,12 @@ export const SCREENER_DAILY_BAR_RANGE = '2y';
 /** Minimum closes needed for return12m (lookback 252 + current). */
 export const SCREENER_MIN_BARS_FOR_RETURN12M = 253;
 
+/** Default method id for KR screener curation. */
+export const SCREENER_DEFAULT_METHOD = 'momentum';
+
 export function buildPoolPolicy(market = 'kr') {
   return {
-    minTurnoverKrw: market === 'kr' ? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW : null,
+    minTurnoverKrw: market === 'kr' ? SCREENER_DEFAULT_MIN_TURNOVER_KRW : null,
     minTurnoverUsd: null,
     requireAllMetrics: true,
     nullMeansFail: true,

@@ -208,7 +208,7 @@ export type SignalApiScreenerRun = {
   id: string;
   /** kr | global */
   market: string;
-  /** e.g. fujimoto — multiple methods share the same pool */
+  /** e.g. momentum — multiple methods share the same pool */
   method: string;
   /** draft = dry-run (hidden from app); published = app-visible */
   status?: string;

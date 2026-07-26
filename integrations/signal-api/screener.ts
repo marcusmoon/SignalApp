@@ -12,7 +12,7 @@ export async function fetchSignalScreenerRun(
   options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalApiScreenerRun | null> {
   const market = String(params.market || 'kr').trim() || 'kr';
-  const method = String(params.method || 'fujimoto').trim() || 'fujimoto';
+  const method = String(params.method || 'momentum').trim() || 'momentum';
   const date = String(params.date || '').trim();
   const cacheMode = options?.cacheMode || 'use';
   const cacheKey = buildSignalScreenerCacheKey({ market, method, date });

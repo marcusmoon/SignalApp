@@ -44,7 +44,7 @@ export default function ScreenerScreen() {
   const params = useLocalSearchParams<{ date?: string; market?: string; method?: string }>();
   const dateParam = String(params.date || '').trim();
   const marketParam = String(params.market || 'kr').trim() || 'kr';
-  const methodParam = String(params.method || 'fujimoto').trim() || 'fujimoto';
+  const methodParam = String(params.method || 'momentum').trim() || 'momentum';
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const quoteChange = useQuoteChangeColors();

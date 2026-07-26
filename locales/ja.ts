@@ -20,9 +20,9 @@ export const ja = {
   homeNewsFlowNewMeta: 'NEW',
   moreHubEtfShort: 'セクター',
   moreHubScreener: 'スクリーナー',
-  screenerTitle: '藤本モメンタム',
+  screenerTitle: 'モメンタム',
   screenerGuide:
-    '藤本式モメンタム・トレンド候補です。1:2:6は参考ガイドで、自動売買・注文はありません。',
+    'モメンタム・トレンド候補です。1:2:6は参考ガイドで、自動売買・注文はありません。',
   screenerEmpty: '表示するスクリーナー候補がありません。',
   screenerLoadError: 'スクリーナーを読み込めませんでした。',
   screenerMetricsLine: '3M {{r3}} · 52週 {{h52}} · Vol {{vol}} · RSI {{rsi}}',

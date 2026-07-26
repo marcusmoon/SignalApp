@@ -7,6 +7,7 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import { normalizeScreenerMarket, normalizeScreenerMethod } from '../../screener/markets.mjs';
+import { SCREENER_DEFAULT_METHOD } from '../../screener/policy.mjs';
 
 function publicSnapshot(item) {
   if (!item) return null;
@@ -155,7 +156,7 @@ export async function queryPublicScreenerRuns(options = {}) {
 
 export async function queryLatestScreenerRun({
   market = 'kr',
-  method = 'fujimoto',
+  method = SCREENER_DEFAULT_METHOD,
   status = 'published',
 } = {}) {
   const page = await queryPublicScreenerRuns({

@@ -7482,9 +7482,9 @@ body.adminShellV2 .jobAdvancedParams .jobParamsField {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   body.adminShellV2 .jobCardLine {
-    padding: 14px;
+    padding: 12px;
   }
 
   body.adminShellV2 .jobCardSide {
@@ -7492,11 +7492,12 @@ body.adminShellV2 .jobAdvancedParams .jobParamsField {
   }
 
   body.adminShellV2 .jobCardEdit {
-    margin: 0 14px 14px;
+    margin: 0 12px 12px;
   }
 
+  /* Keep facts as a compact 3-up strip on phones. */
   body.adminShellV2 .jobCardFacts {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   body.adminShellV2 .jobEditSectionHead {

@@ -3,11 +3,12 @@
   "notifyInbox": true,
   "sendPush": false,
   "run": {
-    "id": "kr-screener:2026-07-26T06:20:00Z",
+    "id": "screener:kr:fujimoto:2026-07-26T06:20:00Z",
+    "market": "kr",
+    "method": "fujimoto",
     "generatedAt": "2026-07-26T06:20:00Z",
     "generatedDate": "2026-07-26",
     "locale": "ko",
-    "preset": "fujimoto",
     "title": "성장·저평가 눌림",
     "universe": {
       "kospiTop": 30,
@@ -15,6 +16,7 @@
       "asOf": "2026-07-26T05:00:00Z"
     },
     "snapshotAsOf": "2026-07-26T06:15:00Z",
+    "poolSnapshotId": "screener-snapshot:kr:2026-07-26T06:15:00.000Z",
     "policy": {
       "ranking": "rsi_asc_then_change_percent_asc",
       "maxItems": 20,
@@ -23,7 +25,7 @@
   },
   "items": [
     {
-      "id": "kr-screener:2026-07-26:005930",
+      "id": "screener:kr:2026-07-26:005930",
       "symbol": "005930",
       "name": "삼성전자",
       "market": "kospi",
@@ -44,7 +46,7 @@
       "aiGenerated": true
     },
     {
-      "id": "kr-screener:2026-07-26:035420",
+      "id": "screener:kr:2026-07-26:035420",
       "symbol": "035420",
       "name": "NAVER",
       "market": "kospi",

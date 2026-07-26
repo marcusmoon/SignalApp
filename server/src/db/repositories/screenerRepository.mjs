@@ -6,11 +6,13 @@ import {
   sqlUtcRangeFrom,
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
+import { normalizeScreenerMarket, normalizeScreenerMethod } from '../../screener/markets.mjs';
 
 function publicSnapshot(item) {
   if (!item) return null;
   return {
     id: item.id,
+    market: normalizeScreenerMarket(item.market),
     generatedAt: item.generatedAt || null,
     generatedDate: item.generatedDate || null,
     asOf: item.asOf || null,
@@ -28,14 +30,16 @@ function publicRun(item) {
   if (!item) return null;
   return {
     id: item.id,
+    market: normalizeScreenerMarket(item.market),
+    method: normalizeScreenerMethod(item.method || item.preset),
     generatedAt: item.generatedAt || null,
     generatedDate: item.generatedDate || null,
     publishedAt: item.publishedAt || null,
     locale: item.locale || 'ko',
-    preset: item.preset || 'fujimoto',
     title: item.title || '',
     universe: item.universe && typeof item.universe === 'object' ? item.universe : null,
     snapshotAsOf: item.snapshotAsOf || null,
+    poolSnapshotId: item.poolSnapshotId || null,
     policy: item.policy && typeof item.policy === 'object' ? item.policy : null,
     items: Array.isArray(item.items) ? item.items : [],
     pushTitle: item.pushTitle || '',
@@ -45,35 +49,42 @@ function publicRun(item) {
   };
 }
 
-export async function queryLatestKrScreenerSnapshot() {
+export async function queryLatestScreenerSnapshot(market = 'kr') {
+  const m = normalizeScreenerMarket(market);
   const result = await queryKysely(
     `
       SELECT payload
-      FROM kr_screener_snapshots
+      FROM screener_snapshots
+      WHERE market = $1
       ORDER BY as_of DESC NULLS LAST, published_at DESC NULLS LAST, position ASC
       LIMIT 1
     `,
-    [],
+    [m],
   );
   return publicSnapshot(payloadFromRow(result.rows[0]));
 }
 
-export async function queryPublicKrScreenerRuns(options = {}) {
+export async function queryPublicScreenerRuns(options = {}) {
   const { limit, offset } = pageOptions(options, 10);
   const params = [];
   const where = [];
 
   const id = cleanText(options.id);
-  const preset = cleanText(options.preset).toLowerCase();
+  const market = cleanText(options.market).toLowerCase();
+  const method = cleanText(options.method || options.preset).toLowerCase();
   const date = cleanText(options.date);
 
   if (id) {
     params.push(id);
     where.push(`id = $${params.length}`);
   }
-  if (preset) {
-    params.push(preset);
-    where.push(`preset = $${params.length}`);
+  if (market) {
+    params.push(normalizeScreenerMarket(market));
+    where.push(`market = $${params.length}`);
+  }
+  if (method) {
+    params.push(normalizeScreenerMethod(method));
+    where.push(`method = $${params.length}`);
   }
   if (date) {
     params.push(date);
@@ -94,7 +105,7 @@ export async function queryPublicKrScreenerRuns(options = {}) {
   const result = await queryKysely(
     `
       SELECT payload
-      FROM kr_screener_runs
+      FROM screener_runs
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY generated_date DESC NULLS LAST, published_at DESC NULLS LAST, position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -114,7 +125,12 @@ export async function queryPublicKrScreenerRuns(options = {}) {
   };
 }
 
-export async function queryLatestKrScreenerRun(preset = 'fujimoto') {
-  const page = await queryPublicKrScreenerRuns({ preset, limit: 1, offset: 0 });
+export async function queryLatestScreenerRun({ market = 'kr', method = 'fujimoto' } = {}) {
+  const page = await queryPublicScreenerRuns({
+    market: normalizeScreenerMarket(market),
+    method: normalizeScreenerMethod(method),
+    limit: 1,
+    offset: 0,
+  });
   return page.rows[0] || null;
 }

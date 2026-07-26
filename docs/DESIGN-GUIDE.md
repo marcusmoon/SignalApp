@@ -239,7 +239,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 ### 더보기 · My info
 
 - **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 내 정보·공시·**섹터**(짧은 라벨)·**스크리너**·게시판·**게임** 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
-  - **스크리너**: 후지모토식 「성장·저평가 눌림」큐레이션 (`/screener`). 홈·하단 탭 상시 섹션 없음. 행 탭 → 종목 상세. 계약은 [KR-SCREENER-AUTOMATION.md](./KR-SCREENER-AUTOMATION.md).
+  - **스크리너**: market(`kr`/`global`) 공용 풀 + method(예: 후지모토식 「성장·저평가 눌림」) 큐레이션 (`/screener?market=&method=`). 홈·하단 탭 상시 섹션 없음. 행 탭 → 종목 상세. 계약은 [SCREENER-AUTOMATION.md](./SCREENER-AUTOMATION.md).
   - **게임**: 진입·새 게임 추가·합 트레일 규칙은 [GAME-CENTER.md](./GAME-CENTER.md).
 - **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · **섹터** · 게시판 · **게임** · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).

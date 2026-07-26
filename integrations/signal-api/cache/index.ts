@@ -8,7 +8,7 @@ export * from '@/integrations/signal-api/cache/newsCache';
 export * from '@/integrations/signal-api/cache/newsDigestsCache';
 export * from '@/integrations/signal-api/cache/todayBriefingsCache';
 export * from '@/integrations/signal-api/cache/etfInsightsCache';
-export * from '@/integrations/signal-api/cache/krScreenerCache';
+export * from '@/integrations/signal-api/cache/screenerCache';
 export * from '@/integrations/signal-api/cache/notificationsCache';
 export * from '@/integrations/signal-api/cache/youtubeCache';
 
@@ -22,7 +22,7 @@ import { clearSignalNewsCache } from '@/integrations/signal-api/cache/newsCache'
 import { clearSignalNewsDigestsCache } from '@/integrations/signal-api/cache/newsDigestsCache';
 import { clearSignalTodayBriefingsCache } from '@/integrations/signal-api/cache/todayBriefingsCache';
 import { clearSignalEtfInsightsCache } from '@/integrations/signal-api/cache/etfInsightsCache';
-import { clearSignalKrScreenerCache } from '@/integrations/signal-api/cache/krScreenerCache';
+import { clearSignalScreenerCache } from '@/integrations/signal-api/cache/screenerCache';
 import { clearSignalNotificationsCache } from '@/integrations/signal-api/cache/notificationsCache';
 import { clearSignalYoutubeCache } from '@/integrations/signal-api/cache/youtubeCache';
 
@@ -38,6 +38,6 @@ export function clearSignalApiCache(): void {
   clearSignalMarketBriefingsCache();
   clearSignalTodayBriefingsCache();
   clearSignalEtfInsightsCache();
-  clearSignalKrScreenerCache();
+  clearSignalScreenerCache();
   clearSignalNotificationsCache();
 }

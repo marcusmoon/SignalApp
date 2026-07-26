@@ -10,7 +10,7 @@ export const NOTIFICATION_TYPES = {
   newsDigest: 'news_digest',
   disclosureDigest: 'disclosure_digest',
   etfInsight: 'etf_insight',
-  krScreener: 'kr_screener',
+  screener: 'screener',
 };
 
 const SEND_STATE_STATUSES = new Set(['sending', 'sent', 'failed', 'cancelled', 'skipped']);

@@ -21,8 +21,8 @@ import { useQuoteChangeColors } from '@/hooks';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import { fetchSignalKrScreenerRun } from '@/integrations/signal-api/krScreener';
-import type { SignalApiKrScreenerItem, SignalApiKrScreenerRun } from '@/integrations/signal-api/types';
+import { fetchSignalScreenerRun } from '@/integrations/signal-api/screener';
+import type { SignalApiScreenerItem, SignalApiScreenerRun } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatFeedItemTimeLabel } from '@/utils/date';
@@ -41,8 +41,10 @@ function formatNum(value: number | null | undefined, digits = 1): string {
 export default function ScreenerScreen() {
   const router = useRouter();
   const ipadNav = useIpadSidebarNavActions();
-  const params = useLocalSearchParams<{ date?: string }>();
+  const params = useLocalSearchParams<{ date?: string; market?: string; method?: string }>();
   const dateParam = String(params.date || '').trim();
+  const marketParam = String(params.market || 'kr').trim() || 'kr';
+  const methodParam = String(params.method || 'fujimoto').trim() || 'fujimoto';
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const quoteChange = useQuoteChangeColors();
@@ -50,7 +52,7 @@ export default function ScreenerScreen() {
     () => makeStyles(theme, scaleFont, feedTypo),
     [theme, scaleFont, feedTypo],
   );
-  const [run, setRun] = useState<SignalApiKrScreenerRun | null>(null);
+  const [run, setRun] = useState<SignalApiScreenerRun | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +69,12 @@ export default function ScreenerScreen() {
       }
       setError(null);
       try {
-        const next = await fetchSignalKrScreenerRun(
-          { preset: 'fujimoto', date: dateParam || undefined },
+        const next = await fetchSignalScreenerRun(
+          {
+            market: marketParam,
+            method: methodParam,
+            date: dateParam || undefined,
+          },
           { cacheMode: signalCacheMode(forceRefresh) },
         );
         setRun(next);
@@ -78,7 +84,7 @@ export default function ScreenerScreen() {
         setLoading(false);
       }
     },
-    [dateParam, t],
+    [dateParam, marketParam, methodParam, t],
   );
 
   useEffect(() => {
@@ -96,7 +102,7 @@ export default function ScreenerScreen() {
   }, [load]);
 
   const openSymbol = useCallback(
-    (row: SignalApiKrScreenerItem) => {
+    (row: SignalApiScreenerItem) => {
       const symbol = String(row.symbol || '').trim();
       if (!symbol) return;
       if (ipadNav.isAvailable) {

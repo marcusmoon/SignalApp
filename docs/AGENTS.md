@@ -21,7 +21,7 @@
 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
 | [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
 | [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md) | ETF 브리핑 ingest·홈 노출 |
-| [KR-SCREENER-AUTOMATION.md](./KR-SCREENER-AUTOMATION.md) | 한국주 스크리너(코스피30·코스닥50) Job·Codex ingest |
+| [SCREENER-AUTOMATION.md](./SCREENER-AUTOMATION.md) | 스크리너(market 풀 + method 큐레이션) Job·Codex ingest |
 | [GAME-CENTER.md](./GAME-CENTER.md) | 더보기·사이드바 게임 허브·미니게임 개발 |
 | [EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md) | Expo/EAS·Xcode 빌드 |
 | [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |
@@ -67,7 +67,7 @@
 | `marketBriefingsCache` | 시장 브리핑 | 2분 |
 | `todayBriefingsCache` | 오늘의 브리핑 | 2분 |
 | `etfInsightsCache` | ETF 브리핑 | 2분 |
-| `krScreenerCache` | 한국주 스크리너 큐레이션 | 2분 |
+| `screenerCache` | 스크리너 큐레이션 (`market`+`method`) | 2분 |
 | `marketCache` | 시세·코인·마켓 리스트 | 5분 / 10분(리스트) |
 | `calendarCache` | 캘린더 | 15분 |
 
@@ -129,7 +129,7 @@ npm run verify   # tsc + domain unit tests (CI)
 | 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |
 | 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) |
 | 마감 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
-| 한국주 스크리너 자동화 | [KR-SCREENER-AUTOMATION.md](./KR-SCREENER-AUTOMATION.md), [prompts/kr-screener.agent-brief.md](./prompts/kr-screener.agent-brief.md), [prompts/kr-screener.codex-scheduled-prompt.md](./prompts/kr-screener.codex-scheduled-prompt.md) |
+| 스크리너 자동화 | [SCREENER-AUTOMATION.md](./SCREENER-AUTOMATION.md), [prompts/screener.agent-brief.md](./prompts/screener.agent-brief.md), [prompts/screener.codex-scheduled-prompt.md](./prompts/screener.codex-scheduled-prompt.md) |
 | Signal API | `integrations/signal-api/` |
 | Admin | `server/src/public/admin/` |
 | DB | `server/src/db/` |

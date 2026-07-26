@@ -1,12 +1,14 @@
 /**
- * Build a KR screener snapshot from market_lists + market_quotes + price_series.
+ * Build a per-market screener pool snapshot (shared universe/metrics).
+ * All curation methods for that market read the same pool.
  * Fundamentals (PER/PBR/YoY/dividend) stay null unless present on quote payload —
- * Codex/agent must not invent them; Job only fills price/turnover/RSI when available.
+ * agents must not invent them; Job only fills price/turnover/RSI when available.
  */
 import { queryKysely } from '../db/kysely/client.mjs';
 import {
   FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW,
 } from './fujimoto.mjs';
+import { normalizeScreenerMarket } from './markets.mjs';
 import { computeRsi } from './rsi.mjs';
 
 function cleanText(value) {
@@ -24,11 +26,10 @@ function normalizeKrCode(value) {
   return /^\d{6}$/.test(raw) ? raw : '';
 }
 
-function marketFromYahooHint(symbol, yahooSymbol, quoteMarket) {
+function venueFromYahooHint(symbol, yahooSymbol, quoteMarket) {
   const hint = cleanText(quoteMarket || yahooSymbol).toUpperCase();
   if (hint.includes('.KQ') || hint === 'KOSDAQ') return 'kosdaq';
   if (hint.includes('.KS') || hint === 'KOSPI') return 'kospi';
-  // Prefer kospi when unknown — rank pools still capped separately.
   return 'kospi';
 }
 
@@ -127,10 +128,35 @@ function boolFromQuote(quote, key) {
   return null;
 }
 
-/**
- * @returns {Promise<object>} snapshot payload ready for upsertCollectionRows
- */
-export async function buildKrScreenerSnapshotFromDb() {
+function emptyPoolSnapshot(market, note) {
+  const asOf = new Date().toISOString();
+  const generatedDate = asOf.slice(0, 10);
+  return {
+    id: `screener-snapshot:${market}:${asOf}`,
+    market,
+    generatedAt: asOf,
+    generatedDate,
+    asOf,
+    publishedAt: asOf,
+    locale: market === 'kr' ? 'ko' : 'en',
+    universe: {
+      asOf,
+      size: 0,
+      source: 'none',
+      note,
+    },
+    policy: {
+      minTurnoverKrw: market === 'kr' ? FUJIMOTO_DEFAULT_MIN_TURNOVER_KRW : null,
+      minTurnoverUsd: null,
+      requireAllMetrics: true,
+    },
+    symbols: [],
+    createdAt: asOf,
+    updatedAt: asOf,
+  };
+}
+
+async function buildKrPoolSnapshot() {
   const watchlist = await loadKoreaWatchlistSymbols();
   const quotes = await loadKoreaQuotes();
   const symbolSet = new Set([...watchlist, ...quotes.keys()]);
@@ -140,7 +166,7 @@ export async function buildKrScreenerSnapshotFromDb() {
   const rows = [];
   for (const symbol of symbols) {
     const quote = quotes.get(symbol) || null;
-    const market = marketFromYahooHint(
+    const venue = venueFromYahooHint(
       symbol,
       quote?.regularSession?.yahooSymbol || quote?.yahooSymbol,
       quote?.market || quote?.exchange,
@@ -163,7 +189,7 @@ export async function buildKrScreenerSnapshotFromDb() {
     rows.push({
       symbol,
       name: cleanText(quote?.name) || symbol,
-      market,
+      market: venue,
       marketCap,
       currentPrice: numOrNull(quote?.currentPrice),
       changePercent: numOrNull(quote?.changePercent),
@@ -188,7 +214,6 @@ export async function buildKrScreenerSnapshotFromDb() {
     .sort((a, b) => (b.marketCap ?? -1) - (a.marketCap ?? -1))
     .slice(0, 50);
 
-  // If market tags are missing, fall back to market-cap order from the full pool.
   let universeRows = [...kospi, ...kosdaq];
   if (universeRows.length === 0) {
     universeRows = [...rows]
@@ -201,7 +226,7 @@ export async function buildKrScreenerSnapshotFromDb() {
   const ranked = universeRows.map((row, index) => {
     const { marketCap: _mc, ...rest } = row;
     return {
-      id: `kr-screener-snap:${generatedDate}:${row.symbol}`,
+      id: `screener-pool:kr:${generatedDate}:${row.symbol}`,
       ...rest,
       universeRank: index + 1,
       passed: false,
@@ -211,7 +236,8 @@ export async function buildKrScreenerSnapshotFromDb() {
   });
 
   return {
-    id: `kr-screener-snapshot:${asOf}`,
+    id: `screener-snapshot:kr:${asOf}`,
+    market: 'kr',
     generatedAt: asOf,
     generatedDate,
     asOf,
@@ -220,6 +246,7 @@ export async function buildKrScreenerSnapshotFromDb() {
     universe: {
       kospiTop: 30,
       kosdaqTop: 50,
+      size: ranked.length,
       asOf,
       source: 'market_quotes_korea_watchlist',
       note:
@@ -233,4 +260,17 @@ export async function buildKrScreenerSnapshotFromDb() {
     createdAt: asOf,
     updatedAt: asOf,
   };
+}
+
+/**
+ * @param {{ market?: string }} [options]
+ * @returns {Promise<object>} snapshot payload ready for upsertCollectionRows
+ */
+export async function buildScreenerPoolSnapshotFromDb(options = {}) {
+  const market = normalizeScreenerMarket(options.market);
+  if (market === 'kr') return buildKrPoolSnapshot();
+  return emptyPoolSnapshot(
+    market,
+    `Pool builder for market=${market} is not wired yet. Seed via POST /v1/screener/pool/snapshot/ingest.`,
+  );
 }

@@ -10,8 +10,8 @@ const RESET_TARGETS = {
   marketQuotes: 'marketQuotes',
   coinMarkets: 'coinMarkets',
   etfInsights: 'etfInsights',
-  krScreenerSnapshots: 'krScreenerSnapshots',
-  krScreenerRuns: 'krScreenerRuns',
+  screenerSnapshots: 'screenerSnapshots',
+  screenerRuns: 'screenerRuns',
   notificationItems: 'notificationItems',
   pollingJobRuns: 'pollingJobRuns',
 };
@@ -27,9 +27,9 @@ export async function handleAdminDataResetRoutes({ req, res, pathname }) {
     const normalizedTargets = targets
       .map((target) => RESET_TARGETS[target])
       .filter((target, index, arr) => target && arr.indexOf(target) === index);
-    // Screener UI checkbox clears both curation runs and Job snapshots.
-    if (normalizedTargets.includes('krScreenerRuns') && !normalizedTargets.includes('krScreenerSnapshots')) {
-      normalizedTargets.push('krScreenerSnapshots');
+    // Screener UI checkbox clears both curation runs and pool snapshots.
+    if (normalizedTargets.includes('screenerRuns') && !normalizedTargets.includes('screenerSnapshots')) {
+      normalizedTargets.push('screenerSnapshots');
     }
     if (normalizedTargets.length === 0) {
       json(res, 400, { error: 'NO_RESET_TARGETS' });

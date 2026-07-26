@@ -1,8 +1,10 @@
--- Korea stock screener: Job snapshots + Fujimoto-style curation runs (external ingest).
+-- Screener: shared per-market pool (snapshot) + multi-method curation runs.
+-- Markets: kr | global. Methods: e.g. fujimoto (more later). All methods read the same pool.
 
-CREATE TABLE kr_screener_snapshots (
+CREATE TABLE screener_snapshots (
   id text PRIMARY KEY,
   position integer NOT NULL DEFAULT 0,
+  market text NOT NULL DEFAULT 'kr',
   generated_date date,
   as_of timestamptz,
   published_at timestamptz,
@@ -10,40 +12,43 @@ CREATE TABLE kr_screener_snapshots (
   payload jsonb NOT NULL
 );
 
-CREATE INDEX kr_screener_snapshots_date_idx
-  ON kr_screener_snapshots (generated_date DESC, as_of DESC);
+CREATE INDEX screener_snapshots_market_as_of_idx
+  ON screener_snapshots (market, as_of DESC NULLS LAST, published_at DESC NULLS LAST);
 
-CREATE TABLE kr_screener_runs (
+CREATE TABLE screener_runs (
   id text PRIMARY KEY,
   position integer NOT NULL DEFAULT 0,
-  preset text NOT NULL DEFAULT 'fujimoto',
+  market text NOT NULL DEFAULT 'kr',
+  method text NOT NULL DEFAULT 'fujimoto',
   generated_date date,
   published_at timestamptz,
   updated_at timestamptz NOT NULL,
   payload jsonb NOT NULL
 );
 
-CREATE INDEX kr_screener_runs_preset_date_idx
-  ON kr_screener_runs (preset, generated_date DESC, published_at DESC);
+CREATE INDEX screener_runs_market_method_date_idx
+  ON screener_runs (market, method, generated_date DESC NULLS LAST, published_at DESC NULLS LAST);
 
--- Snapshot Job: build universe/metrics from korea quotes + price_series RSI.
+-- KR pool snapshot Job (global Job can be added later with market=global).
 WITH rows AS (
   SELECT value AS payload, ordinality::int AS position
   FROM jsonb_array_elements($json$
 [
   {
-    "jobKey": "kr_screener_snapshot",
-    "displayName": "한국주 스크리너 스냅샷",
-    "description": "코스피/코스닥 유니버스·시세·RSI 스냅샷을 적재합니다. PER/PBR·실적은 quote payload에 있을 때만 채웁니다.",
+    "jobKey": "screener_pool_kr",
+    "displayName": "스크리너 풀 · 한국",
+    "description": "한국 스크리너 공용 종목풀 스냅샷(시세·RSI 등). 여러 method가 동일 풀을 읽습니다.",
     "area": "market",
     "stage": "ingest",
     "domain": "market",
     "operation": "latest",
     "provider": "signal",
-    "handler": "kr_screener_snapshot",
+    "handler": "screener_pool_snapshot",
     "enabled": true,
     "intervalSeconds": 3600,
-    "params": {},
+    "params": {
+      "market": "kr"
+    },
     "updatedAt": "2026-07-26T00:00:00.000Z"
   }
 ]

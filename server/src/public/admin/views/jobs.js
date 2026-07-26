@@ -459,26 +459,28 @@ function renderJobCard({ job, selected, esc, textFor, textForVars, jobDisplayNam
             ${providerBadge(job.provider)}
           </div>
         </div>
-        <div class="jobCardFacts">
-          <div>
-            <span>${esc(textFor('jobCardSchedule'))}</span>
-            <strong>${esc(jobIntervalLabel(job.intervalSeconds))}</strong>
-          </div>
-          <div>
-            <span>${esc(textFor('jobCardLastRun'))}</span>
-            <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
-          </div>
-          <div>
-            <span>${esc(textFor('jobConfigSummary'))}</span>
-            <strong title="${esc(configSummary)}">${esc(configSummary)}</strong>
+        <div class="jobCardSide">
+          <div class="jobCardFacts">
+            <div>
+              <span>${esc(textFor('jobCardSchedule'))}</span>
+              <strong>${esc(jobIntervalLabel(job.intervalSeconds))}</strong>
+            </div>
+            <div>
+              <span>${esc(textFor('jobCardLastRun'))}</span>
+              <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
+            </div>
+            <div>
+              <span>${esc(textFor('jobConfigSummary'))}</span>
+              <strong title="${esc(configSummary)}">${esc(configSummary)}</strong>
+            </div>
           </div>
           ${alertBits ? `<div class="jobCardAlert">${alertBits}</div>` : ''}
-        </div>
-        <div class="jobCardActions">
-          <button type="button" data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
-          <button type="button" class="secondary compactBtn" data-open-job-log="${esc(job.jobKey)}">${esc(textFor('jobCardHistory'))}</button>
-          ${jobForceUnlockButton(job, esc, textFor)}
-          <button type="button" class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
+          <div class="jobCardActions">
+            <button type="button" data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
+            <button type="button" class="secondary compactBtn" data-open-job-log="${esc(job.jobKey)}">${esc(textFor('jobCardHistory'))}</button>
+            ${jobForceUnlockButton(job, esc, textFor)}
+            <button type="button" class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
+          </div>
         </div>
       </div>
       <div class="jobCardEdit hidden" data-job-edit-row="${esc(job.jobKey)}">

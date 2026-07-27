@@ -4,28 +4,21 @@ import { describe, it } from 'node:test';
 import { resolveYahooPreviousClose } from './yahooQuote.mjs';
 
 describe('resolveYahooPreviousClose', () => {
-  it('prefers Yahoo chartPreviousClose for index quotes when daily bars skip a trading day', () => {
+  it('ignores stale chartPreviousClose and uses the previous daily close for US indexes', () => {
     const previousClose = resolveYahooPreviousClose(
       {
-        regularMarketPrice: 6755.75,
-        chartPreviousClose: 6690.62,
+        close: [7509.2, 7498.96, 7408.3, 7411.98, 7413.18],
       },
-      {
-        close: [6747.95, 6797.7, 7096.89, 6755.75],
-      },
-      6755.75,
     );
 
-    assert.equal(previousClose, 6690.62);
+    assert.equal(previousClose, 7411.98);
   });
 
-  it('falls back to the latest close that is not the current regularMarketPrice', () => {
+  it('uses the previous daily close when the latest bar is null during an open session', () => {
     const previousClose = resolveYahooPreviousClose(
-      {},
       {
-        close: [6747.95, 6797.7, 7096.89, 6690.62, 6755.75],
+        close: [6747.95, 6797.7, 7096.89, 6690.62, null],
       },
-      6755.75,
     );
 
     assert.equal(previousClose, 6690.62);

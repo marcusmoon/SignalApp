@@ -35,6 +35,7 @@ import {
   webFlexFill,
   webScrollViewportStyle,
   webShellBackground,
+  WEB_BOARD_ESTIMATED_ITEM_HEIGHT,
   WEB_FLATLIST_BATCH,
   WEB_FLATLIST_INITIAL,
   WEB_FLATLIST_WINDOW,
@@ -412,6 +413,7 @@ export function BoardContent({
               onContentSizeChange={onContentSizeChange}
               onScroll={onScroll}
               scrollEventThrottle={16}
+              estimatedItemHeight={Platform.OS === 'web' ? WEB_BOARD_ESTIMATED_ITEM_HEIGHT : undefined}
               initialNumToRender={WEB_FLATLIST_INITIAL}
               maxToRenderPerBatch={WEB_FLATLIST_BATCH}
               windowSize={WEB_FLATLIST_WINDOW}

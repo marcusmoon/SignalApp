@@ -20,6 +20,7 @@ import {
   WEB_FLATLIST_BATCH,
   WEB_FLATLIST_INITIAL,
   WEB_FLATLIST_WINDOW,
+  WEB_NEWS_ESTIMATED_ITEM_HEIGHT,
 } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { usePhoneMoreStackChrome } from '@/contexts/PhoneMoreStackChromeContext';
@@ -290,6 +291,7 @@ export function ItNewsFeedPanel({ panelRef }: Props) {
           scrollEventThrottle={350}
           onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           onLayout={webFeedLoadMore.onLayout}
+          estimatedItemHeight={Platform.OS === 'web' ? WEB_NEWS_ESTIMATED_ITEM_HEIGHT : undefined}
           initialNumToRender={WEB_FLATLIST_INITIAL}
           maxToRenderPerBatch={WEB_FLATLIST_BATCH}
           windowSize={WEB_FLATLIST_WINDOW}

@@ -19,6 +19,10 @@ import {
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
+import {
+  computeWebFlatListWindow,
+  webFlatListFallbackRowHeight,
+} from '@/utils/webFlatListWindow';
 
 const webListViewportStyle = {
   position: 'relative',
@@ -145,6 +149,12 @@ function WebWheelFlatListInner<T>(
   }, []);
 
   const rowCount = Math.ceil(items.length / cols);
+  const fallbackRowHeight = useMemo(
+    () => webFlatListFallbackRowHeight(heightsRef.current.values(), estimatedItemHeight),
+    // heightsVersion invalidates when the map contents change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- heightsRef is mutable; version is the signal
+    [estimatedItemHeight, heightsVersion],
+  );
 
   const getRowHeight = useCallback(
     (rowIndex: number) => {
@@ -164,66 +174,34 @@ function WebWheelFlatListInner<T>(
           maxH = Math.max(maxH, h);
         }
       }
-      return measured ? maxH : estimatedItemHeight;
+      return measured ? maxH : fallbackRowHeight;
     },
-    [cols, estimatedItemHeight, getItemLayout, items, heightsVersion],
+    [cols, fallbackRowHeight, getItemLayout, items, heightsVersion],
   );
 
-  const { startRow, endRow, topSpacer, bottomSpacer } = useMemo(() => {
-    if (rowCount === 0) {
-      return { startRow: 0, endRow: -1, topSpacer: 0, bottomSpacer: 0 };
-    }
-
-    const overscanPx = overscan * estimatedItemHeight;
-    const viewTop = Math.max(0, scrollTop - overscanPx);
-    const viewBottom = scrollTop + Math.max(viewportHeight, estimatedItemHeight) + overscanPx;
-
-    let acc = 0;
-    let start = 0;
-    for (let row = 0; row < rowCount; row++) {
-      const h = getRowHeight(row);
-      if (acc + h > viewTop) {
-        start = row;
-        break;
-      }
-      acc += h;
-      if (row === rowCount - 1) start = row;
-    }
-
-    let end = start;
-    let scan = acc;
-    for (let row = start; row < rowCount; row++) {
-      scan += getRowHeight(row);
-      end = row;
-      if (scan >= viewBottom) break;
-    }
-
-    // Before any scroll metrics: render a progressive window so TTI stays small.
-    if (viewportHeight <= 0) {
-      const coldEnd = Math.min(rowCount - 1, Math.ceil(initialWindow / cols) - 1);
-      let coldTop = 0;
-      let coldBottom = 0;
-      for (let row = coldEnd + 1; row < rowCount; row++) coldBottom += getRowHeight(row);
-      return { startRow: 0, endRow: Math.max(0, coldEnd), topSpacer: coldTop, bottomSpacer: coldBottom };
-    }
-
-    let top = 0;
-    for (let row = 0; row < start; row++) top += getRowHeight(row);
-    let bottom = 0;
-    for (let row = end + 1; row < rowCount; row++) bottom += getRowHeight(row);
-
-    return { startRow: start, endRow: end, topSpacer: top, bottomSpacer: bottom };
-  }, [
-    cols,
-    estimatedItemHeight,
-    getRowHeight,
-    initialWindow,
-    overscan,
-    rowCount,
-    scrollTop,
-    viewportHeight,
-    heightsVersion,
-  ]);
+  const { startRow, endRow, topSpacer, bottomSpacer } = useMemo(
+    () =>
+      computeWebFlatListWindow({
+        rowCount,
+        scrollTop,
+        viewportHeight,
+        estimatedItemHeight: fallbackRowHeight,
+        overscan,
+        initialWindowRows: Math.max(1, Math.ceil(initialWindow / cols)),
+        getRowHeight,
+      }),
+    [
+      cols,
+      fallbackRowHeight,
+      getRowHeight,
+      initialWindow,
+      overscan,
+      rowCount,
+      scrollTop,
+      viewportHeight,
+      heightsVersion,
+    ],
+  );
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     setViewportHeight(node.clientHeight);
@@ -457,15 +435,17 @@ function WebWheelFlatListInner<T>(
       } else {
         const item = items[rowStart];
         if (!item) continue;
+        // Measure the full row (item + separator). Excluding the separator
+        // underestimates scrollHeight and clips the true list end on web.
         rowViews.push(
-          <View key={keyExtractor?.(item, rowStart) ?? getDefaultKey(item, rowStart)}>
-            <View onLayout={(e) => measureItemHeight(rowStart, e.nativeEvent.layout.height)}>
-              {renderItem?.({
-                item,
-                index: rowStart,
-                separators: webSeparators,
-              } as ListRenderItemInfo<T>)}
-            </View>
+          <View
+            key={keyExtractor?.(item, rowStart) ?? getDefaultKey(item, rowStart)}
+            onLayout={(e) => measureItemHeight(rowStart, e.nativeEvent.layout.height)}>
+            {renderItem?.({
+              item,
+              index: rowStart,
+              separators: webSeparators,
+            } as ListRenderItemInfo<T>)}
             {Separator && rowStart < items.length - 1 ? <Separator /> : null}
           </View>,
         );

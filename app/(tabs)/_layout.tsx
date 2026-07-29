@@ -373,7 +373,8 @@ const sidebarLayoutStyles = StyleSheet.create({
   contentPane: {
     flex: 1,
     minHeight: 0,
-    maxHeight: '100%',
+    // Avoid maxHeight:'100%' — on web it can resolve against a taller ancestor
+    // and let the pane extend past the visible shell (bottom list clip).
     overflow: 'hidden',
   },
   /** Keep board list mounted under post detail so left channel submenu stays. */

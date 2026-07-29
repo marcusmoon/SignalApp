@@ -73,9 +73,11 @@ export const WEB_FLATLIST_BATCH = 10;
 /** Viewport recycle overscan (items) for WebWheelFlatList virtualization. */
 export const WEB_FLATLIST_OVERSCAN = 6;
 /** Fallback row height when getItemLayout / measure is unavailable. */
-export const WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT = 96;
+export const WEB_FLATLIST_ESTIMATED_ITEM_HEIGHT = 120;
+/** Board post rows (title + meta + preview) — underestimating clips scroll end. */
+export const WEB_BOARD_ESTIMATED_ITEM_HEIGHT = 140;
 /** News grouped cards are taller than quote rows — underestimating clips scroll end. */
-export const WEB_NEWS_ESTIMATED_ITEM_HEIGHT = 168;
+export const WEB_NEWS_ESTIMATED_ITEM_HEIGHT = 200;
 
 /** Horizontal carousels on web — hide native scrollbars (use arrow nav instead). */
 export const webHorizontalCarouselScrollProps =

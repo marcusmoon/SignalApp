@@ -643,6 +643,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 0.45,
       minWidth: 360,
       minHeight: 0,
+      alignSelf: 'stretch',
     },
     listColumnDigestStrip: {
       flexShrink: 0,
@@ -651,12 +652,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
+      alignItems: 'stretch',
       gap: 20,
     },
     list: { ...webScrollViewportStyle },
     wideList: {
-      flex: 1,
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0,
       minHeight: 0,
+      height: 0,
     },
     listContent: { paddingHorizontal: 16 },
     wideListContent: {

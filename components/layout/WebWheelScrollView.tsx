@@ -101,6 +101,7 @@ const webViewportStyle = {
   flexShrink: 1,
   flexBasis: 0,
   minHeight: 0,
+  height: 0,
   overflowY: 'auto',
   overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',

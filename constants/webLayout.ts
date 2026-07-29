@@ -28,8 +28,11 @@ export const webFlexFill = {
 
 /**
  * ScrollView / FlatList viewport inside a bounded column.
- * Use flex remaining space (flexBasis:0), not height/maxHeight:100% — percentage
- * caps ignore fixed siblings above and get clipped by overflow:hidden ancestors.
+ * `height: 0` + flex fills remaining column space on RN Web. Do NOT use
+ * height/maxHeight: '100%' (resolves against window-tall ancestors and clips
+ * under overflow:hidden). Do NOT omit height:0 — flexBasis alone lets the
+ * scrollport grow taller than the visible pane so the bottom is clipped.
+ * Never put height:0 on row-axis shells (see webSidebarContentStyle).
  */
 export const webScrollViewportStyle =
   isWeb
@@ -38,6 +41,7 @@ export const webScrollViewportStyle =
         flexShrink: 1,
         flexBasis: 0,
         minHeight: 0,
+        height: 0,
       } as const)
     : webFlexFill;
 

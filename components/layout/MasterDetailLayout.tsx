@@ -86,6 +86,8 @@ const styles = StyleSheet.create({
   masterPanel: {
     flexShrink: 0,
     flexGrow: 0,
+    minHeight: 0,
+    alignSelf: 'stretch',
     borderRightWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },

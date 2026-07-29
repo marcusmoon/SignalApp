@@ -1,6 +1,8 @@
 import type { RefObject } from 'react';
 import { InteractionManager, Platform } from 'react-native';
 
+import { resolveWebDomNode } from '@/utils/webDomNode';
+
 export type ScrollToTopTarget = {
   getScrollableNode?: () => unknown;
   scrollToOffset?: (opts: { offset: number; animated?: boolean }) => void;
@@ -36,16 +38,16 @@ function scrollInstanceOnce(instance: NonNullable<ScrollToTopTarget>, animated: 
 
   if (Platform.OS !== 'web') return;
 
-  const node = instance.getScrollableNode?.();
+  const node = resolveWebDomNode(instance);
   if (isDomScrollNode(node)) scrollDomNode(node, 0, animated);
 }
 
 /** Lazy web scroll API: resolves the DOM node when scroll is invoked, not only at ref attach. */
 export function createLazyWebScrollApi(
-  getViewRef: () => { getScrollableNode?: () => unknown } | null,
+  getViewRef: () => unknown,
 ): NonNullable<ScrollToTopTarget> {
   const resolveNode = () => {
-    const node = getViewRef()?.getScrollableNode?.() ?? null;
+    const node = resolveWebDomNode(getViewRef());
     return isDomScrollNode(node) ? node : null;
   };
   return {
@@ -100,7 +102,7 @@ export function enforceScrollToTopOnWeb(
   const tick = () => {
     if (!isActive()) return;
     scrollToTop(ref, animated);
-    const node = ref.current?.getScrollableNode?.();
+    const node = resolveWebDomNode(ref.current);
     if (isDomScrollNode(node) && node.scrollTop <= 1) return;
     attempts += 1;
     if (attempts < maxAttempts) {

@@ -2,13 +2,13 @@ import { useEffect, type RefObject } from 'react';
 import type { View } from 'react-native';
 
 import { isWeb } from '@/constants/webLayout';
+import { resolveWebDomNode } from '@/utils/webDomNode';
 
 type PressEventHandler = (event: { preventDefault?: () => void; stopPropagation?: () => void }) => void;
 
 function getDomNode(ref: RefObject<View | null>, selector: string): HTMLElement | null {
-  const scrollNode = (ref.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-    ?.getScrollableNode?.();
-  if (scrollNode) return scrollNode;
+  const fromRef = resolveWebDomNode(ref.current);
+  if (fromRef) return fromRef;
   if (typeof document === 'undefined') return null;
   return document.querySelector(selector);
 }

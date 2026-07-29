@@ -5,6 +5,7 @@ import {
   isDomNearScrollEnd,
   syntheticScrollEventFromDom,
 } from '@/utils/listScrollLoadMoreGate';
+import { resolveWebDomNode } from '@/utils/webDomNode';
 
 type ScrollableRef = RefObject<{
   getScrollableNode?: () => HTMLElement;
@@ -88,7 +89,7 @@ export function useWebVerticalWheelScroll(
 
     const onWheel = (ev: WheelEvent) => {
       const instance = scrollRef.current;
-      if (!instance?.getScrollableNode || !node) return;
+      if (!instance || !node) return;
 
       const deltaY = ev.deltaY;
       if (deltaY === 0) return;
@@ -117,12 +118,8 @@ export function useWebVerticalWheelScroll(
     };
 
     const attach = () => {
-      const scrollView = scrollRef.current;
-      if (!scrollView?.getScrollableNode) {
-        retryTimer = setTimeout(attach, 50);
-        return;
-      }
-      node = scrollView.getScrollableNode() as HTMLElement | null;
+      // RN Web View refs are the DOM node; ScrollView/FlatList use getScrollableNode.
+      node = resolveWebDomNode(scrollRef.current);
       if (!node) {
         retryTimer = setTimeout(attach, 50);
         return;

@@ -5,6 +5,7 @@ import { WEB_THEME_BG, webScrollViewportDataSet } from '@/constants/webLayout';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
+import { resolveWebDomNode } from '@/utils/webDomNode';
 
 type WebWheelScrollViewProps = ScrollViewProps & {
   scrollResetKey?: string | number | null;
@@ -28,12 +29,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
   const localRef = useRef<ScrollView>(null);
   useWebVerticalWheelScroll(localRef, { onScroll });
 
-  const getWebScrollNode = useCallback(
-    () =>
-      (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null,
-    [],
-  );
+  const getWebScrollNode = useCallback(() => resolveWebDomNode(localRef.current), []);
   useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, contentRevision ?? children);
 
   if (Platform.OS === 'web') {
@@ -44,9 +40,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
       : undefined;
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
-      const api = createLazyWebScrollApi(
-        () => localRef.current as { getScrollableNode?: () => HTMLElement | null } | null,
-      ) as unknown as ScrollView;
+      const api = createLazyWebScrollApi(() => localRef.current) as unknown as ScrollView;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

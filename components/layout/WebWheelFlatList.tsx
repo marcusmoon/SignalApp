@@ -19,6 +19,7 @@ import {
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
+import { resolveWebDomNode } from '@/utils/webDomNode';
 import {
   computeWebFlatListWindow,
   webFlatListFallbackRowHeight,
@@ -248,16 +249,10 @@ function WebWheelFlatListInner<T>(
 
   const getWebNode = useCallback((event?: unknown) => (
     (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
-    ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-    ?? null
+    ?? resolveWebDomNode(webRef.current)
   ), []);
 
-  const getWebScrollNode = useCallback(
-    () =>
-      (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null,
-    [],
-  );
+  const getWebScrollNode = useCallback(() => resolveWebDomNode(webRef.current), []);
   useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, data);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
@@ -275,12 +270,10 @@ function WebWheelFlatListInner<T>(
     let nearEndProbeTimer: ReturnType<typeof setTimeout> | null = null;
 
     const attach = () => {
-      node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
-      contentNode = (webContentRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
-      sentinelNode = (webEndSentinelRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
+      // RN Web View refs ARE the DOM node (no getScrollableNode).
+      node = resolveWebDomNode(webRef.current);
+      contentNode = resolveWebDomNode(webContentRef.current);
+      sentinelNode = resolveWebDomNode(webEndSentinelRef.current);
       if (!node || !contentNode) {
         retryTimer = setTimeout(attach, 50);
         return;
@@ -352,8 +345,7 @@ function WebWheelFlatListInner<T>(
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const timer = setTimeout(() => {
-      const node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
+      const node = resolveWebDomNode(webRef.current);
       if (node) {
         emitWebContentSize(node);
         emitWebEndReached(node);
@@ -363,6 +355,10 @@ function WebWheelFlatListInner<T>(
   }, [data, ListEmptyComponent, ListFooterComponent, ListHeaderComponent, emitWebContentSize, emitWebEndReached]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
+    if (Platform.OS === 'web') {
+      const height = e.nativeEvent.layout.height;
+      if (height > 0) setViewportHeight(height);
+    }
     onLayout?.(e);
   };
 
@@ -393,9 +389,7 @@ function WebWheelFlatListInner<T>(
     };
     const setWebRef = (instance: View | null) => {
       webRef.current = instance;
-      const api = createLazyWebScrollApi(
-        () => webRef.current as { getScrollableNode?: () => HTMLElement | null } | null,
-      ) as unknown as FlatList<T>;
+      const api = createLazyWebScrollApi(() => webRef.current) as unknown as FlatList<T>;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);
@@ -457,6 +451,7 @@ function WebWheelFlatListInner<T>(
         ref={setWebRef}
         {...webViewportProps}
         style={[webListViewportStyle, style] as never}
+        onLayout={handleLayout}
         {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}

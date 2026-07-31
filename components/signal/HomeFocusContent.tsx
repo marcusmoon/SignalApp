@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -60,6 +61,10 @@ import {
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
 import { aggregateHomeKeywords, type HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
+import {
+  buildHomeKeywordSymbolNames,
+  homeKeywordChipLabel,
+} from '@/domain/home/homeKeywordDisplay';
 import {
   homeHeroHeadline,
   selectHomeHeroBriefing,
@@ -376,6 +381,17 @@ export function HomeFocusContent({
       }),
     [briefings, homeIssues, selectedYmd, todayBriefing],
   );
+
+  const homeKeywordSymbolNames = useMemo(() => {
+    const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
+    return buildHomeKeywordSymbolNames({
+      companies,
+      quotes: quotes.map((row) => ({
+        symbol: row.symbol,
+        name: row.name ?? row.quote?.name ?? null,
+      })),
+    });
+  }, [briefings, quotes, selectedYmd]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -766,29 +782,33 @@ export function HomeFocusContent({
 
   const renderKeywordChips = useCallback(
     () => (
-      <View style={styles.keywordCard}>
-        <View style={styles.keywordCardHeader}>
-          <AiBadge />
-          <Text style={styles.keywordCardTitle}>{t('homeKeywordsTitle')}</Text>
-        </View>
+      <View
+        style={styles.keywordCard}
+        accessibilityRole="summary"
+        accessibilityLabel={t('homeKeywordsTitle')}>
         <View style={styles.keywordChipRow}>
+          <View style={styles.keywordLeadIcon} accessibilityElementsHidden>
+            <Ionicons name="pricetags-outline" size={14} color={theme.green} />
+          </View>
           {homeKeywords.map((chip) => {
             const isSymbol = chip.kind === 'symbol';
+            const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
             return (
               <Pressable
                 key={`${chip.kind}:${chip.label}`}
                 onPress={() => openHomeKeyword(chip)}
                 accessibilityRole="button"
-                accessibilityLabel={chip.label}
+                accessibilityLabel={label}
                 style={({ pressed }) => [
                   styles.keywordChip,
                   isSymbol ? styles.keywordChipSymbol : null,
                   pressed && styles.pressed,
                 ]}>
+                {isSymbol ? <SymbolLogo symbol={chip.label} size={14} /> : null}
                 <Text
                   style={[styles.keywordChipText, isSymbol ? styles.keywordChipTextSymbol : null]}
                   numberOfLines={1}>
-                  {chip.label}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -796,7 +816,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [homeKeywords, openHomeKeyword, styles, t],
+    [homeKeywordSymbolNames, homeKeywords, openHomeKeyword, styles, t, theme.green],
   );
 
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
@@ -1331,31 +1351,26 @@ function makeStyles(
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingHorizontal: 10,
-      paddingTop: 8,
-      paddingBottom: 8,
-      gap: 6,
-    },
-    keywordCardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      minWidth: 0,
-    },
-    keywordCardTitle: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textMuted,
+      paddingVertical: 8,
     },
     keywordChipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      alignItems: 'center',
       gap: 6,
     },
+    keywordLeadIcon: {
+      width: 18,
+      height: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 2,
+    },
     keywordChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
       alignSelf: 'flex-start',
+      gap: 4,
       borderRadius: 999,
       overflow: 'hidden',
       paddingHorizontal: 8,
@@ -1374,6 +1389,7 @@ function makeStyles(
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
+      maxWidth: 120,
     },
     keywordChipTextSymbol: {
       color: theme.green,

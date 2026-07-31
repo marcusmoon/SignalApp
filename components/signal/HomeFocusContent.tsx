@@ -767,6 +767,10 @@ export function HomeFocusContent({
   const renderKeywordChips = useCallback(
     () => (
       <View style={styles.keywordCard}>
+        <View style={styles.keywordCardHeader}>
+          <AiBadge />
+          <Text style={styles.keywordCardTitle}>{t('homeKeywordsTitle')}</Text>
+        </View>
         <View style={styles.keywordChipRow}>
           {homeKeywords.map((chip) => {
             const isSymbol = chip.kind === 'symbol';
@@ -792,7 +796,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [homeKeywords, openHomeKeyword, styles],
+    [homeKeywords, openHomeKeyword, styles, t],
   );
 
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
@@ -1042,12 +1046,7 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          {homeKeywords.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader title={t('homeKeywordsTitle')} badge={<AiBadge />} />
-              {renderKeywordChips()}
-            </View>
-          ) : null}
+          {homeKeywords.length > 0 ? renderKeywordChips() : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
@@ -1327,31 +1326,42 @@ function makeStyles(
       color: theme.text,
     },
     keywordCard: {
-      borderRadius: UI_RADIUS_CARD_LG,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 12,
-      paddingVertical: COMFORT_PADDING_ROW_V,
-      shadowColor: '#000000',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 1,
+      paddingHorizontal: 10,
+      paddingTop: 8,
+      paddingBottom: 8,
+      gap: 6,
+    },
+    keywordCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+    },
+    keywordCardTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textMuted,
     },
     keywordChipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: COMFORT_GAP_SM,
+      gap: 6,
     },
     keywordChip: {
       alignSelf: 'flex-start',
-      borderRadius: UI_RADIUS_CARD,
+      borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       backgroundColor: theme.bgElevated,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       maxWidth: '100%',
     },
@@ -1360,9 +1370,9 @@ function makeStyles(
       borderColor: theme.greenBorder,
     },
     keywordChipText: {
-      fontSize: ft.ff(14),
-      lineHeight: sf(18),
-      fontWeight: ft.titleWeight,
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
     keywordChipTextSymbol: {

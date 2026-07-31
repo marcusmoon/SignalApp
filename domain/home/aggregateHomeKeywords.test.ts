@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { aggregateHomeKeywords, keywordsFromTopics } from './aggregateHomeKeywords.ts';
+import { aggregateHomeKeywords, groupHomeKeywords, keywordsFromTopics } from './aggregateHomeKeywords.ts';
 
 describe('aggregateHomeKeywords', () => {
   it('prefers today briefing over digest topics', () => {
@@ -36,6 +36,26 @@ describe('aggregateHomeKeywords', () => {
       limit: 7,
     });
     assert.equal(chips.length, 7);
+  });
+});
+
+describe('groupHomeKeywords', () => {
+  it('groups by kind in display order and skips empty kinds', () => {
+    const groups = groupHomeKeywords([
+      { label: '금리', kind: 'macro', weight: 1 },
+      { label: 'HBM', kind: 'theme', weight: 1 },
+      { label: '005930', kind: 'symbol', weight: 1 },
+      { label: '실적', kind: 'event', weight: 1 },
+      { label: 'AI', kind: 'theme', weight: 0.8 },
+    ]);
+    assert.deepEqual(
+      groups.map((g) => g.kind),
+      ['theme', 'symbol', 'macro', 'event'],
+    );
+    assert.deepEqual(
+      groups[0]?.items.map((c) => c.label),
+      ['HBM', 'AI'],
+    );
   });
 });
 

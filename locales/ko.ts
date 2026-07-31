@@ -17,6 +17,10 @@ export const ko = {
   homeAiGeneratedA11y: 'AI가 생성한 요약',
   homeNewsFlowNewMeta: 'NEW',
   homeKeywordsTitle: '키워드',
+  homeKeywordKindThemeA11y: '테마',
+  homeKeywordKindSymbolA11y: '종목',
+  homeKeywordKindMacroA11y: '매크로',
+  homeKeywordKindEventA11y: '이벤트',
   /** 더보기·사이드바·홈 숏컷 짧은 라벨 (홈 섹션 제목은 homeEtfInsightTitle) */
   moreHubEtfShort: '섹터',
   digestFreshBadge: '최신',

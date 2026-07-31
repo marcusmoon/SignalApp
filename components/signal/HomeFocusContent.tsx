@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -60,7 +60,7 @@ import {
 } from '@/domain/home/calendarChipLabel';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
-import { aggregateHomeKeywords, type HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
+import { aggregateHomeKeywords, groupHomeKeywords, type HomeKeywordChip, type SignalKeywordKind } from '@/domain/home/aggregateHomeKeywords';
 import {
   buildHomeKeywordSymbolNames,
   homeKeywordChipLabel,
@@ -377,10 +377,12 @@ export function HomeFocusContent({
           keywords: row.item.keywords,
           topics: row.item.topics,
         })),
-        limit: 7,
+        limit: 9,
       }),
     [briefings, homeIssues, selectedYmd, todayBriefing],
   );
+
+  const homeKeywordGroups = useMemo(() => groupHomeKeywords(homeKeywords), [homeKeywords]);
 
   const homeKeywordSymbolNames = useMemo(() => {
     const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
@@ -780,43 +782,98 @@ export function HomeFocusContent({
     [ipadNav, openSymbolDetail, router, selectedYmd],
   );
 
+  const keywordKindA11y = useCallback(
+    (kind: SignalKeywordKind) => {
+      switch (kind) {
+        case 'symbol':
+          return t('homeKeywordKindSymbolA11y');
+        case 'macro':
+          return t('homeKeywordKindMacroA11y');
+        case 'event':
+          return t('homeKeywordKindEventA11y');
+        case 'theme':
+        default:
+          return t('homeKeywordKindThemeA11y');
+      }
+    },
+    [t],
+  );
+
+  const keywordKindIcon = useCallback((kind: SignalKeywordKind): ComponentProps<typeof Ionicons>['name'] => {
+    switch (kind) {
+      case 'symbol':
+        return 'stats-chart-outline';
+      case 'macro':
+        return 'globe-outline';
+      case 'event':
+        return 'flag-outline';
+      case 'theme':
+      default:
+        return 'flash-outline';
+    }
+  }, []);
+
   const renderKeywordChips = useCallback(
     () => (
       <View
         style={styles.keywordCard}
         accessibilityRole="summary"
         accessibilityLabel={t('homeKeywordsTitle')}>
-        <View style={styles.keywordChipRow}>
-          <View style={styles.keywordLeadIcon} accessibilityElementsHidden>
-            <Ionicons name="pricetags-outline" size={14} color={theme.green} />
-          </View>
-          {homeKeywords.map((chip) => {
-            const isSymbol = chip.kind === 'symbol';
-            const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
-            return (
-              <Pressable
-                key={`${chip.kind}:${chip.label}`}
-                onPress={() => openHomeKeyword(chip)}
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                style={({ pressed }) => [
-                  styles.keywordChip,
-                  isSymbol ? styles.keywordChipSymbol : null,
-                  pressed && styles.pressed,
-                ]}>
-                {isSymbol ? <SymbolLogo symbol={chip.label} size={14} /> : null}
-                <Text
-                  style={[styles.keywordChipText, isSymbol ? styles.keywordChipTextSymbol : null]}
-                  numberOfLines={1}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.keywordGroupStack}>
+          {homeKeywordGroups.map((group, groupIndex) => (
+            <View
+              key={group.kind}
+              style={[
+                styles.keywordGroupRow,
+                groupIndex > 0 ? styles.keywordGroupRowDivided : null,
+              ]}
+              accessibilityLabel={keywordKindA11y(group.kind)}>
+              <View style={styles.keywordLeadIcon} accessibilityElementsHidden>
+                <Ionicons name={keywordKindIcon(group.kind)} size={14} color={theme.green} />
+              </View>
+              <View style={styles.keywordChipRow}>
+                {group.items.map((chip) => {
+                  const isSymbol = chip.kind === 'symbol';
+                  const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
+                  return (
+                    <Pressable
+                      key={`${chip.kind}:${chip.label}`}
+                      onPress={() => openHomeKeyword(chip)}
+                      accessibilityRole="button"
+                      accessibilityLabel={label}
+                      style={({ pressed }) => [
+                        styles.keywordChip,
+                        isSymbol ? styles.keywordChipSymbol : null,
+                        pressed && styles.pressed,
+                      ]}>
+                      {isSymbol ? <SymbolLogo symbol={chip.label} size={14} /> : null}
+                      <Text
+                        style={[
+                          styles.keywordChipText,
+                          isSymbol ? styles.keywordChipTextSymbol : null,
+                        ]}
+                        numberOfLines={1}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
       </View>
     ),
-    [homeKeywordSymbolNames, homeKeywords, openHomeKeyword, styles, t, theme.green],
+    [
+      homeKeywordGroups,
+      homeKeywordSymbolNames,
+      keywordKindA11y,
+      keywordKindIcon,
+      openHomeKeyword,
+      styles,
+      t,
+      theme.green,
+    ],
   );
 
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
@@ -1351,9 +1408,24 @@ function makeStyles(
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 6,
+    },
+    keywordGroupStack: {
+      gap: 0,
+    },
+    keywordGroupRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 6,
+      paddingVertical: 4,
+    },
+    keywordGroupRowDivided: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
     },
     keywordChipRow: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
@@ -1361,10 +1433,9 @@ function makeStyles(
     },
     keywordLeadIcon: {
       width: 18,
-      height: 18,
+      height: 22,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 2,
     },
     keywordChip: {
       flexDirection: 'row',

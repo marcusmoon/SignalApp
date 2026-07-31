@@ -15,8 +15,8 @@ export type HomeKeywordChip = SignalKeyword & {
   digestId?: string | null;
 };
 
-/** Home rank list shows a short top set only. */
-export const HOME_KEYWORD_RANK_LIMIT = 5;
+/** Home keyword strip shows a short top set only. */
+export const HOME_KEYWORD_LIMIT = 6;
 
 const KIND_BOOST: Record<string, number> = {
   today: 1.4,
@@ -123,7 +123,7 @@ type AggregateInput = {
  * Digests without `keywords` fall back to `topics`.
  */
 export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] {
-  const limit = Math.max(1, Math.min(12, input.limit ?? HOME_KEYWORD_RANK_LIMIT));
+  const limit = Math.max(1, Math.min(12, input.limit ?? HOME_KEYWORD_LIMIT));
   const scores = new Map<string, HomeKeywordChip>();
 
   const bump = (

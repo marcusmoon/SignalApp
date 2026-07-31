@@ -42,7 +42,7 @@ describe('aggregateHomeKeywords', () => {
     assert.equal(sk?.kind, 'symbol');
   });
 
-  it('carries why and defaults to rank limit of 5', () => {
+  it('carries why and defaults to strip limit of 6', () => {
     const chips = aggregateHomeKeywords({
       todayKeywords: [
         { label: 'HBM', kind: 'theme', weight: 1, why: '공급 이슈' },
@@ -51,9 +51,10 @@ describe('aggregateHomeKeywords', () => {
         { label: 'C', kind: 'theme', weight: 0.7 },
         { label: 'D', kind: 'theme', weight: 0.6 },
         { label: 'E', kind: 'theme', weight: 0.5 },
+        { label: 'F', kind: 'theme', weight: 0.4 },
       ],
     });
-    assert.equal(chips.length, 5);
+    assert.equal(chips.length, 6);
     assert.equal(chips[0]?.why, '공급 이슈');
   });
 });

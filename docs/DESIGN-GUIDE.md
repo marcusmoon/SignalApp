@@ -39,8 +39,8 @@
 | 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드 |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
-| 칩 라벨 | `FEED_CHIP_PX` (10) | 뉴스/다이제스트 topic 칩 |
-| 홈 키워드 티커 | 제목 `FEED_BODY_PX` · why `FEED_SUMMARY_PX` · 2행 뷰포트 자동 스크롤 | 홈 최상단 |
+| 칩 라벨 | `FEED_CHIP_PX` (10) | 홈 키워드·뉴스/다이제스트 topic 칩 |
+| 홈 키워드 | `HomeSectionHeader` + 카드 안 wrap 칩 | 홈 최상단. 자동 스크롤 없음 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` + `scaleFont`로 접근성·플랫폼별 스케일을 맞춘다.
@@ -163,7 +163,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   |---|---|---|
   | 히어로(마감 종합) | **오늘 정리** | `today_briefings` |
   | 히어로·시장 탭(회차) | **장중 브리핑** | `market_briefings` |
-  | 키워드 랭크 | **키워드** | digests·briefings `keywords` (없으면 topics 폴백) |
+  | 키워드 | **키워드** | digests·briefings `keywords` (없으면 topics 폴백) |
   | ETF 보조 | **섹터 흐름** | `etf_insights` |
   | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
@@ -173,7 +173,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 섹션 순서**
   - **오늘**: **키워드**(에이전트 keywords 합산 · 카드 박스, 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
   - **과거**: **키워드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
-  - **키워드 UI**: 홈 **최상단** 랭크 티커(최대 5 합산). **2행 뷰포트**만 노출하고 ~3.4초마다 자동 슬라이드(탭 중 pause). 카드·섹션 헤더 없음. 행 = 순위 · (종목 로고) · 라벨 · optional `why` · (종목이면) 등락%. **종목 라벨은 회사명**. 없으면 숨김
+  - **키워드 UI**: 홈 **최상단**. 다른 섹션과 같이 `HomeSectionHeader`(키워드 · chevron 없음) + **카드 안 wrap 칩**. 종목은 로고+회사명. `why`는 a11y만(칩에 미표시). 자동 스크롤 없음. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

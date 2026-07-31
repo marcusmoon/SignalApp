@@ -31,7 +31,7 @@ import {
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { HomeKeywordRankTicker } from '@/components/signal/HomeKeywordRankTicker';
+import { HomeKeywordChipStrip } from '@/components/signal/HomeKeywordChipStrip';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -62,7 +62,7 @@ import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
 import {
   aggregateHomeKeywords,
-  HOME_KEYWORD_RANK_LIMIT,
+  HOME_KEYWORD_LIMIT,
   homeKeywordSymbolLabels,
   type HomeKeywordChip,
 } from '@/domain/home/aggregateHomeKeywords';
@@ -336,9 +336,7 @@ export function HomeFocusContent({
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
-  const [keywordQuoteMeta, setKeywordQuoteMeta] = useState<
-    Map<string, { name?: string; changePercent?: number | null }>
-  >(new Map());
+  const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
@@ -384,7 +382,7 @@ export function HomeFocusContent({
           keywords: row.item.keywords,
           topics: row.item.topics,
         })),
-        limit: HOME_KEYWORD_RANK_LIMIT,
+        limit: HOME_KEYWORD_LIMIT,
       }),
     [briefings, homeIssues, selectedYmd, todayBriefing],
   );
@@ -398,41 +396,22 @@ export function HomeFocusContent({
           symbol: row.symbol,
           name: row.name ?? row.quote?.name ?? null,
         })),
-        ...[...keywordQuoteMeta.entries()].map(([symbol, meta]) => ({
-          symbol,
-          name: meta.name ?? null,
-        })),
+        ...[...keywordQuoteNames.entries()].map(([symbol, name]) => ({ symbol, name })),
       ],
     });
-  }, [briefings, keywordQuoteMeta, quotes, selectedYmd]);
-
-  const homeKeywordChanges = useMemo(() => {
-    const map = new Map<string, number>();
-    const put = (symbol?: string | null, pct?: number | null) => {
-      const key = String(symbol || '')
-        .trim()
-        .toUpperCase();
-      if (!key || typeof pct !== 'number' || !Number.isFinite(pct) || map.has(key)) return;
-      map.set(key, pct);
-    };
-    for (const row of quotes) put(row.symbol, row.quote?.changePercent ?? null);
-    for (const [symbol, meta] of keywordQuoteMeta) put(symbol, meta.changePercent ?? null);
-    return map;
-  }, [keywordQuoteMeta, quotes]);
+  }, [briefings, keywordQuoteNames, quotes, selectedYmd]);
 
   useEffect(() => {
     if (!hasSignalApi()) {
-      setKeywordQuoteMeta(new Map());
+      setKeywordQuoteNames(new Map());
       return;
     }
     const symbols = homeKeywordSymbolLabels(homeKeywords).filter((symbol) => {
-      if (keywordQuoteMeta.has(symbol)) return false;
+      if (keywordQuoteNames.has(symbol)) return false;
       const embeddedName = homeKeywords.some(
         (chip) => chip.label === symbol && Boolean(chip.name?.trim()),
       );
-      const hasName = embeddedName || homeKeywordSymbolNames.has(symbol);
-      const hasChange = homeKeywordChanges.has(symbol);
-      return !hasName || !hasChange;
+      return !(embeddedName || homeKeywordSymbolNames.has(symbol));
     });
     if (symbols.length === 0) return;
 
@@ -440,43 +419,31 @@ export function HomeFocusContent({
     void fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode: signalCacheMode() })
       .then((rows) => {
         if (cancelled) return;
-        const next = new Map<string, { name?: string; changePercent?: number | null }>();
-        for (const symbol of symbols) next.set(symbol, {});
+        const next = new Map<string, string>();
+        for (const symbol of symbols) next.set(symbol, '');
         for (const row of rows) {
           const key = String(row.symbol || '')
             .trim()
             .toUpperCase();
-          if (!key) continue;
           const name = String(row.name || '').trim();
-          const changePercent =
-            typeof row.changePercent === 'number' && Number.isFinite(row.changePercent)
-              ? row.changePercent
-              : null;
-          next.set(key, {
-            ...(name && name.toUpperCase() !== key ? { name } : null),
-            ...(changePercent != null ? { changePercent } : null),
-          });
+          if (!key) continue;
+          if (name && name.toUpperCase() !== key) next.set(key, name);
+          else if (!next.has(key)) next.set(key, '');
         }
-        setKeywordQuoteMeta((prev) => {
+        setKeywordQuoteNames((prev) => {
           const merged = new Map(prev);
           for (const [k, v] of next) {
-            const cur = merged.get(k) ?? {};
-            merged.set(k, {
-              name: cur.name || v.name,
-              changePercent:
-                typeof cur.changePercent === 'number' ? cur.changePercent : v.changePercent,
-            });
+            if (!merged.has(k)) merged.set(k, v);
           }
           return merged;
         });
       })
       .catch(() => {
         if (cancelled) return;
-        // Mark attempted so a failed lookup does not loop.
-        setKeywordQuoteMeta((prev) => {
+        setKeywordQuoteNames((prev) => {
           const merged = new Map(prev);
           for (const symbol of symbols) {
-            if (!merged.has(symbol)) merged.set(symbol, {});
+            if (!merged.has(symbol)) merged.set(symbol, '');
           }
           return merged;
         });
@@ -485,7 +452,7 @@ export function HomeFocusContent({
     return () => {
       cancelled = true;
     };
-  }, [homeKeywordChanges, homeKeywordSymbolNames, homeKeywords, keywordQuoteMeta]);
+  }, [homeKeywordSymbolNames, homeKeywords, keywordQuoteNames]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -601,7 +568,7 @@ export function HomeFocusContent({
       const isDateChange = loadedYmdRef.current !== selectedYmd;
       if (isDateChange) {
         setBriefings([]);
-        setKeywordQuoteMeta(new Map());
+        setKeywordQuoteNames(new Map());
       }
       setCalendarEvents([]);
 
@@ -1123,13 +1090,15 @@ export function HomeFocusContent({
         ) : (
           <>
           {homeKeywords.length > 0 ? (
-            <HomeKeywordRankTicker
-              items={homeKeywords}
-              symbolNames={homeKeywordSymbolNames}
-              changes={homeKeywordChanges}
-              onPressItem={openHomeKeyword}
-              accessibilityLabel={t('homeKeywordsTitle')}
-            />
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('homeKeywordsTitle')} showChevron={false} />
+              <HomeKeywordChipStrip
+                items={homeKeywords}
+                symbolNames={homeKeywordSymbolNames}
+                onPressItem={openHomeKeyword}
+                accessibilityLabel={t('homeKeywordsTitle')}
+              />
+            </View>
           ) : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (

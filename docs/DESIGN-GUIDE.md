@@ -40,7 +40,7 @@
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
 | 칩 라벨 | `FEED_CHIP_PX` (10) | 홈 키워드·뉴스/다이제스트 topic 칩 |
-| 홈 키워드 | 카드 + 태그 아이콘 lead · wrap 칩 (`FEED_CHIP_PX`) | 홈 최상단. 섹션 헤더 없음 |
+| 홈 키워드 | 카드 + 태그 아이콘 · wrap 칩 (`FEED_CHIP_PX`) | 홈 최상단. 피처드/헤더 없음 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` + `scaleFont`로 접근성·플랫폼별 스케일을 맞춘다.

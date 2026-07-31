@@ -59,6 +59,7 @@ import {
 } from '@/domain/home/calendarChipLabel';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
+import { aggregateHomeKeywords, type HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
 import {
   homeHeroHeadline,
   selectHomeHeroBriefing,
@@ -360,6 +361,21 @@ export function HomeFocusContent({
     if (!newest) return false;
     return isHomeNewsFlowNew(newsDigestCreatedIso(newest.item));
   }, [homeIssues]);
+
+  const homeKeywords = useMemo(
+    () =>
+      aggregateHomeKeywords({
+        todayKeywords: todayBriefing?.keywords,
+        marketKeywordLists: briefingsForYmd(briefings, selectedYmd).map((b) => b.keywords),
+        digestRows: homeIssues.map((row) => ({
+          id: row.item.id,
+          keywords: row.item.keywords,
+          topics: row.item.topics,
+        })),
+        limit: 7,
+      }),
+    [briefings, homeIssues, selectedYmd, todayBriefing],
+  );
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -722,6 +738,52 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
+  const openHomeKeyword = useCallback(
+    (chip: HomeKeywordChip) => {
+      if (chip.kind === 'symbol') {
+        openSymbolDetail(chip.label);
+        return;
+      }
+      if (chip.digestId) {
+        if (ipadNav.isAvailable) {
+          ipadNav.showNewsDigest(chip.digestId, { drillFrom: 'home' });
+          return;
+        }
+        router.push({ pathname: '/news-digest', params: { id: chip.digestId } } as never);
+        return;
+      }
+      if (ipadNav.isAvailable) {
+        ipadNav.showNewsIssues({ category: 'global', date: selectedYmd }, { drillFrom: 'home' });
+        return;
+      }
+      router.push({
+        pathname: '/news-issues',
+        params: { category: 'global', date: selectedYmd, from: 'home' },
+      } as never);
+    },
+    [ipadNav, openSymbolDetail, router, selectedYmd],
+  );
+
+  const renderKeywordChips = useCallback(
+    () => (
+      <View style={styles.calendarChipRow}>
+        {homeKeywords.map((chip) => (
+          <Pressable
+            key={`${chip.kind}:${chip.label}`}
+            onPress={() => openHomeKeyword(chip)}
+            accessibilityRole="button"
+            accessibilityLabel={chip.label}
+            style={({ pressed }) => [styles.calendarChip, pressed && styles.pressed]}>
+            <Text style={styles.calendarChipText} numberOfLines={1}>
+              {chip.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    ),
+    [homeKeywords, openHomeKeyword, styles],
+  );
+
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
   const openHero = useCallback(() => {
     if (!homeHero) return;
@@ -977,6 +1039,13 @@ export function HomeFocusContent({
                 trailingBadge={heroSessionTag}
               />
               {renderHeroCard()}
+            </View>
+          ) : null}
+
+          {homeKeywords.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('homeKeywordsTitle')} badge={<AiBadge />} />
+              {renderKeywordChips()}
             </View>
           ) : null}
 

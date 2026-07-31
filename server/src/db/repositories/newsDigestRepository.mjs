@@ -17,6 +17,7 @@ function publicDigest(item) {
     symbols: Array.isArray(item.symbols) ? item.symbols : [],
     sources: Array.isArray(item.sources) ? item.sources : [],
     topics: Array.isArray(item.topics) ? item.topics : [],
+    keywords: Array.isArray(item.keywords) ? item.keywords : [],
     count: Number(item.count) || 0,
     generatedDate: item.generatedDate || null,
     generatedAt: item.generatedAt || null,

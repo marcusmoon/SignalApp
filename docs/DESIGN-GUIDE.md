@@ -161,15 +161,16 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   |---|---|---|
   | 히어로(마감 종합) | **오늘 정리** | `today_briefings` |
   | 히어로·시장 탭(회차) | **장중 브리핑** | `market_briefings` |
+  | 키워드 칩 | **오늘의 키워드** | digests·briefings `keywords` (없으면 topics 폴백) |
   | ETF 보조 | **섹터 흐름** | `etf_insights` |
   | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **시세** | quotes watchlist + 시총 상위 코인 |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 시세 as-of · 섹터 흐름 기준일 · 뉴스 흐름 `NEW` 모두 `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
-- **홈 섹션 순서**
-  - **오늘**: 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
-  - **과거**: 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
+  - **홈 섹션 순서**
+  - **오늘**: 히어로 1장 → **오늘의 키워드**(에이전트 keywords 합산, 없으면 숨김) → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
+  - **과거**: 히어로 1장 → **오늘의 키워드**(없으면 숨김) → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

@@ -19,6 +19,7 @@ function publicTodayBriefing(item) {
     keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints : [],
     sections: Array.isArray(item.sections) ? item.sections : [],
     marketSnapshot: item.marketSnapshot && typeof item.marketSnapshot === 'object' ? item.marketSnapshot : null,
+    keywords: Array.isArray(item.keywords) ? item.keywords : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     relatedDigestIds: Array.isArray(item.relatedDigestIds) ? item.relatedDigestIds : [],
     relatedMarketBriefingIds: Array.isArray(item.relatedMarketBriefingIds) ? item.relatedMarketBriefingIds : [],

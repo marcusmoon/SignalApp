@@ -16,6 +16,7 @@ import { config } from '../../../config.mjs';
 import { hashtagRecordsFromLabels, normalizeNewsHashtagLabels } from '../../../newsHashtags.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
+import { keywordsToTopicLabels, normalizeKeywords } from '../../../keywords/normalizeKeywords.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function cleanText(value) {
@@ -236,8 +237,14 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     const notifyInbox = resolveIngestNotifyInbox(body);
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => {
+      const keywords = normalizeKeywords(item?.keywords);
+      const topicsFromItem = cleanArray(item?.topics).map(cleanText).filter(Boolean);
+      const topics =
+        topicsFromItem.length > 0 ? topicsFromItem.slice(0, 8) : keywordsToTopicLabels(keywords);
       const next = {
         ...item,
+        keywords,
+        topics,
         sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
         sources: [],
         score: 100 - index * 10,

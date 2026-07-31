@@ -5,6 +5,7 @@ import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
+import { normalizeKeywords } from '../../../keywords/normalizeKeywords.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -32,6 +33,7 @@ function normalizeTodayBriefingPayload(input) {
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || publishedAt;
   if (!id || !title || !headline) return null;
   const summary = cleanText(input?.summary);
+  const keywords = normalizeKeywords(input?.keywords);
   return {
     id,
     locale: cleanText(input?.locale) || 'ko',
@@ -41,6 +43,7 @@ function normalizeTodayBriefingPayload(input) {
     keyPoints: cleanArray(input?.keyPoints || input?.overview).map(cleanText).filter(Boolean).slice(0, 8),
     sections: cleanArray(input?.sections).slice(0, 12),
     marketSnapshot: input?.marketSnapshot && typeof input.marketSnapshot === 'object' ? input.marketSnapshot : null,
+    keywords,
     sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 30 }),
     relatedDigestIds: cleanArray(input?.relatedDigestIds).map(cleanText).filter(Boolean).slice(0, 30),
     relatedMarketBriefingIds: cleanArray(input?.relatedMarketBriefingIds).map(cleanText).filter(Boolean).slice(0, 30),

@@ -27,6 +27,11 @@
       "summary": "엔비디아와 AMD를 중심으로 AI 인프라 수요 기대가 이어졌고, 반도체 공급망 관련 뉴스가 같은 방향으로 묶였습니다.",
       "symbols": ["NVDA", "AMD", "TSM"],
       "topics": ["AI 반도체", "데이터센터", "공급망"],
+      "keywords": [
+        { "label": "AI 반도체", "kind": "theme", "weight": 0.95 },
+        { "label": "NVDA", "kind": "symbol", "weight": 0.9 },
+        { "label": "데이터센터", "kind": "theme", "weight": 0.7 }
+      ],
       "count": 5,
       "generatedDate": "2026-07-01",
       "generatedAt": "2026-07-01T00:00:00Z",

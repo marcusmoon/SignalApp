@@ -85,6 +85,10 @@ docs/schemas/news-issue-digest.v2.schema.json 구조를 따른다. schemaVersion
 - summary: 한국어 1~3문장
 - symbols: 관련 종목 코드. 없으면 []
 - topics: 대표 주제 태그
+- keywords: 홈 스캔용. 이슈당 최대 6개. `{ "label", "kind", "weight" }` 권장.
+  - kind: "theme" | "symbol" | "macro" | "event"
+  - 일반어 금지: 시장, 뉴스, 속보, 상승, 하락, market, news 등
+  - topics만 채워도 되지만, 가능하면 keywords를 함께 넣는다
 - count: 묶인 원문 수
 - generatedDate
 - generatedAt

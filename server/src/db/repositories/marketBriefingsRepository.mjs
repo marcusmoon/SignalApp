@@ -39,6 +39,7 @@ function publicBriefing(item) {
         })
       : [],
     macro: Array.isArray(item.macro) ? item.macro : [],
+    keywords: Array.isArray(item.keywords) ? item.keywords : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     publishedAt: item.publishedAt || item.generatedAt || null,
     briefingDate: item.briefingDate || item.generatedDate || null,

@@ -42,6 +42,14 @@ export type SignalApiNewsDigestSourceRef = {
   publishedAt: string | null;
 };
 
+/** Agent-authored keyword for digests / market·today briefings (home chip aggregate). */
+export type SignalApiKeywordKind = 'theme' | 'symbol' | 'macro' | 'event';
+export type SignalApiKeyword = {
+  label: string;
+  kind?: SignalApiKeywordKind | string;
+  weight?: number;
+};
+
 export type SignalApiNewsDigestItem = {
   id: string;
   category: string;
@@ -50,6 +58,8 @@ export type SignalApiNewsDigestItem = {
   symbols: string[];
   sources: string[];
   topics: string[];
+  /** Agent home/scan keywords (optional; topics used as fallback on home). */
+  keywords?: SignalApiKeyword[];
   count: number;
   generatedDate: string | null;
   generatedAt: string | null;
@@ -113,6 +123,7 @@ export type SignalApiMarketBriefing = {
   sectors?: SignalApiMarketBriefingSector[];
   companies: SignalApiMarketBriefingCompany[];
   macro: SignalApiMarketBriefingMacroItem[];
+  keywords?: SignalApiKeyword[];
   sourceRefs: SignalApiMarketBriefingSourceRef[];
   publishedAt: string | null;
   briefingDate: string | null;
@@ -139,6 +150,7 @@ export type SignalApiTodayBriefing = {
   keyPoints: string[];
   sections: unknown[];
   marketSnapshot: Record<string, unknown> | null;
+  keywords?: SignalApiKeyword[];
   sourceRefs: SignalApiTodayBriefingSourceRef[];
   relatedDigestIds: string[];
   relatedMarketBriefingIds: string[];

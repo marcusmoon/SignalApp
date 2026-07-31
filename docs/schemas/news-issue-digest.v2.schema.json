@@ -168,6 +168,29 @@
           },
           "uniqueItems": true
         },
+        "keywords": {
+          "type": "array",
+          "description": "Home/scan keywords. Objects preferred; plain strings accepted on ingest.",
+          "maxItems": 6,
+          "items": {
+            "oneOf": [
+              { "type": "string", "minLength": 1, "maxLength": 32 },
+              {
+                "type": "object",
+                "required": ["label"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 32 },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["theme", "symbol", "macro", "event"]
+                  },
+                  "weight": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              }
+            ]
+          }
+        },
         "count": {
           "type": "integer",
           "minimum": 1

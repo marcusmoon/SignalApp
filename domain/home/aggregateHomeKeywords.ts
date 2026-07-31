@@ -4,6 +4,8 @@ export type SignalKeyword = {
   label: string;
   kind: SignalKeywordKind;
   weight: number;
+  /** Display name when label is a ticker (kind=symbol). */
+  name?: string;
 };
 
 export type HomeKeywordChip = SignalKeyword & {
@@ -17,6 +19,10 @@ const KIND_BOOST: Record<string, number> = {
   digest: 1,
 };
 
+function looksLikeKrSymbolCode(label: string): boolean {
+  return /^\d{6}$/.test(label.trim());
+}
+
 function asKeywordList(value: unknown): SignalKeyword[] {
   if (!Array.isArray(value)) return [];
   const out: SignalKeyword[] = [];
@@ -24,27 +30,54 @@ function asKeywordList(value: unknown): SignalKeyword[] {
     if (typeof entry === 'string') {
       const label = entry.trim().replace(/^#/, '');
       if (!label) continue;
+      const isCode = looksLikeKrSymbolCode(label);
       out.push({
-        label,
-        kind: /^\d{6}$/.test(label) ? 'symbol' : 'theme',
+        label: isCode ? label.toUpperCase() : label,
+        kind: isCode ? 'symbol' : 'theme',
         weight: 1,
       });
       continue;
     }
     if (!entry || typeof entry !== 'object') continue;
-    const row = entry as { label?: unknown; kind?: unknown; weight?: unknown; name?: unknown };
-    const label = String(row.label ?? row.name ?? '')
-      .trim()
-      .replace(/^#/, '');
-    if (!label) continue;
-    const kindRaw = String(row.kind ?? 'theme').toLowerCase();
-    const kind: SignalKeywordKind =
+    const row = entry as {
+      label?: unknown;
+      kind?: unknown;
+      weight?: unknown;
+      name?: unknown;
+      symbol?: unknown;
+      ticker?: unknown;
+      displayName?: unknown;
+      companyName?: unknown;
+      topic?: unknown;
+    };
+    let kindRaw = String(row.kind ?? 'theme').toLowerCase();
+    let kind: SignalKeywordKind =
       kindRaw === 'symbol' || kindRaw === 'macro' || kindRaw === 'event' ? kindRaw : 'theme';
     const weight =
       typeof row.weight === 'number' && Number.isFinite(row.weight)
         ? Math.max(0, Math.min(1, row.weight))
         : 1;
-    out.push({ label: kind === 'symbol' ? label.toUpperCase() : label, kind, weight });
+
+    let label = '';
+    let name = '';
+    if (kind === 'symbol') {
+      label = String(row.symbol ?? row.label ?? row.ticker ?? '')
+        .trim()
+        .replace(/^#/, '');
+      name = String(row.name ?? row.displayName ?? row.companyName ?? '').trim();
+    } else {
+      label = String(row.label ?? row.topic ?? row.name ?? '')
+        .trim()
+        .replace(/^#/, '');
+      if (looksLikeKrSymbolCode(label)) {
+        kind = 'symbol';
+        name = String(row.displayName ?? row.companyName ?? row.name ?? '').trim();
+        if (name.toUpperCase() === label.toUpperCase()) name = '';
+      }
+    }
+    if (!label) continue;
+    if (kind === 'symbol') label = label.toUpperCase();
+    out.push(name ? { label, kind, weight, name } : { label, kind, weight });
   }
   return out;
 }
@@ -86,10 +119,14 @@ export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] 
           label: item.label,
           kind: item.kind,
           weight: nextWeight,
+          ...(item.name ? { name: item.name } : null),
           digestId: digestId ?? prev?.digestId ?? null,
         });
-      } else if (!prev.digestId && digestId) {
-        scores.set(key, { ...prev, digestId });
+      } else {
+        const next: HomeKeywordChip = { ...prev };
+        if (!next.digestId && digestId) next.digestId = digestId;
+        if (!next.name && item.name) next.name = item.name;
+        scores.set(key, next);
       }
     }
   };
@@ -133,4 +170,19 @@ export function groupHomeKeywords(chips: HomeKeywordChip[]): HomeKeywordGroup[] 
     kind,
     items: buckets[kind],
   }));
+}
+
+/** Ticker codes that still need a quote/company name lookup. */
+export function homeKeywordSymbolsMissingNames(chips: HomeKeywordChip[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const chip of chips) {
+    if (chip.kind !== 'symbol') continue;
+    if (chip.name?.trim()) continue;
+    const key = chip.label.trim().toUpperCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
 }

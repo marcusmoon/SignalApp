@@ -63,7 +63,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 
 - `symbols`: 관련 종목 코드
 - `topics`: 대표 주제 태그 (카드 trail·기존 UI)
-- `keywords`: 홈 스캔용 키워드. `{ label, kind?, weight? }` 권장 (`kind`: `theme`|`symbol`|`macro`|`event`, 문서당 최대 6). 문자열 배열도 ingest 가능. 일반어(`시장`/`뉴스` 등) 금지. `topics`만 있으면 홈은 topics로 폴백
+- `keywords`: 홈 스캔용 키워드. `{ label|symbol, kind?, weight?, name? }` 권장 (`kind`: `theme`|`symbol`|`macro`|`event`, 문서당 최대 6). **종목은 `kind:"symbol"` + 티커(`symbol`/`label`) + `name`(회사명)**. 문자열 배열도 ingest 가능(6자리 코드→symbol). 일반어(`시장`/`뉴스` 등) 금지. `topics`만 있으면 홈은 topics로 폴백
 - `sources`: (v2 ingest 생략) read 시 hydrate된 `sourceRefs`에서 파생
 - `count`: 묶인 원문 수
 - `primaryNewsId`, `primaryPublishedAt`: 대표 기사

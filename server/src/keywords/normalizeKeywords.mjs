@@ -51,10 +51,21 @@ function isBannedLabel(label) {
   return !key || BANNED_LABELS.has(key);
 }
 
+function looksLikeSymbolCode(label) {
+  const text = cleanText(label);
+  if (/^\d{6}$/.test(text)) return true;
+  if (/^[A-Z]{1,5}(\.[A-Z]{1,3})?$/.test(text.toUpperCase()) && /[A-Z]/.test(text)) {
+    // Letter tickers only when explicitly kind=symbol (caller decides).
+    return false;
+  }
+  return false;
+}
+
 /**
  * Accepts:
- * - `[{ label, kind?, weight? }, ...]`
- * - `["HBM", "005930", ...]` (kind defaults to theme; 6-digit / ticker-looking → symbol)
+ * - `[{ label|symbol, kind?, weight?, name? }, ...]`
+ * - `["HBM", "005930", ...]` (6-digit codes → symbol)
+ * For symbols, `label`/`symbol` is the ticker; optional `name` is the display name.
  */
 export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
   const raw = Array.isArray(value) ? value : [];
@@ -66,25 +77,38 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
     let label = '';
     let kind = 'theme';
     let weight = 1;
+    let name = '';
 
     if (typeof entry === 'string') {
       label = cleanText(entry).replace(/^#/, '');
-      // Bare strings: only KR 6-digit codes become symbols. Letter tickers need kind:"symbol".
-      if (/^\d{6}$/.test(label)) {
+      if (looksLikeSymbolCode(label)) {
         kind = 'symbol';
       }
     } else if (entry && typeof entry === 'object') {
-      label = cleanText(entry.label || entry.name || entry.topic).replace(/^#/, '');
       kind = normalizeKind(entry.kind || entry.type);
       weight = normalizeWeight(entry.weight);
-      if (kind === 'symbol') label = label.toUpperCase();
+      if (kind === 'symbol') {
+        label = cleanText(entry.symbol || entry.label || entry.ticker).replace(/^#/, '');
+        name = cleanText(entry.name || entry.displayName || entry.companyName);
+        if (label) label = label.toUpperCase();
+      } else {
+        label = cleanText(entry.label || entry.topic || entry.name).replace(/^#/, '');
+        if (looksLikeSymbolCode(label)) {
+          kind = 'symbol';
+          name = cleanText(entry.displayName || entry.companyName || entry.name);
+          if (name.toUpperCase() === label.toUpperCase()) name = '';
+          label = label.toUpperCase();
+        }
+      }
     }
 
     if (!label || label.length > MAX_LABEL_LEN || isBannedLabel(label)) continue;
     const dedupeKey = label.toLowerCase();
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
-    out.push({ label, kind, weight });
+    const row = { label, kind, weight };
+    if (kind === 'symbol' && name) row.name = name;
+    out.push(row);
   }
 
   return out;

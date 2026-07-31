@@ -29,7 +29,7 @@
       "topics": ["AI 반도체", "데이터센터", "공급망"],
       "keywords": [
         { "label": "AI 반도체", "kind": "theme", "weight": 0.95 },
-        { "label": "NVDA", "kind": "symbol", "weight": 0.9 },
+        { "kind": "symbol", "symbol": "NVDA", "name": "NVIDIA", "weight": 0.9 },
         { "label": "데이터센터", "kind": "theme", "weight": 0.7 }
       ],
       "count": 5,

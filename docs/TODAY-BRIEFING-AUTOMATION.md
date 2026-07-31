@@ -43,7 +43,7 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   ],
   "keywords": [
     { "label": "반도체", "kind": "theme", "weight": 0.95 },
-    { "label": "005930", "kind": "symbol", "weight": 0.9 },
+    { "kind": "symbol", "symbol": "005930", "name": "삼성전자", "weight": 0.9 },
     { "label": "비트코인 ETF", "kind": "theme", "weight": 0.75 }
   ],
   "sections": [],

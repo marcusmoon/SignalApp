@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { aggregateHomeKeywords, groupHomeKeywords, keywordsFromTopics } from './aggregateHomeKeywords.ts';
+import {
+  aggregateHomeKeywords,
+  groupHomeKeywords,
+  homeKeywordSymbolsMissingNames,
+  keywordsFromTopics,
+} from './aggregateHomeKeywords.ts';
 
 describe('aggregateHomeKeywords', () => {
   it('prefers today briefing over digest topics', () => {
@@ -26,16 +31,16 @@ describe('aggregateHomeKeywords', () => {
     assert.equal(chips[0]?.digestId, 'd1');
   });
 
-  it('caps results', () => {
+  it('carries symbol display names and promotes 6-digit topics', () => {
     const chips = aggregateHomeKeywords({
-      todayKeywords: Array.from({ length: 10 }, (_, i) => ({
-        label: `키워드${i}`,
-        kind: 'theme',
-        weight: 1,
-      })),
-      limit: 7,
+      todayKeywords: [{ kind: 'symbol', symbol: '005930', name: '삼성전자' }],
+      digestRows: [{ id: 'd1', topics: ['000660'] }],
     });
-    assert.equal(chips.length, 7);
+    const samsung = chips.find((c) => c.label === '005930');
+    const sk = chips.find((c) => c.label === '000660');
+    assert.equal(samsung?.kind, 'symbol');
+    assert.equal(samsung?.name, '삼성전자');
+    assert.equal(sk?.kind, 'symbol');
   });
 });
 
@@ -65,5 +70,24 @@ describe('keywordsFromTopics', () => {
       { label: 'A', kind: 'theme', weight: 1 },
       { label: 'B', kind: 'theme', weight: 1 },
     ]);
+  });
+
+  it('promotes 6-digit topic strings to symbol', () => {
+    assert.deepEqual(keywordsFromTopics(['005930']), [
+      { label: '005930', kind: 'symbol', weight: 1 },
+    ]);
+  });
+});
+
+describe('homeKeywordSymbolsMissingNames', () => {
+  it('lists symbol tickers without embedded names', () => {
+    assert.deepEqual(
+      homeKeywordSymbolsMissingNames([
+        { label: 'HBM', kind: 'theme', weight: 1 },
+        { label: '005930', kind: 'symbol', weight: 1, name: '삼성전자' },
+        { label: '000660', kind: 'symbol', weight: 1 },
+      ]),
+      ['000660'],
+    );
   });
 });

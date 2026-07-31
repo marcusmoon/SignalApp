@@ -35,4 +35,15 @@ describe('homeKeywordChipLabel', () => {
       'HBM',
     );
   });
+
+  it('prefers embedded keyword name over map', () => {
+    const names = new Map([['005930', '삼성전자']]);
+    assert.equal(
+      homeKeywordChipLabel(
+        { label: '005930', kind: 'symbol', weight: 1, name: '삼전' },
+        names,
+      ),
+      '삼전',
+    );
+  });
 });

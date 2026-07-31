@@ -82,7 +82,7 @@ ingest 별칭: `intraday`/`midday` → `lunch`, `premarket` → `morning`.
   ],
   "keywords": [
     { "label": "반도체", "kind": "theme", "weight": 0.95 },
-    { "label": "005930", "kind": "symbol", "weight": 0.85 },
+    { "kind": "symbol", "symbol": "005930", "name": "삼성전자", "weight": 0.85 },
     { "label": "환율", "kind": "macro", "weight": 0.7 }
   ],
   "sourceRefs": [
@@ -120,7 +120,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 종목 하이라이트에는 가능하면 `price`, `changePercent` 포함
 - 섹터에는 가능하면 `changePercent`, `symbol`(대표 ETF·지수) 포함 — 앱 등락 칩 채색·외부 링크에 사용
 - 섹터 `summary`는 **왜(해석)** 만 쓴다. `SMH 556 (-2.1%).` / `반도체 ETF -9%` 같은 시세 나열은 `changePercent`·`symbol`·companies로 보내고 summary에 반복하지 않는다
-- `keywords`: 홈 스캔용 3~6개. `{ label, kind, weight }` (`theme`|`symbol`|`macro`|`event`). 일반어 금지
+- `keywords`: 홈 스캔용 3~6개. `{ label|symbol, kind, weight, name? }` (`theme`|`symbol`|`macro`|`event`). 종목은 티커+`name`(회사명). 일반어 금지
 - 결과 생성 후 ingest endpoint로 POST
 
 ## 섹터 흐름 ↔ ETF 히트맵

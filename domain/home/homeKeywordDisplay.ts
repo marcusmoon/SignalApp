@@ -12,6 +12,8 @@ export function buildHomeKeywordSymbolNames(input: {
       .toUpperCase();
     const label = String(name || '').trim();
     if (!key || !label) return;
+    // Prefer a real name over repeating the ticker.
+    if (label.toUpperCase() === key) return;
     if (!map.has(key)) map.set(key, label);
   };
   for (const row of input.companies ?? []) put(row?.symbol, row?.name);
@@ -25,6 +27,8 @@ export function homeKeywordChipLabel(
   symbolNames: Map<string, string>,
 ): string {
   if (chip.kind !== 'symbol') return chip.label;
+  const embedded = String(chip.name || '').trim();
+  if (embedded && embedded.toUpperCase() !== chip.label.trim().toUpperCase()) return embedded;
   const key = chip.label.trim().toUpperCase();
   return symbolNames.get(key) || chip.label;
 }

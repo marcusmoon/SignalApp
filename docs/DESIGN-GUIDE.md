@@ -171,7 +171,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 섹션 순서**
   - **오늘**: **키워드**(에이전트 keywords 합산 · 카드 박스, 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
   - **과거**: **키워드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
-  - **키워드 UI**: 홈 **최상단** compact 카드. 제목 문구 없음. `kind`별 행 그루핑(테마⚡ / 종목📈 / 매크로🌐 / 이벤트🚩 아이콘) + hairline 구분. 종목은 로고+회사명. 없으면 숨김
+  - **키워드 UI**: 홈 **최상단** compact 카드. 제목 문구 없음. `kind`별 행 그루핑(테마⚡ / 종목📈 / 매크로🌐 / 이벤트🚩 아이콘) + hairline 구분. **종목 칩은 회사명**(ingest `name` → 브리핑 companies → 시세 quote 조회 순). 티커 코드만 있으면 코드 표시. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(글로벌)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

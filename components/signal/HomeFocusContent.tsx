@@ -60,7 +60,7 @@ import {
 } from '@/domain/home/calendarChipLabel';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
-import { aggregateHomeKeywords, groupHomeKeywords, type HomeKeywordChip, type SignalKeywordKind } from '@/domain/home/aggregateHomeKeywords';
+import { aggregateHomeKeywords, groupHomeKeywords, homeKeywordSymbolsMissingNames, type HomeKeywordChip, type SignalKeywordKind } from '@/domain/home/aggregateHomeKeywords';
 import {
   buildHomeKeywordSymbolNames,
   homeKeywordChipLabel,
@@ -332,6 +332,7 @@ export function HomeFocusContent({
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
@@ -386,14 +387,57 @@ export function HomeFocusContent({
 
   const homeKeywordSymbolNames = useMemo(() => {
     const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
-    return buildHomeKeywordSymbolNames({
+    const map = buildHomeKeywordSymbolNames({
       companies,
       quotes: quotes.map((row) => ({
         symbol: row.symbol,
         name: row.name ?? row.quote?.name ?? null,
       })),
     });
-  }, [briefings, quotes, selectedYmd]);
+    for (const [symbol, name] of keywordQuoteNames) {
+      if (!map.has(symbol)) map.set(symbol, name);
+    }
+    return map;
+  }, [briefings, keywordQuoteNames, quotes, selectedYmd]);
+
+  useEffect(() => {
+    if (!hasSignalApi()) {
+      setKeywordQuoteNames(new Map());
+      return;
+    }
+    const missing = homeKeywordSymbolsMissingNames(homeKeywords).filter(
+      (symbol) => !homeKeywordSymbolNames.has(symbol),
+    );
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    void fetchSignalMarketQuotes({ symbols: missing, limit: missing.length }, { cacheMode: signalCacheMode() })
+      .then((rows) => {
+        if (cancelled) return;
+        const next = new Map<string, string>();
+        for (const row of rows) {
+          const key = String(row.symbol || '')
+            .trim()
+            .toUpperCase();
+          const name = String(row.name || '').trim();
+          if (!key || !name || name.toUpperCase() === key) continue;
+          next.set(key, name);
+        }
+        if (next.size === 0) return;
+        setKeywordQuoteNames((prev) => {
+          const merged = new Map(prev);
+          for (const [k, v] of next) {
+            if (!merged.has(k)) merged.set(k, v);
+          }
+          return merged;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [homeKeywordSymbolNames, homeKeywords]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -509,6 +553,7 @@ export function HomeFocusContent({
       const isDateChange = loadedYmdRef.current !== selectedYmd;
       if (isDateChange) {
         setBriefings([]);
+        setKeywordQuoteNames(new Map());
       }
       setCalendarEvents([]);
 

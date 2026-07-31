@@ -30,6 +30,22 @@ describe('normalizeKeywords', () => {
     const many = Array.from({ length: 12 }, (_, i) => `키워드${i}`);
     assert.equal(normalizeKeywords(many).length, 6);
   });
+
+  it('keeps symbol ticker in label and company name separately', () => {
+    assert.deepEqual(
+      normalizeKeywords([
+        { kind: 'symbol', symbol: '005930', name: '삼성전자', weight: 0.9 },
+      ]),
+      [{ label: '005930', kind: 'symbol', weight: 0.9, name: '삼성전자' }],
+    );
+  });
+
+  it('promotes 6-digit theme labels and keeps companion name', () => {
+    assert.deepEqual(
+      normalizeKeywords([{ label: '005930', kind: 'theme', name: '삼성전자' }]),
+      [{ label: '005930', kind: 'symbol', weight: 1, name: '삼성전자' }],
+    );
+  });
 });
 
 describe('keywordsToTopicLabels', () => {

@@ -1090,15 +1090,12 @@ export function HomeFocusContent({
         ) : (
           <>
           {homeKeywords.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader title={t('homeKeywordsTitle')} showChevron={false} />
-              <HomeKeywordChipStrip
-                items={homeKeywords}
-                symbolNames={homeKeywordSymbolNames}
-                onPressItem={openHomeKeyword}
-                accessibilityLabel={t('homeKeywordsTitle')}
-              />
-            </View>
+            <HomeKeywordChipStrip
+              items={homeKeywords}
+              symbolNames={homeKeywordSymbolNames}
+              onPressItem={openHomeKeyword}
+              accessibilityLabel={t('homeKeywordsTitle')}
+            />
           ) : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (

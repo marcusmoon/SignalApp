@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -18,8 +19,8 @@ type Props = {
 };
 
 /**
- * Compact home keyword card: wrap chips inside a bordered card so the
- * block reads as its own section without burning vertical space.
+ * Compact home keyword card — no section title. A lead tag icon + wrap
+ * chips mark the block; the card border keeps it distinct from the hero.
  */
 export function HomeKeywordChipStrip({
   items,
@@ -41,6 +42,9 @@ export function HomeKeywordChipStrip({
       accessibilityRole="summary"
       accessibilityLabel={accessibilityLabel}>
       <View style={styles.row}>
+        <View style={styles.leadIcon} accessibilityElementsHidden>
+          <Ionicons name="pricetags-outline" size={14} color={theme.green} />
+        </View>
         {items.map((chip) => {
           const isSymbol = chip.kind === 'symbol';
           const label = homeKeywordChipLabel(chip, symbolNames);
@@ -86,6 +90,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexWrap: 'wrap',
       alignItems: 'center',
       gap: 6,
+    },
+    leadIcon: {
+      width: 18,
+      height: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 2,
     },
     chip: {
       flexDirection: 'row',

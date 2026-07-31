@@ -38,7 +38,8 @@
 | 다이제스트·유튜브 제목 | `FEED_DIGEST_TITLE_PX` (14) · line `FEED_DIGEST_TITLE_LINE_PX` (20) | 홈·이슈·**유튜브**(썸네일 행) |
 | 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드 |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
-| 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처·칩 |
+| 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
+| 칩 라벨 | `FEED_CHIP_PX` (10) | 홈 키워드·뉴스/다이제스트 topic 칩 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` + `scaleFont`로 접근성·플랫폼별 스케일을 맞춘다.

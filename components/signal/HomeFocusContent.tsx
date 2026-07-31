@@ -15,9 +15,7 @@ import {
 } from '@/constants/comfortDensity';
 import {
   FEED_BADGE_PX,
-  FEED_BODY_PX,
   FEED_DIGEST_TITLE_PX,
-  FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
@@ -33,6 +31,7 @@ import {
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { HomeKeywordRankTicker } from '@/components/signal/HomeKeywordRankTicker';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -69,7 +68,6 @@ import {
 } from '@/domain/home/aggregateHomeKeywords';
 import {
   buildHomeKeywordSymbolNames,
-  homeKeywordChipLabel,
 } from '@/domain/home/homeKeywordDisplay';
 import {
   homeHeroHeadline,
@@ -877,75 +875,6 @@ export function HomeFocusContent({
     [ipadNav, openSymbolDetail, router, selectedYmd],
   );
 
-  const renderKeywordRankList = useCallback(
-    () => (
-      <View
-        style={styles.keywordRankBlock}
-        accessibilityRole="summary"
-        accessibilityLabel={t('homeKeywordsTitle')}>
-        {homeKeywords.map((chip, index) => {
-          const isSymbol = chip.kind === 'symbol';
-          const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
-          const why = String(chip.why || '').trim();
-          const pct = isSymbol ? homeKeywordChanges.get(chip.label.trim().toUpperCase()) : undefined;
-          const hasPct = typeof pct === 'number' && Number.isFinite(pct);
-          const up = hasPct && pct >= 0;
-          const a11y = why
-            ? hasPct
-              ? `${index + 1}. ${label}. ${why}. ${formatQuoteDpPct(pct)}`
-              : `${index + 1}. ${label}. ${why}`
-            : hasPct
-              ? `${index + 1}. ${label}. ${formatQuoteDpPct(pct)}`
-              : `${index + 1}. ${label}`;
-          return (
-            <Pressable
-              key={`${chip.kind}:${chip.label}`}
-              onPress={() => openHomeKeyword(chip)}
-              accessibilityRole="button"
-              accessibilityLabel={a11y}
-              style={({ pressed }) => [
-                styles.keywordRankRow,
-                index > 0 ? styles.keywordRankRowDivided : null,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.keywordRankIndex}>{index + 1}</Text>
-              {isSymbol ? <SymbolLogo symbol={chip.label} size={18} /> : null}
-              <View style={styles.keywordRankBody}>
-                <Text style={styles.keywordRankTitle} numberOfLines={1}>
-                  {label}
-                </Text>
-                {why ? (
-                  <Text style={styles.keywordRankWhy} numberOfLines={1}>
-                    {why}
-                  </Text>
-                ) : null}
-              </View>
-              {hasPct ? (
-                <Text
-                  style={[
-                    styles.keywordRankChange,
-                    { color: up ? quoteChange.colors.up : quoteChange.colors.down },
-                  ]}>
-                  {formatQuoteDpPct(pct)}
-                </Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-    ),
-    [
-      homeKeywordChanges,
-      homeKeywordSymbolNames,
-      homeKeywords,
-      openHomeKeyword,
-      quoteChange.colors.down,
-      quoteChange.colors.up,
-      styles,
-      t,
-    ],
-  );
-
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
   const openHero = useCallback(() => {
     if (!homeHero) return;
@@ -1193,7 +1122,15 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          {homeKeywords.length > 0 ? renderKeywordRankList() : null}
+          {homeKeywords.length > 0 ? (
+            <HomeKeywordRankTicker
+              items={homeKeywords}
+              symbolNames={homeKeywordSymbolNames}
+              changes={homeKeywordChanges}
+              onPressItem={openHomeKeyword}
+              accessibilityLabel={t('homeKeywordsTitle')}
+            />
+          ) : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
@@ -1471,53 +1408,6 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-    },
-    keywordRankBlock: {
-      gap: 0,
-    },
-    keywordRankRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingVertical: 8,
-      minHeight: 40,
-    },
-    keywordRankRowDivided: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    keywordRankIndex: {
-      width: 18,
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textDim,
-      fontVariant: ['tabular-nums'],
-      textAlign: 'center',
-    },
-    keywordRankBody: {
-      flex: 1,
-      minWidth: 0,
-      gap: 1,
-    },
-    keywordRankTitle: {
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(17),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
-    },
-    keywordRankWhy: {
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    keywordRankChange: {
-      flexShrink: 0,
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(17),
-      fontWeight: ft.emphasisWeight,
-      fontVariant: ['tabular-nums'],
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

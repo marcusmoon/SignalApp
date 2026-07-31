@@ -18,7 +18,7 @@ export const en = {
   homeSignalOpenFullA11y: 'Open briefing in the Market tab',
   homeAiGeneratedA11y: 'AI-generated summary',
   homeNewsFlowNewMeta: 'NEW',
-  homeKeywordsTitle: "Today's keywords",
+  homeKeywordsTitle: 'Keywords',
   moreHubEtfShort: 'Sector',
   digestFreshBadge: 'New',
   digestFreshBadgeA11y: 'Recently updated',

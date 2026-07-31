@@ -766,19 +766,30 @@ export function HomeFocusContent({
 
   const renderKeywordChips = useCallback(
     () => (
-      <View style={styles.calendarChipRow}>
-        {homeKeywords.map((chip) => (
-          <Pressable
-            key={`${chip.kind}:${chip.label}`}
-            onPress={() => openHomeKeyword(chip)}
-            accessibilityRole="button"
-            accessibilityLabel={chip.label}
-            style={({ pressed }) => [styles.calendarChip, pressed && styles.pressed]}>
-            <Text style={styles.calendarChipText} numberOfLines={1}>
-              {chip.label}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.keywordCard}>
+        <View style={styles.keywordChipRow}>
+          {homeKeywords.map((chip) => {
+            const isSymbol = chip.kind === 'symbol';
+            return (
+              <Pressable
+                key={`${chip.kind}:${chip.label}`}
+                onPress={() => openHomeKeyword(chip)}
+                accessibilityRole="button"
+                accessibilityLabel={chip.label}
+                style={({ pressed }) => [
+                  styles.keywordChip,
+                  isSymbol ? styles.keywordChipSymbol : null,
+                  pressed && styles.pressed,
+                ]}>
+                <Text
+                  style={[styles.keywordChipText, isSymbol ? styles.keywordChipTextSymbol : null]}
+                  numberOfLines={1}>
+                  {chip.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     ),
     [homeKeywords, openHomeKeyword, styles],
@@ -1031,6 +1042,13 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
+          {homeKeywords.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('homeKeywordsTitle')} badge={<AiBadge />} />
+              {renderKeywordChips()}
+            </View>
+          ) : null}
+
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
               <HomeSectionHeader
@@ -1039,13 +1057,6 @@ export function HomeFocusContent({
                 trailingBadge={heroSessionTag}
               />
               {renderHeroCard()}
-            </View>
-          ) : null}
-
-          {homeKeywords.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader title={t('homeKeywordsTitle')} badge={<AiBadge />} />
-              {renderKeywordChips()}
             </View>
           ) : null}
 
@@ -1314,6 +1325,48 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
+    },
+    keywordCard: {
+      borderRadius: UI_RADIUS_CARD_LG,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      paddingHorizontal: 12,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
+    },
+    keywordChipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: COMFORT_GAP_SM,
+    },
+    keywordChip: {
+      alignSelf: 'flex-start',
+      borderRadius: UI_RADIUS_CARD,
+      overflow: 'hidden',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      maxWidth: '100%',
+    },
+    keywordChipSymbol: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    keywordChipText: {
+      fontSize: ft.ff(14),
+      lineHeight: sf(18),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+    },
+    keywordChipTextSymbol: {
+      color: theme.green,
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

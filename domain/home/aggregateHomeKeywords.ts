@@ -148,30 +148,6 @@ export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] 
     .slice(0, limit);
 }
 
-/** Display order for home keyword groups. Empty groups are omitted. */
-export const HOME_KEYWORD_KIND_ORDER: SignalKeywordKind[] = ['theme', 'symbol', 'macro', 'event'];
-
-export type HomeKeywordGroup = {
-  kind: SignalKeywordKind;
-  items: HomeKeywordChip[];
-};
-
-export function groupHomeKeywords(chips: HomeKeywordChip[]): HomeKeywordGroup[] {
-  const buckets: Record<SignalKeywordKind, HomeKeywordChip[]> = {
-    theme: [],
-    symbol: [],
-    macro: [],
-    event: [],
-  };
-  for (const chip of chips) {
-    buckets[chip.kind].push(chip);
-  }
-  return HOME_KEYWORD_KIND_ORDER.filter((kind) => buckets[kind].length > 0).map((kind) => ({
-    kind,
-    items: buckets[kind],
-  }));
-}
-
 /** Ticker codes that still need a quote/company name lookup. */
 export function homeKeywordSymbolsMissingNames(chips: HomeKeywordChip[]): string[] {
   const out: string[] = [];

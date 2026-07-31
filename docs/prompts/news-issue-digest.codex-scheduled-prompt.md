@@ -85,9 +85,10 @@ docs/schemas/news-issue-digest.v2.schema.json 구조를 따른다. schemaVersion
 - summary: 한국어 1~3문장
 - symbols: 관련 종목 코드. 없으면 []
 - topics: 대표 주제 태그
-- keywords: 홈 스캔용. 이슈당 최대 6개. `{ "label"|"symbol", "kind", "weight", "name"? }` 권장.
-  - kind: "theme" | "symbol" | "macro" | "event"
-  - 종목: `kind:"symbol"`, 티커는 `symbol`(또는 label), **회사명은 `name`** (예: `{ "kind":"symbol", "symbol":"005930", "name":"삼성전자" }`)
+- keywords: 홈 스캔용. 이슈당 최대 6개. `{ "label"|"symbol", "kind", "weight", "name"?, "why"? }` 권장.
+  - kind: "theme" | "sector" | "symbol" | "macro" | "event"
+  - 종목: `kind:"symbol"`, 티커는 `symbol`(또는 label), **회사명은 `name`** (예: `{ "kind":"symbol", "symbol":"005930", "name":"삼성전자", "why":"실적 호조" }`)
+  - why: 홈 랭크 리스트용 짧은 맥락(한 줄, 48자 이하). reason도 허용
   - 일반어 금지: 시장, 뉴스, 속보, 상승, 하락, market, news 등
   - topics만 채워도 되지만, 가능하면 keywords를 함께 넣는다
 - count: 묶인 원문 수

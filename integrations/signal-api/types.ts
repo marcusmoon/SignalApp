@@ -54,6 +54,10 @@ export type SignalApiKeyword = {
   name?: string;
   displayName?: string;
   companyName?: string;
+  /** Short home-rank context (preferred). */
+  why?: string;
+  reason?: string;
+  context?: string;
 };
 
 export type SignalApiNewsDigestItem = {

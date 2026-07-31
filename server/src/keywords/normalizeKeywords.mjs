@@ -6,6 +6,7 @@
 const KEYWORD_KINDS = new Set(['theme', 'sector', 'symbol', 'macro', 'event']);
 const MAX_KEYWORDS = 6;
 const MAX_LABEL_LEN = 32;
+const MAX_WHY_LEN = 48;
 
 /** Too generic for home chips — reject on ingest. */
 const BANNED_LABELS = new Set([
@@ -88,9 +89,10 @@ function looksLikeSymbolCode(label) {
 
 /**
  * Accepts:
- * - `[{ label|symbol, kind?, weight?, name? }, ...]`
+ * - `[{ label|symbol, kind?, weight?, name?, why? }, ...]`
  * - `["HBM", "005930", ...]` (6-digit codes → symbol)
  * For symbols, `label`/`symbol` is the ticker; optional `name` is the display name.
+ * Optional `why`/`reason` is short home-rank context.
  */
 export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
   const raw = Array.isArray(value) ? value : [];
@@ -103,6 +105,7 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
     let kind = 'theme';
     let weight = 1;
     let name = '';
+    let why = '';
 
     if (typeof entry === 'string') {
       label = cleanText(entry).replace(/^#/, '');
@@ -112,6 +115,7 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
     } else if (entry && typeof entry === 'object') {
       kind = normalizeKind(entry.kind || entry.type);
       weight = normalizeWeight(entry.weight);
+      why = cleanText(entry.why || entry.reason || entry.context).slice(0, MAX_WHY_LEN);
       if (kind === 'symbol') {
         label = cleanText(entry.symbol || entry.label || entry.ticker).replace(/^#/, '');
         name = cleanText(entry.name || entry.displayName || entry.companyName);
@@ -134,6 +138,7 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
     seen.add(dedupeKey);
     const row = { label, kind, weight };
     if (kind === 'symbol' && name) row.name = name;
+    if (why) row.why = why;
     out.push(row);
   }
 

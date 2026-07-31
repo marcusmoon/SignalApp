@@ -63,6 +63,19 @@ describe('normalizeKeywords', () => {
       [{ label: '005930', kind: 'symbol', weight: 1, name: '삼성전자' }],
     );
   });
+
+  it('keeps short why/reason for home rank context', () => {
+    assert.deepEqual(
+      normalizeKeywords([
+        { label: 'HBM', kind: 'theme', weight: 0.9, why: '공급 차질' },
+        { kind: 'symbol', symbol: '005930', name: '삼성전자', reason: '실적 호조' },
+      ]),
+      [
+        { label: 'HBM', kind: 'theme', weight: 0.9, why: '공급 차질' },
+        { label: '005930', kind: 'symbol', weight: 1, name: '삼성전자', why: '실적 호조' },
+      ],
+    );
+  });
 });
 
 describe('keywordsToTopicLabels', () => {

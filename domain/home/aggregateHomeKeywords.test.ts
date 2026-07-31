@@ -41,6 +41,21 @@ describe('aggregateHomeKeywords', () => {
     assert.equal(samsung?.name, '삼성전자');
     assert.equal(sk?.kind, 'symbol');
   });
+
+  it('carries why and defaults to rank limit of 5', () => {
+    const chips = aggregateHomeKeywords({
+      todayKeywords: [
+        { label: 'HBM', kind: 'theme', weight: 1, why: '공급 이슈' },
+        { label: 'A', kind: 'theme', weight: 0.9 },
+        { label: 'B', kind: 'theme', weight: 0.8 },
+        { label: 'C', kind: 'theme', weight: 0.7 },
+        { label: 'D', kind: 'theme', weight: 0.6 },
+        { label: 'E', kind: 'theme', weight: 0.5 },
+      ],
+    });
+    assert.equal(chips.length, 5);
+    assert.equal(chips[0]?.why, '공급 이슈');
+  });
 });
 
 describe('keywordsFromTopics', () => {

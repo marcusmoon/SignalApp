@@ -1,4 +1,4 @@
-export type SignalKeywordKind = 'theme' | 'symbol' | 'macro' | 'event';
+export type SignalKeywordKind = 'theme' | 'sector' | 'symbol' | 'macro' | 'event';
 
 export type SignalKeyword = {
   label: string;
@@ -6,12 +6,17 @@ export type SignalKeyword = {
   weight: number;
   /** Display name when label is a ticker (kind=symbol). */
   name?: string;
+  /** Short scan context for home rank list (agent `why`/`reason`). */
+  why?: string;
 };
 
 export type HomeKeywordChip = SignalKeyword & {
   /** Prefer opening this digest when kind is not symbol. */
   digestId?: string | null;
 };
+
+/** Home rank list shows a short top set only. */
+export const HOME_KEYWORD_RANK_LIMIT = 5;
 
 const KIND_BOOST: Record<string, number> = {
   today: 1.4,
@@ -49,10 +54,18 @@ function asKeywordList(value: unknown): SignalKeyword[] {
       displayName?: unknown;
       companyName?: unknown;
       topic?: unknown;
+      why?: unknown;
+      reason?: unknown;
+      context?: unknown;
     };
     let kindRaw = String(row.kind ?? 'theme').toLowerCase();
     let kind: SignalKeywordKind =
-      kindRaw === 'symbol' || kindRaw === 'macro' || kindRaw === 'event' ? kindRaw : 'theme';
+      kindRaw === 'symbol' ||
+      kindRaw === 'macro' ||
+      kindRaw === 'event' ||
+      kindRaw === 'sector'
+        ? kindRaw
+        : 'theme';
     const weight =
       typeof row.weight === 'number' && Number.isFinite(row.weight)
         ? Math.max(0, Math.min(1, row.weight))
@@ -77,7 +90,16 @@ function asKeywordList(value: unknown): SignalKeyword[] {
     }
     if (!label) continue;
     if (kind === 'symbol') label = label.toUpperCase();
-    out.push(name ? { label, kind, weight, name } : { label, kind, weight });
+    const why = String(row.why ?? row.reason ?? row.context ?? '')
+      .trim()
+      .slice(0, 48);
+    out.push({
+      label,
+      kind,
+      weight,
+      ...(name ? { name } : null),
+      ...(why ? { why } : null),
+    });
   }
   return out;
 }
@@ -96,12 +118,12 @@ type AggregateInput = {
 };
 
 /**
- * Merge agent keywords for the home chip strip.
+ * Merge agent keywords for the home rank list.
  * Priority boost: today briefing > market briefing > news digests.
  * Digests without `keywords` fall back to `topics`.
  */
 export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] {
-  const limit = Math.max(1, Math.min(12, input.limit ?? 7));
+  const limit = Math.max(1, Math.min(12, input.limit ?? HOME_KEYWORD_RANK_LIMIT));
   const scores = new Map<string, HomeKeywordChip>();
 
   const bump = (
@@ -120,12 +142,14 @@ export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] 
           kind: item.kind,
           weight: nextWeight,
           ...(item.name ? { name: item.name } : null),
+          ...(item.why ? { why: item.why } : null),
           digestId: digestId ?? prev?.digestId ?? null,
         });
       } else {
         const next: HomeKeywordChip = { ...prev };
         if (!next.digestId && digestId) next.digestId = digestId;
         if (!next.name && item.name) next.name = item.name;
+        if (!next.why && item.why) next.why = item.why;
         scores.set(key, next);
       }
     }
@@ -146,6 +170,20 @@ export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] 
   return [...scores.values()]
     .sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label, 'ko'))
     .slice(0, limit);
+}
+
+/** Symbol tickers on the home list (for name / change lookup). */
+export function homeKeywordSymbolLabels(chips: HomeKeywordChip[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const chip of chips) {
+    if (chip.kind !== 'symbol') continue;
+    const key = chip.label.trim().toUpperCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
 }
 
 /** Ticker codes that still need a quote/company name lookup. */

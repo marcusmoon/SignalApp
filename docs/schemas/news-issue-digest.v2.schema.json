@@ -184,12 +184,15 @@
                   "symbol": { "type": "string", "minLength": 1, "maxLength": 32 },
                   "kind": {
                     "type": "string",
-                    "enum": ["theme", "symbol", "macro", "event"]
+                    "enum": ["theme", "sector", "symbol", "macro", "event"]
                   },
                   "weight": { "type": "number", "minimum": 0, "maximum": 1 },
                   "name": { "type": "string", "minLength": 1, "maxLength": 40 },
                   "displayName": { "type": "string", "minLength": 1, "maxLength": 40 },
-                  "companyName": { "type": "string", "minLength": 1, "maxLength": 40 }
+                  "companyName": { "type": "string", "minLength": 1, "maxLength": 40 },
+                  "why": { "type": "string", "minLength": 1, "maxLength": 48 },
+                  "reason": { "type": "string", "minLength": 1, "maxLength": 48 },
+                  "context": { "type": "string", "minLength": 1, "maxLength": 48 }
                 }
               }
             ]

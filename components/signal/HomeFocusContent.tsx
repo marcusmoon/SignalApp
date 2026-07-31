@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -16,8 +15,9 @@ import {
 } from '@/constants/comfortDensity';
 import {
   FEED_BADGE_PX,
-  FEED_CHIP_PX,
+  FEED_BODY_PX,
   FEED_DIGEST_TITLE_PX,
+  FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
@@ -61,7 +61,12 @@ import {
 } from '@/domain/home/calendarChipLabel';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
-import { aggregateHomeKeywords, homeKeywordSymbolsMissingNames, type HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
+import {
+  aggregateHomeKeywords,
+  HOME_KEYWORD_RANK_LIMIT,
+  homeKeywordSymbolLabels,
+  type HomeKeywordChip,
+} from '@/domain/home/aggregateHomeKeywords';
 import {
   buildHomeKeywordSymbolNames,
   homeKeywordChipLabel,
@@ -333,7 +338,9 @@ export function HomeFocusContent({
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
-  const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
+  const [keywordQuoteMeta, setKeywordQuoteMeta] = useState<
+    Map<string, { name?: string; changePercent?: number | null }>
+  >(new Map());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
@@ -379,64 +386,108 @@ export function HomeFocusContent({
           keywords: row.item.keywords,
           topics: row.item.topics,
         })),
-        limit: 7,
+        limit: HOME_KEYWORD_RANK_LIMIT,
       }),
     [briefings, homeIssues, selectedYmd, todayBriefing],
   );
 
   const homeKeywordSymbolNames = useMemo(() => {
     const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
-    const map = buildHomeKeywordSymbolNames({
+    return buildHomeKeywordSymbolNames({
       companies,
-      quotes: quotes.map((row) => ({
-        symbol: row.symbol,
-        name: row.name ?? row.quote?.name ?? null,
-      })),
+      quotes: [
+        ...quotes.map((row) => ({
+          symbol: row.symbol,
+          name: row.name ?? row.quote?.name ?? null,
+        })),
+        ...[...keywordQuoteMeta.entries()].map(([symbol, meta]) => ({
+          symbol,
+          name: meta.name ?? null,
+        })),
+      ],
     });
-    for (const [symbol, name] of keywordQuoteNames) {
-      if (!map.has(symbol)) map.set(symbol, name);
-    }
+  }, [briefings, keywordQuoteMeta, quotes, selectedYmd]);
+
+  const homeKeywordChanges = useMemo(() => {
+    const map = new Map<string, number>();
+    const put = (symbol?: string | null, pct?: number | null) => {
+      const key = String(symbol || '')
+        .trim()
+        .toUpperCase();
+      if (!key || typeof pct !== 'number' || !Number.isFinite(pct) || map.has(key)) return;
+      map.set(key, pct);
+    };
+    for (const row of quotes) put(row.symbol, row.quote?.changePercent ?? null);
+    for (const [symbol, meta] of keywordQuoteMeta) put(symbol, meta.changePercent ?? null);
     return map;
-  }, [briefings, keywordQuoteNames, quotes, selectedYmd]);
+  }, [keywordQuoteMeta, quotes]);
 
   useEffect(() => {
     if (!hasSignalApi()) {
-      setKeywordQuoteNames(new Map());
+      setKeywordQuoteMeta(new Map());
       return;
     }
-    const missing = homeKeywordSymbolsMissingNames(homeKeywords).filter(
-      (symbol) => !homeKeywordSymbolNames.has(symbol),
-    );
-    if (missing.length === 0) return;
+    const symbols = homeKeywordSymbolLabels(homeKeywords).filter((symbol) => {
+      if (keywordQuoteMeta.has(symbol)) return false;
+      const embeddedName = homeKeywords.some(
+        (chip) => chip.label === symbol && Boolean(chip.name?.trim()),
+      );
+      const hasName = embeddedName || homeKeywordSymbolNames.has(symbol);
+      const hasChange = homeKeywordChanges.has(symbol);
+      return !hasName || !hasChange;
+    });
+    if (symbols.length === 0) return;
 
     let cancelled = false;
-    void fetchSignalMarketQuotes({ symbols: missing, limit: missing.length }, { cacheMode: signalCacheMode() })
+    void fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode: signalCacheMode() })
       .then((rows) => {
         if (cancelled) return;
-        const next = new Map<string, string>();
+        const next = new Map<string, { name?: string; changePercent?: number | null }>();
+        for (const symbol of symbols) next.set(symbol, {});
         for (const row of rows) {
           const key = String(row.symbol || '')
             .trim()
             .toUpperCase();
+          if (!key) continue;
           const name = String(row.name || '').trim();
-          if (!key || !name || name.toUpperCase() === key) continue;
-          next.set(key, name);
+          const changePercent =
+            typeof row.changePercent === 'number' && Number.isFinite(row.changePercent)
+              ? row.changePercent
+              : null;
+          next.set(key, {
+            ...(name && name.toUpperCase() !== key ? { name } : null),
+            ...(changePercent != null ? { changePercent } : null),
+          });
         }
-        if (next.size === 0) return;
-        setKeywordQuoteNames((prev) => {
+        setKeywordQuoteMeta((prev) => {
           const merged = new Map(prev);
           for (const [k, v] of next) {
-            if (!merged.has(k)) merged.set(k, v);
+            const cur = merged.get(k) ?? {};
+            merged.set(k, {
+              name: cur.name || v.name,
+              changePercent:
+                typeof cur.changePercent === 'number' ? cur.changePercent : v.changePercent,
+            });
           }
           return merged;
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (cancelled) return;
+        // Mark attempted so a failed lookup does not loop.
+        setKeywordQuoteMeta((prev) => {
+          const merged = new Map(prev);
+          for (const symbol of symbols) {
+            if (!merged.has(symbol)) merged.set(symbol, {});
+          }
+          return merged;
+        });
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [homeKeywordSymbolNames, homeKeywords]);
+  }, [homeKeywordChanges, homeKeywordSymbolNames, homeKeywords, keywordQuoteMeta]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -552,7 +603,7 @@ export function HomeFocusContent({
       const isDateChange = loadedYmdRef.current !== selectedYmd;
       if (isDateChange) {
         setBriefings([]);
-        setKeywordQuoteNames(new Map());
+        setKeywordQuoteMeta(new Map());
       }
       setCalendarEvents([]);
 
@@ -826,43 +877,73 @@ export function HomeFocusContent({
     [ipadNav, openSymbolDetail, router, selectedYmd],
   );
 
-  const renderKeywordChips = useCallback(
+  const renderKeywordRankList = useCallback(
     () => (
       <View
-        style={styles.keywordCard}
+        style={styles.keywordRankBlock}
         accessibilityRole="summary"
         accessibilityLabel={t('homeKeywordsTitle')}>
-        <View style={styles.keywordChipRow}>
-          <View style={styles.keywordLeadIcon} accessibilityElementsHidden>
-            <Ionicons name="pricetags-outline" size={15} color={theme.green} />
-          </View>
-          {homeKeywords.map((chip) => {
-            const isSymbol = chip.kind === 'symbol';
-            const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
-            return (
-              <Pressable
-                key={`${chip.kind}:${chip.label}`}
-                onPress={() => openHomeKeyword(chip)}
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                style={({ pressed }) => [
-                  styles.keywordChip,
-                  isSymbol ? styles.keywordChipSymbol : null,
-                  pressed && styles.pressed,
-                ]}>
-                {isSymbol ? <SymbolLogo symbol={chip.label} size={16} /> : null}
-                <Text
-                  style={[styles.keywordChipText, isSymbol ? styles.keywordChipTextSymbol : null]}
-                  numberOfLines={1}>
+        {homeKeywords.map((chip, index) => {
+          const isSymbol = chip.kind === 'symbol';
+          const label = homeKeywordChipLabel(chip, homeKeywordSymbolNames);
+          const why = String(chip.why || '').trim();
+          const pct = isSymbol ? homeKeywordChanges.get(chip.label.trim().toUpperCase()) : undefined;
+          const hasPct = typeof pct === 'number' && Number.isFinite(pct);
+          const up = hasPct && pct >= 0;
+          const a11y = why
+            ? hasPct
+              ? `${index + 1}. ${label}. ${why}. ${formatQuoteDpPct(pct)}`
+              : `${index + 1}. ${label}. ${why}`
+            : hasPct
+              ? `${index + 1}. ${label}. ${formatQuoteDpPct(pct)}`
+              : `${index + 1}. ${label}`;
+          return (
+            <Pressable
+              key={`${chip.kind}:${chip.label}`}
+              onPress={() => openHomeKeyword(chip)}
+              accessibilityRole="button"
+              accessibilityLabel={a11y}
+              style={({ pressed }) => [
+                styles.keywordRankRow,
+                index > 0 ? styles.keywordRankRowDivided : null,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.keywordRankIndex}>{index + 1}</Text>
+              {isSymbol ? <SymbolLogo symbol={chip.label} size={18} /> : null}
+              <View style={styles.keywordRankBody}>
+                <Text style={styles.keywordRankTitle} numberOfLines={1}>
                   {label}
                 </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                {why ? (
+                  <Text style={styles.keywordRankWhy} numberOfLines={1}>
+                    {why}
+                  </Text>
+                ) : null}
+              </View>
+              {hasPct ? (
+                <Text
+                  style={[
+                    styles.keywordRankChange,
+                    { color: up ? quoteChange.colors.up : quoteChange.colors.down },
+                  ]}>
+                  {formatQuoteDpPct(pct)}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
       </View>
     ),
-    [homeKeywordSymbolNames, homeKeywords, openHomeKeyword, styles, t, theme.green],
+    [
+      homeKeywordChanges,
+      homeKeywordSymbolNames,
+      homeKeywords,
+      openHomeKeyword,
+      quoteChange.colors.down,
+      quoteChange.colors.up,
+      styles,
+      t,
+    ],
   );
 
   /** 히어로·섹터 흐름·뉴스 — 단건 상세 화면 */
@@ -1112,7 +1193,7 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          {homeKeywords.length > 0 ? renderKeywordChips() : null}
+          {homeKeywords.length > 0 ? renderKeywordRankList() : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (
             <View style={styles.section}>
@@ -1391,54 +1472,52 @@ function makeStyles(
       fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
-    keywordCard: {
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingHorizontal: 10,
+    keywordRankBlock: {
+      gap: 0,
+    },
+    keywordRankRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
       paddingVertical: 8,
+      minHeight: 40,
     },
-    keywordChipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 6,
+    keywordRankRowDivided: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
     },
-    keywordLeadIcon: {
+    keywordRankIndex: {
       width: 18,
-      height: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 2,
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textDim,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'center',
     },
-    keywordChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      gap: 5,
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 9,
-      paddingVertical: 5,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-      maxWidth: '100%',
+    keywordRankBody: {
+      flex: 1,
+      minWidth: 0,
+      gap: 1,
     },
-    keywordChipSymbol: {
-      backgroundColor: theme.greenDim,
-      borderColor: theme.greenBorder,
-    },
-    keywordChipText: {
-      fontSize: ft.ff(FEED_CHIP_PX),
-      lineHeight: sf(15),
+    keywordRankTitle: {
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(17),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-      maxWidth: 140,
     },
-    keywordChipTextSymbol: {
-      color: theme.green,
+    keywordRankWhy: {
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
+    keywordRankChange: {
+      flexShrink: 0,
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(17),
+      fontWeight: ft.emphasisWeight,
+      fontVariant: ['tabular-nums'],
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

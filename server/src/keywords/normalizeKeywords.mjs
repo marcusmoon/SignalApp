@@ -3,7 +3,7 @@
  * Stored in JSON payload — no DB migration.
  */
 
-const KEYWORD_KINDS = new Set(['theme', 'symbol', 'macro', 'event']);
+const KEYWORD_KINDS = new Set(['theme', 'sector', 'symbol', 'macro', 'event']);
 const MAX_KEYWORDS = 6;
 const MAX_LABEL_LEN = 32;
 
@@ -14,6 +14,26 @@ const BANNED_LABELS = new Set([
   '속보',
   '증시',
   '주식',
+  '투자',
+  '전망',
+  '급락',
+  '랠리',
+  '수급',
+  '관망',
+  '변동성',
+  '투자심리',
+  '코스피',
+  '코스닥',
+  '나스닥',
+  '다우',
+  's&p500',
+  'sp500',
+  's&p',
+  '^gspc',
+  '^ixic',
+  '^dji',
+  '^ks11',
+  '^kq11',
   '상승',
   '하락',
   '강세',
@@ -48,12 +68,17 @@ function normalizeWeight(value) {
 
 function isBannedLabel(label) {
   const key = label.replace(/^#/, '').trim().toLowerCase();
-  return !key || BANNED_LABELS.has(key);
+  if (!key || BANNED_LABELS.has(key)) return true;
+  if (/^\d{4}[-./]\d{1,2}[-./]\d{1,2}$/.test(key)) return true;
+  if (/^[월화수목금토일]요일?$/.test(key)) return true;
+  return false;
 }
 
 function looksLikeSymbolCode(label) {
   const text = cleanText(label);
   if (/^\d{6}$/.test(text)) return true;
+  if (/^\d{6}\.(KS|KQ)$/i.test(text)) return true;
+  if (/^\^[A-Z0-9.]{2,8}$/i.test(text)) return true;
   if (/^[A-Z]{1,5}(\.[A-Z]{1,3})?$/.test(text.toUpperCase()) && /[A-Z]/.test(text)) {
     // Letter tickers only when explicitly kind=symbol (caller decides).
     return false;
@@ -103,6 +128,7 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
     }
 
     if (!label || label.length > MAX_LABEL_LEN || isBannedLabel(label)) continue;
+    if (label.length < 2 && !looksLikeSymbolCode(label)) continue;
     const dedupeKey = label.toLowerCase();
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);

@@ -21,8 +21,25 @@ describe('normalizeKeywords', () => {
 
   it('drops banned and duplicate labels', () => {
     assert.deepEqual(
-      normalizeKeywords(['시장', 'HBM', 'hbm', '뉴스', { label: 'HBM', kind: 'theme' }]),
+      normalizeKeywords(['시장', '나스닥', '^GSPC', 'HBM', 'hbm', '뉴스', { label: 'HBM', kind: 'theme' }]),
       [{ label: 'HBM', kind: 'theme', weight: 1 }],
+    );
+  });
+
+  it('keeps specific themes, sectors, events and symbols', () => {
+    assert.deepEqual(
+      normalizeKeywords([
+        { label: 'AI 데이터센터', kind: 'theme', weight: 0.95 },
+        { label: '반도체 장비', kind: 'sector', weight: 0.82 },
+        { label: 'FOMC', kind: 'event', weight: 0.8 },
+        { label: 'NVDA', kind: 'symbol', weight: 0.7 },
+      ]),
+      [
+        { label: 'AI 데이터센터', kind: 'theme', weight: 0.95 },
+        { label: '반도체 장비', kind: 'sector', weight: 0.82 },
+        { label: 'FOMC', kind: 'event', weight: 0.8 },
+        { label: 'NVDA', kind: 'symbol', weight: 0.7 },
+      ],
     );
   });
 

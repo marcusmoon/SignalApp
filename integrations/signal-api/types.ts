@@ -43,7 +43,7 @@ export type SignalApiNewsDigestSourceRef = {
 };
 
 /** Agent-authored keyword for digests / market·today briefings (home chip aggregate). */
-export type SignalApiKeywordKind = 'theme' | 'symbol' | 'macro' | 'event';
+export type SignalApiKeywordKind = 'theme' | 'sector' | 'symbol' | 'macro' | 'event';
 export type SignalApiKeyword = {
   /** Ticker when kind=symbol; otherwise display label. */
   label?: string;

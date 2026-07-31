@@ -87,6 +87,22 @@ function looksLikeSymbolCode(label) {
   return false;
 }
 
+function bareSymbolLabel(label) {
+  const text = cleanText(label).toUpperCase();
+  const m = text.match(/^(\d{6})\.(KS|KQ)$/i);
+  return m ? m[1] : text;
+}
+
+function isUsableCompanyName(name, symbolLabel) {
+  const label = cleanText(name);
+  if (!label) return false;
+  const key = bareSymbolLabel(symbolLabel);
+  if (label.toUpperCase() === key) return false;
+  if (bareSymbolLabel(label) === key) return false;
+  if (looksLikeSymbolCode(label)) return false;
+  return true;
+}
+
 /**
  * Accepts:
  * - `[{ label|symbol, kind?, weight?, name?, why? }, ...]`
@@ -111,6 +127,7 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
       label = cleanText(entry).replace(/^#/, '');
       if (looksLikeSymbolCode(label)) {
         kind = 'symbol';
+        label = bareSymbolLabel(label);
       }
     } else if (entry && typeof entry === 'object') {
       kind = normalizeKind(entry.kind || entry.type);
@@ -119,14 +136,15 @@ export function normalizeKeywords(value, { limit = MAX_KEYWORDS } = {}) {
       if (kind === 'symbol') {
         label = cleanText(entry.symbol || entry.label || entry.ticker).replace(/^#/, '');
         name = cleanText(entry.name || entry.displayName || entry.companyName);
-        if (label) label = label.toUpperCase();
+        if (label) label = bareSymbolLabel(label);
+        if (!isUsableCompanyName(name, label)) name = '';
       } else {
         label = cleanText(entry.label || entry.topic || entry.name).replace(/^#/, '');
         if (looksLikeSymbolCode(label)) {
           kind = 'symbol';
           name = cleanText(entry.displayName || entry.companyName || entry.name);
-          if (name.toUpperCase() === label.toUpperCase()) name = '';
-          label = label.toUpperCase();
+          label = bareSymbolLabel(label);
+          if (!isUsableCompanyName(name, label)) name = '';
         }
       }
     }

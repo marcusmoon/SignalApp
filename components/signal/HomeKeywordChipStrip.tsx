@@ -7,7 +7,10 @@ import { FEED_CHIP_PX } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
-import { homeKeywordChipLabel } from '@/domain/home/homeKeywordDisplay';
+import {
+  homeKeywordChipLabel,
+  homeKeywordIsSymbolChip,
+} from '@/domain/home/homeKeywordDisplay';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
@@ -46,7 +49,7 @@ export function HomeKeywordChipStrip({
           <Ionicons name="pricetags-outline" size={14} color={theme.green} />
         </View>
         {items.map((chip) => {
-          const isSymbol = chip.kind === 'symbol';
+          const isSymbol = homeKeywordIsSymbolChip(chip);
           const label = homeKeywordChipLabel(chip, symbolNames);
           const why = String(chip.why || '').trim();
           const a11y = why ? `${label}. ${why}` : label;

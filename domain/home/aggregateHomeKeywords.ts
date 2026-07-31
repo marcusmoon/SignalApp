@@ -24,8 +24,25 @@ const KIND_BOOST: Record<string, number> = {
   digest: 1,
 };
 
-function looksLikeKrSymbolCode(label: string): boolean {
-  return /^\d{6}$/.test(label.trim());
+function looksLikeKrCode(label: string): boolean {
+  return /^\d{6}(\.(KS|KQ))?$/i.test(String(label || '').trim());
+}
+
+function normalizeSymbolLabel(label: string): string {
+  const trimmed = String(label || '').trim().toUpperCase();
+  const m = trimmed.match(/^(\d{6})\.(KS|KQ)$/);
+  return m ? m[1] : trimmed;
+}
+
+function usableCompanyName(name: string, symbolKey: string): boolean {
+  const label = String(name || '').trim();
+  if (!label) return false;
+  const key = normalizeSymbolLabel(symbolKey);
+  if (!key) return false;
+  if (label.toUpperCase() === key) return false;
+  if (normalizeSymbolLabel(label) === key) return false;
+  if (looksLikeKrCode(label)) return false;
+  return true;
 }
 
 function asKeywordList(value: unknown): SignalKeyword[] {
@@ -33,11 +50,11 @@ function asKeywordList(value: unknown): SignalKeyword[] {
   const out: SignalKeyword[] = [];
   for (const entry of value) {
     if (typeof entry === 'string') {
-      const label = entry.trim().replace(/^#/, '');
-      if (!label) continue;
-      const isCode = looksLikeKrSymbolCode(label);
+      const raw = entry.trim().replace(/^#/, '');
+      if (!raw) continue;
+      const isCode = looksLikeKrCode(raw);
       out.push({
-        label: isCode ? label.toUpperCase() : label,
+        label: isCode ? normalizeSymbolLabel(raw) : raw,
         kind: isCode ? 'symbol' : 'theme',
         weight: 1,
       });
@@ -82,14 +99,16 @@ function asKeywordList(value: unknown): SignalKeyword[] {
       label = String(row.label ?? row.topic ?? row.name ?? '')
         .trim()
         .replace(/^#/, '');
-      if (looksLikeKrSymbolCode(label)) {
+      if (looksLikeKrCode(label)) {
         kind = 'symbol';
         name = String(row.displayName ?? row.companyName ?? row.name ?? '').trim();
-        if (name.toUpperCase() === label.toUpperCase()) name = '';
       }
     }
     if (!label) continue;
-    if (kind === 'symbol') label = label.toUpperCase();
+    if (kind === 'symbol') {
+      label = normalizeSymbolLabel(label);
+      if (!usableCompanyName(name, label)) name = '';
+    }
     const why = String(row.why ?? row.reason ?? row.context ?? '')
       .trim()
       .slice(0, 48);
@@ -172,13 +191,13 @@ export function aggregateHomeKeywords(input: AggregateInput): HomeKeywordChip[] 
     .slice(0, limit);
 }
 
-/** Symbol tickers on the home list (for name / change lookup). */
+/** Symbol tickers on the home list (for name lookup). */
 export function homeKeywordSymbolLabels(chips: HomeKeywordChip[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const chip of chips) {
-    if (chip.kind !== 'symbol') continue;
-    const key = chip.label.trim().toUpperCase();
+    if (chip.kind !== 'symbol' && !looksLikeKrCode(chip.label)) continue;
+    const key = normalizeSymbolLabel(chip.label);
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(key);
@@ -191,10 +210,10 @@ export function homeKeywordSymbolsMissingNames(chips: HomeKeywordChip[]): string
   const out: string[] = [];
   const seen = new Set<string>();
   for (const chip of chips) {
-    if (chip.kind !== 'symbol') continue;
-    if (chip.name?.trim()) continue;
-    const key = chip.label.trim().toUpperCase();
+    if (chip.kind !== 'symbol' && !looksLikeKrCode(chip.label)) continue;
+    const key = normalizeSymbolLabel(chip.label);
     if (!key || seen.has(key)) continue;
+    if (usableCompanyName(String(chip.name || ''), key)) continue;
     seen.add(key);
     out.push(key);
   }

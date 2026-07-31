@@ -63,11 +63,14 @@ import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
 import {
   aggregateHomeKeywords,
   HOME_KEYWORD_LIMIT,
-  homeKeywordSymbolLabels,
+  homeKeywordSymbolsMissingNames,
   type HomeKeywordChip,
 } from '@/domain/home/aggregateHomeKeywords';
 import {
   buildHomeKeywordSymbolNames,
+  homeKeywordIsSymbolChip,
+  homeKeywordSymbolKey,
+  isUsableCompanyName,
 } from '@/domain/home/homeKeywordDisplay';
 import {
   homeHeroHeadline,
@@ -111,6 +114,7 @@ import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalCoins, fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
@@ -337,6 +341,7 @@ export function HomeFocusContent({
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
+  const keywordNameAttemptedRef = useRef<Set<string>>(new Set());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
@@ -404,55 +409,58 @@ export function HomeFocusContent({
   useEffect(() => {
     if (!hasSignalApi()) {
       setKeywordQuoteNames(new Map());
+      keywordNameAttemptedRef.current = new Set();
       return;
     }
-    const symbols = homeKeywordSymbolLabels(homeKeywords).filter((symbol) => {
-      if (keywordQuoteNames.has(symbol)) return false;
-      const embeddedName = homeKeywords.some(
-        (chip) => chip.label === symbol && Boolean(chip.name?.trim()),
-      );
-      return !(embeddedName || homeKeywordSymbolNames.has(symbol));
+    const symbols = homeKeywordSymbolsMissingNames(homeKeywords).filter((symbol) => {
+      if (keywordNameAttemptedRef.current.has(symbol)) return false;
+      return !homeKeywordSymbolNames.has(symbol);
     });
     if (symbols.length === 0) return;
 
+    for (const symbol of symbols) keywordNameAttemptedRef.current.add(symbol);
+
     let cancelled = false;
-    void fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode: signalCacheMode() })
-      .then((rows) => {
-        if (cancelled) return;
-        const next = new Map<string, string>();
-        for (const symbol of symbols) next.set(symbol, '');
-        for (const row of rows) {
-          const key = String(row.symbol || '')
-            .trim()
-            .toUpperCase();
-          const name = String(row.name || '').trim();
-          if (!key) continue;
-          if (name && name.toUpperCase() !== key) next.set(key, name);
-          else if (!next.has(key)) next.set(key, '');
+    void (async () => {
+      const next = new Map<string, string>();
+      await Promise.all(
+        symbols.map(async (symbol) => {
+          const profile = await fetchSignalStockProfile(symbol);
+          const name = String(profile?.name || '').trim();
+          if (isUsableCompanyName(name, symbol)) {
+            next.set(homeKeywordSymbolKey(symbol), name);
+            return;
+          }
+          // Fallback: market quote row (may still lack a real company name).
+          try {
+            const rows = await fetchSignalMarketQuotes(
+              { symbols: [symbol], limit: 1 },
+              { cacheMode: signalCacheMode() },
+            );
+            const row = rows[0];
+            const quoteName = String(row?.name || '').trim();
+            if (isUsableCompanyName(quoteName, symbol)) {
+              next.set(homeKeywordSymbolKey(symbol), quoteName);
+            }
+          } catch {
+            // keep ticker label
+          }
+        }),
+      );
+      if (cancelled || next.size === 0) return;
+      setKeywordQuoteNames((prev) => {
+        const merged = new Map(prev);
+        for (const [k, v] of next) {
+          if (!merged.has(k)) merged.set(k, v);
         }
-        setKeywordQuoteNames((prev) => {
-          const merged = new Map(prev);
-          for (const [k, v] of next) {
-            if (!merged.has(k)) merged.set(k, v);
-          }
-          return merged;
-        });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setKeywordQuoteNames((prev) => {
-          const merged = new Map(prev);
-          for (const symbol of symbols) {
-            if (!merged.has(symbol)) merged.set(symbol, '');
-          }
-          return merged;
-        });
+        return merged;
       });
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [homeKeywordSymbolNames, homeKeywords, keywordQuoteNames]);
+  }, [homeKeywordSymbolNames, homeKeywords]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -569,6 +577,7 @@ export function HomeFocusContent({
       if (isDateChange) {
         setBriefings([]);
         setKeywordQuoteNames(new Map());
+        keywordNameAttemptedRef.current = new Set();
       }
       setCalendarEvents([]);
 
@@ -818,8 +827,8 @@ export function HomeFocusContent({
 
   const openHomeKeyword = useCallback(
     (chip: HomeKeywordChip) => {
-      if (chip.kind === 'symbol') {
-        openSymbolDetail(chip.label);
+      if (homeKeywordIsSymbolChip(chip)) {
+        openSymbolDetail(homeKeywordSymbolKey(chip.label) || chip.label);
         return;
       }
       if (chip.digestId) {

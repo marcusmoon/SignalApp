@@ -76,6 +76,19 @@ describe('normalizeKeywords', () => {
       ],
     );
   });
+
+  it('strips yahoo KR suffix and drops ticker-like names', () => {
+    assert.deepEqual(
+      normalizeKeywords([
+        { kind: 'symbol', symbol: '005930.KS', name: '005930', weight: 0.9 },
+        { kind: 'symbol', symbol: '000660.KS', name: 'SK하이닉스', weight: 0.8 },
+      ]),
+      [
+        { label: '005930', kind: 'symbol', weight: 0.9 },
+        { label: '000660', kind: 'symbol', weight: 0.8, name: 'SK하이닉스' },
+      ],
+    );
+  });
 });
 
 describe('keywordsToTopicLabels', () => {

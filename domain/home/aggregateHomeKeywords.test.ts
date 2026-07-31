@@ -42,6 +42,14 @@ describe('aggregateHomeKeywords', () => {
     assert.equal(sk?.kind, 'symbol');
   });
 
+  it('promotes yahoo-suffixed KR codes and strips suffix', () => {
+    const chips = aggregateHomeKeywords({
+      digestRows: [{ id: 'd1', topics: ['005930.KS'] }],
+    });
+    assert.equal(chips[0]?.label, '005930');
+    assert.equal(chips[0]?.kind, 'symbol');
+  });
+
   it('carries why and defaults to strip limit of 6', () => {
     const chips = aggregateHomeKeywords({
       todayKeywords: [

@@ -16,6 +16,7 @@ import {
 } from '@/constants/comfortDensity';
 import {
   FEED_BADGE_PX,
+  FEED_CHIP_PX,
   FEED_DIGEST_TITLE_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
@@ -833,7 +834,7 @@ export function HomeFocusContent({
         accessibilityLabel={t('homeKeywordsTitle')}>
         <View style={styles.keywordChipRow}>
           <View style={styles.keywordLeadIcon} accessibilityElementsHidden>
-            <Ionicons name="pricetags-outline" size={14} color={theme.green} />
+            <Ionicons name="pricetags-outline" size={15} color={theme.green} />
           </View>
           {homeKeywords.map((chip) => {
             const isSymbol = chip.kind === 'symbol';
@@ -849,7 +850,7 @@ export function HomeFocusContent({
                   isSymbol ? styles.keywordChipSymbol : null,
                   pressed && styles.pressed,
                 ]}>
-                {isSymbol ? <SymbolLogo symbol={chip.label} size={14} /> : null}
+                {isSymbol ? <SymbolLogo symbol={chip.label} size={16} /> : null}
                 <Text
                   style={[styles.keywordChipText, isSymbol ? styles.keywordChipTextSymbol : null]}
                   numberOfLines={1}>
@@ -1415,11 +1416,11 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      gap: 4,
+      gap: 5,
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
@@ -1430,11 +1431,11 @@ function makeStyles(
       borderColor: theme.greenBorder,
     },
     keywordChipText: {
-      fontSize: ft.ff(FEED_BADGE_PX),
+      fontSize: ft.ff(FEED_CHIP_PX),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-      maxWidth: 120,
+      maxWidth: 140,
     },
     keywordChipTextSymbol: {
       color: theme.green,

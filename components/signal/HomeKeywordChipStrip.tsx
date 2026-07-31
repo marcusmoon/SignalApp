@@ -12,6 +12,7 @@ import {
   homeKeywordIsSymbolChip,
 } from '@/domain/home/homeKeywordDisplay';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
 type Props = {
@@ -32,11 +33,13 @@ export function HomeKeywordChipStrip({
   accessibilityLabel,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const featuredItems = items.slice(0, Math.min(2, items.length));
+  const { useTwoPane, mode } = useResponsiveLayout();
+  const featuredLimit = useTwoPane ? 2 : 1;
+  const featuredItems = items.slice(0, Math.min(featuredLimit, items.length));
   const compactItems = items.slice(featuredItems.length);
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo),
-    [theme, scaleFont, feedTypo],
+    () => makeStyles(theme, scaleFont, feedTypo, { useTwoPane, mode }),
+    [theme, scaleFont, feedTypo, useTwoPane, mode],
   );
 
   if (items.length === 0) return null;
@@ -68,7 +71,7 @@ export function HomeKeywordChipStrip({
                   {isSymbol ? (
                     <SymbolLogo symbol={chip.label} size={16} />
                   ) : (
-                    <Ionicons name={iconNameForKind(chip.kind)} size={14} color={theme.green} />
+                  <Ionicons name={iconNameForKind(chip.kind)} size={14} color={theme.green} />
                   )}
                 </View>
                 <Text
@@ -80,7 +83,7 @@ export function HomeKeywordChipStrip({
               {why ? (
                 <Text
                   style={styles.featuredWhy}
-                  numberOfLines={2}>
+                  numberOfLines={useTwoPane ? 2 : 1}>
                   {why}
                 </Text>
               ) : null}
@@ -137,32 +140,38 @@ function iconNameForKind(kind: string): keyof typeof Ionicons.glyphMap {
   }
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+  layout: { useTwoPane: boolean; mode: 'compact' | 'regular' | 'wide' },
+) {
+  const isCompact = layout.mode === 'compact';
   return StyleSheet.create({
     card: {
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 10,
-      paddingVertical: 10,
-      gap: 8,
+      paddingHorizontal: isCompact ? 10 : 12,
+      paddingVertical: isCompact ? 10 : 12,
+      gap: isCompact ? 8 : 10,
     },
     featuredGrid: {
-      flexDirection: 'row',
+      flexDirection: layout.useTwoPane ? 'row' : 'column',
       alignItems: 'stretch',
       gap: 8,
     },
     featuredChip: {
-      flex: 1,
-      minHeight: 58,
+      flex: layout.useTwoPane ? 1 : 0,
+      minHeight: layout.useTwoPane ? 64 : 54,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-      gap: 5,
+      paddingHorizontal: isCompact ? 10 : 11,
+      paddingVertical: isCompact ? 8 : 9,
+      gap: isCompact ? 4 : 5,
     },
     featuredChipSymbol: {
       backgroundColor: theme.greenDim,
@@ -191,8 +200,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     featuredTitle: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(13),
-      lineHeight: sf(18),
+      fontSize: sf(isCompact ? 12 : 13),
+      lineHeight: sf(isCompact ? 17 : 18),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
@@ -200,15 +209,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.green,
     },
     featuredWhy: {
-      fontSize: sf(11),
-      lineHeight: sf(15),
+      fontSize: sf(isCompact ? 10 : 11),
+      lineHeight: sf(isCompact ? 14 : 15),
       color: theme.textMuted,
     },
     row: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 6,
+      gap: isCompact ? 6 : 7,
     },
     leadIcon: {
       width: 18,
@@ -240,7 +249,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-      maxWidth: 120,
+      maxWidth: layout.useTwoPane ? 136 : 112,
     },
     chipTextSymbol: {
       color: theme.green,

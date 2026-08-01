@@ -6,6 +6,7 @@ import {
   HOME_FX_SYMBOLS,
   formatHomeFxRate,
   homeFxDefForSymbol,
+  homeFxDisplayRate,
   isHomeFxSymbol,
 } from './homeFx.ts';
 
@@ -15,12 +16,16 @@ describe('homeFx', () => {
     assert.equal(HOME_FX_DEFS.length, 2);
     assert.equal(isHomeFxSymbol('usdkrw=x'), true);
     assert.equal(homeFxDefForSymbol('JPYKRW=X')?.key, 'jpyKrw');
+    assert.equal(homeFxDefForSymbol('JPYKRW=X')?.displayScale, 100);
     assert.equal(isHomeFxSymbol('^GSPC'), false);
   });
 
-  it('formats rates with two decimals', () => {
-    assert.equal(formatHomeFxRate(1380.2), '1,380.20');
-    assert.equal(formatHomeFxRate(9.456), '9.46');
+  it('formats USD as unit rate and JPY per 100 yen', () => {
+    const usd = homeFxDefForSymbol('USDKRW=X');
+    const jpy = homeFxDefForSymbol('JPYKRW=X');
+    assert.equal(formatHomeFxRate(1380.2, usd), '1,380.20');
+    assert.equal(formatHomeFxRate(9.138, jpy), '913.80');
+    assert.equal(homeFxDisplayRate(9.138, jpy), 913.8);
     assert.equal(formatHomeFxRate(null), '—');
   });
 });

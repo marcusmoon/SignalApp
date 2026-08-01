@@ -13,12 +13,23 @@ export type HomeFxDef = {
    */
   logoSymbol: string;
   labelId: MessageId;
+  /**
+   * Multiply Yahoo unit rate for display (JPY is shown per 100 yen).
+   * Change % is unchanged — scale cancels out.
+   */
+  displayScale?: number;
 };
 
-/** 달러 · 엔 (원 대비) */
+/** 달러 · 엔 (원 대비). 엔은 한국식 100엔 기준. */
 export const HOME_FX_DEFS: readonly HomeFxDef[] = [
   { key: 'usdKrw', symbol: 'USDKRW=X', logoSymbol: 'USD', labelId: 'homeFxUsd' },
-  { key: 'jpyKrw', symbol: 'JPYKRW=X', logoSymbol: 'JPY', labelId: 'homeFxJpy' },
+  {
+    key: 'jpyKrw',
+    symbol: 'JPYKRW=X',
+    logoSymbol: 'JPY',
+    labelId: 'homeFxJpy',
+    displayScale: 100,
+  },
 ];
 
 export const HOME_FX_SYMBOLS: readonly string[] = HOME_FX_DEFS.map((row) => row.symbol);
@@ -33,11 +44,20 @@ export function isHomeFxSymbol(symbol: string): boolean {
   return homeFxDefForSymbol(symbol) != null;
 }
 
-/** FX rates — no currency prefix; 2 decimal places. */
-export function formatHomeFxRate(value: unknown): string {
-  if (value == null || value === '') return '—';
+/** Scaled unit rate for UI (e.g. JPY × 100). */
+export function homeFxDisplayRate(value: unknown, def?: HomeFxDef | null): number | null {
+  if (value == null || value === '') return null;
   const n = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(n)) return '—';
+  if (!Number.isFinite(n)) return null;
+  const scale = def?.displayScale;
+  const scaled = scale && Number.isFinite(scale) && scale > 0 ? n * scale : n;
+  return scaled;
+}
+
+/** FX rates — no currency prefix; 2 decimal places. */
+export function formatHomeFxRate(value: unknown, def?: HomeFxDef | null): string {
+  const n = homeFxDisplayRate(value, def);
+  if (n == null) return '—';
   return Math.abs(n).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

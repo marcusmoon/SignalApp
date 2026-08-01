@@ -930,7 +930,7 @@ export function HomeFocusContent({
       const priceLabel = indexDef
         ? formatHomeIndexLevel(row.quote?.currentPrice)
         : fxDef
-          ? formatHomeFxRate(row.quote?.currentPrice)
+          ? formatHomeFxRate(row.quote?.currentPrice, fxDef)
           : formatPrice(row);
       return (
         <Pressable

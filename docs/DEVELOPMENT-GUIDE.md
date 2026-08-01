@@ -128,6 +128,7 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 |---|---|---|
 | 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) | Parqet → 글자 아바타 |
 | 주식 | Parqet (`assets.parqet.com/logos/symbol/…`, 국장 `.KS`→`.KQ`) | 글자 아바타 |
+| 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 
 국장 심볼은 브리핑 ingest가 `005930.KS`처럼 Yahoo 접미사를 붙이더라도 `logoBaseSymbol`이 6자리로 정규화한 뒤 Parqet을 조회한다. 서버 공개 API도 companies/sectors `symbol`에서 `.KS`/`.KQ`를 벗겨 내려준다.
 

@@ -8,16 +8,25 @@ import {
   homeFxDefForSymbol,
   homeFxDefsForLayout,
   homeFxDisplayRate,
+  homeFxFlagImageUrl,
   isHomeFxSymbol,
 } from './homeFx.ts';
 
 describe('homeFx', () => {
-  it('lists USD, JPY, CNY Yahoo pairs', () => {
+  it('lists USD, JPY, CNY Yahoo pairs with flag countries', () => {
     assert.deepEqual([...HOME_FX_SYMBOLS], ['USDKRW=X', 'JPYKRW=X', 'CNYKRW=X']);
     assert.equal(HOME_FX_DEFS.length, 3);
     assert.equal(isHomeFxSymbol('cnykrw=x'), true);
-    assert.equal(homeFxDefForSymbol('CNYKRW=X')?.wideOnly, true);
     assert.equal(homeFxDefForSymbol('JPYKRW=X')?.displayScale, 100);
+    assert.equal(homeFxDefForSymbol('USDKRW=X')?.flagCountryCode, 'us');
+    assert.equal(homeFxDefForSymbol('JPYKRW=X')?.flagCountryCode, 'jp');
+    assert.equal(homeFxDefForSymbol('CNYKRW=X')?.flagCountryCode, 'cn');
+  });
+
+  it('builds flagcdn URLs', () => {
+    const jpy = homeFxDefForSymbol('JPYKRW=X');
+    assert.ok(jpy);
+    assert.equal(homeFxFlagImageUrl(jpy), 'https://flagcdn.com/w80/jp.png');
   });
 
   it('shows CNY only on wide layout', () => {

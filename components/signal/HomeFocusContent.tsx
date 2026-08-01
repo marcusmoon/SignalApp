@@ -99,6 +99,7 @@ import {
   formatHomeFxRate,
   homeFxDefForSymbol,
   homeFxDefsForLayout,
+  homeFxFlagImageUrl,
   isHomeFxSymbol,
 } from '@/domain/home/homeFx';
 import {
@@ -933,6 +934,7 @@ export function HomeFocusContent({
           ? t(fxDef.labelId)
           : row.symbol;
       const logoSymbol = indexDef?.logoSymbol || fxDef?.logoSymbol || row.symbol;
+      const logoImageUrl = fxDef ? homeFxFlagImageUrl(fxDef) : row.imageUrl;
       const priceLabel = indexDef
         ? formatHomeIndexLevel(row.quote?.currentPrice)
         : fxDef
@@ -947,7 +949,7 @@ export function HomeFocusContent({
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
-              <SymbolLogo symbol={logoSymbol} imageUrl={row.imageUrl} size={22} />
+              <SymbolLogo symbol={logoSymbol} imageUrl={logoImageUrl} size={22} />
               <Text style={styles.quoteSymbol} numberOfLines={1}>
                 {label}
               </Text>

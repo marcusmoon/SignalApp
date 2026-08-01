@@ -7,11 +7,10 @@ export type HomeFxDef = {
   key: HomeFxKey;
   /** Stored / API symbol (Yahoo FX pair). */
   symbol: string;
-  /**
-   * Parqet/avatar lookup key. FX `=X` pairs are not on CDN —
-   * use short currency codes for letter avatars.
-   */
+  /** Avatar fallback glyph when the flag image fails. */
   logoSymbol: string;
+  /** ISO 3166-1 alpha-2 for flag CDN (US / JP / CN). */
+  flagCountryCode: 'us' | 'jp' | 'cn';
   labelId: MessageId;
   /**
    * Multiply Yahoo unit rate for display (JPY is shown per 100 yen).
@@ -22,13 +21,23 @@ export type HomeFxDef = {
   wideOnly?: boolean;
 };
 
-/** 달러 · 엔 · (와이드) 위안. 엔은 한국식 100엔 기준. */
+/** Flagpedia / flagcdn — fixed-width PNG. */
+const FX_FLAG_CDN = 'https://flagcdn.com/w80';
+
+/** 달러 · JPY · (와이드) 위안. JPY는 한국식 100엔 기준 표시. */
 export const HOME_FX_DEFS: readonly HomeFxDef[] = [
-  { key: 'usdKrw', symbol: 'USDKRW=X', logoSymbol: 'USD', labelId: 'homeFxUsd' },
+  {
+    key: 'usdKrw',
+    symbol: 'USDKRW=X',
+    logoSymbol: 'USD',
+    flagCountryCode: 'us',
+    labelId: 'homeFxUsd',
+  },
   {
     key: 'jpyKrw',
     symbol: 'JPYKRW=X',
     logoSymbol: 'JPY',
+    flagCountryCode: 'jp',
     labelId: 'homeFxJpy',
     displayScale: 100,
   },
@@ -36,6 +45,7 @@ export const HOME_FX_DEFS: readonly HomeFxDef[] = [
     key: 'cnyKrw',
     symbol: 'CNYKRW=X',
     logoSymbol: 'CNY',
+    flagCountryCode: 'cn',
     labelId: 'homeFxCny',
     wideOnly: true,
   },
@@ -57,6 +67,10 @@ export function isHomeFxSymbol(symbol: string): boolean {
 export function homeFxDefsForLayout(useTwoPane: boolean): readonly HomeFxDef[] {
   if (useTwoPane) return HOME_FX_DEFS;
   return HOME_FX_DEFS.filter((row) => !row.wideOnly);
+}
+
+export function homeFxFlagImageUrl(def: HomeFxDef): string {
+  return `${FX_FLAG_CDN}/${def.flagCountryCode}.png`;
 }
 
 /** Scaled unit rate for UI (e.g. JPY × 100). */

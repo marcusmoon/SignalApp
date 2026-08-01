@@ -111,7 +111,7 @@ export const ko = {
   homeQuotesLayerCoin: '코인',
   homeQuotesLayerFx: '환율',
   homeFxUsd: '달러',
-  homeFxJpy: '100엔',
+  homeFxJpy: 'JPY',
   homeFxCny: '위안',
   homeTileNewsAll: '전체',
   homeTileNewsGlobal: '글로벌',

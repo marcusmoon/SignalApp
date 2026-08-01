@@ -112,7 +112,7 @@ export const en = {
   homeQuotesLayerCoin: 'Coin',
   homeQuotesLayerFx: 'FX',
   homeFxUsd: 'USD',
-  homeFxJpy: '¥100',
+  homeFxJpy: 'JPY',
   homeFxCny: 'CNY',
   homeTileNewsAll: 'All',
   homeTileNewsGlobal: 'World',

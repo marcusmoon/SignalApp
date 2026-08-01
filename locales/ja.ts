@@ -112,7 +112,7 @@ export const ja = {
   homeQuotesLayerCoin: 'コイン',
   homeQuotesLayerFx: '為替',
   homeFxUsd: 'ドル',
-  homeFxJpy: '100円',
+  homeFxJpy: 'JPY',
   homeFxCny: '人民元',
   homeTileNewsAll: 'すべて',
   homeTileNewsGlobal: '海外',

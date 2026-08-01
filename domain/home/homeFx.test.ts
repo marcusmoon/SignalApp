@@ -6,18 +6,29 @@ import {
   HOME_FX_SYMBOLS,
   formatHomeFxRate,
   homeFxDefForSymbol,
+  homeFxDefsForLayout,
   homeFxDisplayRate,
   isHomeFxSymbol,
 } from './homeFx.ts';
 
 describe('homeFx', () => {
-  it('lists USD and JPY vs KRW Yahoo pairs', () => {
-    assert.deepEqual([...HOME_FX_SYMBOLS], ['USDKRW=X', 'JPYKRW=X']);
-    assert.equal(HOME_FX_DEFS.length, 2);
-    assert.equal(isHomeFxSymbol('usdkrw=x'), true);
-    assert.equal(homeFxDefForSymbol('JPYKRW=X')?.key, 'jpyKrw');
+  it('lists USD, JPY, CNY Yahoo pairs', () => {
+    assert.deepEqual([...HOME_FX_SYMBOLS], ['USDKRW=X', 'JPYKRW=X', 'CNYKRW=X']);
+    assert.equal(HOME_FX_DEFS.length, 3);
+    assert.equal(isHomeFxSymbol('cnykrw=x'), true);
+    assert.equal(homeFxDefForSymbol('CNYKRW=X')?.wideOnly, true);
     assert.equal(homeFxDefForSymbol('JPYKRW=X')?.displayScale, 100);
-    assert.equal(isHomeFxSymbol('^GSPC'), false);
+  });
+
+  it('shows CNY only on wide layout', () => {
+    assert.deepEqual(
+      homeFxDefsForLayout(false).map((row) => row.key),
+      ['usdKrw', 'jpyKrw'],
+    );
+    assert.deepEqual(
+      homeFxDefsForLayout(true).map((row) => row.key),
+      ['usdKrw', 'jpyKrw', 'cnyKrw'],
+    );
   });
 
   it('formats USD as unit rate and JPY per 100 yen', () => {

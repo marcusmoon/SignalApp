@@ -1,7 +1,7 @@
 import type { MessageId } from '@/locales/messages';
 
 /** Yahoo FX symbols for home 환율 (Job → market_quotes). */
-export type HomeFxKey = 'usdKrw' | 'jpyKrw';
+export type HomeFxKey = 'usdKrw' | 'jpyKrw' | 'cnyKrw';
 
 export type HomeFxDef = {
   key: HomeFxKey;
@@ -18,9 +18,11 @@ export type HomeFxDef = {
    * Change % is unchanged — scale cancels out.
    */
   displayScale?: number;
+  /** Wide/PC only (compact phone keeps USD + JPY). */
+  wideOnly?: boolean;
 };
 
-/** 달러 · 엔 (원 대비). 엔은 한국식 100엔 기준. */
+/** 달러 · 엔 · (와이드) 위안. 엔은 한국식 100엔 기준. */
 export const HOME_FX_DEFS: readonly HomeFxDef[] = [
   { key: 'usdKrw', symbol: 'USDKRW=X', logoSymbol: 'USD', labelId: 'homeFxUsd' },
   {
@@ -29,6 +31,13 @@ export const HOME_FX_DEFS: readonly HomeFxDef[] = [
     logoSymbol: 'JPY',
     labelId: 'homeFxJpy',
     displayScale: 100,
+  },
+  {
+    key: 'cnyKrw',
+    symbol: 'CNYKRW=X',
+    logoSymbol: 'CNY',
+    labelId: 'homeFxCny',
+    wideOnly: true,
   },
 ];
 
@@ -42,6 +51,12 @@ export function homeFxDefForSymbol(symbol: string): HomeFxDef | null {
 
 export function isHomeFxSymbol(symbol: string): boolean {
   return homeFxDefForSymbol(symbol) != null;
+}
+
+/** Compact: USD+JPY · wide/PC: +CNY */
+export function homeFxDefsForLayout(useTwoPane: boolean): readonly HomeFxDef[] {
+  if (useTwoPane) return HOME_FX_DEFS;
+  return HOME_FX_DEFS.filter((row) => !row.wideOnly);
 }
 
 /** Scaled unit rate for UI (e.g. JPY × 100). */

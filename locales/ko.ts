@@ -112,6 +112,7 @@ export const ko = {
   homeQuotesLayerFx: '환율',
   homeFxUsd: '달러',
   homeFxJpy: '100엔',
+  homeFxCny: '위안',
   homeTileNewsAll: '전체',
   homeTileNewsGlobal: '글로벌',
   homeTileNewsKorea: '한국',

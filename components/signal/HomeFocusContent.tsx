@@ -99,6 +99,7 @@ import {
   HOME_FX_SYMBOLS,
   formatHomeFxRate,
   homeFxDefForSymbol,
+  homeFxDefsForLayout,
   isHomeFxSymbol,
 } from '@/domain/home/homeFx';
 import {
@@ -578,11 +579,17 @@ export function HomeFocusContent({
     () => formatHomeQuotesLayerAsOf(homeAnchorCoinRows, locale, t),
     [homeAnchorCoinRows, locale, t],
   );
+  /** Compact 2 · wide/PC 3 (위안). */
+  const homeFxRows = useMemo(() => {
+    const allow = new Set(homeFxDefsForLayout(useTwoPane).map((def) => def.symbol.toUpperCase()));
+    return fxQuotes.filter((row) => allow.has(row.symbol.trim().toUpperCase()));
+  }, [fxQuotes, useTwoPane]);
+
   /** FX layer as-of — relative time (not equity close labels). */
   const fxLayerAsOf = useMemo(() => {
     let bestIso: string | null = null;
     let bestMs = Number.NEGATIVE_INFINITY;
-    for (const row of fxQuotes) {
+    for (const row of homeFxRows) {
       const iso = String(row.quote?.quoteTime || row.quote?.fetchedAt || '').trim();
       if (!iso) continue;
       const ms = Date.parse(iso);
@@ -593,7 +600,7 @@ export function HomeFocusContent({
     if (!bestIso) return null;
     const label = formatFeedItemTimeLabel(bestIso, locale);
     return label && label !== '—' ? label : null;
-  }, [fxQuotes, locale]);
+  }, [homeFxRows, locale]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -1356,7 +1363,7 @@ export function HomeFocusContent({
                 {indexQuotes.length === 0 &&
                 homeWatchRows.length === 0 &&
                 homeAnchorCoinRows.length === 0 &&
-                fxQuotes.length === 0 ? (
+                homeFxRows.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
                 ) : (
                   <>
@@ -1390,11 +1397,11 @@ export function HomeFocusContent({
                         </View>
                       </View>
                     ) : null}
-                    {fxQuotes.length > 0 ? (
+                    {homeFxRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
                         {renderQuoteLayerRule(t('homeQuotesLayerFx'), fxLayerAsOf)}
                         <View style={styles.quoteGrid}>
-                          {fxQuotes.map((row, index) =>
+                          {homeFxRows.map((row, index) =>
                             renderHomeQuoteTile(row, `fx-${index}`, { fx: true }),
                           )}
                         </View>

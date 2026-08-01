@@ -109,7 +109,7 @@ export const ko = {
   homeQuotesLayerIndices: '지수',
   homeQuotesLayerWatch: '종목',
   homeQuotesLayerCoin: '코인',
-  homeFxTitle: '환율',
+  homeQuotesLayerFx: '환율',
   homeFxUsd: '달러',
   homeFxJpy: '엔',
   homeTileNewsAll: '전체',

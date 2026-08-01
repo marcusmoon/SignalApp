@@ -167,13 +167,12 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | ETF 보조 | **섹터 흐름** | `etf_insights` |
   | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
-  | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 |
-  | 환율 | **환율** | Yahoo FX (`USDKRW=X` · `JPYKRW=X`) — 시세 다음 · 오늘만 |
+  | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 → 환율(달러·엔) |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
-  - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → **환율**(달러·엔) → (조건부) 섹터 흐름
-  - **과거**: **트렌드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세·환율 숨김
+  - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터 흐름
+  - **과거**: **트렌드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
   - **트렌드 UI**: 홈 **최상단**. 다른 섹션과 같이 `HomeSectionHeader` — 좌측 `trending-up-outline` + **트렌드** · 우측 as-of 칩(기여 소스 최신 `generatedAt`/`publishedAt`). 아래 **칩 카드**(`theme.greenBorder`·1px · wrap). 종목은 로고+회사명. `why`는 a11y만. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
@@ -214,8 +213,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정 칩은 자동
-- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인. 레이어 라인은 `- 지수 ------------------- [금 종가]` (좌측 레이어명 · 우측 as-of는 헤더 `NEW`와 동일 칩). 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 데이터는 Yahoo Job(`market_quotes_indices`). 지수 로고는 Parqet용 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`) — caret 지수 심볼은 CDN에 없음
-- 홈 **환율**: 시세 다음 · 오늘만. 달러(`USDKRW=X`)·엔(`JPYKRW=X`). Job `market_quotes_fx`. 타일 탭 → Yahoo. 로고는 글자 아바타(`USD`/`JPY`). 헤더 as-of는 상대시간
+- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인 → **환율**(달러·엔). 레이어 라인은 `- 지수 ------------------- [금 종가]` (좌측 레이어명 · 우측 as-of는 헤더 `NEW`와 동일 칩). 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`). 지수 로고는 Parqet용 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`). 환율 로고는 글자 아바타(`USD`/`JPY`), 레이어 as-of는 상대시간
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

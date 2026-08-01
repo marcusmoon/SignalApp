@@ -110,7 +110,7 @@ export const en = {
   homeQuotesLayerIndices: 'Indexes',
   homeQuotesLayerWatch: 'Stocks',
   homeQuotesLayerCoin: 'Coin',
-  homeFxTitle: 'FX',
+  homeQuotesLayerFx: 'FX',
   homeFxUsd: 'USD',
   homeFxJpy: 'JPY',
   homeTileNewsAll: 'All',

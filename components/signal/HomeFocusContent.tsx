@@ -578,8 +578,8 @@ export function HomeFocusContent({
     () => formatHomeQuotesLayerAsOf(homeAnchorCoinRows, locale, t),
     [homeAnchorCoinRows, locale, t],
   );
-  /** FX — always relative time (not equity close labels). */
-  const fxSectionAsOf = useMemo(() => {
+  /** FX layer as-of — relative time (not equity close labels). */
+  const fxLayerAsOf = useMemo(() => {
     let bestIso: string | null = null;
     let bestMs = Number.NEGATIVE_INFINITY;
     for (const row of fxQuotes) {
@@ -1355,7 +1355,8 @@ export function HomeFocusContent({
               <View style={styles.quoteStack}>
                 {indexQuotes.length === 0 &&
                 homeWatchRows.length === 0 &&
-                homeAnchorCoinRows.length === 0 ? (
+                homeAnchorCoinRows.length === 0 &&
+                fxQuotes.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
                 ) : (
                   <>
@@ -1389,18 +1390,17 @@ export function HomeFocusContent({
                         </View>
                       </View>
                     ) : null}
+                    {fxQuotes.length > 0 ? (
+                      <View style={styles.quoteLayer}>
+                        {renderQuoteLayerRule(t('homeQuotesLayerFx'), fxLayerAsOf)}
+                        <View style={styles.quoteGrid}>
+                          {fxQuotes.map((row, index) =>
+                            renderHomeQuoteTile(row, `fx-${index}`, { fx: true }),
+                          )}
+                        </View>
+                      </View>
+                    ) : null}
                   </>
-                )}
-              </View>
-            </View>
-          ) : null}
-
-          {selectedIsExactToday && fxQuotes.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader title={t('homeFxTitle')} meta={fxSectionAsOf} />
-              <View style={styles.quoteGrid}>
-                {fxQuotes.map((row, index) =>
-                  renderHomeQuoteTile(row, `fx-${index}`, { fx: true }),
                 )}
               </View>
             </View>

@@ -110,7 +110,7 @@ export const ja = {
   homeQuotesLayerIndices: '指数',
   homeQuotesLayerWatch: '銘柄',
   homeQuotesLayerCoin: 'コイン',
-  homeFxTitle: '為替',
+  homeQuotesLayerFx: '為替',
   homeFxUsd: 'ドル',
   homeFxJpy: '円',
   homeTileNewsAll: 'すべて',

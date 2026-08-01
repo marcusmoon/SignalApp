@@ -96,6 +96,17 @@ export async function fetchYahooQuote(yahooSymbol) {
 }
 
 /**
+ * Persist Yahoo print time for as-of (prefer regularMarketTime over Job fetch clock).
+ * @param {{ marketTime?: string|null }|null|undefined} quote
+ * @returns {{ quoteTime: string, fetchedAt: string }}
+ */
+export function yahooQuoteTimestamps(quote) {
+  const fetchedAt = new Date().toISOString();
+  const quoteTime = String(quote?.marketTime || '').trim() || fetchedAt;
+  return { quoteTime, fetchedAt };
+}
+
+/**
  * Fetches quotes for multiple Yahoo Finance symbols in parallel (up to concurrency limit).
  * Returns a map of { [yahooSymbol]: { price, changePercent, previousClose, currency } | null }.
  */

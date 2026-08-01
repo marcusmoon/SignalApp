@@ -114,9 +114,9 @@ import {
 } from '@/domain/quotes/rows';
 import {
   isCoinQuote,
-  isWatchlistAsOfCloseMode,
   isWatchlistQuoteClosed,
   resolveWatchlistHomeAsOf,
+  type WatchlistHomeAsOf,
   type WatchlistHomeAsOfRow,
 } from '@/domain/quotes/watchlistHomeAsOf';
 import type { AppLocale, MessageId } from '@/locales/messages';
@@ -191,22 +191,27 @@ const BRIEFING_LIMIT = 30;
 const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
-/** 홈 시세 레이어 as-of — 전부 종가일 때만 `종가`/`Close`, 아니면 상대시간. */
-function resolveHomeQuotesLayerAsOf(rows: readonly WatchlistHomeAsOfRow[]) {
-  return resolveWatchlistHomeAsOf(rows);
-}
+type HomeQuotesLayerAsOfView = {
+  label: string | null;
+  showsClose: boolean;
+};
 
-function formatHomeQuotesLayerAsOfLabel(
-  resolved: ReturnType<typeof resolveWatchlistHomeAsOf>,
+/** Resolve + format layer as-of once (label + whether header Close suppresses tile Close). */
+function homeQuotesLayerAsOfView(
+  rows: readonly WatchlistHomeAsOfRow[],
   locale: AppLocale,
   t: (id: MessageId, vars?: Record<string, string | number>) => string,
-): string | null {
-  if (!resolved) return null;
+): HomeQuotesLayerAsOfView {
+  const resolved: WatchlistHomeAsOf | null = resolveWatchlistHomeAsOf(rows);
+  if (!resolved) return { label: null, showsClose: false };
   if (resolved.mode === 'relative') {
     const label = formatFeedItemTimeLabel(resolved.iso, locale);
-    return label && label !== '—' ? label : null;
+    return {
+      label: label && label !== '—' ? label : null,
+      showsClose: false,
+    };
   }
-  return t('quotesAsOfClose');
+  return { label: t('quotesAsOfClose'), showsClose: true };
 }
 
 type HomeFocusContentProps = {
@@ -561,39 +566,29 @@ export function HomeFocusContent({
     [anchorCoins, homeWatchRows, useTwoPane],
   );
 
-  /** 레이어 as-of — 전부 종가일 때만 Close; 혼재 시 상대시간 + 타일별 Close. */
-  const indexLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(indexQuotes), [indexQuotes]);
-  const watchLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(homeWatchRows), [homeWatchRows]);
-  const coinLayerResolved = useMemo(
-    () => resolveHomeQuotesLayerAsOf(homeAnchorCoinRows),
-    [homeAnchorCoinRows],
-  );
-  const indexLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOfLabel(indexLayerResolved, locale, t),
-    [indexLayerResolved, locale, t],
-  );
-  const watchLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOfLabel(watchLayerResolved, locale, t),
-    [watchLayerResolved, locale, t],
-  );
-  const coinLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOfLabel(coinLayerResolved, locale, t),
-    [coinLayerResolved, locale, t],
-  );
-  const indexLayerShowsClose = isWatchlistAsOfCloseMode(indexLayerResolved);
-  const watchLayerShowsClose = isWatchlistAsOfCloseMode(watchLayerResolved);
   /** Compact 2 · wide/PC 3 (위안). */
   const homeFxRows = useMemo(() => {
     const allow = new Set(homeFxDefsForLayout(useTwoPane).map((def) => def.symbol.toUpperCase()));
     return fxQuotes.filter((row) => allow.has(row.symbol.trim().toUpperCase()));
   }, [fxQuotes, useTwoPane]);
 
-  const fxLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(homeFxRows), [homeFxRows]);
-  const fxLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOfLabel(fxLayerResolved, locale, t),
-    [fxLayerResolved, locale, t],
+  /** 레이어 as-of — 전부 종가일 때만 Close; 혼재 시 상대시간 + 타일별 Close. */
+  const indexLayerAsOfView = useMemo(
+    () => homeQuotesLayerAsOfView(indexQuotes, locale, t),
+    [indexQuotes, locale, t],
   );
-  const fxLayerShowsClose = isWatchlistAsOfCloseMode(fxLayerResolved);
+  const watchLayerAsOfView = useMemo(
+    () => homeQuotesLayerAsOfView(homeWatchRows, locale, t),
+    [homeWatchRows, locale, t],
+  );
+  const coinLayerAsOfView = useMemo(
+    () => homeQuotesLayerAsOfView(homeAnchorCoinRows, locale, t),
+    [homeAnchorCoinRows, locale, t],
+  );
+  const fxLayerAsOfView = useMemo(
+    () => homeQuotesLayerAsOfView(homeFxRows, locale, t),
+    [homeFxRows, locale, t],
+  );
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -1383,12 +1378,12 @@ export function HomeFocusContent({
                   <>
                     {indexQuotes.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        {renderQuoteLayerRule(t('homeQuotesLayerIndices'), indexLayerAsOf)}
+                        {renderQuoteLayerRule(t('homeQuotesLayerIndices'), indexLayerAsOfView.label)}
                         <View style={styles.quoteGrid}>
                           {indexQuotes.map((row, index) =>
                             renderHomeQuoteTile(row, `index-${index}`, {
                               index: true,
-                              layerShowsClose: indexLayerShowsClose,
+                              layerShowsClose: indexLayerAsOfView.showsClose,
                             }),
                           )}
                         </View>
@@ -1396,11 +1391,11 @@ export function HomeFocusContent({
                     ) : null}
                     {homeWatchRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        {renderQuoteLayerRule(t('homeQuotesLayerWatch'), watchLayerAsOf)}
+                        {renderQuoteLayerRule(t('homeQuotesLayerWatch'), watchLayerAsOfView.label)}
                         <View style={styles.quoteGrid}>
                           {homeWatchRows.map((row, index) =>
                             renderHomeQuoteTile(row, `watch-${index}`, {
-                              layerShowsClose: watchLayerShowsClose,
+                              layerShowsClose: watchLayerAsOfView.showsClose,
                             }),
                           )}
                         </View>
@@ -1408,7 +1403,7 @@ export function HomeFocusContent({
                     ) : null}
                     {homeAnchorCoinRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        {renderQuoteLayerRule(t('homeQuotesLayerCoin'), coinLayerAsOf)}
+                        {renderQuoteLayerRule(t('homeQuotesLayerCoin'), coinLayerAsOfView.label)}
                         <View style={styles.quoteGrid}>
                           {homeAnchorCoinRows.map((row, index) =>
                             renderHomeQuoteTile(row, `anchor-${index}`, { coin: true }),
@@ -1418,12 +1413,12 @@ export function HomeFocusContent({
                     ) : null}
                     {homeFxRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        {renderQuoteLayerRule(t('homeQuotesLayerFx'), fxLayerAsOf)}
+                        {renderQuoteLayerRule(t('homeQuotesLayerFx'), fxLayerAsOfView.label)}
                         <View style={styles.quoteGrid}>
                           {homeFxRows.map((row, index) =>
                             renderHomeQuoteTile(row, `fx-${index}`, {
                               fx: true,
-                              layerShowsClose: fxLayerShowsClose,
+                              layerShowsClose: fxLayerAsOfView.showsClose,
                             }),
                           )}
                         </View>

@@ -81,9 +81,15 @@ export function isWatchlistAsOfCloseMode(
 
 /** 주식이 있으면 주식만, 없으면 코인 — 섹션 as-of 후보 */
 export function pickWatchlistAsOfPool(rows: readonly WatchlistHomeAsOfRow[]): WatchlistHomeAsOfQuote[] {
-  const quotes = rows.map((row) => row.quote).filter((quote): quote is WatchlistHomeAsOfQuote => Boolean(quote));
-  const equities = quotes.filter((quote) => !isCoinQuote(quote));
-  return equities.length > 0 ? equities : quotes.filter(isCoinQuote);
+  const equities: WatchlistHomeAsOfQuote[] = [];
+  const coins: WatchlistHomeAsOfQuote[] = [];
+  for (const row of rows) {
+    const quote = row.quote;
+    if (!quote) continue;
+    if (isCoinQuote(quote)) coins.push(quote);
+    else equities.push(quote);
+  }
+  return equities.length > 0 ? equities : coins;
 }
 
 export function newestAsOfIso(quotes: readonly WatchlistHomeAsOfQuote[]): string | null {
@@ -139,7 +145,8 @@ export function resolveWatchlistQuoteAsOf(
 
 /**
  * Layer as-of. Equity/FX Close only when every quote in the pool is closed;
- * otherwise relative time from the newest open (or newest) print.
+ * otherwise relative time from the newest open print.
+ * Single pass over the pool (no re-resolve of the newest quote).
  */
 export function resolveWatchlistHomeAsOf(
   rows: readonly WatchlistHomeAsOfRow[],
@@ -149,24 +156,43 @@ export function resolveWatchlistHomeAsOf(
   const pool = pickWatchlistAsOfPool(rows);
   if (pool.length === 0) return null;
 
-  const iso = newestAsOfIso(pool);
-  if (!iso) return null;
-
   if (pool.every(isCoinQuote)) {
-    return { mode: 'relative', iso };
+    const iso = newestAsOfIso(pool);
+    return iso ? { mode: 'relative', iso } : null;
   }
 
-  const closed = pool.map((quote) => isWatchlistAsOfCloseMode(resolveWatchlistQuoteAsOf(quote, now, freshMs)));
-  const allClosed = closed.every(Boolean);
-  if (!allClosed) {
-    const openQuotes = pool.filter((_, index) => !closed[index]);
-    const openIso = newestAsOfIso(openQuotes) || iso;
-    return { mode: 'relative', iso: openIso };
+  let allClosed = true;
+  let newestAnyMs = Number.NEGATIVE_INFINITY;
+  let newestAnyResolved: WatchlistHomeAsOf | null = null;
+  let newestOpenMs = Number.NEGATIVE_INFINITY;
+  let newestOpenIso: string | null = null;
+
+  for (const quote of pool) {
+    const iso = quoteAsOfIso(quote);
+    if (!iso) continue;
+    const ms = new Date(iso).getTime();
+    if (!Number.isFinite(ms)) continue;
+    const resolved = resolveWatchlistQuoteAsOf(quote, now, freshMs);
+    if (!resolved) continue;
+
+    if (ms > newestAnyMs) {
+      newestAnyMs = ms;
+      newestAnyResolved = resolved;
+    }
+
+    if (isWatchlistAsOfCloseMode(resolved)) continue;
+    allClosed = false;
+    if (ms > newestOpenMs) {
+      newestOpenMs = ms;
+      newestOpenIso = iso;
+    }
   }
 
-  // All closed — label from newest print (today vs prior).
-  const newest = pool.find((quote) => quoteAsOfIso(quote) === iso) || pool[0];
-  return resolveWatchlistQuoteAsOf(newest, now, freshMs);
+  if (!newestAnyResolved) return null;
+  if (allClosed) return newestAnyResolved;
+  // Mixed: prefer newest open print for the relative header label.
+  if (!newestOpenIso) return null;
+  return { mode: 'relative', iso: newestOpenIso };
 }
 
 /** Home quote tile — closed session print. Coins never. */

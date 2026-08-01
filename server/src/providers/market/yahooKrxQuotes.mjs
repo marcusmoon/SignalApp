@@ -3,7 +3,7 @@
  * Prefer venue-aware suffix (kosdaq→.KQ first). Persists yahooSymbol for later runs.
  */
 
-import { fetchYahooQuote } from './yahooQuote.mjs';
+import { fetchYahooQuote, yahooQuoteTimestamps } from './yahooQuote.mjs';
 import { yahooSuffixForVenue, venueFromYahooSymbol } from '../../screener/koreaScreenerUniverse.mjs';
 
 function normalizeKrxSymbol(value) {
@@ -116,9 +116,7 @@ function normalizeMarketQuote(krxSymbol, yahooSymbol, quote, segment, venueHint 
     dayVolume: volume,
     turnoverKrw,
     marketCapitalization: finiteNumber(quote?.marketCap),
-    // Prefer Yahoo regularMarketTime — fetch clock misleads when the session is closed.
-    quoteTime: String(quote?.marketTime || '').trim() || new Date().toISOString(),
-    fetchedAt: new Date().toISOString(),
+    ...yahooQuoteTimestamps(quote),
     yahooSymbol,
     regularSession: { yahooSymbol },
     rawPayload: {

@@ -3,7 +3,7 @@
  * Symbols are caret tickers (^GSPC, ^NDX, …) stored as market_quotes.symbol.
  */
 
-import { fetchYahooQuotes } from './yahooQuote.mjs';
+import { fetchYahooQuotes, yahooQuoteTimestamps } from './yahooQuote.mjs';
 
 function finiteNumber(value) {
   const n = Number(value);
@@ -21,9 +21,7 @@ function normalizeIndexQuote(yahooSymbol, quote, segment) {
   const previousClose = finiteNumber(quote?.previousClose);
   let change = null;
   if (price != null && previousClose != null) change = price - previousClose;
-  const fetchedAt = new Date().toISOString();
-  // Prefer Yahoo regularMarketTime — fetch clock misleads when the session is closed.
-  const quoteTime = String(quote?.marketTime || '').trim() || fetchedAt;
+  const { quoteTime, fetchedAt } = yahooQuoteTimestamps(quote);
   return {
     id: `market-quote-${segment}-${yahooSymbol}`,
     provider: 'yahoo',

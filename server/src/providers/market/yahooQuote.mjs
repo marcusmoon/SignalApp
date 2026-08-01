@@ -45,11 +45,17 @@ export async function fetchYahooQuote(yahooSymbol) {
   // Current price: regularMarketPrice is available intraday
   const price = finiteNumber(meta.regularMarketPrice);
 
-  const previousClose = resolveYahooPreviousClose(quoteInd);
+  // Prefer previous daily close from bars. Some FX pairs (e.g. CNYKRW=X) only
+  // return a single chart bar — fall back to meta.chartPreviousClose then.
+  // Prefer bars over chartPreviousClose when both exist: with range=5d the
+  // meta field can lag the true prior session close for equity indexes.
+  let previousClose = resolveYahooPreviousClose(quoteInd);
+  if (previousClose == null) {
+    previousClose = finiteNumber(meta.chartPreviousClose);
+  }
 
   // Change percent: always calculate from (price - previousClose) / previousClose.
-  // Do NOT use meta.regularMarketChangePercent or chartPreviousClose — they can
-  // reflect the 5-day range start when range=5d is used.
+  // Do NOT use meta.regularMarketChangePercent — it can reflect the range start.
   let changePercent = null;
   if (price != null && previousClose != null && previousClose !== 0) {
     changePercent = (price - previousClose) / previousClose * 100;

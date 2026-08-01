@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it, mock } from 'node:test';
 
-import { resolveYahooPreviousClose } from './yahooQuote.mjs';
+import { fetchYahooQuote, resolveYahooPreviousClose } from './yahooQuote.mjs';
 
 describe('resolveYahooPreviousClose', () => {
   it('ignores stale chartPreviousClose and uses the previous daily close for US indexes', () => {
@@ -22,5 +22,41 @@ describe('resolveYahooPreviousClose', () => {
     );
 
     assert.equal(previousClose, 6690.62);
+  });
+});
+
+describe('fetchYahooQuote', () => {
+  it('falls back to chartPreviousClose when FX chart has only one bar', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          chart: {
+            result: [
+              {
+                meta: {
+                  regularMarketPrice: 212.845,
+                  chartPreviousClose: 210.384,
+                  shortName: 'CNY/KRW',
+                  currency: 'KRW',
+                },
+                indicators: {
+                  quote: [{ close: [212.845], volume: [0] }],
+                },
+              },
+            ],
+          },
+        }),
+    }));
+
+    try {
+      const quote = await fetchYahooQuote('CNYKRW=X');
+      assert.equal(quote?.previousClose, 210.384);
+      assert.equal(quote?.changePercent, 1.17);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

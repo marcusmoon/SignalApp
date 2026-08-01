@@ -62,6 +62,7 @@ import {
 } from '@/domain/home/calendarChipLabel';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
+import { etfHomeLeadText } from '@/domain/home/etfHomeLead';
 import {
   aggregateHomeKeywords,
   HOME_KEYWORD_LIMIT,
@@ -1076,6 +1077,7 @@ export function HomeFocusContent({
   const renderEtfSectionBody = useCallback(() => {
     if (!etfInsight) return null;
     if (etfHeatmapCells.length > 0) {
+      const leadText = etfHomeLeadText(etfInsight);
       return (
         <Pressable
           onPress={openEtfInsightDetail}
@@ -1086,6 +1088,11 @@ export function HomeFocusContent({
             showIssueSummary && styles.heroCardSummary,
             pressed && styles.pressed,
           ]}>
+          {leadText ? (
+            <ChangeTintedText style={styles.signalText} numberOfLines={2}>
+              {leadText}
+            </ChangeTintedText>
+          ) : null}
           <ChangeHeatmapGrid
             cells={etfHeatmapCells}
             theme={theme}

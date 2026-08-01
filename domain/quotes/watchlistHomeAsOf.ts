@@ -134,3 +134,14 @@ export function resolveWatchlistHomeAsOf(
 
   return { mode: 'prior_close', ymd: previousWeekdayYmd(asOf) };
 }
+
+/** Home quote tile — show Close under the name when session print is stale/closed. Coins never. */
+export function isWatchlistQuoteClosed(
+  quote: WatchlistHomeAsOfQuote | null | undefined,
+  now: Date = new Date(),
+  freshMs: number = WATCHLIST_ASOF_FRESH_MS,
+): boolean {
+  if (!quote || isCoinQuote(quote)) return false;
+  const resolved = resolveWatchlistHomeAsOf([{ quote }], now, freshMs);
+  return resolved?.mode === 'today_close' || resolved?.mode === 'prior_close';
+}

@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 
 import {
   isLocalWeekend,
+  isWatchlistQuoteClosed,
   previousWeekdayYmd,
   resolveWatchlistHomeAsOf,
   WATCHLIST_ASOF_FRESH_MS,
@@ -128,5 +129,25 @@ describe('resolveWatchlistHomeAsOf', () => {
       now,
     );
     assert.deepEqual(resolved, { mode: 'prior_close', ymd: '2026-07-24' });
+  });
+});
+
+describe('isWatchlistQuoteClosed', () => {
+  it('true when equity/FX print is stale; false for coins and fresh prints', () => {
+    const now = atLocal('2026-07-24', 18, 0);
+    const stale = atLocal('2026-07-24', 9, 0).toISOString();
+    const fresh = atLocal('2026-07-24', 17, 30).toISOString();
+    assert.equal(
+      isWatchlistQuoteClosed({ segment: 'indices', quoteTime: stale, fetchedAt: now.toISOString() }, now),
+      true,
+    );
+    assert.equal(
+      isWatchlistQuoteClosed({ segment: 'us', quoteTime: fresh, fetchedAt: fresh }, now),
+      false,
+    );
+    assert.equal(
+      isWatchlistQuoteClosed({ segment: 'coin', quoteTime: null, fetchedAt: stale }, now),
+      false,
+    );
   });
 });

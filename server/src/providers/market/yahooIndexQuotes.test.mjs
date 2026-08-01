@@ -15,6 +15,7 @@ describe('fetchYahooIndexMarketQuotes', () => {
             {
               meta: {
                 regularMarketPrice: isSpx ? 5000.25 : null,
+                regularMarketTime: isSpx ? 1785555035 : null,
                 shortName: isSpx ? 'S&P 500' : 'Bad',
                 currency: 'USD',
               },
@@ -42,6 +43,8 @@ describe('fetchYahooIndexMarketQuotes', () => {
       assert.equal(rows[0].segment, 'indices');
       assert.equal(rows[0].provider, 'yahoo');
       assert.equal(rows[0].currentPrice, 5000.25);
+      assert.equal(rows[0].quoteTime, '2026-08-01T03:30:35.000Z');
+      assert.notEqual(rows[0].quoteTime, rows[0].fetchedAt);
       assert.ok(typeof rows[0].changePercent === 'number');
     } finally {
       globalThis.fetch = originalFetch;

@@ -114,6 +114,7 @@ import {
 } from '@/domain/quotes/rows';
 import {
   isCoinQuote,
+  isWatchlistQuoteClosed,
   resolveWatchlistHomeAsOf,
   type WatchlistHomeAsOfRow,
 } from '@/domain/quotes/watchlistHomeAsOf';
@@ -919,19 +920,30 @@ export function HomeFocusContent({
         : fxDef
           ? formatHomeFxRate(row.quote?.currentPrice, fxDef)
           : formatPrice(row);
+      const showClose =
+        !opts?.coin && hasQuote && isWatchlistQuoteClosed(row.quote);
+      const closeLabel = t('quotesAsOfClose');
+      const a11y = showClose ? `${label}, ${closeLabel}` : label;
       return (
         <Pressable
           key={key}
           onPress={() => openHomeQuote(row, opts)}
           accessibilityRole="button"
-          accessibilityLabel={label}
+          accessibilityLabel={a11y}
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
               <SymbolLogo symbol={logoSymbol} imageUrl={logoImageUrl} size={22} />
-              <Text style={styles.quoteSymbol} numberOfLines={1}>
-                {label}
-              </Text>
+              <View style={styles.quoteTileTitleCol}>
+                <Text style={styles.quoteSymbol} numberOfLines={1}>
+                  {label}
+                </Text>
+                {showClose ? (
+                  <Text style={styles.quoteCloseMeta} numberOfLines={1}>
+                    {closeLabel}
+                  </Text>
+                ) : null}
+              </View>
             </View>
             <View style={styles.quoteTileFooter}>
               {hasQuote ? (
@@ -1584,6 +1596,11 @@ function makeStyles(
       alignItems: 'center',
       gap: 6,
     },
+    quoteTileTitleCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: 1,
+    },
     quoteTileFooter: {
       minWidth: 62,
       gap: 2,
@@ -1594,6 +1611,12 @@ function makeStyles(
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    quoteCloseMeta: {
+      fontSize: ft.ff(11),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
     },
     priceText: {
       fontSize: ft.ff(12),

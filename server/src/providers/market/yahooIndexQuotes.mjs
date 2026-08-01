@@ -21,6 +21,9 @@ function normalizeIndexQuote(yahooSymbol, quote, segment) {
   const previousClose = finiteNumber(quote?.previousClose);
   let change = null;
   if (price != null && previousClose != null) change = price - previousClose;
+  const fetchedAt = new Date().toISOString();
+  // Prefer Yahoo regularMarketTime — fetch clock misleads when the session is closed.
+  const quoteTime = String(quote?.marketTime || '').trim() || fetchedAt;
   return {
     id: `market-quote-${segment}-${yahooSymbol}`,
     provider: 'yahoo',
@@ -38,8 +41,8 @@ function normalizeIndexQuote(yahooSymbol, quote, segment) {
     previousClose,
     volume: finiteNumber(quote?.volume),
     marketCapitalization: finiteNumber(quote?.marketCap),
-    quoteTime: new Date().toISOString(),
-    fetchedAt: new Date().toISOString(),
+    quoteTime,
+    fetchedAt,
     yahooSymbol,
     regularSession: { yahooSymbol },
     rawPayload: {

@@ -116,7 +116,8 @@ function normalizeMarketQuote(krxSymbol, yahooSymbol, quote, segment, venueHint 
     dayVolume: volume,
     turnoverKrw,
     marketCapitalization: finiteNumber(quote?.marketCap),
-    quoteTime: new Date().toISOString(),
+    // Prefer Yahoo regularMarketTime — fetch clock misleads when the session is closed.
+    quoteTime: String(quote?.marketTime || '').trim() || new Date().toISOString(),
     fetchedAt: new Date().toISOString(),
     yahooSymbol,
     regularSession: { yahooSymbol },

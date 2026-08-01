@@ -13,17 +13,22 @@ export type HomeIndexDef = {
   key: HomeIndexKey;
   /** Stored / API symbol (Yahoo caret ticker). */
   symbol: string;
+  /**
+   * Parqet logo lookup ticker (지수 caret는 CDN에 없음 → 추종 ETF/대표 종목).
+   * 표시 라벨·시세 심볼과는 별개.
+   */
+  logoSymbol: string;
   labelId: MessageId;
 };
 
 /** S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이 */
 export const HOME_INDEX_DEFS: readonly HomeIndexDef[] = [
-  { key: 'sp500', symbol: '^GSPC', labelId: 'homeIndexSp500' },
-  { key: 'nasdaq', symbol: '^NDX', labelId: 'homeIndexNasdaq' },
-  { key: 'dow', symbol: '^DJI', labelId: 'homeIndexDow' },
-  { key: 'sox', symbol: '^SOX', labelId: 'homeIndexSox' },
-  { key: 'kospi', symbol: '^KS11', labelId: 'homeIndexKospi' },
-  { key: 'nikkei', symbol: '^N225', labelId: 'homeIndexNikkei' },
+  { key: 'sp500', symbol: '^GSPC', logoSymbol: 'SPY', labelId: 'homeIndexSp500' },
+  { key: 'nasdaq', symbol: '^NDX', logoSymbol: 'QQQ', labelId: 'homeIndexNasdaq' },
+  { key: 'dow', symbol: '^DJI', logoSymbol: 'DIA', labelId: 'homeIndexDow' },
+  { key: 'sox', symbol: '^SOX', logoSymbol: 'SOXX', labelId: 'homeIndexSox' },
+  { key: 'kospi', symbol: '^KS11', logoSymbol: '069500', labelId: 'homeIndexKospi' },
+  { key: 'nikkei', symbol: '^N225', logoSymbol: 'EWJ', labelId: 'homeIndexNikkei' },
 ];
 
 export const HOME_INDEX_SYMBOLS: readonly string[] = HOME_INDEX_DEFS.map((row) => row.symbol);

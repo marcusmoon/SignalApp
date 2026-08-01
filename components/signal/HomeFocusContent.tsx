@@ -827,9 +827,11 @@ export function HomeFocusContent({
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
-              {indexDef ? null : (
-                <SymbolLogo symbol={row.symbol} imageUrl={row.imageUrl} size={22} />
-              )}
+              <SymbolLogo
+                symbol={indexDef ? indexDef.logoSymbol : row.symbol}
+                imageUrl={row.imageUrl}
+                size={22}
+              />
               <Text style={styles.quoteSymbol} numberOfLines={1}>
                 {label}
               </Text>

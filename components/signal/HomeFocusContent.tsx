@@ -1234,7 +1234,7 @@ export function HomeFocusContent({
                     {indexQuotes.length > 0 ? (
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLine} />
+                          <View style={styles.quoteLayerRuleLead} />
                           <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
                             {homeQuotesLayerRuleLabel(t('homeQuotesLayerIndices'), indexLayerAsOf)}
                           </Text>
@@ -1250,7 +1250,7 @@ export function HomeFocusContent({
                     {homeWatchRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLine} />
+                          <View style={styles.quoteLayerRuleLead} />
                           <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
                             {homeQuotesLayerRuleLabel(t('homeQuotesLayerWatch'), watchLayerAsOf)}
                           </Text>
@@ -1266,7 +1266,7 @@ export function HomeFocusContent({
                     {homeAnchorCoinRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLine} />
+                          <View style={styles.quoteLayerRuleLead} />
                           <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
                             {homeQuotesLayerRuleLabel(t('homeQuotesLayerCoin'), coinLayerAsOf)}
                           </Text>
@@ -1398,7 +1398,13 @@ function makeStyles(
     quoteLayerRule: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 8,
+    },
+    /** `-- Indexes ------------` — 짧은 리드 + 좌측 라벨 + 긴 트레일 */
+    quoteLayerRuleLead: {
+      width: 14,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
     },
     quoteLayerRuleLine: {
       flex: 1,
@@ -1407,12 +1413,12 @@ function makeStyles(
     },
     quoteLayerRuleLabel: {
       flexShrink: 1,
-      maxWidth: '72%',
+      maxWidth: '70%',
       fontSize: sf(12),
       lineHeight: sf(16),
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
-      textAlign: 'center',
+      textAlign: 'left',
     },
     quoteGrid: {
       flexDirection: 'row',

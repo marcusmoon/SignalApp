@@ -82,8 +82,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     card: {
       borderRadius: UI_RADIUS_CARD,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       paddingHorizontal: 10,
       paddingVertical: 8,

@@ -169,7 +169,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
-  - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of는 헤더가 아니라 레이어 라인 `지수 (금 종가)` 형식. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
+  - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of는 헤더가 아니라 레이어 라인 우측(`- 지수 ---- 금 종가 -`). 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
   - **오늘**: **키워드**(에이전트 keywords 합산 · 카드 박스, 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
   - **과거**: **키워드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
@@ -213,7 +213,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정 칩은 자동
-- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인. 레이어마다 `-- 지수 (금 종가) --------` 식 **좌측** 라인 라벨(`지수`·`종목`·`코인` + 레이어별 as-of) + 간격 구분(바깥 카드 중첩 없음). 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 데이터는 Yahoo Job(`market_quotes_indices`). 지수 로고는 Parqet용 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`) — caret 지수 심볼은 CDN에 없음
+- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인. 레이어 라인은 `- 지수 ------------------- 금 종가 -` (좌측 레이어명 · 우측 as-of). 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 데이터는 Yahoo Job(`market_quotes_indices`). 지수 로고는 Parqet용 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`) — caret 지수 심볼은 CDN에 없음
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

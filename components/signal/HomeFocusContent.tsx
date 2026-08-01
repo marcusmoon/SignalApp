@@ -203,13 +203,6 @@ function formatHomeQuotesLayerAsOf(
   return t('quotesAsOfNamedClose', { when });
 }
 
-function homeQuotesLayerRuleLabel(layer: string, asOf: string | null): string {
-  const title = layer.trim();
-  if (!title) return asOf?.trim() || '';
-  const when = asOf?.trim();
-  return when ? `${title} (${when})` : title;
-}
-
 type HomeFocusContentProps = {
   selectedYmd: string;
   todayYmd: string;
@@ -891,6 +884,34 @@ export function HomeFocusContent({
     [openHomeQuote, quoteChange.colors.down, quoteChange.colors.up, styles, t],
   );
 
+  /** `- 지수 ------------------- 금 종가 -` — 좌측 레이어명 · 우측 as-of */
+  const renderQuoteLayerRule = useCallback(
+    (title: string, asOf: string | null) => {
+      const when = asOf?.trim() || '';
+      return (
+        <View
+          style={styles.quoteLayerRule}
+          accessibilityRole="header"
+          accessibilityLabel={when ? `${title}, ${when}` : title}>
+          <View style={styles.quoteLayerRuleCap} />
+          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={styles.quoteLayerRuleLine} />
+          {when ? (
+            <>
+              <Text style={styles.quoteLayerRuleAsOf} numberOfLines={1}>
+                {when}
+              </Text>
+              <View style={styles.quoteLayerRuleCap} />
+            </>
+          ) : null}
+        </View>
+      );
+    },
+    [styles],
+  );
+
   const openCalendar = useCallback(() => {
     if (ipadNav.isAvailable) {
       ipadNav.showCalendar({ drillFrom: 'home' });
@@ -1233,13 +1254,7 @@ export function HomeFocusContent({
                   <>
                     {indexQuotes.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLead} />
-                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
-                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerIndices'), indexLayerAsOf)}
-                          </Text>
-                          <View style={styles.quoteLayerRuleLine} />
-                        </View>
+                        {renderQuoteLayerRule(t('homeQuotesLayerIndices'), indexLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {indexQuotes.map((row, index) =>
                             renderHomeQuoteTile(row, `index-${index}`, { index: true }),
@@ -1249,13 +1264,7 @@ export function HomeFocusContent({
                     ) : null}
                     {homeWatchRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLead} />
-                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
-                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerWatch'), watchLayerAsOf)}
-                          </Text>
-                          <View style={styles.quoteLayerRuleLine} />
-                        </View>
+                        {renderQuoteLayerRule(t('homeQuotesLayerWatch'), watchLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {homeWatchRows.map((row, index) =>
                             renderHomeQuoteTile(row, `watch-${index}`),
@@ -1265,13 +1274,7 @@ export function HomeFocusContent({
                     ) : null}
                     {homeAnchorCoinRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <View style={styles.quoteLayerRule} accessibilityRole="header">
-                          <View style={styles.quoteLayerRuleLead} />
-                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
-                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerCoin'), coinLayerAsOf)}
-                          </Text>
-                          <View style={styles.quoteLayerRuleLine} />
-                        </View>
+                        {renderQuoteLayerRule(t('homeQuotesLayerCoin'), coinLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {homeAnchorCoinRows.map((row, index) =>
                             renderHomeQuoteTile(row, `anchor-${index}`, { coin: true }),
@@ -1400,25 +1403,33 @@ function makeStyles(
       alignItems: 'center',
       gap: 8,
     },
-    /** `-- Indexes ------------` — 짧은 리드 + 좌측 라벨 + 긴 트레일 */
-    quoteLayerRuleLead: {
-      width: 14,
+    /** `- 지수 ------------------- 금 종가 -` */
+    quoteLayerRuleCap: {
+      width: 12,
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.border,
     },
     quoteLayerRuleLine: {
       flex: 1,
+      minWidth: 16,
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.border,
     },
     quoteLayerRuleLabel: {
-      flexShrink: 1,
-      maxWidth: '70%',
+      flexShrink: 0,
       fontSize: sf(12),
       lineHeight: sf(16),
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
-      textAlign: 'left',
+    },
+    quoteLayerRuleAsOf: {
+      flexShrink: 1,
+      maxWidth: '46%',
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
+      color: theme.textMuted,
+      textAlign: 'right',
     },
     quoteGrid: {
       flexDirection: 'row',

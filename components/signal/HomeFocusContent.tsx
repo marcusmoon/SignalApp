@@ -899,12 +899,11 @@ export function HomeFocusContent({
           </Text>
           <View style={styles.quoteLayerRuleLine} />
           {when ? (
-            <>
+            <View style={styles.quoteLayerRuleAsOfChip}>
               <Text style={styles.quoteLayerRuleAsOf} numberOfLines={1}>
                 {when}
               </Text>
-              <View style={styles.quoteLayerRuleCap} />
-            </>
+            </View>
           ) : null}
         </View>
       );
@@ -1422,12 +1421,21 @@ function makeStyles(
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
     },
-    quoteLayerRuleAsOf: {
-      flexShrink: 1,
+    /** HomeSectionHeader meta / NEW 칩과 동일 톤 */
+    quoteLayerRuleAsOfChip: {
+      flexShrink: 0,
       maxWidth: '46%',
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
+      borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    quoteLayerRuleAsOf: {
+      fontSize: ft.ff(FEED_BADGE_PX + 1),
+      lineHeight: sf(13),
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
       textAlign: 'right',
     },

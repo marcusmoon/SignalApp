@@ -1177,7 +1177,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       setContentPane('tabs');
       router.navigate({
         pathname: '/(tabs)/news',
-        params: segment ? { segment } : { segment: 'global' },
+        params: segment ? { segment } : { segment: DEFAULT_NEWS_SEGMENT },
       } as never);
     },
     [clearWideBackStack, params.overlay, pathname, router, useTwoPane],

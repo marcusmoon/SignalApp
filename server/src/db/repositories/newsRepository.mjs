@@ -75,20 +75,30 @@ function dedupePublicNewsRows(rows) {
   return out;
 }
 
+/** Append category WHERE. `all` = article buckets (not video / other). */
+function appendNewsCategoryFilter(where, params, category) {
+  const cat = cleanText(category);
+  if (!cat) return;
+  if (cat === 'all') {
+    where.push(
+      `(n.category IN ('global', 'korea', 'crypto', 'it') OR n.provider = 'financialjuice')`,
+    );
+    return;
+  }
+  if (cat === 'global') {
+    where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
+    return;
+  }
+  params.push(cat);
+  where.push(`n.category = $${params.length}`);
+}
+
 export async function queryPublicNewsRows(options = {}) {
   const { limit, offset } = pageOptions(options, 20);
   const locale = cleanText(options.locale) || 'ko';
   const params = [locale];
   const where = [];
-  const category = cleanText(options.category);
-  if (category) {
-    if (category === 'global') {
-      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
-    } else {
-      params.push(category);
-      where.push(`n.category = $${params.length}`);
-    }
-  }
+  appendNewsCategoryFilter(where, params, cleanText(options.category));
   const symbols = new Set([
     ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
     ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),
@@ -221,15 +231,7 @@ function pendingNewsTranslationRow(item, targetLocale) {
 function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
   const params = [targetLocale];
   const where = [sqlPendingTranslation('t_target')];
-  const category = cleanText(options.category);
-  if (category) {
-    if (category === 'global') {
-      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
-    } else {
-      params.push(category);
-      where.push(`n.category = $${params.length}`);
-    }
-  }
+  appendNewsCategoryFilter(where, params, cleanText(options.category));
   const from = sqlDateOrTimestamp(options.from);
   if (from) {
     params.push(from);
@@ -317,15 +319,7 @@ export async function queryAdminNewsRows(options = {}) {
   const locale = cleanText(options.locale) || 'ko';
   const params = [locale];
   const where = [];
-  const category = cleanText(options.category);
-  if (category) {
-    if (category === 'global') {
-      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
-    } else {
-      params.push(category);
-      where.push(`n.category = $${params.length}`);
-    }
-  }
+  appendNewsCategoryFilter(where, params, cleanText(options.category));
   const symbols = new Set([
     ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
     ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),

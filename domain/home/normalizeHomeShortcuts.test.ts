@@ -66,6 +66,15 @@ describe('normalizeHomeShortcutsRaw', () => {
     assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'quotes', segment: 'xyz' }]), [
       { type: 'quotes', segment: 'watch' },
     ]);
+    assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'news', segment: 'xyz' }]), [
+      { type: 'news', segment: 'all' },
+    ]);
+  });
+
+  it('accepts news segment all', () => {
+    assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'news', segment: 'all' }]), [
+      { type: 'news', segment: 'all' },
+    ]);
   });
 });
 

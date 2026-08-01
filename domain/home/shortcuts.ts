@@ -39,7 +39,7 @@ function migrateLegacyString(raw: string): HomeShortcut | null {
     case 'quotes':
       return { type: 'quotes', segment: 'watch' };
     case 'news':
-      return { type: 'news', segment: 'global' };
+      return { type: 'news', segment: 'all' };
     case 'newsIt':
       return { type: 'news', segment: 'it' };
     case 'calendar':
@@ -78,7 +78,7 @@ function parseHomeShortcut(raw: unknown): HomeShortcut | null {
   }
 
   if (type === 'news') {
-    const segment = parseNewsSegment(row.segment) ?? 'global';
+    const segment = parseNewsSegment(row.segment) ?? 'all';
     return { type: 'news', segment };
   }
 

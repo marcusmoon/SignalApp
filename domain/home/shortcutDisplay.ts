@@ -43,6 +43,7 @@ const QUOTE_SEGMENT_HOME: Record<QuoteSegmentKey, MessageId> = {
 };
 
 const NEWS_SEGMENT_FORMAL: Record<NewsSegmentKey, MessageId> = {
+  all: 'feedSegmentAll',
   global: 'feedSegmentGlobal',
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
@@ -51,6 +52,7 @@ const NEWS_SEGMENT_FORMAL: Record<NewsSegmentKey, MessageId> = {
 };
 
 const NEWS_SEGMENT_HOME: Record<NewsSegmentKey, MessageId> = {
+  all: 'homeTileNewsAll',
   global: 'homeTileNewsGlobal',
   korea: 'homeTileNewsKorea',
   crypto: 'homeTileNewsCrypto',

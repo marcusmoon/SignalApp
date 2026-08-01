@@ -195,6 +195,7 @@ const QUOTES_CHANGE_COLOR_DESC: Record<QuotesChangeColorConvention, MessageId> =
 };
 
 const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
+  all: 'feedSegmentAll',
   global: 'feedSegmentGlobal',
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',

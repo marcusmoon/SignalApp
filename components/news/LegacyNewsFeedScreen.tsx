@@ -31,7 +31,7 @@ import {
   FLOATING_GLASS_FAB_SIZE,
 } from '@/components/signal/FloatingGlassFab';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
-import { newsSegmentToIssuesCategory } from '@/constants/ipadHomeNav';
+import { HOME_DIGEST_CATEGORIES, newsSegmentToIssuesCategory } from '@/constants/ipadHomeNav';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { DigestPager } from '@/components/news/DigestPager';
@@ -45,14 +45,6 @@ import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import type { MessageId } from '@/locales/messages';
-
-const HOME_TILE_NEWS: Record<NewsSegmentKey, MessageId> = {
-  global: 'homeTileNewsGlobal',
-  korea: 'homeTileNewsKorea',
-  crypto: 'homeTileNewsCrypto',
-  it: 'homeTileNewsIt',
-  video: 'homeTileNewsVideo',
-};
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
@@ -68,11 +60,9 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   appendUniqueNewsRows,
   dedupeNewsFeedRows,
-  FEED_PAGE_CRYPTO,
-  FEED_PAGE_GLOBAL,
-  FEED_PAGE_IT,
-  FEED_PAGE_KOREA,
   NEWS_SEGMENT_LABEL,
+  newsApiCategoryForSegment,
+  newsFeedPageLimit,
   type NewsDigestItem,
 } from '@/domain/news';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -119,6 +109,15 @@ type FeedRow =
   | { kind: 'news'; news: NewsItem }
   | { kind: 'ad'; key: string };
 type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video' };
+
+const HOME_TILE_NEWS: Record<NewsSegmentKey, MessageId> = {
+  all: 'homeTileNewsAll',
+  global: 'homeTileNewsGlobal',
+  korea: 'homeTileNewsKorea',
+  crypto: 'homeTileNewsCrypto',
+  it: 'homeTileNewsIt',
+  video: 'homeTileNewsVideo',
+};
 
 function digestSourceUrl(item: SignalApiNewsDigestItem): string {
   return item.sourceRefs.find((ref) => ref.url)?.url || '';
@@ -287,14 +286,16 @@ export function LegacyNewsFeedScreen({
   useEffect(() => {
     if (!hasSignalApi()) return;
     if (!isFocused) return;
-    const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'it', 'video'];
+    const pollSegments: NewsSegmentKey[] = ['all', 'global', 'korea', 'crypto', 'it', 'video'];
 
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
       if (seg === 'video') {
         const page = await fetchSignalYoutube({ sort: 'latest', limit: 1, offset: 0 }, { cacheMode: 'bypass' });
         return page.items[0]?.id ?? null;
       }
-      const page = await fetchSignalNews({ locale, category: seg, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+      const category = newsApiCategoryForSegment(seg);
+      if (!category) return null;
+      const page = await fetchSignalNews({ locale, category, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
       return page.items[0]?.id ?? null;
     };
 
@@ -412,107 +413,61 @@ export function LegacyNewsFeedScreen({
         return { itemIds: [], kind: 'video' };
       }
 
-      if (segment === 'crypto') {
-        const [newsPage, digestPage] = await Promise.all([
-          fetchSignalNews(
-            {
-              locale,
-              category: 'crypto',
-              limit: FEED_PAGE_CRYPTO,
-              offset: 0,
-              tag: activeTag || undefined,
-            },
-            { cacheMode },
-          ),
-          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
-        ]);
-        const { items: rows, meta } = newsPage;
-        const dedupedRows = syncServerRows(rows);
-        commitDigestLookupRows(dedupedRows);
-        setServerDigestRows(digestPage?.items || []);
-        feedMetaRef.current = meta;
-        hasMoreRef.current = meta.hasMore;
-        setHasMore(meta.hasMore);
-        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
-        setItems(mapped);
-        syncSegmentLatestSeen('crypto', dedupedRows[0]?.id);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
-      }
-
-      if (segment === 'korea') {
-        const [newsPage, digestPage] = await Promise.all([
-          fetchSignalNews(
-            {
-              locale,
-              category: 'korea',
-              limit: FEED_PAGE_KOREA,
-              offset: 0,
-              tag: activeTag || undefined,
-            },
-            { cacheMode },
-          ),
-          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
-        ]);
-        const { items: rows, meta } = newsPage;
-        const dedupedRows = syncServerRows(rows);
-        commitDigestLookupRows(dedupedRows);
-        setServerDigestRows(digestPage?.items || []);
-        feedMetaRef.current = meta;
-        hasMoreRef.current = meta.hasMore;
-        setHasMore(meta.hasMore);
-        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
-        setItems(mapped);
-        syncSegmentLatestSeen('korea', dedupedRows[0]?.id);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
-      }
-
-      /** IT: 기존 ItNewsFeedPanel과 동일하게 category=it, digest 없음 */
-      if (segment === 'it') {
-        const { items: rows, meta } = await fetchSignalNews(
-          {
-            locale,
-            category: 'it',
-            limit: FEED_PAGE_IT,
-            offset: 0,
-            tag: activeTag || undefined,
-          },
-          { cacheMode },
-        );
-        const dedupedRows = syncServerRows(rows);
-        commitDigestLookupRows(dedupedRows);
+      const category = newsApiCategoryForSegment(segment);
+      if (!category) {
+        setItems([]);
+        setServerRows([]);
         setServerDigestRows([]);
-        feedMetaRef.current = meta;
-        hasMoreRef.current = meta.hasMore;
-        setHasMore(meta.hasMore);
-        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
-        setItems(mapped);
-        syncSegmentLatestSeen('it', dedupedRows[0]?.id);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
+        setHasMore(false);
+        feedMetaRef.current = null;
+        hasMoreRef.current = false;
+        return { itemIds: [], kind: 'news' };
       }
 
-      const [newsPage, digestPage] = await Promise.all([
+      const fetchDigests = async (): Promise<SignalApiNewsDigestItem[]> => {
+        /** IT: digest 없음. `all`: global/korea/crypto 병합 (news-issues와 동일). */
+        if (segment === 'it') return [];
+        if (segment === 'all') {
+          const results = await Promise.all(
+            HOME_DIGEST_CATEGORIES.map((cat) =>
+              fetchSignalNewsDigests(
+                { category: cat, limit: 30, batches: 10, locale },
+                { cacheMode },
+              ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
+            ),
+          );
+          return results.flatMap((page) => page.items);
+        }
+        const page = await fetchSignalNewsDigests(
+          { category, limit: 30, batches: 10, locale },
+          { cacheMode },
+        ).catch(() => null);
+        return page?.items || [];
+      };
+
+      const [newsPage, digestItems] = await Promise.all([
         fetchSignalNews(
           {
             locale,
-            category: 'global',
-            limit: FEED_PAGE_GLOBAL,
+            category,
+            limit: newsFeedPageLimit(segment),
             offset: 0,
             tag: activeTag || undefined,
           },
           { cacheMode },
         ),
-        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
+        fetchDigests(),
       ]);
       const { items: rows, meta } = newsPage;
       const dedupedRows = syncServerRows(rows);
       commitDigestLookupRows(dedupedRows);
-      setServerDigestRows(digestPage?.items || []);
+      setServerDigestRows(digestItems);
       feedMetaRef.current = meta;
       hasMoreRef.current = meta.hasMore;
       setHasMore(meta.hasMore);
       const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
       setItems(mapped);
-      syncSegmentLatestSeen('global', dedupedRows[0]?.id);
+      syncSegmentLatestSeen(segment, dedupedRows[0]?.id);
       return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       } finally {
         if (isRefresh) loadMoreInFlightRef.current = false;
@@ -525,9 +480,8 @@ export function LegacyNewsFeedScreen({
     if (loadMoreInFlightRef.current || !hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) {
       return;
     }
-    if (segment !== 'it' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') {
-      return;
-    }
+    const category = newsApiCategoryForSegment(segment);
+    if (!category) return;
 
     loadMoreInFlightRef.current = true;
     loadingMoreRef.current = true;
@@ -547,19 +501,7 @@ export function LegacyNewsFeedScreen({
     const MAX_SKIP_PAGES = 10;
 
     try {
-      if (segment === 'video') {
-        return;
-      }
-
-      const pageLimit =
-        segment === 'it'
-          ? FEED_PAGE_IT
-          : segment === 'crypto'
-            ? FEED_PAGE_CRYPTO
-            : segment === 'korea'
-              ? FEED_PAGE_KOREA
-              : FEED_PAGE_GLOBAL;
-      const category = segment === 'it' ? 'it' : segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
+      const pageLimit = newsFeedPageLimit(segment);
 
       let requestOffset = feedMetaRef.current?.nextOffset ?? serverRowsRef.current.length;
       let totalAdded = 0;
@@ -788,7 +730,7 @@ export function LegacyNewsFeedScreen({
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
   const newsTitleAlternateIsTranslation = locale === 'en';
-  const showNewsTitleListToggle = segment === 'global' || segment === 'crypto';
+  const showNewsTitleListToggle = segment === 'all' || segment === 'global' || segment === 'crypto';
   const newsTitleListToggleA11y = newsTitleShowAlternate
     ? t('newsTitleListShowLocalized')
     : newsTitleAlternateIsTranslation
@@ -1019,7 +961,7 @@ export function LegacyNewsFeedScreen({
                         layout="grouped"
                         item={item.news}
                         compactMeta
-                        titleToggle={segment === 'global' || segment === 'crypto'}
+                        titleToggle={segment === 'all' || segment === 'global' || segment === 'crypto'}
                         titleShowAlternate={useNewsTitleListMode ? newsTitleShowAlternate : undefined}
                         maxHashtagsToShow={maxHashtagDisplay}
                         onTagPress={(label) => {

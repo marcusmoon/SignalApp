@@ -205,7 +205,7 @@ chip·`latestSeenId`는 **scope마다 독립**이다. 한 scope에서 새로고�
 
 | 화면 | scope |
 |---|---|
-| 뉴스 | `global` · `korea` · `crypto` · `it` · `video` |
+| 뉴스 | `all` · `global` · `korea` · `crypto` · `it` · `video` |
 | 공시 | 단일 통합 피드 (종목 deep link 필터만 유지) |
 | 마켓 | `us-overnight` · `kr-morning` · `kr-lunch` · `kr-close` (과거 날짜에서는 chip 없음) |
 | 알림함 | 단일 inbox (필터 탭별 chip 없음 — 의도) |

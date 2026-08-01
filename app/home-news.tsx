@@ -10,13 +10,15 @@ import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeCon
 import { useLocale } from '@/contexts/LocaleContext';
 import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import type { MessageId } from '@/locales/messages';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 
 function parseSegment(raw: string | undefined): NewsSegmentKey {
   return parseNewsSegmentKey(raw) ?? DEFAULT_NEWS_SEGMENT;
 }
 
-const HOME_TILE_NEWS: Record<NewsSegmentKey, 'homeTileNewsGlobal' | 'homeTileNewsKorea' | 'homeTileNewsCrypto' | 'homeTileNewsIt' | 'homeTileNewsVideo'> = {
+const HOME_TILE_NEWS: Record<NewsSegmentKey, MessageId> = {
+  all: 'homeTileNewsAll',
   global: 'homeTileNewsGlobal',
   korea: 'homeTileNewsKorea',
   crypto: 'homeTileNewsCrypto',

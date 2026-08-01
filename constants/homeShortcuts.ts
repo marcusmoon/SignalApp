@@ -52,11 +52,11 @@ export const HOME_SHORTCUT_OPTIONS: HomeShortcutOption[] = [
   { type: 'settings' },
 ];
 
-/** 기본: 보드(전체) · 시세(관심) · 뉴스(글로벌) · 일정 */
+/** 기본: 보드(전체) · 시세(관심) · 뉴스(전체) · 일정 */
 export const HOME_SHORTCUTS_DEFAULT: HomeShortcut[] = [
   { type: 'board', source: COMMUNITY_SOURCE_ALL },
   { type: 'quotes', segment: 'watch' },
-  { type: 'news', segment: 'global' },
+  { type: 'news', segment: 'all' },
   { type: 'calendar' },
 ];
 

@@ -16,12 +16,12 @@ export type NormalizedHomeShortcut =
 
 const BOARD_SOURCES = new Set(['all', 'save_user_news', 'naver_likeusstock_free']);
 const QUOTE_SEGMENTS = new Set(['watch', 'popular', 'mcap', 'coin']);
-const NEWS_SEGMENTS = new Set(['global', 'korea', 'crypto', 'it', 'video']);
+const NEWS_SEGMENTS = new Set(['all', 'global', 'korea', 'crypto', 'it', 'video']);
 
 export const HOME_SHORTCUTS_DEFAULT_NORMALIZED: NormalizedHomeShortcut[] = [
   { type: 'board', source: 'all' },
   { type: 'quotes', segment: 'watch' },
-  { type: 'news', segment: 'global' },
+  { type: 'news', segment: 'all' },
   { type: 'calendar' },
 ];
 
@@ -45,7 +45,7 @@ function migrateLegacyString(raw: string): NormalizedHomeShortcut | null {
     case 'quotes':
       return { type: 'quotes', segment: 'watch' };
     case 'news':
-      return { type: 'news', segment: 'global' };
+      return { type: 'news', segment: 'all' };
     case 'newsIt':
       return { type: 'news', segment: 'it' };
     case 'calendar':
@@ -77,7 +77,7 @@ function parseHomeShortcut(raw: unknown): NormalizedHomeShortcut | null {
   }
   if (type === 'news') {
     const segment = String(row.segment || '').trim();
-    return { type: 'news', segment: NEWS_SEGMENTS.has(segment) ? segment : 'global' };
+    return { type: 'news', segment: NEWS_SEGMENTS.has(segment) ? segment : 'all' };
   }
   if (type === 'calendar' || type === 'etf' || type === 'disclosures' || type === 'settings') {
     return { type };

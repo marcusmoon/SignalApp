@@ -28,7 +28,7 @@
 | 더보기 | `app/(tabs)/more.tsx` | 내 정보·공시·ETF·게시판·게임 숏컷 |
 | My info | `app/account.tsx` | 환경 설정·내 활동·계정 |
 
-IT 뉴스와 YouTube는 뉴스 탭의 세그먼트(IT, Video)에서만 접근할 수 있다.
+뉴스 탭 기본 세그먼트는 `all`(global+korea+crypto+it 합산, video 제외)이다. IT·YouTube는 각 세그먼트에서만 접근한다.
 
 ## 서버 구조
 

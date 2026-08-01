@@ -159,7 +159,13 @@ export function filterNews(items, url) {
   const tag = url.searchParams.get('tag')?.trim().toLowerCase();
   let rows = [...items];
   if (category) {
-    if (category === 'global') {
+    if (category === 'all') {
+      rows = rows.filter(
+        (item) =>
+          ['global', 'korea', 'crypto', 'it'].includes(String(item.category || '')) ||
+          String(item.provider || '') === 'financialjuice',
+      );
+    } else if (category === 'global') {
       rows = rows.filter(
         (item) => item.category === 'global' || String(item.provider || '') === 'financialjuice',
       );

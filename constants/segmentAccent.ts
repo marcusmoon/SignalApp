@@ -7,6 +7,13 @@ export type QuoteSegmentKey = 'watch' | 'popular' | 'mcap' | 'coin';
 
 export function newsSegmentAccent(key: NewsSegmentKey, theme: AppTheme): SourceAccent {
   switch (key) {
+    case 'all':
+      return {
+        glyph: '◈',
+        accent: theme.green,
+        dim: theme.greenDim,
+        border: theme.greenBorder,
+      };
     case 'korea':
       return {
         glyph: '🇰🇷',

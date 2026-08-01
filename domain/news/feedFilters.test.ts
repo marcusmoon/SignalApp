@@ -7,8 +7,11 @@ import { describe, it } from 'node:test';
 import {
   appendUniqueNewsRows,
   dedupeNewsFeedRows,
+  FEED_PAGE_ALL,
+  newsApiCategoryForSegment,
   newsFeedCanonicalUrl,
   newsFeedDedupeKey,
+  newsFeedPageLimit,
 } from './feedFilters.ts';
 
 /** Minimal feed row — avoid @/ type imports under Node test runner. */
@@ -34,6 +37,14 @@ function row(partial: {
     fetchedAt: '2024-01-01T00:00:00.000Z',
   };
 }
+
+describe('newsApiCategoryForSegment / newsFeedPageLimit', () => {
+  it('maps all to server category=all with larger page', () => {
+    assert.equal(newsApiCategoryForSegment('all'), 'all');
+    assert.equal(newsApiCategoryForSegment('video'), null);
+    assert.equal(newsFeedPageLimit('all'), FEED_PAGE_ALL);
+  });
+});
 
 describe('newsFeedCanonicalUrl', () => {
   it('strips utm_/tracking query noise', () => {

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import {
+  COMFORT_GAP_LG,
   COMFORT_GAP_MD,
   COMFORT_GAP_PAGE,
   COMFORT_GAP_SM,
@@ -1204,35 +1205,34 @@ export function HomeFocusContent({
                 ) : (
                   <>
                     {indexQuotes.length > 0 ? (
-                      <View style={styles.quoteGrid}>
-                        {indexQuotes.map((row, index) =>
-                          renderHomeQuoteTile(row, `index-${index}`, { index: true }),
-                        )}
+                      <View style={styles.quoteLayer}>
+                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerIndices')}</Text>
+                        <View style={styles.quoteGrid}>
+                          {indexQuotes.map((row, index) =>
+                            renderHomeQuoteTile(row, `index-${index}`, { index: true }),
+                          )}
+                        </View>
                       </View>
                     ) : null}
                     {homeWatchRows.length > 0 ? (
-                      <>
-                        {indexQuotes.length > 0 ? (
-                          <View style={styles.quoteAnchorDivider} />
-                        ) : null}
+                      <View style={styles.quoteLayer}>
+                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerWatch')}</Text>
                         <View style={styles.quoteGrid}>
                           {homeWatchRows.map((row, index) =>
                             renderHomeQuoteTile(row, `watch-${index}`),
                           )}
                         </View>
-                      </>
+                      </View>
                     ) : null}
                     {homeAnchorCoinRows.length > 0 ? (
-                      <>
-                        {indexQuotes.length > 0 || homeWatchRows.length > 0 ? (
-                          <View style={styles.quoteAnchorDivider} />
-                        ) : null}
+                      <View style={styles.quoteLayer}>
+                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerCoin')}</Text>
                         <View style={styles.quoteGrid}>
                           {homeAnchorCoinRows.map((row, index) =>
                             renderHomeQuoteTile(row, `anchor-${index}`, { coin: true }),
                           )}
                         </View>
-                      </>
+                      </View>
                     ) : null}
                   </>
                 )}
@@ -1345,11 +1345,16 @@ function makeStyles(
       gap: COMFORT_GAP_SM,
     },
     quoteStack: {
-      gap: COMFORT_GAP_MD,
+      gap: COMFORT_GAP_LG,
     },
-    quoteAnchorDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.border,
+    quoteLayer: {
+      gap: COMFORT_GAP_SM,
+    },
+    quoteLayerKicker: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
+      color: theme.textMuted,
     },
     quoteGrid: {
       flexDirection: 'row',

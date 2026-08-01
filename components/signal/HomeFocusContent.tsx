@@ -12,6 +12,7 @@ import {
   COMFORT_GAP_MD,
   COMFORT_GAP_PAGE,
   COMFORT_GAP_SM,
+  COMFORT_GAP_XS,
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
 import {
@@ -1416,12 +1417,17 @@ function makeStyles(
     quoteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: COMFORT_GAP_MD,
+      justifyContent: 'flex-start',
+      columnGap: COMFORT_GAP_XS,
+      rowGap: COMFORT_GAP_XS,
     },
     quoteTile: {
-      /** 폰 2열 · 와이드(웹/iPad) 3열 */
-      width: useTwoPane ? '32%' : '48%',
+      /**
+       * 폰 2열 · 와이드 3열.
+       * space-between 대신 고정 columnGap(6) — 좌우 여백이 과해 보이지 않게.
+       * width는 gap 공간을 남긴 % (48.5×2+6px / 31.8×3+12px).
+       */
+      width: useTwoPane ? '31.8%' : '48.5%',
       minHeight: 54,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,

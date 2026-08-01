@@ -9,6 +9,8 @@ export const MARKET_LIST_KEYS = [
   'korea_screener_universe',
   /** Home 시세 index strip (Yahoo caret tickers). */
   'home_indices',
+  /** Home 환율 strip (Yahoo FX pairs). */
+  'home_fx',
 ];
 
 export function normalizeMarketSymbol(value) {

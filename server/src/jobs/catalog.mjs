@@ -23,6 +23,7 @@ export const JOB_CATALOG = {
   market_quotes_watchlist: { area: 'market', stage: 'ingest' },
   market_quotes_korea: { area: 'market', stage: 'ingest' },
   market_quotes_indices: { area: 'market', stage: 'ingest' },
+  market_quotes_fx: { area: 'market', stage: 'ingest' },
   market_quotes_mcap: { area: 'market', stage: 'ingest' },
   market_quotes_mcap_universe: { area: 'market', stage: 'maintain' },
   market_coins_top: { area: 'market', stage: 'ingest' },

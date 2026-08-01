@@ -95,6 +95,13 @@ import {
   isHomeIndexSymbol,
 } from '@/domain/home/homeIndices';
 import {
+  HOME_FX_DEFS,
+  HOME_FX_SYMBOLS,
+  formatHomeFxRate,
+  homeFxDefForSymbol,
+  isHomeFxSymbol,
+} from '@/domain/home/homeFx';
+import {
   formatQuoteDpPct,
   formatUsd,
   formatKrw,
@@ -382,6 +389,7 @@ export function HomeFocusContent({
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [indexQuotes, setIndexQuotes] = useState<QuoteRow[]>([]);
+  const [fxQuotes, setFxQuotes] = useState<QuoteRow[]>([]);
   const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
   const keywordNameAttemptedRef = useRef<Set<string>>(new Set());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
@@ -570,6 +578,22 @@ export function HomeFocusContent({
     () => formatHomeQuotesLayerAsOf(homeAnchorCoinRows, locale, t),
     [homeAnchorCoinRows, locale, t],
   );
+  /** FX — always relative time (not equity close labels). */
+  const fxSectionAsOf = useMemo(() => {
+    let bestIso: string | null = null;
+    let bestMs = Number.NEGATIVE_INFINITY;
+    for (const row of fxQuotes) {
+      const iso = String(row.quote?.quoteTime || row.quote?.fetchedAt || '').trim();
+      if (!iso) continue;
+      const ms = Date.parse(iso);
+      if (!Number.isFinite(ms) || ms <= bestMs) continue;
+      bestMs = ms;
+      bestIso = iso;
+    }
+    if (!bestIso) return null;
+    const label = formatFeedItemTimeLabel(bestIso, locale);
+    return label && label !== '—' ? label : null;
+  }, [fxQuotes, locale]);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -614,6 +638,7 @@ export function HomeFocusContent({
       setIssues([]);
       setQuotes([]);
       setIndexQuotes([]);
+      setFxQuotes([]);
       setAnchorCoins([]);
       setBriefings([]);
       setTodayBriefing(null);
@@ -635,8 +660,16 @@ export function HomeFocusContent({
       }
       setCalendarEvents([]);
 
-      const [nextTodayBriefing, nextIssues, quoteRows, indexQuoteRows, briefingRows, nextEtfInsight, coinRows] =
-        await Promise.all([
+      const [
+        nextTodayBriefing,
+        nextIssues,
+        quoteRows,
+        indexQuoteRows,
+        fxQuoteRows,
+        briefingRows,
+        nextEtfInsight,
+        coinRows,
+      ] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -647,6 +680,12 @@ export function HomeFocusContent({
         isToday
           ? fetchSignalMarketQuotes(
               { symbols: [...HOME_INDEX_SYMBOLS], limit: HOME_INDEX_SYMBOLS.length },
+              { cacheMode },
+            ).catch(() => [] as SignalApiMarketQuote[])
+          : Promise.resolve([] as SignalApiMarketQuote[]),
+        isToday
+          ? fetchSignalMarketQuotes(
+              { symbols: [...HOME_FX_SYMBOLS], limit: HOME_FX_SYMBOLS.length },
               { cacheMode },
             ).catch(() => [] as SignalApiMarketQuote[])
           : Promise.resolve([] as SignalApiMarketQuote[]),
@@ -685,6 +724,25 @@ export function HomeFocusContent({
               const key = def.symbol.toUpperCase();
               return (
                 indexBySymbol.get(key) ?? {
+                  symbol: def.symbol,
+                  quote: null,
+                  error: 'NO_SERVER_QUOTE',
+                }
+              );
+            })
+          : [],
+      );
+      const fxBySymbol = new Map<string, QuoteRow>();
+      for (const item of fxQuoteRows) {
+        const row = mapSignalQuoteToRow(item);
+        for (const key of quoteLookupKeys(item, row)) fxBySymbol.set(key, row);
+      }
+      setFxQuotes(
+        isToday
+          ? HOME_FX_DEFS.map((def) => {
+              const key = def.symbol.toUpperCase();
+              return (
+                fxBySymbol.get(key) ?? {
                   symbol: def.symbol,
                   quote: null,
                   error: 'NO_SERVER_QUOTE',
@@ -833,12 +891,12 @@ export function HomeFocusContent({
     [ipadNav, router],
   );
 
-  /** Stocks → in-app detail. Indices/coins → Yahoo. */
+  /** Stocks → in-app detail. Indices/FX/coins → Yahoo. */
   const openHomeQuote = useCallback(
-    (row: QuoteRow, opts?: { coin?: boolean; index?: boolean }) => {
+    (row: QuoteRow, opts?: { coin?: boolean; index?: boolean; fx?: boolean }) => {
       const trimmed = row.symbol.trim().toUpperCase();
       if (!trimmed || trimmed === '—') return;
-      if (opts?.index || isHomeIndexSymbol(trimmed)) {
+      if (opts?.index || isHomeIndexSymbol(trimmed) || opts?.fx || isHomeFxSymbol(trimmed)) {
         void openYahooFinanceQuote(trimmed, 'stock', {
           yahooSymbol: row.quote?.regularSession?.yahooSymbol || trimmed,
         });
@@ -856,13 +914,24 @@ export function HomeFocusContent({
   );
 
   const renderHomeQuoteTile = useCallback(
-    (row: QuoteRow, key: string, opts?: { coin?: boolean; index?: boolean }) => {
+    (row: QuoteRow, key: string, opts?: { coin?: boolean; index?: boolean; fx?: boolean }) => {
       const pct = row.quote?.changePercent;
       const hasPct = typeof pct === 'number' && Number.isFinite(pct);
       const up = hasPct && pct >= 0;
       const hasQuote = Boolean(row.quote);
       const indexDef = opts?.index ? homeIndexDefForSymbol(row.symbol) : null;
-      const label = indexDef ? t(indexDef.labelId) : row.symbol;
+      const fxDef = opts?.fx ? homeFxDefForSymbol(row.symbol) : null;
+      const label = indexDef
+        ? t(indexDef.labelId)
+        : fxDef
+          ? t(fxDef.labelId)
+          : row.symbol;
+      const logoSymbol = indexDef?.logoSymbol || fxDef?.logoSymbol || row.symbol;
+      const priceLabel = indexDef
+        ? formatHomeIndexLevel(row.quote?.currentPrice)
+        : fxDef
+          ? formatHomeFxRate(row.quote?.currentPrice)
+          : formatPrice(row);
       return (
         <Pressable
           key={key}
@@ -872,11 +941,7 @@ export function HomeFocusContent({
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
-              <SymbolLogo
-                symbol={indexDef ? indexDef.logoSymbol : row.symbol}
-                imageUrl={row.imageUrl}
-                size={22}
-              />
+              <SymbolLogo symbol={logoSymbol} imageUrl={row.imageUrl} size={22} />
               <Text style={styles.quoteSymbol} numberOfLines={1}>
                 {label}
               </Text>
@@ -885,7 +950,7 @@ export function HomeFocusContent({
               {hasQuote ? (
                 <>
                   <Text style={styles.priceText} numberOfLines={1}>
-                    {indexDef ? formatHomeIndexLevel(row.quote?.currentPrice) : formatPrice(row)}
+                    {priceLabel}
                   </Text>
                   <Text
                     style={[
@@ -1325,6 +1390,17 @@ export function HomeFocusContent({
                       </View>
                     ) : null}
                   </>
+                )}
+              </View>
+            </View>
+          ) : null}
+
+          {selectedIsExactToday && fxQuotes.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('homeFxTitle')} meta={fxSectionAsOf} />
+              <View style={styles.quoteGrid}>
+                {fxQuotes.map((row, index) =>
+                  renderHomeQuoteTile(row, `fx-${index}`, { fx: true }),
                 )}
               </View>
             </View>

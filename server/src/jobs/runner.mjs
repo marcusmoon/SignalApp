@@ -22,6 +22,7 @@ import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import { fetchYahooIndexMarketQuotes } from '../providers/market/yahooIndexQuotes.mjs';
+import { fetchYahooFxMarketQuotes } from '../providers/market/yahooFxQuotes.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
@@ -166,7 +167,10 @@ async function readJobContext(job) {
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
     (provider === 'yahoo' &&
-      (handler === 'daily_bars' || handler === 'market_quotes_kr' || handler === 'market_quotes_indices'))
+      (handler === 'daily_bars' ||
+        handler === 'market_quotes_kr' ||
+        handler === 'market_quotes_indices' ||
+        handler === 'market_quotes_fx'))
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
   }
@@ -354,6 +358,17 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     return {
       kind: 'marketQuotes',
       rows: await fetchYahooIndexMarketQuotes({ symbols, segment }),
+    };
+  }
+  if (effective.provider === 'yahoo' && effective.handler === 'market_quotes_fx') {
+    const listKey = params?.listKey || 'home_fx';
+    const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0
+      ? params.symbols
+      : marketListSymbols(dbBefore, listKey);
+    const segment = String(params?.segment || 'fx').trim() || 'fx';
+    return {
+      kind: 'marketQuotes',
+      rows: await fetchYahooFxMarketQuotes({ symbols, segment }),
     };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'market_quotes_mcap') {

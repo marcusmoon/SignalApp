@@ -1442,17 +1442,13 @@ function makeStyles(
     quoteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      justifyContent: 'flex-start',
-      columnGap: COMFORT_GAP_XS,
+      /** 좌·우 끝은 레이어 라인과 맞추고, 타일만 살짝 넓혀 중간 gap을 줄인다. */
+      justifyContent: 'space-between',
       rowGap: COMFORT_GAP_XS,
     },
     quoteTile: {
-      /**
-       * 폰 2열 · 와이드 3열.
-       * space-between 대신 고정 columnGap(6) — 좌우 여백이 과해 보이지 않게.
-       * width는 gap 공간을 남긴 % (48.5×2+6px / 31.8×3+12px).
-       */
-      width: useTwoPane ? '31.8%' : '48.5%',
+      /** 폰 2열 · 와이드 3열 — 합이 거의 100%라 우측이 레이어 as-of 칩과 정렬됨 */
+      width: useTwoPane ? '32.6%' : '49%',
       minHeight: 54,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,

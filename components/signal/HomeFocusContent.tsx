@@ -1206,7 +1206,11 @@ export function HomeFocusContent({
                   <>
                     {indexQuotes.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerIndices')}</Text>
+                        <View style={styles.quoteLayerRule} accessibilityRole="header">
+                          <View style={styles.quoteLayerRuleLine} />
+                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerIndices')}</Text>
+                          <View style={styles.quoteLayerRuleLine} />
+                        </View>
                         <View style={styles.quoteGrid}>
                           {indexQuotes.map((row, index) =>
                             renderHomeQuoteTile(row, `index-${index}`, { index: true }),
@@ -1216,7 +1220,11 @@ export function HomeFocusContent({
                     ) : null}
                     {homeWatchRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerWatch')}</Text>
+                        <View style={styles.quoteLayerRule} accessibilityRole="header">
+                          <View style={styles.quoteLayerRuleLine} />
+                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerWatch')}</Text>
+                          <View style={styles.quoteLayerRuleLine} />
+                        </View>
                         <View style={styles.quoteGrid}>
                           {homeWatchRows.map((row, index) =>
                             renderHomeQuoteTile(row, `watch-${index}`),
@@ -1226,7 +1234,11 @@ export function HomeFocusContent({
                     ) : null}
                     {homeAnchorCoinRows.length > 0 ? (
                       <View style={styles.quoteLayer}>
-                        <Text style={styles.quoteLayerKicker}>{t('homeQuotesLayerCoin')}</Text>
+                        <View style={styles.quoteLayerRule} accessibilityRole="header">
+                          <View style={styles.quoteLayerRuleLine} />
+                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerCoin')}</Text>
+                          <View style={styles.quoteLayerRuleLine} />
+                        </View>
                         <View style={styles.quoteGrid}>
                           {homeAnchorCoinRows.map((row, index) =>
                             renderHomeQuoteTile(row, `anchor-${index}`, { coin: true }),
@@ -1350,7 +1362,18 @@ function makeStyles(
     quoteLayer: {
       gap: COMFORT_GAP_SM,
     },
-    quoteLayerKicker: {
+    quoteLayerRule: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    quoteLayerRuleLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
+    },
+    quoteLayerRuleLabel: {
+      flexShrink: 0,
       fontSize: sf(12),
       lineHeight: sf(16),
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,

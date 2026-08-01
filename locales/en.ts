@@ -108,7 +108,7 @@ export const en = {
   homeIndexKospi: 'KOSPI',
   homeIndexNikkei: 'Nikkei',
   homeQuotesLayerIndices: 'Indexes',
-  homeQuotesLayerWatch: 'Watch',
+  homeQuotesLayerWatch: 'Stocks',
   homeQuotesLayerCoin: 'Coin',
   homeTileNewsAll: 'All',
   homeTileNewsGlobal: 'World',

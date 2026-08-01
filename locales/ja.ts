@@ -108,7 +108,7 @@ export const ja = {
   homeIndexKospi: 'KOSPI',
   homeIndexNikkei: '日経',
   homeQuotesLayerIndices: '指数',
-  homeQuotesLayerWatch: 'ウォッチ',
+  homeQuotesLayerWatch: '銘柄',
   homeQuotesLayerCoin: 'コイン',
   homeTileNewsAll: 'すべて',
   homeTileNewsGlobal: '海外',

@@ -107,7 +107,7 @@ export const ko = {
   homeIndexKospi: '코스피',
   homeIndexNikkei: '니케이',
   homeQuotesLayerIndices: '지수',
-  homeQuotesLayerWatch: '관심',
+  homeQuotesLayerWatch: '종목',
   homeQuotesLayerCoin: '코인',
   homeTileNewsAll: '전체',
   homeTileNewsGlobal: '글로벌',

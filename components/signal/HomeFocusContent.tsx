@@ -960,7 +960,7 @@ export function HomeFocusContent({
     [openHomeQuote, quoteChange.colors.down, quoteChange.colors.up, styles, t],
   );
 
-  /** `- 지수 ------------------- 금 종가 -` — 좌측 레이어명 · 우측 as-of */
+  /** `지수 ------------------- 종가` — 레이어명 선두 · 앞쪽 캡 라인 없음 · 우측 as-of */
   const renderQuoteLayerRule = useCallback(
     (title: string, asOf: string | null) => {
       const when = asOf?.trim() || '';
@@ -969,7 +969,6 @@ export function HomeFocusContent({
           style={styles.quoteLayerRule}
           accessibilityRole="header"
           accessibilityLabel={when ? `${title}, ${when}` : title}>
-          <View style={styles.quoteLayerRuleCap} />
           <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
             {title}
           </Text>
@@ -1510,12 +1509,7 @@ function makeStyles(
       alignItems: 'center',
       gap: 8,
     },
-    /** `- 지수 ------------------- 금 종가 -` */
-    quoteLayerRuleCap: {
-      width: 12,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.border,
-    },
+    /** `지수 ------------------- 종가` — 타이틀 선두, 앞쪽 캡 라인 없음 */
     quoteLayerRuleLine: {
       flex: 1,
       minWidth: 16,

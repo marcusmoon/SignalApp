@@ -100,7 +100,12 @@ import {
   quoteLookupKeys,
   type QuoteRow,
 } from '@/domain/quotes/rows';
-import { isCoinQuote, resolveWatchlistHomeAsOf } from '@/domain/quotes/watchlistHomeAsOf';
+import {
+  isCoinQuote,
+  resolveWatchlistHomeAsOf,
+  type WatchlistHomeAsOfRow,
+} from '@/domain/quotes/watchlistHomeAsOf';
+import type { AppLocale, MessageId } from '@/locales/messages';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
@@ -133,7 +138,6 @@ import type {
   SignalApiNewsDigestItem,
   SignalApiTodayBriefing,
 } from '@/integrations/signal-api/types';
-import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import {
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
@@ -172,6 +176,38 @@ const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
 const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
+
+/** 홈 시세 레이어 as-of 문구 (헤더 칩이 아니라 `지수 (금 종가)` 라인용). */
+function formatHomeQuotesLayerAsOf(
+  rows: readonly WatchlistHomeAsOfRow[],
+  locale: AppLocale,
+  t: (id: MessageId, vars?: Record<string, string | number>) => string,
+): string | null {
+  const resolved = resolveWatchlistHomeAsOf(rows);
+  if (!resolved) return null;
+  if (resolved.mode === 'relative') {
+    const label = formatFeedItemTimeLabel(resolved.iso, locale);
+    return label && label !== '—' ? label : null;
+  }
+  if (resolved.mode === 'today_close') return t('quotesAsOfTodayClose');
+  const asOfDate = new Date(`${resolved.ymd}T12:00:00`);
+  const now = new Date();
+  const ageDays = Math.floor(
+    Math.abs(now.getTime() - asOfDate.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  const when =
+    ageDays <= 6
+      ? formatLocalYmdLabel(resolved.ymd, locale, { weekday: 'short' })
+      : formatLocalYmdLabel(resolved.ymd, locale, { month: 'short', day: 'numeric' });
+  return t('quotesAsOfNamedClose', { when });
+}
+
+function homeQuotesLayerRuleLabel(layer: string, asOf: string | null): string {
+  const title = layer.trim();
+  if (!title) return asOf?.trim() || '';
+  const when = asOf?.trim();
+  return when ? `${title} (${when})` : title;
+}
 
 type HomeFocusContentProps = {
   selectedYmd: string;
@@ -488,30 +524,6 @@ export function HomeFocusContent({
     return label && label !== '—' ? label : null;
   }, [etfInsight, locale]);
 
-  /**
-   * 관심 종목 as-of: 주식은 주말·마감 후 종가 라벨, 코인만이면 상대시간.
-   * 하단 BTC·ETH 앵커는 메타에 넣지 않는다 (주말 종가 라벨과 충돌 방지).
-   */
-  const watchlistSectionMeta = useMemo(() => {
-    const resolved = resolveWatchlistHomeAsOf(quotes.slice(0, watchlistDisplayCount));
-    if (!resolved) return null;
-    if (resolved.mode === 'relative') {
-      const label = formatFeedItemTimeLabel(resolved.iso, locale);
-      return label && label !== '—' ? label : null;
-    }
-    if (resolved.mode === 'today_close') return t('quotesAsOfTodayClose');
-    const asOfDate = new Date(`${resolved.ymd}T12:00:00`);
-    const now = new Date();
-    const ageDays = Math.floor(
-      Math.abs(now.getTime() - asOfDate.getTime()) / (24 * 60 * 60 * 1000),
-    );
-    const when =
-      ageDays <= 6
-        ? formatLocalYmdLabel(resolved.ymd, locale, { weekday: 'short' })
-        : formatLocalYmdLabel(resolved.ymd, locale, { month: 'short', day: 'numeric' });
-    return t('quotesAsOfNamedClose', { when });
-  }, [locale, quotes, t, watchlistDisplayCount]);
-
   const homeWatchRows = useMemo(
     () => quotes.slice(0, watchlistDisplayCount),
     [quotes, watchlistDisplayCount],
@@ -525,6 +537,20 @@ export function HomeFocusContent({
         homeWatchRows.map((row) => row.symbol),
       ).slice(0, homeAnchorCoinCount(useTwoPane)),
     [anchorCoins, homeWatchRows, useTwoPane],
+  );
+
+  /** 레이어 라인 as-of — 지수/종목은 종가 라벨, 코인은 상대시간. */
+  const indexLayerAsOf = useMemo(
+    () => formatHomeQuotesLayerAsOf(indexQuotes, locale, t),
+    [indexQuotes, locale, t],
+  );
+  const watchLayerAsOf = useMemo(
+    () => formatHomeQuotesLayerAsOf(homeWatchRows, locale, t),
+    [homeWatchRows, locale, t],
+  );
+  const coinLayerAsOf = useMemo(
+    () => formatHomeQuotesLayerAsOf(homeAnchorCoinRows, locale, t),
+    [homeAnchorCoinRows, locale, t],
   );
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
@@ -1196,7 +1222,7 @@ export function HomeFocusContent({
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeFocusWatchTitle')} meta={watchlistSectionMeta} />
+              <HomeSectionHeader title={t('homeFocusWatchTitle')} />
               <View style={styles.quoteStack}>
                 {indexQuotes.length === 0 &&
                 homeWatchRows.length === 0 &&
@@ -1208,7 +1234,9 @@ export function HomeFocusContent({
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
                           <View style={styles.quoteLayerRuleLine} />
-                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerIndices')}</Text>
+                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
+                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerIndices'), indexLayerAsOf)}
+                          </Text>
                           <View style={styles.quoteLayerRuleLine} />
                         </View>
                         <View style={styles.quoteGrid}>
@@ -1222,7 +1250,9 @@ export function HomeFocusContent({
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
                           <View style={styles.quoteLayerRuleLine} />
-                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerWatch')}</Text>
+                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
+                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerWatch'), watchLayerAsOf)}
+                          </Text>
                           <View style={styles.quoteLayerRuleLine} />
                         </View>
                         <View style={styles.quoteGrid}>
@@ -1236,7 +1266,9 @@ export function HomeFocusContent({
                       <View style={styles.quoteLayer}>
                         <View style={styles.quoteLayerRule} accessibilityRole="header">
                           <View style={styles.quoteLayerRuleLine} />
-                          <Text style={styles.quoteLayerRuleLabel}>{t('homeQuotesLayerCoin')}</Text>
+                          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
+                            {homeQuotesLayerRuleLabel(t('homeQuotesLayerCoin'), coinLayerAsOf)}
+                          </Text>
                           <View style={styles.quoteLayerRuleLine} />
                         </View>
                         <View style={styles.quoteGrid}>
@@ -1373,11 +1405,13 @@ function makeStyles(
       backgroundColor: theme.border,
     },
     quoteLayerRuleLabel: {
-      flexShrink: 0,
+      flexShrink: 1,
+      maxWidth: '72%',
       fontSize: sf(12),
       lineHeight: sf(16),
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
+      textAlign: 'center',
     },
     quoteGrid: {
       flexDirection: 'row',

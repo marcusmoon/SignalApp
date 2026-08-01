@@ -189,7 +189,7 @@ const BRIEFING_LIMIT = 30;
 const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
-/** 홈 시세 레이어 as-of 문구 (헤더 칩이 아니라 `지수 (금 종가)` 라인용). */
+/** 홈 시세 레이어 as-of — 신선하면 상대시간, 아니면 단순 `종가`/`Close`. */
 function formatHomeQuotesLayerAsOf(
   rows: readonly WatchlistHomeAsOfRow[],
   locale: AppLocale,
@@ -201,17 +201,7 @@ function formatHomeQuotesLayerAsOf(
     const label = formatFeedItemTimeLabel(resolved.iso, locale);
     return label && label !== '—' ? label : null;
   }
-  if (resolved.mode === 'today_close') return t('quotesAsOfTodayClose');
-  const asOfDate = new Date(`${resolved.ymd}T12:00:00`);
-  const now = new Date();
-  const ageDays = Math.floor(
-    Math.abs(now.getTime() - asOfDate.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  const when =
-    ageDays <= 6
-      ? formatLocalYmdLabel(resolved.ymd, locale, { weekday: 'short' })
-      : formatLocalYmdLabel(resolved.ymd, locale, { month: 'short', day: 'numeric' });
-  return t('quotesAsOfNamedClose', { when });
+  return t('quotesAsOfClose');
 }
 
 type HomeFocusContentProps = {

@@ -193,7 +193,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
   - **메인 진입**: 더보기·사이드바·홈 숏컷 짧은 라벨 **섹터** (`moreHubEtfShort`). 홈 섹션·상세 헤더는 **섹터 흐름** (`homeEtfInsightTitle`) → `/etf-insights`. API 키는 `etf-insights` 유지
-  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 카드는 **짧은 설명**(summary, 없으면 rotation `A → B`) 아래 히트맵. 카드 탭 → `/etf-insight` 상세
+  - **홈**: 고정 섹션·빈 상태 금지. 선택일 기준 최신건이 **7일 이내**일 때만 (`shouldShowEtfBriefingOnHome`). 카드는 **타이틀**(없으면 summary · rotation `A → B`) 아래 히트맵. 카드 탭 → `/etf-insight` 상세
   - 발행 알림: ingest 푸시·알림함 (일상 발견 경로)
   - ingest 계약: [ETF-INSIGHT-AUTOMATION.md](./ETF-INSIGHT-AUTOMATION.md)
 - **장중 브리핑 ↔ 섹터 흐름 보완 모델** (같은 시각 언어, 다른 레이어):

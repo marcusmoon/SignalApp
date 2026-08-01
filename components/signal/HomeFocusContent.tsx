@@ -1089,7 +1089,7 @@ export function HomeFocusContent({
             pressed && styles.pressed,
           ]}>
           {leadText ? (
-            <ChangeTintedText style={styles.signalText} numberOfLines={2}>
+            <ChangeTintedText style={styles.issueGroupTitle} numberOfLines={2}>
               {leadText}
             </ChangeTintedText>
           ) : null}

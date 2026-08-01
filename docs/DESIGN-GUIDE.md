@@ -168,7 +168,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 뉴스 이슈 | **뉴스 흐름** | news digests |
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 → 환율(달러·100엔 · 와이드만 위안) |
-  - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
+  - 홈 섹션 제목 앞: `HomeSectionLeadIcon` (트렌드 `trending-up` · 히어로 `reader` · 뉴스 `newspaper` · 일정 `calendar` · 바로가기 `apps` · 시세 `stats-chart` · 섹터 `grid`). 홈에서는 `AiBadge` 없음. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
   - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터 흐름

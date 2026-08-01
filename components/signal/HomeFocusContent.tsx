@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -23,10 +22,10 @@ import {
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
-import { AiBadge } from '@/components/signal/AiBadge';
 import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { HomeSectionLeadIcon } from '@/components/signal/HomeSectionLeadIcon';
 import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
 import {
   digestSourceIconEntries,
@@ -1298,14 +1297,7 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('homeKeywordsTitle')}
-                badge={
-                  <Ionicons
-                    name="trending-up-outline"
-                    size={16}
-                    color={theme.green}
-                    accessibilityElementsHidden
-                  />
-                }
+                badge={<HomeSectionLeadIcon name="trending-up-outline" />}
                 meta={homeKeywordsAsOfLabel}
               />
               <HomeKeywordChipStrip
@@ -1320,7 +1312,7 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={heroSectionTitle}
-                badge={<AiBadge />}
+                badge={<HomeSectionLeadIcon name="reader-outline" />}
                 trailingBadge={heroSessionTag}
               />
               {renderHeroCard()}
@@ -1330,7 +1322,7 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('newsIssuesTitle')}
-              badge={<AiBadge />}
+              badge={<HomeSectionLeadIcon name="newspaper-outline" />}
               meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
             />
             {homeIssues.length > 0 ? (
@@ -1344,21 +1336,30 @@ export function HomeFocusContent({
 
           {homeCalendarChips.length > 0 ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('ipadHomeCalendarTitle')} />
+              <HomeSectionHeader
+                title={t('ipadHomeCalendarTitle')}
+                badge={<HomeSectionLeadIcon name="calendar-outline" />}
+              />
               {renderCalendarChips()}
             </View>
           ) : null}
 
           {homeShortcuts.length > 0 ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeShortcutsTitle')} />
+              <HomeSectionHeader
+                title={t('homeShortcutsTitle')}
+                badge={<HomeSectionLeadIcon name="apps-outline" />}
+              />
               <HomeShortcutsStrip shortcuts={homeShortcuts} selectedYmd={selectedYmd} />
             </View>
           ) : null}
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
-              <HomeSectionHeader title={t('homeFocusWatchTitle')} />
+              <HomeSectionHeader
+                title={t('homeFocusWatchTitle')}
+                badge={<HomeSectionLeadIcon name="stats-chart-outline" />}
+              />
               <View style={styles.quoteStack}>
                 {indexQuotes.length === 0 &&
                 homeWatchRows.length === 0 &&
@@ -1417,7 +1418,7 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('homeEtfInsightTitle')}
-                badge={<AiBadge />}
+                badge={<HomeSectionLeadIcon name="grid-outline" />}
                 meta={etfSectionMeta}
               />
               {renderEtfSectionBody()}

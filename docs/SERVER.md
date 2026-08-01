@@ -154,7 +154,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
   - US: `market_quotes_popular` / `market_quotes_watchlist` / `market_quotes_mcap*` (Finnhub)
   - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve). runner는 `marketLists`(·기존 `marketQuotes`)를 로드한 뒤 조회한다.
   - 홈 지수: `market_quotes_indices` (Yahoo, `home_indices` caret 심볼 `^GSPC`·`^NDX`·`^DJI`·`^SOX`·`^KS11`·`^N225`)
-  - 홈 시세·환율 레이어: `market_quotes_fx` (Yahoo, `home_fx` FX 심볼 `USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`; 앱은 compact 2·wide 3)
+  - 홈 시세·환율 레이어: `market_quotes_fx` (Yahoo, `home_fx` FX 심볼 `USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`; 앱은 compact 2·wide 3). `quoteTime`은 Yahoo `regularMarketTime`
   - 코인: `market_coins_top` (CoinGecko) — 로고는 아래 「종목·코인 로고」
   - 일봉: `market_price_series_daily` (Yahoo). `listKeys`에 `korea_watchlist` 포함. KRX는 시세 Job이 저장한 `.KS`/`.KQ`를 재사용하고, 없으면 `.KS`→`.KQ` 순으로 조회한다. `/v1/stock-candles`는 DB miss 시 국내 6자리만 Yahoo live 폴백(Finnhub 아님).
 - `/v1/market-quotes`는 **DB 조회만** 한다. `refresh=1` provider 호출은 제거했다. 관심 추가도 시세 live lookup 없이 심볼 포맷만 검증한다. 국내 가격은 Job이 `market_quotes`에 채운 뒤 앱이 읽는다.

@@ -585,22 +585,11 @@ export function HomeFocusContent({
     return fxQuotes.filter((row) => allow.has(row.symbol.trim().toUpperCase()));
   }, [fxQuotes, useTwoPane]);
 
-  /** FX layer as-of — relative time (not equity close labels). */
-  const fxLayerAsOf = useMemo(() => {
-    let bestIso: string | null = null;
-    let bestMs = Number.NEGATIVE_INFINITY;
-    for (const row of homeFxRows) {
-      const iso = String(row.quote?.quoteTime || row.quote?.fetchedAt || '').trim();
-      if (!iso) continue;
-      const ms = Date.parse(iso);
-      if (!Number.isFinite(ms) || ms <= bestMs) continue;
-      bestMs = ms;
-      bestIso = iso;
-    }
-    if (!bestIso) return null;
-    const label = formatFeedItemTimeLabel(bestIso, locale);
-    return label && label !== '—' ? label : null;
-  }, [homeFxRows, locale]);
+  /** FX as-of — market print time; closed/stale → 종가 라벨 (지수와 동일). */
+  const fxLayerAsOf = useMemo(
+    () => formatHomeQuotesLayerAsOf(homeFxRows, locale, t),
+    [homeFxRows, locale, t],
+  );
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],

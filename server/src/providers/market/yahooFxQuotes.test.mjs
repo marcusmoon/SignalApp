@@ -28,6 +28,7 @@ describe('fetchYahooFxMarketQuotes', () => {
             {
               meta: {
                 regularMarketPrice: isUsd ? 1380.25 : null,
+                regularMarketTime: isUsd ? 1785555035 : null,
                 shortName: isUsd ? 'USD/KRW' : 'Bad',
                 currency: 'KRW',
               },
@@ -56,6 +57,8 @@ describe('fetchYahooFxMarketQuotes', () => {
       assert.equal(rows[0].provider, 'yahoo');
       assert.equal(rows[0].currentPrice, 1380.25);
       assert.ok(typeof rows[0].changePercent === 'number');
+      assert.equal(rows[0].quoteTime, '2026-08-01T03:30:35.000Z');
+      assert.notEqual(rows[0].quoteTime, rows[0].fetchedAt);
     } finally {
       globalThis.fetch = originalFetch;
     }

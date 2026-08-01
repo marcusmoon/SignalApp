@@ -76,6 +76,13 @@ export async function fetchYahooQuote(yahooSymbol) {
 
   const name = String(meta.shortName || meta.longName || '').trim() || null;
 
+  // Yahoo last trade / print time (seconds). Prefer over Job fetch clock for as-of.
+  const marketTimeSec = finiteNumber(meta.regularMarketTime);
+  const marketTime =
+    marketTimeSec != null && marketTimeSec > 0
+      ? new Date(marketTimeSec * 1000).toISOString()
+      : null;
+
   return {
     price,
     changePercent: changePercent != null ? parseFloat(changePercent.toFixed(2)) : null,
@@ -84,6 +91,7 @@ export async function fetchYahooQuote(yahooSymbol) {
     name,
     volume,
     marketCap: finiteNumber(meta.marketCap),
+    marketTime,
   };
 }
 

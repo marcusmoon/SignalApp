@@ -22,6 +22,9 @@ function normalizeFxQuote(yahooSymbol, quote, segment) {
   const previousClose = finiteNumber(quote?.previousClose);
   let change = null;
   if (price != null && previousClose != null) change = price - previousClose;
+  const fetchedAt = new Date().toISOString();
+  // Prefer Yahoo regularMarketTime — fetch clock misleads when the FX session is closed.
+  const quoteTime = String(quote?.marketTime || '').trim() || fetchedAt;
   return {
     id: `market-quote-${segment}-${yahooSymbol}`,
     provider: 'yahoo',
@@ -39,14 +42,15 @@ function normalizeFxQuote(yahooSymbol, quote, segment) {
     previousClose,
     volume: finiteNumber(quote?.volume),
     marketCapitalization: null,
-    quoteTime: new Date().toISOString(),
-    fetchedAt: new Date().toISOString(),
+    quoteTime,
+    fetchedAt,
     yahooSymbol,
     regularSession: { yahooSymbol },
     rawPayload: {
       provider: 'yahoo',
       yahooSymbol,
       currency: quote?.currency || null,
+      marketTime: quote?.marketTime || null,
     },
   };
 }

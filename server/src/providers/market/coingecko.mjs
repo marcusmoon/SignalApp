@@ -1,5 +1,11 @@
 import { getProviderSetting } from '../../providerSettings.mjs';
 
+function finiteNumber(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function normalizeCoin(raw) {
   const symbol = String(raw.symbol || '').trim().toUpperCase();
   const imageUrl = String(raw.image || '').trim() || null;
@@ -10,10 +16,10 @@ function normalizeCoin(raw) {
     symbol,
     name: String(raw.name || symbol).trim(),
     imageUrl,
-    currentPrice: typeof raw.current_price === 'number' ? raw.current_price : null,
-    marketCap: typeof raw.market_cap === 'number' ? raw.market_cap : null,
-    change24h: typeof raw.price_change_24h === 'number' ? raw.price_change_24h : null,
-    changePercent24h: typeof raw.price_change_percentage_24h === 'number' ? raw.price_change_percentage_24h : null,
+    currentPrice: finiteNumber(raw.current_price),
+    marketCap: finiteNumber(raw.market_cap),
+    change24h: finiteNumber(raw.price_change_24h),
+    changePercent24h: finiteNumber(raw.price_change_percentage_24h),
     fetchedAt: new Date().toISOString(),
     rawPayload: raw,
   };

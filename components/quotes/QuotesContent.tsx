@@ -554,7 +554,7 @@ export function QuotesContent({
               </View>
               {r.quote ? (
                 <Text
-                  style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
+                  style={[styles.chg, quoteChange.styleForQuote(r.quote)]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                   {isKoreaStockQuote(r)
@@ -617,7 +617,7 @@ export function QuotesContent({
       onRemoveWatch,
       openSymbolDetail,
       openFinanceQuote,
-      quoteChange.isPositive,
+      quoteChange.styleForQuote,
       rows.length,
       segment,
       styles,

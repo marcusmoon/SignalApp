@@ -75,8 +75,9 @@ export function formatKrwChange(n: number): string {
 }
 
 export function formatQuoteDpPct(dp: unknown): string {
-  if (!Number.isFinite(dp)) return '—';
-  const p = dp as number;
+  if (dp == null || dp === '') return '—';
+  const p = Number(dp);
+  if (!Number.isFinite(p)) return '—';
   const sign = p >= 0 ? '+' : '-';
   const body = Math.abs(p).toLocaleString('en-US', {
     minimumFractionDigits: 0,
@@ -85,19 +86,20 @@ export function formatQuoteDpPct(dp: unknown): string {
   return `${sign}${body}%`;
 }
 
+function finiteQuoteNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function isKoreaStockQuote(row: QuoteRow): boolean {
   return Boolean(row.quote?.krxSymbol) || /^\d{6}$/.test(String(row.symbol || '').trim());
 }
 
 export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
-  const price = item.currentPrice;
-  const c = typeof price === 'number' && Number.isFinite(price) ? price : Number.NaN;
-  const d =
-    typeof item.change24h === 'number' && Number.isFinite(item.change24h) ? item.change24h : null;
-  const dp =
-    typeof item.changePercent24h === 'number' && Number.isFinite(item.changePercent24h)
-      ? item.changePercent24h
-      : null;
+  const c = finiteQuoteNumber(item.currentPrice) ?? Number.NaN;
+  const d = finiteQuoteNumber(item.change24h);
+  const dp = finiteQuoteNumber(item.changePercent24h);
   const pc = Number.isFinite(c) && d != null ? c - d : Number.NaN;
   return {
     id: item.id,
@@ -144,8 +146,7 @@ export function quoteLookupKeys(item: SignalApiMarketQuote, row: QuoteRow): stri
 
 export function mapSignalCoinToRow(item: SignalApiCoinMarket): QuoteRow {
   const imageUrl = item.imageUrl ?? null;
-  const price = item.currentPrice;
-  if (typeof price !== 'number' || !Number.isFinite(price)) {
+  if (finiteQuoteNumber(item.currentPrice) == null) {
     return { symbol: item.symbol || '—', name: item.name, quote: null, imageUrl };
   }
   return {

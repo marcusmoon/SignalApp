@@ -41,21 +41,23 @@ export function getQuoteChangeColors(
 }
 
 function finiteChangeNumber(value: unknown): number | null {
-  // Number(null) === 0 — treat null/'' as missing so coin % can drive color.
+  // Number(null) === 0 — treat null/'' as missing.
   if (value == null || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Up/down color from the value users read first: changePercent, then absolute change.
+ * (Coin rows often show `-1.2%` while change24h is null/stale/zero.)
+ */
 export function isQuoteChangePositive(q: {
   change?: unknown;
   changePercent?: unknown;
 }): boolean {
-  const d = finiteChangeNumber(q.change);
   const dp = finiteChangeNumber(q.changePercent);
-  // Prefer non-zero absolute change; if change is 0/missing, use percent
-  // (CoinGecko sometimes omits change24h while changePercent24h is set).
-  if (d != null && !(d === 0 && dp != null && dp !== 0)) return d >= 0;
   if (dp != null) return dp >= 0;
+  const d = finiteChangeNumber(q.change);
+  if (d != null) return d >= 0;
   return true;
 }

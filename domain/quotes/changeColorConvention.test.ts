@@ -30,15 +30,17 @@ describe('getQuoteChangeColors', () => {
 });
 
 describe('isQuoteChangePositive', () => {
-  it('prefers change then changePercent; defaults true', () => {
-    assert.equal(isQuoteChangePositive({ change: -1, changePercent: 5 }), false);
-    assert.equal(isQuoteChangePositive({ changePercent: -0.1 }), false);
+  it('prefers changePercent over absolute change; defaults true', () => {
+    assert.equal(isQuoteChangePositive({ change: -1, changePercent: 5 }), true);
+    assert.equal(isQuoteChangePositive({ change: 10, changePercent: -0.1 }), false);
+    assert.equal(isQuoteChangePositive({ change: -1 }), false);
     assert.equal(isQuoteChangePositive({}), true);
   });
 
-  it('null/zero change does not mask negative percent (coin regression)', () => {
+  it('negative percent paints down even when change is null/zero (coin)', () => {
     assert.equal(isQuoteChangePositive({ change: null, changePercent: -1.2 }), false);
     assert.equal(isQuoteChangePositive({ change: 0, changePercent: -1.2 }), false);
     assert.equal(isQuoteChangePositive({ change: 0, changePercent: 1.2 }), true);
+    assert.equal(isQuoteChangePositive({ changePercent: '-2.5' }), false);
   });
 });

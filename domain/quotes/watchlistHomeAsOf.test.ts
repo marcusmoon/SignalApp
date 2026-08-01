@@ -109,4 +109,24 @@ describe('resolveWatchlistHomeAsOf', () => {
       null,
     );
   });
+
+  it('FX same-day but hours stale → today_close (not “N시간 전”)', () => {
+    const now = atLocal('2026-07-24', 18, 0); // Fri evening
+    const print = atLocal('2026-07-24', 9, 0).toISOString(); // ~9h earlier
+    const resolved = resolveWatchlistHomeAsOf(
+      [{ quote: { segment: 'fx', quoteTime: print, fetchedAt: now.toISOString() } }],
+      now,
+    );
+    assert.deepEqual(resolved, { mode: 'today_close' });
+  });
+
+  it('FX weekend → prior_close', () => {
+    const now = atLocal('2026-07-25', 14); // Sat
+    const fridayPrint = atLocal('2026-07-24', 12, 0).toISOString();
+    const resolved = resolveWatchlistHomeAsOf(
+      [{ quote: { segment: 'fx', quoteTime: fridayPrint, fetchedAt: now.toISOString() } }],
+      now,
+    );
+    assert.deepEqual(resolved, { mode: 'prior_close', ymd: '2026-07-24' });
+  });
 });

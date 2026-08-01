@@ -21,6 +21,12 @@ export type WatchlistHomeAsOf =
 /** 같은 날·최근이면 상대시간, 이후는 종가 라벨 */
 export const WATCHLIST_ASOF_FRESH_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * FX prints often sit hours old while Yahoo already shows Closed.
+ * Prefer 종가 labels sooner than equities (avoid “9시간 전”).
+ */
+export const FX_ASOF_FRESH_MS = 60 * 60 * 1000;
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -58,6 +64,12 @@ export function isCoinQuote(quote: WatchlistHomeAsOfQuote | null | undefined): b
   return String(quote?.segment || '')
     .trim()
     .toLowerCase() === 'coin';
+}
+
+export function isFxQuote(quote: WatchlistHomeAsOfQuote | null | undefined): boolean {
+  return String(quote?.segment || '')
+    .trim()
+    .toLowerCase() === 'fx';
 }
 
 /** 주식이 있으면 주식만, 없으면 코인 — 섹션 as-of 후보 */
@@ -100,7 +112,10 @@ export function resolveWatchlistHomeAsOf(
     return { mode: 'relative', iso };
   }
 
-  // 주식: 주말이면 종가 라벨 (상대시간 = 파이프라인 지연처럼 오해됨)
+  const poolIsFxOnly = pool.length > 0 && pool.every(isFxQuote);
+  const effectiveFreshMs = poolIsFxOnly ? Math.min(freshMs, FX_ASOF_FRESH_MS) : freshMs;
+
+  // 주식·FX: 주말이면 종가 라벨 (상대시간 = 파이프라인 지연처럼 오해됨)
   if (isLocalWeekend(now)) {
     return { mode: 'prior_close', ymd: previousWeekdayYmd(asOf) };
   }
@@ -111,7 +126,7 @@ export function resolveWatchlistHomeAsOf(
 
   if (asOfYmd === nowYmd) {
     const ageMs = now.getTime() - asOf.getTime();
-    if (ageMs >= 0 && ageMs <= freshMs) {
+    if (ageMs >= 0 && ageMs <= effectiveFreshMs) {
       return { mode: 'relative', iso };
     }
     return { mode: 'today_close' };

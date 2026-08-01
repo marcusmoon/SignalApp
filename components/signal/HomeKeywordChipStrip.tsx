@@ -23,7 +23,7 @@ type Props = {
 
 /**
  * Home keyword strip — one card, one wrap row. No featured tiles / why /
- * kind icons; tag lead + chips only.
+ * kind icons; trend lead + chips only.
  */
 export function HomeKeywordChipStrip({
   items,
@@ -46,7 +46,7 @@ export function HomeKeywordChipStrip({
       accessibilityLabel={accessibilityLabel}>
       <View style={styles.row}>
         <View style={styles.leadIcon} accessibilityElementsHidden>
-          <Ionicons name="pricetags-outline" size={14} color={theme.green} />
+          <Ionicons name="trending-up-outline" size={14} color={theme.green} />
         </View>
         {items.map((chip) => {
           const isSymbol = homeKeywordIsSymbolChip(chip);

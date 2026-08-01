@@ -67,6 +67,7 @@ import {
   aggregateHomeKeywords,
   HOME_KEYWORD_LIMIT,
   homeKeywordSymbolsMissingNames,
+  resolveHomeKeywordsAsOfIso,
   type HomeKeywordChip,
 } from '@/domain/home/aggregateHomeKeywords';
 import {
@@ -431,6 +432,27 @@ export function HomeFocusContent({
       }),
     [briefings, homeIssues, selectedYmd, todayBriefing],
   );
+
+  /** Newest contributing briefing/digest timestamp — approximate scan freshness. */
+  const homeKeywordsAsOfLabel = useMemo(() => {
+    const dayBriefings = briefingsForYmd(briefings, selectedYmd);
+    const iso = resolveHomeKeywordsAsOfIso({
+      todayKeywords: todayBriefing?.keywords,
+      todayGeneratedAt: todayBriefing?.generatedAt || todayBriefing?.publishedAt || null,
+      marketRows: dayBriefings.map((b) => ({
+        keywords: b.keywords,
+        at: b.publishedAt || b.updatedAt || b.createdAt || null,
+      })),
+      digestRows: homeIssues.map((row) => ({
+        keywords: row.item.keywords,
+        topics: row.item.topics,
+        at: row.item.generatedAt || row.item.sourceRefs[0]?.publishedAt || null,
+      })),
+    });
+    if (!iso) return null;
+    const label = formatFeedItemTimeLabel(iso, locale);
+    return label && label !== '—' ? label : null;
+  }, [briefings, homeIssues, locale, selectedYmd, todayBriefing]);
 
   const homeKeywordSymbolNames = useMemo(() => {
     const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
@@ -1205,6 +1227,7 @@ export function HomeFocusContent({
               symbolNames={homeKeywordSymbolNames}
               onPressItem={openHomeKeyword}
               accessibilityLabel={t('homeKeywordsTitle')}
+              asOfLabel={homeKeywordsAsOfLabel}
             />
           ) : null}
 

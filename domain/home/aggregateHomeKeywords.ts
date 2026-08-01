@@ -219,3 +219,56 @@ export function homeKeywordSymbolsMissingNames(chips: HomeKeywordChip[]): string
   }
   return out;
 }
+
+function hasUsableKeywords(value: unknown): boolean {
+  return asKeywordList(value).length > 0;
+}
+
+function pickLatestIso(candidates: Array<string | null | undefined>): string | null {
+  let best: string | null = null;
+  let bestMs = Number.NEGATIVE_INFINITY;
+  for (const raw of candidates) {
+    const iso = String(raw || '').trim();
+    if (!iso) continue;
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) continue;
+    if (ms >= bestMs) {
+      bestMs = ms;
+      best = iso;
+    }
+  }
+  return best;
+}
+
+type KeywordsAsOfInput = {
+  todayKeywords?: unknown;
+  todayGeneratedAt?: string | null;
+  marketRows?: Array<{ keywords?: unknown; at?: string | null }>;
+  digestRows?: Array<{
+    keywords?: unknown;
+    topics?: unknown;
+    at?: string | null;
+  }>;
+};
+
+/**
+ * Newest `generatedAt`/`publishedAt` among sources that actually contributed
+ * keywords (or digest topics fallback). Not a dedicated keywords timestamp.
+ */
+export function resolveHomeKeywordsAsOfIso(input: KeywordsAsOfInput): string | null {
+  const candidates: Array<string | null | undefined> = [];
+  if (hasUsableKeywords(input.todayKeywords)) {
+    candidates.push(input.todayGeneratedAt);
+  }
+  for (const row of input.marketRows ?? []) {
+    if (!hasUsableKeywords(row.keywords)) continue;
+    candidates.push(row.at);
+  }
+  for (const row of input.digestRows ?? []) {
+    const fromKeywords = asKeywordList(row.keywords);
+    const list = fromKeywords.length > 0 ? fromKeywords : keywordsFromTopics(row.topics);
+    if (list.length === 0) continue;
+    candidates.push(row.at);
+  }
+  return pickLatestIso(candidates);
+}

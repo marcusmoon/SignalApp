@@ -40,7 +40,7 @@
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
 | 칩 라벨 | `FEED_CHIP_PX` (10) | 홈 키워드·뉴스/다이제스트 topic 칩 |
-| 홈 키워드 | 카드 + 트렌드 아이콘 · wrap 칩 (`FEED_CHIP_PX`) | 홈 최상단. 피처드/헤더 없음 |
+| 홈 키워드 | 카드 밖 트렌드 아이콘 · wrap 칩 · as-of (`FEED_CHIP_PX`) | 홈 최상단. 피처드/헤더 없음 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` + `scaleFont`로 접근성·플랫폼별 스케일을 맞춘다.
@@ -169,11 +169,11 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 |
   - AI 섹션만 `AiBadge`. 홈/리스트 표시명에 영문 혼용 금지
-  - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에 둔다. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
+  - **홈 섹션 우측 메타**: 섹터 흐름 기준일 · 뉴스 흐름 `NEW` → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of·키워드 as-of도 같은 칩. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
   - **오늘**: **키워드**(에이전트 keywords 합산 · 카드 박스, 없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩 → **바로가기** → 시세 → (조건부) 섹터 흐름
   - **과거**: **키워드**(없으면 숨김) → 히어로 1장 → 뉴스 흐름 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 흐름 · 시세 숨김
-  - **키워드 UI**: 홈 **최상단**. 섹션 헤더·피처드 타일 없음. **카드 + 트렌드 아이콘(`trending-up-outline`) + wrap 칩**. 카드 외곽은 `theme.greenBorder`·1px로 살짝 강조. 종목은 로고+회사명. `why`는 a11y만. 없으면 숨김
+  - **키워드 UI**: 홈 **최상단**. 섹션 헤더·피처드 타일 없음. **트렌드 아이콘(`trending-up-outline`)은 카드 밖(좌측)** · 칩만 카드 안 · wrap. 기여 소스(오늘 정리·장중·다이제스트) 최신 `generatedAt`/`publishedAt`이 있으면 카드 위 우측 **as-of 칩**(시세·NEW와 동일 톤). 카드 외곽은 `theme.greenBorder`·1px. 종목은 로고+회사명. `why`는 a11y만. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

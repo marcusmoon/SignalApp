@@ -5,6 +5,7 @@ import {
   aggregateHomeKeywords,
   homeKeywordSymbolsMissingNames,
   keywordsFromTopics,
+  resolveHomeKeywordsAsOfIso,
 } from './aggregateHomeKeywords.ts';
 
 describe('aggregateHomeKeywords', () => {
@@ -91,6 +92,39 @@ describe('homeKeywordSymbolsMissingNames', () => {
         { label: '000660', kind: 'symbol', weight: 1 },
       ]),
       ['000660'],
+    );
+  });
+});
+
+describe('resolveHomeKeywordsAsOfIso', () => {
+  it('picks newest timestamp among contributing sources only', () => {
+    const iso = resolveHomeKeywordsAsOfIso({
+      todayKeywords: [{ label: 'HBM', kind: 'theme', weight: 1 }],
+      todayGeneratedAt: '2026-07-23T01:00:00.000Z',
+      marketRows: [
+        { keywords: [], at: '2026-07-23T09:00:00.000Z' },
+        {
+          keywords: [{ label: 'AI', kind: 'theme', weight: 1 }],
+          at: '2026-07-23T03:00:00.000Z',
+        },
+      ],
+      digestRows: [
+        {
+          topics: ['금리'],
+          at: '2026-07-23T04:30:00.000Z',
+        },
+      ],
+    });
+    assert.equal(iso, '2026-07-23T04:30:00.000Z');
+  });
+
+  it('returns null when no contributing timestamps', () => {
+    assert.equal(
+      resolveHomeKeywordsAsOfIso({
+        todayKeywords: [{ label: 'HBM', kind: 'theme', weight: 1 }],
+        todayGeneratedAt: null,
+      }),
+      null,
     );
   });
 });

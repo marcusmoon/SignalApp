@@ -1,6 +1,7 @@
 /**
- * 홈 시세 레이어 라인 as-of (`지수 (금 종가)`).
- * 주식·지수는 주말·마감 후 상대시간 대신 종가 라벨, 코인만 있으면 상대시간.
+ * 홈 시세 레이어 as-of (`지수 … [종가]`).
+ * 레이어 Close는 풀의 모든 지수·주식·FX가 종가일 때만.
+ * 타일 Close는 레이어가 Close가 아닐 때, 개별 마감 종목에만.
  */
 
 export type WatchlistHomeAsOfQuote = {
@@ -72,6 +73,12 @@ export function isFxQuote(quote: WatchlistHomeAsOfQuote | null | undefined): boo
     .toLowerCase() === 'fx';
 }
 
+export function isWatchlistAsOfCloseMode(
+  resolved: WatchlistHomeAsOf | null | undefined,
+): boolean {
+  return resolved?.mode === 'today_close' || resolved?.mode === 'prior_close';
+}
+
 /** 주식이 있으면 주식만, 없으면 코인 — 섹션 as-of 후보 */
 export function pickWatchlistAsOfPool(rows: readonly WatchlistHomeAsOfRow[]): WatchlistHomeAsOfQuote[] {
   const quotes = rows.map((row) => row.quote).filter((quote): quote is WatchlistHomeAsOfQuote => Boolean(quote));
@@ -93,29 +100,24 @@ export function newestAsOfIso(quotes: readonly WatchlistHomeAsOfQuote[]): string
   return bestIso;
 }
 
-export function resolveWatchlistHomeAsOf(
-  rows: readonly WatchlistHomeAsOfRow[],
+/** Single quote session label (coin → relative; equity/FX → close or relative). */
+export function resolveWatchlistQuoteAsOf(
+  quote: WatchlistHomeAsOfQuote,
   now: Date = new Date(),
   freshMs: number = WATCHLIST_ASOF_FRESH_MS,
 ): WatchlistHomeAsOf | null {
-  const pool = pickWatchlistAsOfPool(rows);
-  if (pool.length === 0) return null;
-
-  const iso = newestAsOfIso(pool);
+  const iso = quoteAsOfIso(quote);
   if (!iso) return null;
 
   const asOf = new Date(iso);
   if (!Number.isFinite(asOf.getTime())) return null;
 
-  const poolIsCoinOnly = pool.every(isCoinQuote);
-  if (poolIsCoinOnly) {
+  if (isCoinQuote(quote)) {
     return { mode: 'relative', iso };
   }
 
-  const poolIsFxOnly = pool.length > 0 && pool.every(isFxQuote);
-  const effectiveFreshMs = poolIsFxOnly ? Math.min(freshMs, FX_ASOF_FRESH_MS) : freshMs;
+  const effectiveFreshMs = isFxQuote(quote) ? Math.min(freshMs, FX_ASOF_FRESH_MS) : freshMs;
 
-  // 주식·FX: 주말이면 종가 라벨 (상대시간 = 파이프라인 지연처럼 오해됨)
   if (isLocalWeekend(now)) {
     return { mode: 'prior_close', ymd: previousWeekdayYmd(asOf) };
   }
@@ -135,13 +137,44 @@ export function resolveWatchlistHomeAsOf(
   return { mode: 'prior_close', ymd: previousWeekdayYmd(asOf) };
 }
 
-/** Home quote tile — show Close under the name when session print is stale/closed. Coins never. */
+/**
+ * Layer as-of. Equity/FX Close only when every quote in the pool is closed;
+ * otherwise relative time from the newest open (or newest) print.
+ */
+export function resolveWatchlistHomeAsOf(
+  rows: readonly WatchlistHomeAsOfRow[],
+  now: Date = new Date(),
+  freshMs: number = WATCHLIST_ASOF_FRESH_MS,
+): WatchlistHomeAsOf | null {
+  const pool = pickWatchlistAsOfPool(rows);
+  if (pool.length === 0) return null;
+
+  const iso = newestAsOfIso(pool);
+  if (!iso) return null;
+
+  if (pool.every(isCoinQuote)) {
+    return { mode: 'relative', iso };
+  }
+
+  const closed = pool.map((quote) => isWatchlistAsOfCloseMode(resolveWatchlistQuoteAsOf(quote, now, freshMs)));
+  const allClosed = closed.every(Boolean);
+  if (!allClosed) {
+    const openQuotes = pool.filter((_, index) => !closed[index]);
+    const openIso = newestAsOfIso(openQuotes) || iso;
+    return { mode: 'relative', iso: openIso };
+  }
+
+  // All closed — label from newest print (today vs prior).
+  const newest = pool.find((quote) => quoteAsOfIso(quote) === iso) || pool[0];
+  return resolveWatchlistQuoteAsOf(newest, now, freshMs);
+}
+
+/** Home quote tile — closed session print. Coins never. */
 export function isWatchlistQuoteClosed(
   quote: WatchlistHomeAsOfQuote | null | undefined,
   now: Date = new Date(),
   freshMs: number = WATCHLIST_ASOF_FRESH_MS,
 ): boolean {
   if (!quote || isCoinQuote(quote)) return false;
-  const resolved = resolveWatchlistHomeAsOf([{ quote }], now, freshMs);
-  return resolved?.mode === 'today_close' || resolved?.mode === 'prior_close';
+  return isWatchlistAsOfCloseMode(resolveWatchlistQuoteAsOf(quote, now, freshMs));
 }

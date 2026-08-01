@@ -114,6 +114,7 @@ import {
 } from '@/domain/quotes/rows';
 import {
   isCoinQuote,
+  isWatchlistAsOfCloseMode,
   isWatchlistQuoteClosed,
   resolveWatchlistHomeAsOf,
   type WatchlistHomeAsOfRow,
@@ -190,13 +191,16 @@ const BRIEFING_LIMIT = 30;
 const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
-/** 홈 시세 레이어 as-of — 신선하면 상대시간, 아니면 단순 `종가`/`Close`. */
-function formatHomeQuotesLayerAsOf(
-  rows: readonly WatchlistHomeAsOfRow[],
+/** 홈 시세 레이어 as-of — 전부 종가일 때만 `종가`/`Close`, 아니면 상대시간. */
+function resolveHomeQuotesLayerAsOf(rows: readonly WatchlistHomeAsOfRow[]) {
+  return resolveWatchlistHomeAsOf(rows);
+}
+
+function formatHomeQuotesLayerAsOfLabel(
+  resolved: ReturnType<typeof resolveWatchlistHomeAsOf>,
   locale: AppLocale,
   t: (id: MessageId, vars?: Record<string, string | number>) => string,
 ): string | null {
-  const resolved = resolveWatchlistHomeAsOf(rows);
   if (!resolved) return null;
   if (resolved.mode === 'relative') {
     const label = formatFeedItemTimeLabel(resolved.iso, locale);
@@ -557,30 +561,39 @@ export function HomeFocusContent({
     [anchorCoins, homeWatchRows, useTwoPane],
   );
 
-  /** 레이어 라인 as-of — 지수/종목은 종가 라벨, 코인은 상대시간. */
+  /** 레이어 as-of — 전부 종가일 때만 Close; 혼재 시 상대시간 + 타일별 Close. */
+  const indexLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(indexQuotes), [indexQuotes]);
+  const watchLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(homeWatchRows), [homeWatchRows]);
+  const coinLayerResolved = useMemo(
+    () => resolveHomeQuotesLayerAsOf(homeAnchorCoinRows),
+    [homeAnchorCoinRows],
+  );
   const indexLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOf(indexQuotes, locale, t),
-    [indexQuotes, locale, t],
+    () => formatHomeQuotesLayerAsOfLabel(indexLayerResolved, locale, t),
+    [indexLayerResolved, locale, t],
   );
   const watchLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOf(homeWatchRows, locale, t),
-    [homeWatchRows, locale, t],
+    () => formatHomeQuotesLayerAsOfLabel(watchLayerResolved, locale, t),
+    [watchLayerResolved, locale, t],
   );
   const coinLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOf(homeAnchorCoinRows, locale, t),
-    [homeAnchorCoinRows, locale, t],
+    () => formatHomeQuotesLayerAsOfLabel(coinLayerResolved, locale, t),
+    [coinLayerResolved, locale, t],
   );
+  const indexLayerShowsClose = isWatchlistAsOfCloseMode(indexLayerResolved);
+  const watchLayerShowsClose = isWatchlistAsOfCloseMode(watchLayerResolved);
   /** Compact 2 · wide/PC 3 (위안). */
   const homeFxRows = useMemo(() => {
     const allow = new Set(homeFxDefsForLayout(useTwoPane).map((def) => def.symbol.toUpperCase()));
     return fxQuotes.filter((row) => allow.has(row.symbol.trim().toUpperCase()));
   }, [fxQuotes, useTwoPane]);
 
-  /** FX as-of — market print time; closed/stale → 종가 라벨 (지수와 동일). */
+  const fxLayerResolved = useMemo(() => resolveHomeQuotesLayerAsOf(homeFxRows), [homeFxRows]);
   const fxLayerAsOf = useMemo(
-    () => formatHomeQuotesLayerAsOf(homeFxRows, locale, t),
-    [homeFxRows, locale, t],
+    () => formatHomeQuotesLayerAsOfLabel(fxLayerResolved, locale, t),
+    [fxLayerResolved, locale, t],
   );
+  const fxLayerShowsClose = isWatchlistAsOfCloseMode(fxLayerResolved);
 
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, etfInsight, calendarEvents, loading],
@@ -901,7 +914,11 @@ export function HomeFocusContent({
   );
 
   const renderHomeQuoteTile = useCallback(
-    (row: QuoteRow, key: string, opts?: { coin?: boolean; index?: boolean; fx?: boolean }) => {
+    (
+      row: QuoteRow,
+      key: string,
+      opts?: { coin?: boolean; index?: boolean; fx?: boolean; layerShowsClose?: boolean },
+    ) => {
       const pct = row.quote?.changePercent;
       const hasPct = typeof pct === 'number' && Number.isFinite(pct);
       const up = hasPct && pct >= 0;
@@ -920,8 +937,12 @@ export function HomeFocusContent({
         : fxDef
           ? formatHomeFxRate(row.quote?.currentPrice, fxDef)
           : formatPrice(row);
+      // Layer Close covers the whole strip — only mixed sessions need per-tile Close.
       const showClose =
-        !opts?.coin && hasQuote && isWatchlistQuoteClosed(row.quote);
+        !opts?.coin &&
+        !opts?.layerShowsClose &&
+        hasQuote &&
+        isWatchlistQuoteClosed(row.quote);
       const closeLabel = t('quotesAsOfClose');
       const a11y = showClose ? `${label}, ${closeLabel}` : label;
       return (
@@ -1365,7 +1386,10 @@ export function HomeFocusContent({
                         {renderQuoteLayerRule(t('homeQuotesLayerIndices'), indexLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {indexQuotes.map((row, index) =>
-                            renderHomeQuoteTile(row, `index-${index}`, { index: true }),
+                            renderHomeQuoteTile(row, `index-${index}`, {
+                              index: true,
+                              layerShowsClose: indexLayerShowsClose,
+                            }),
                           )}
                         </View>
                       </View>
@@ -1375,7 +1399,9 @@ export function HomeFocusContent({
                         {renderQuoteLayerRule(t('homeQuotesLayerWatch'), watchLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {homeWatchRows.map((row, index) =>
-                            renderHomeQuoteTile(row, `watch-${index}`),
+                            renderHomeQuoteTile(row, `watch-${index}`, {
+                              layerShowsClose: watchLayerShowsClose,
+                            }),
                           )}
                         </View>
                       </View>
@@ -1395,7 +1421,10 @@ export function HomeFocusContent({
                         {renderQuoteLayerRule(t('homeQuotesLayerFx'), fxLayerAsOf)}
                         <View style={styles.quoteGrid}>
                           {homeFxRows.map((row, index) =>
-                            renderHomeQuoteTile(row, `fx-${index}`, { fx: true }),
+                            renderHomeQuoteTile(row, `fx-${index}`, {
+                              fx: true,
+                              layerShowsClose: fxLayerShowsClose,
+                            }),
                           )}
                         </View>
                       </View>

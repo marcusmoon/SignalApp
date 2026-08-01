@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 
 import {
   isLocalWeekend,
+  isWatchlistAsOfCloseMode,
   isWatchlistQuoteClosed,
   previousWeekdayYmd,
   resolveWatchlistHomeAsOf,
@@ -129,6 +130,35 @@ describe('resolveWatchlistHomeAsOf', () => {
       now,
     );
     assert.deepEqual(resolved, { mode: 'prior_close', ymd: '2026-07-24' });
+  });
+
+  it('mixed open + closed → relative (no layer Close); uses newest open print', () => {
+    const now = atLocal('2026-07-24', 18, 0); // Fri evening
+    const staleKr = atLocal('2026-07-24', 9, 0).toISOString();
+    const freshUs = atLocal('2026-07-24', 17, 30).toISOString();
+    const resolved = resolveWatchlistHomeAsOf(
+      [
+        { quote: { segment: 'kr', quoteTime: staleKr, fetchedAt: staleKr } },
+        { quote: { segment: 'us', quoteTime: freshUs, fetchedAt: freshUs } },
+      ],
+      now,
+    );
+    assert.deepEqual(resolved, { mode: 'relative', iso: freshUs });
+    assert.equal(isWatchlistAsOfCloseMode(resolved), false);
+  });
+
+  it('all closed → layer Close', () => {
+    const now = atLocal('2026-07-24', 22, 30);
+    const kr = atLocal('2026-07-24', 15, 30).toISOString();
+    const us = atLocal('2026-07-24', 16, 0).toISOString();
+    const resolved = resolveWatchlistHomeAsOf(
+      [
+        { quote: { segment: 'kr', quoteTime: kr, fetchedAt: kr } },
+        { quote: { segment: 'us', quoteTime: us, fetchedAt: us } },
+      ],
+      now,
+    );
+    assert.deepEqual(resolved, { mode: 'today_close' });
   });
 });
 

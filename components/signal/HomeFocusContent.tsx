@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -1222,13 +1223,25 @@ export function HomeFocusContent({
         ) : (
           <>
           {homeKeywords.length > 0 ? (
-            <HomeKeywordChipStrip
-              items={homeKeywords}
-              symbolNames={homeKeywordSymbolNames}
-              onPressItem={openHomeKeyword}
-              accessibilityLabel={t('homeKeywordsTitle')}
-              asOfLabel={homeKeywordsAsOfLabel}
-            />
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('homeKeywordsTitle')}
+                badge={
+                  <Ionicons
+                    name="trending-up-outline"
+                    size={16}
+                    color={theme.green}
+                    accessibilityElementsHidden
+                  />
+                }
+                meta={homeKeywordsAsOfLabel}
+              />
+              <HomeKeywordChipStrip
+                items={homeKeywords}
+                symbolNames={homeKeywordSymbolNames}
+                onPressItem={openHomeKeyword}
+              />
+            </View>
           ) : null}
 
           {homeHero && homeHeroHeadline(homeHero) ? (

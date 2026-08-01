@@ -92,9 +92,13 @@ export function isKoreaStockQuote(row: QuoteRow): boolean {
 export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
   const price = item.currentPrice;
   const c = typeof price === 'number' && Number.isFinite(price) ? price : Number.NaN;
-  const d = item.change24h ?? 0;
-  const dp = item.changePercent24h ?? 0;
-  const pc = Number.isFinite(c) ? c - d : Number.NaN;
+  const d =
+    typeof item.change24h === 'number' && Number.isFinite(item.change24h) ? item.change24h : null;
+  const dp =
+    typeof item.changePercent24h === 'number' && Number.isFinite(item.changePercent24h)
+      ? item.changePercent24h
+      : null;
+  const pc = Number.isFinite(c) && d != null ? c - d : Number.NaN;
   return {
     id: item.id,
     provider: item.provider,

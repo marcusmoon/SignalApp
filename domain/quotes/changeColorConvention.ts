@@ -40,13 +40,22 @@ export function getQuoteChangeColors(
   return PALETTE[convention][scheme];
 }
 
+function finiteChangeNumber(value: unknown): number | null {
+  // Number(null) === 0 — treat null/'' as missing so coin % can drive color.
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function isQuoteChangePositive(q: {
   change?: unknown;
   changePercent?: unknown;
 }): boolean {
-  const d = Number(q.change);
-  if (Number.isFinite(d)) return d >= 0;
-  const dp = Number(q.changePercent);
-  if (Number.isFinite(dp)) return dp >= 0;
+  const d = finiteChangeNumber(q.change);
+  const dp = finiteChangeNumber(q.changePercent);
+  // Prefer non-zero absolute change; if change is 0/missing, use percent
+  // (CoinGecko sometimes omits change24h while changePercent24h is set).
+  if (d != null && !(d === 0 && dp != null && dp !== 0)) return d >= 0;
+  if (dp != null) return dp >= 0;
   return true;
 }

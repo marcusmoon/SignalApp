@@ -35,4 +35,10 @@ describe('isQuoteChangePositive', () => {
     assert.equal(isQuoteChangePositive({ changePercent: -0.1 }), false);
     assert.equal(isQuoteChangePositive({}), true);
   });
+
+  it('null/zero change does not mask negative percent (coin regression)', () => {
+    assert.equal(isQuoteChangePositive({ change: null, changePercent: -1.2 }), false);
+    assert.equal(isQuoteChangePositive({ change: 0, changePercent: -1.2 }), false);
+    assert.equal(isQuoteChangePositive({ change: 0, changePercent: 1.2 }), true);
+  });
 });

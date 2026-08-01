@@ -26,10 +26,11 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
   },
   forwardedRef,
 ) {
+  const viewRef = useRef<View | null>(null);
   const localRef = useRef<ScrollView>(null);
   useWebVerticalWheelScroll(localRef, { onScroll });
 
-  const getWebScrollNode = useCallback(() => resolveWebDomNode(localRef.current), []);
+  const getWebScrollNode = useCallback(() => resolveWebDomNode(viewRef.current ?? localRef.current), []);
   useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, contentRevision ?? children);
 
   if (Platform.OS === 'web') {
@@ -39,8 +40,10 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
       ? ({ dataSet: webScrollViewportDataSet } as unknown as Record<string, unknown>)
       : undefined;
     const setWebRef = (instance: View | null) => {
-      localRef.current = instance as never;
-      const api = createLazyWebScrollApi(() => localRef.current) as unknown as ScrollView;
+      viewRef.current = instance;
+      /** Wheel hook + parents must see RN-compatible scroll APIs (not raw Element.scrollTo). */
+      const api = createLazyWebScrollApi(() => viewRef.current) as unknown as ScrollView;
+      localRef.current = api;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

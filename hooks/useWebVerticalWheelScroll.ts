@@ -6,6 +6,7 @@ import {
   syntheticScrollEventFromDom,
 } from '@/utils/listScrollLoadMoreGate';
 import { resolveWebDomNode } from '@/utils/webDomNode';
+import { scrollWebScrollableToY } from '@/utils/webWheelScroll';
 
 type ScrollableRef = RefObject<{
   getScrollableNode?: () => HTMLElement;
@@ -21,29 +22,6 @@ type WebVerticalWheelScrollOptions = {
   nearEndPadPx?: number;
   nearEndCooldownMs?: number;
 };
-
-function scrollInstanceToY(
-  instance: NonNullable<ScrollableRef['current']>,
-  node: HTMLElement,
-  y: number,
-) {
-  const maxY = Math.max(0, node.scrollHeight - node.clientHeight);
-  const nextY = Math.max(0, Math.min(maxY, y));
-
-  if (typeof instance.scrollToOffset === 'function') {
-    instance.scrollToOffset({ offset: nextY, animated: false });
-    return nextY;
-  }
-
-  const scrollRef = instance.getScrollRef?.() ?? instance;
-  if (typeof scrollRef.scrollTo === 'function') {
-    scrollRef.scrollTo({ y: nextY, animated: false });
-    return nextY;
-  }
-
-  node.scrollTop = nextY;
-  return nextY;
-}
 
 /**
  * RN Web: wheel over list rows targets non-scrollable children, so FlatList/ScrollView
@@ -113,7 +91,7 @@ export function useWebVerticalWheelScroll(
         return;
       }
 
-      scrollInstanceToY(instance, node, node.scrollTop + deltaY);
+      scrollWebScrollableToY(instance, node, node.scrollTop + deltaY);
       notifyScroll();
     };
 

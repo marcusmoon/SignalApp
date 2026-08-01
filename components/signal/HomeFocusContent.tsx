@@ -83,6 +83,13 @@ import {
   pickHomeAnchorCoinsFromList,
 } from '@/domain/home/homeAnchorCoins';
 import {
+  HOME_INDEX_DEFS,
+  HOME_INDEX_SYMBOLS,
+  formatHomeIndexLevel,
+  homeIndexDefForSymbol,
+  isHomeIndexSymbol,
+} from '@/domain/home/homeIndices';
+import {
   formatQuoteDpPct,
   formatUsd,
   formatKrw,
@@ -340,6 +347,7 @@ export function HomeFocusContent({
   const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [indexQuotes, setIndexQuotes] = useState<QuoteRow[]>([]);
   const [keywordQuoteNames, setKeywordQuoteNames] = useState<Map<string, string>>(new Map());
   const keywordNameAttemptedRef = useRef<Set<string>>(new Set());
   const [anchorCoins, setAnchorCoins] = useState<QuoteRow[]>([]);
@@ -560,6 +568,7 @@ export function HomeFocusContent({
     if (!hasSignalApi()) {
       setIssues([]);
       setQuotes([]);
+      setIndexQuotes([]);
       setAnchorCoins([]);
       setBriefings([]);
       setTodayBriefing(null);
@@ -581,7 +590,7 @@ export function HomeFocusContent({
       }
       setCalendarEvents([]);
 
-      const [nextTodayBriefing, nextIssues, quoteRows, briefingRows, nextEtfInsight, coinRows] =
+      const [nextTodayBriefing, nextIssues, quoteRows, indexQuoteRows, briefingRows, nextEtfInsight, coinRows] =
         await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
@@ -589,6 +598,12 @@ export function HomeFocusContent({
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode }).catch(
               () => [] as SignalApiMarketQuote[],
             )
+          : Promise.resolve([] as SignalApiMarketQuote[]),
+        isToday
+          ? fetchSignalMarketQuotes(
+              { symbols: [...HOME_INDEX_SYMBOLS], limit: HOME_INDEX_SYMBOLS.length },
+              { cacheMode },
+            ).catch(() => [] as SignalApiMarketQuote[])
           : Promise.resolve([] as SignalApiMarketQuote[]),
         fetchSignalMarketBriefings(
           { date: selectedYmd, limit: BRIEFING_LIMIT, locale },
@@ -605,6 +620,11 @@ export function HomeFocusContent({
         const row = mapSignalQuoteToRow(item);
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
       }
+      const indexBySymbol = new Map<string, QuoteRow>();
+      for (const item of indexQuoteRows) {
+        const row = mapSignalQuoteToRow(item);
+        for (const key of quoteLookupKeys(item, row)) indexBySymbol.set(key, row);
+      }
       if (generation !== loadGenerationRef.current) return;
       setTodayBriefing(nextTodayBriefing);
       setIssues(nextIssues);
@@ -613,6 +633,20 @@ export function HomeFocusContent({
           const key = symbol.trim().toUpperCase();
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
+      );
+      setIndexQuotes(
+        isToday
+          ? HOME_INDEX_DEFS.map((def) => {
+              const key = def.symbol.toUpperCase();
+              return (
+                indexBySymbol.get(key) ?? {
+                  symbol: def.symbol,
+                  quote: null,
+                  error: 'NO_SERVER_QUOTE',
+                }
+              );
+            })
+          : [],
       );
       // 시총순 여유분만 보관 — 화면 폭·워치리스트 중복은 렌더 시 다시 고른다
       setAnchorCoins(
@@ -754,11 +788,17 @@ export function HomeFocusContent({
     [ipadNav, router],
   );
 
-  /** Stocks → in-app detail. Coins have no detail pane → Yahoo (Quotes tab coin pattern). */
+  /** Stocks → in-app detail. Indices/coins → Yahoo. */
   const openHomeQuote = useCallback(
-    (row: QuoteRow, opts?: { coin?: boolean }) => {
+    (row: QuoteRow, opts?: { coin?: boolean; index?: boolean }) => {
       const trimmed = row.symbol.trim().toUpperCase();
       if (!trimmed || trimmed === '—') return;
+      if (opts?.index || isHomeIndexSymbol(trimmed)) {
+        void openYahooFinanceQuote(trimmed, 'stock', {
+          yahooSymbol: row.quote?.regularSession?.yahooSymbol || trimmed,
+        });
+        return;
+      }
       if (opts?.coin || isCoinQuote(row.quote)) {
         void openYahooFinanceQuote(trimmed, 'coin', {
           yahooSymbol: row.quote?.regularSession?.yahooSymbol,
@@ -771,30 +811,34 @@ export function HomeFocusContent({
   );
 
   const renderHomeQuoteTile = useCallback(
-    (row: QuoteRow, key: string, opts?: { coin?: boolean }) => {
+    (row: QuoteRow, key: string, opts?: { coin?: boolean; index?: boolean }) => {
       const pct = row.quote?.changePercent;
       const hasPct = typeof pct === 'number' && Number.isFinite(pct);
       const up = hasPct && pct >= 0;
       const hasQuote = Boolean(row.quote);
+      const indexDef = opts?.index ? homeIndexDefForSymbol(row.symbol) : null;
+      const label = indexDef ? t(indexDef.labelId) : row.symbol;
       return (
         <Pressable
           key={key}
           onPress={() => openHomeQuote(row, opts)}
           accessibilityRole="button"
-          accessibilityLabel={row.symbol}
+          accessibilityLabel={label}
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
-              <SymbolLogo symbol={row.symbol} imageUrl={row.imageUrl} size={22} />
+              {indexDef ? null : (
+                <SymbolLogo symbol={row.symbol} imageUrl={row.imageUrl} size={22} />
+              )}
               <Text style={styles.quoteSymbol} numberOfLines={1}>
-                {row.symbol}
+                {label}
               </Text>
             </View>
             <View style={styles.quoteTileFooter}>
               {hasQuote ? (
                 <>
                   <Text style={styles.priceText} numberOfLines={1}>
-                    {formatPrice(row)}
+                    {indexDef ? formatHomeIndexLevel(row.quote?.currentPrice) : formatPrice(row)}
                   </Text>
                   <Text
                     style={[
@@ -1151,20 +1195,34 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader title={t('homeFocusWatchTitle')} meta={watchlistSectionMeta} />
               <View style={styles.quoteStack}>
-                {homeWatchRows.length === 0 && homeAnchorCoinRows.length === 0 ? (
+                {indexQuotes.length === 0 &&
+                homeWatchRows.length === 0 &&
+                homeAnchorCoinRows.length === 0 ? (
                   <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
                 ) : (
                   <>
-                    {homeWatchRows.length > 0 ? (
+                    {indexQuotes.length > 0 ? (
                       <View style={styles.quoteGrid}>
-                        {homeWatchRows.map((row, index) =>
-                          renderHomeQuoteTile(row, `watch-${index}`),
+                        {indexQuotes.map((row, index) =>
+                          renderHomeQuoteTile(row, `index-${index}`, { index: true }),
                         )}
                       </View>
                     ) : null}
+                    {homeWatchRows.length > 0 ? (
+                      <>
+                        {indexQuotes.length > 0 ? (
+                          <View style={styles.quoteAnchorDivider} />
+                        ) : null}
+                        <View style={styles.quoteGrid}>
+                          {homeWatchRows.map((row, index) =>
+                            renderHomeQuoteTile(row, `watch-${index}`),
+                          )}
+                        </View>
+                      </>
+                    ) : null}
                     {homeAnchorCoinRows.length > 0 ? (
                       <>
-                        {homeWatchRows.length > 0 ? (
+                        {indexQuotes.length > 0 || homeWatchRows.length > 0 ? (
                           <View style={styles.quoteAnchorDivider} />
                         ) : null}
                         <View style={styles.quoteGrid}>

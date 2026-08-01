@@ -21,6 +21,7 @@ import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhu
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
+import { fetchYahooIndexMarketQuotes } from '../providers/market/yahooIndexQuotes.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
@@ -164,7 +165,8 @@ async function readJobContext(job) {
     provider === 'dart' ||
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
-    (provider === 'yahoo' && (handler === 'daily_bars' || handler === 'market_quotes_kr'))
+    (provider === 'yahoo' &&
+      (handler === 'daily_bars' || handler === 'market_quotes_kr' || handler === 'market_quotes_indices'))
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
   }
@@ -341,6 +343,17 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         segment,
         preferredYahooBySymbol: preferredYahooByKrxSymbols(dbBefore, symbols),
       }),
+    };
+  }
+  if (effective.provider === 'yahoo' && effective.handler === 'market_quotes_indices') {
+    const listKey = params?.listKey || 'home_indices';
+    const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0
+      ? params.symbols
+      : marketListSymbols(dbBefore, listKey);
+    const segment = String(params?.segment || 'indices').trim() || 'indices';
+    return {
+      kind: 'marketQuotes',
+      rows: await fetchYahooIndexMarketQuotes({ symbols, segment }),
     };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'market_quotes_mcap') {

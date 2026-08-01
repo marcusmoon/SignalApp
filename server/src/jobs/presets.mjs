@@ -53,6 +53,7 @@ export const JOB_PRESETS = {
       'market_quotes_popular',
       'market_quotes_watchlist',
       'market_quotes_korea',
+      'market_quotes_indices',
       'market_quotes_mcap_universe',
       'market_quotes_mcap',
       'market_coins_top',

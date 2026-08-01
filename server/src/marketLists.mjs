@@ -7,6 +7,8 @@ export const MARKET_LIST_KEYS = [
   'korea_watchlist',
   /** Approximate kospi30+kosdaq50 ordinary shares for screener pool (not a live KRX mcap feed). */
   'korea_screener_universe',
+  /** Home 시세 index strip (Yahoo caret tickers). */
+  'home_indices',
 ];
 
 export function normalizeMarketSymbol(value) {

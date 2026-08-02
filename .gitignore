@@ -47,3 +47,4 @@ server/db/flyway.conf
 
 # 보유 현황 (kr-portfolio-watch 스킬 입력)
 skills/**/holdings.json
+__pycache__/

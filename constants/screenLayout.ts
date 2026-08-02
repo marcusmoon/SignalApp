@@ -1,5 +1,7 @@
 import { tabBarBottomInset } from '@/constants/tabBar';
 
+export { fabScrollClearanceAboveBase } from '@/utils/fabScrollClearance';
+
 /**
  * 화면 레이아웃 공통 여백 — iPhone / iPad / 웹.
  * 상세 규칙: docs/SCREEN-LAYOUT.md
@@ -83,21 +85,3 @@ export function fabStackBottom(
   return tabBarHeight + tabBarBottomInset(safeAreaBottom) + offset;
 }
 
-/**
- * 스크롤 paddingBottom에 더할 FAB 여유.
- * 탭/스택 base가 이미 탭바·safe area 위를 비우므로, FAB 스택이 base보다 위로
- * 삐져나오는 높이만 추가한다 (SIZE+GAP 전액을 또 더하지 않음).
- */
-export function fabScrollClearanceAboveBase(
-  fabCount: number,
-  base: number,
-  opts?: { fabSize?: number; fabGap?: number; offset?: number },
-): number {
-  const count = Math.max(0, Math.floor(fabCount));
-  if (count <= 0) return 0;
-  const fabSize = opts?.fabSize ?? 56;
-  const fabGap = opts?.fabGap ?? 12;
-  const offset = opts?.offset ?? SCREEN_FAB_ABOVE_TAB_OFFSET;
-  const stackHeight = offset + count * fabSize + Math.max(0, count - 1) * fabGap;
-  return Math.max(0, stackHeight - Math.max(0, base));
-}

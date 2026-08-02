@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { fabScrollClearanceAboveBase } from './screenLayout.ts';
+import { fabScrollClearanceAboveBase } from './fabScrollClearance.ts';
 
 describe('fabScrollClearanceAboveBase', () => {
   it('returns 0 when there is no FAB', () => {

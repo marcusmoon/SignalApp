@@ -34,7 +34,12 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
+  fabScrollClearanceAboveBase,
   fabStackBottom,
+  SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE,
+  SCREEN_STACK_SCROLL_BOTTOM_BASE,
+  SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+  stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
@@ -482,10 +487,35 @@ export function QuotesContent({
     showWatchAddFab && showRefreshFab
       ? fabBottom + FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP
       : fabBottom;
-  const fabClearance =
-    (showRefreshFab || showWatchAddFab ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0) +
-    (showRefreshFab && showWatchAddFab ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0);
-  const bottomPad = tabScreenScrollBottomPadding(barH, insets.bottom) + fabClearance;
+  const fabCount = (showRefreshFab ? 1 : 0) + (showWatchAddFab ? 1 : 0);
+  /** wide·스택·탭 각각 올바른 base + FAB는 base 위 겹침분만 */
+  const bottomPad = (() => {
+    if (useTwoPane) {
+      return (
+        SCREEN_WIDE_SCROLL_BOTTOM_BASE +
+        fabScrollClearanceAboveBase(fabCount, SCREEN_WIDE_SCROLL_BOTTOM_BASE, {
+          fabSize: FLOATING_GLASS_FAB_SIZE,
+          fabGap: FLOATING_GLASS_FAB_GAP,
+        })
+      );
+    }
+    if (embedded) {
+      return (
+        stackScreenScrollBottomPadding(insets.bottom) +
+        fabScrollClearanceAboveBase(fabCount, SCREEN_STACK_SCROLL_BOTTOM_BASE, {
+          fabSize: FLOATING_GLASS_FAB_SIZE,
+          fabGap: FLOATING_GLASS_FAB_GAP,
+        })
+      );
+    }
+    return (
+      tabScreenScrollBottomPadding(barH, insets.bottom, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE) +
+      fabScrollClearanceAboveBase(fabCount, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE, {
+        fabSize: FLOATING_GLASS_FAB_SIZE,
+        fabGap: FLOATING_GLASS_FAB_GAP,
+      })
+    );
+  })();
 
   /**
    * Between segment bar and list — "Delayed · …" chip.

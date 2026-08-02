@@ -151,6 +151,7 @@ PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTIO
 | 상수 | px | 용도 |
 |---|---:|---|
 | `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 24 | iPhone 탭 + 플로팅 탭바 |
+| `SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE` | 12 | 시세 탭(목록 짧을 때 하단 공백 축소) |
 | `SCREEN_STACK_SCROLL_BOTTOM_BASE` | 28 | 스택 화면 |
 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` | 32 | iPad·wide (탭바 없음) |
 | `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB lift |
@@ -175,9 +176,14 @@ paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE;
 
 // FAB
 bottom: fabStackBottom(tabBarHeight, insets.bottom);
+
+// FAB가 있는 시세 등 — base 위 겹침만 추가 (SIZE+GAP 전액 중복 금지)
+paddingBottom:
+  tabScreenScrollBottomPadding(tabBarHeight, insets.bottom, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE) +
+  fabScrollClearanceAboveBase(fabCount, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE);
 ```
 
-`tabBarHeight`는 `useBottomTabBarHeight()`, inset은 `useSafeAreaInsets().bottom`.
+`tabBarHeight`는 `useBottomTabBarHeight()`, inset은 `useSafeAreaInsets().bottom`. 시세는 wide→`SCREEN_WIDE_SCROLL_BOTTOM_BASE`, 홈 숏컷 임베드→`stackScreenScrollBottomPadding`.
 
 ## 플랫폼별 차이
 

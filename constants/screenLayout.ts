@@ -42,6 +42,12 @@ export const SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL = 20;
 /** 하단 탭 화면 스크롤 하단 기본값(탭바·FAB 위) */
 export const SCREEN_TAB_SCROLL_BOTTOM_BASE = 24;
 
+/**
+ * 시세 탭 스크롤 하단 base — 목록이 짧아 탭 기본(24)이면 마지막 행 아래 공백이 커 보여
+ * 탭바에 더 붙인다. FAB가 있으면 `quotesFabScrollClearance`로 겹침분만 추가.
+ */
+export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = 12;
+
 /** 스택 화면 스크롤 하단 기본값 */
 export const SCREEN_STACK_SCROLL_BOTTOM_BASE = 28;
 
@@ -75,4 +81,23 @@ export function fabStackBottom(
   offset = SCREEN_FAB_ABOVE_TAB_OFFSET,
 ): number {
   return tabBarHeight + tabBarBottomInset(safeAreaBottom) + offset;
+}
+
+/**
+ * 스크롤 paddingBottom에 더할 FAB 여유.
+ * 탭/스택 base가 이미 탭바·safe area 위를 비우므로, FAB 스택이 base보다 위로
+ * 삐져나오는 높이만 추가한다 (SIZE+GAP 전액을 또 더하지 않음).
+ */
+export function fabScrollClearanceAboveBase(
+  fabCount: number,
+  base: number,
+  opts?: { fabSize?: number; fabGap?: number; offset?: number },
+): number {
+  const count = Math.max(0, Math.floor(fabCount));
+  if (count <= 0) return 0;
+  const fabSize = opts?.fabSize ?? 56;
+  const fabGap = opts?.fabGap ?? 12;
+  const offset = opts?.offset ?? SCREEN_FAB_ABOVE_TAB_OFFSET;
+  const stackHeight = offset + count * fabSize + Math.max(0, count - 1) * fabGap;
+  return Math.max(0, stackHeight - Math.max(0, base));
 }

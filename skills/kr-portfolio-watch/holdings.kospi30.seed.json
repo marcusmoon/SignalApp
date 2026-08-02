@@ -1,0 +1,216 @@
+{
+  "updated": "2026-08-02",
+  "note": "시드 목록 — 코스피 시총 상위 30 (server/src/screener/koreaScreenerUniverse.mjs 순서). 실제 보유 종목·비중으로 교체하고, thesis_breakers는 Stage 3 정성검증 문장을 그대로 옮긴다.",
+  "positions": [
+    {
+      "ticker": "005930",
+      "name": "삼성전자",
+      "rank": 1,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "000660",
+      "name": "SK하이닉스",
+      "rank": 2,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "373220",
+      "name": "LG에너지솔루션",
+      "rank": 3,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "207940",
+      "name": "삼성바이오로직스",
+      "rank": 4,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "005380",
+      "name": "현대차",
+      "rank": 5,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "000270",
+      "name": "기아",
+      "rank": 6,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "068270",
+      "name": "셀트리온",
+      "rank": 7,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "105560",
+      "name": "KB금융",
+      "rank": 8,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "005490",
+      "name": "POSCO홀딩스",
+      "rank": 9,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "035420",
+      "name": "NAVER",
+      "rank": 10,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "006400",
+      "name": "삼성SDI",
+      "rank": 11,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "051910",
+      "name": "LG화학",
+      "rank": 12,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "028260",
+      "name": "삼성물산",
+      "rank": 13,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "012330",
+      "name": "현대모비스",
+      "rank": 14,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "055550",
+      "name": "신한지주",
+      "rank": 15,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "066570",
+      "name": "LG전자",
+      "rank": 16,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "003670",
+      "name": "포스코퓨처엠",
+      "rank": 17,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "096770",
+      "name": "SK이노베이션",
+      "rank": 18,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "032830",
+      "name": "삼성생명",
+      "rank": 19,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "034730",
+      "name": "SK",
+      "rank": 20,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "003550",
+      "name": "LG",
+      "rank": 21,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "017670",
+      "name": "SK텔레콤",
+      "rank": 22,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "030200",
+      "name": "KT",
+      "rank": 23,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "086790",
+      "name": "하나금융지주",
+      "rank": 24,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "009150",
+      "name": "삼성전기",
+      "rank": 25,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "010130",
+      "name": "고려아연",
+      "rank": 26,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "011200",
+      "name": "HMM",
+      "rank": 27,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "259960",
+      "name": "크래프톤",
+      "rank": 28,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "035720",
+      "name": "카카오",
+      "rank": 29,
+      "weight": 3.3,
+      "thesis_breakers": []
+    },
+    {
+      "ticker": "000810",
+      "name": "삼성화재",
+      "rank": 30,
+      "weight": 3.3,
+      "thesis_breakers": []
+    }
+  ]
+}

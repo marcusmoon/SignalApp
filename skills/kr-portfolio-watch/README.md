@@ -64,6 +64,20 @@ DART 접수일(`rcept_dt`)은 날짜 단위라 서버가 `filedAt`을 **KST 자�
 
 ### `holdings.json`
 
+`holdings.kospi30.seed.json`이 코스피 시총 상위 30 시드다. 그대로 복사해 쓰기 시작한 뒤
+실제 보유 종목·비중으로 교체한다.
+
+```bash
+cp holdings.kospi30.seed.json holdings.json
+```
+
+종목·순서는 `server/src/screener/koreaScreenerUniverse.mjs`의 kospi 상위 30을 그대로 따랐다.
+그 파일 주석대로 **실시간 KRX 시총 피드가 아니라 근사 순위**이므로, 순위 자체를 신뢰하지 말고
+보유 종목 목록으로만 쓴다. 종목명은 `V2__seed_default_runtime_data.sql`의 이름 맵을 우선 사용했다.
+
+시드의 `weight`는 전 종목 3.3 (균등) 자리표시자이고, `thesis_breakers`는 **전부 비어 있다.**
+비어 있으면 3단계 논리 훼손 점검이 동작하지 않는다 — Stage 3 정성검증 문장을 채워야 한다.
+
 | 필드 | 설명 |
 |---|---|
 | `positions[].ticker` | 6자리 종목코드 문자열. 필수 |

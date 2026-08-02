@@ -48,10 +48,10 @@ export function makeQuotesStyles(
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    /** Between segment chrome and list — delayed as-of chip */
+    /** Between segment chrome and list — delayed as-of chip (end-aligned like home meta) */
     asOfBand: {
       flexDirection: 'row',
-      justifyContent: 'flex-start',
+      justifyContent: 'flex-end',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingTop: 8,

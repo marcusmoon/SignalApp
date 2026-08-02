@@ -51,6 +51,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/quotes/ticker` | 티커·종목코드 검증 |
 | `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
 | `domain/quotes/constants` · `segmentOrder` · `listLimits` | 시세 탭 `watch`·`etf`·`coin` · 구 `popular`/`mcap`→`etf` 마이그레이션 |
+| 시세 ETF 목록 순서 | `etf_symbols` 저장 순 (`QuotesContent`가 `symbols`로 조회·재정렬; segment-only는 `fetched_at` DESC) |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
 | `services/symbolLogo` | 서버 `imageUrl` 우선 · Parqet 폴백 |
 

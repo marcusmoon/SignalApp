@@ -151,7 +151,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)
 - YouTube (`youtube_economy_latest` sync)
 - 시세·일봉·코인
-  - US: `market_quotes_etf` (`etf_symbols` 큐레이션) / `market_quotes_watchlist` / `market_quotes_popular`·`market_quotes_mcap*` (Finnhub; 앱 시세 탭은 `watch`·`etf`·`coin`)
+  - US: `market_quotes_etf` (`etf_symbols` 큐레이션 · 앱은 리스트 **저장 순**으로 `symbols` 조회) / `market_quotes_watchlist` / `market_quotes_popular`·`market_quotes_mcap*` (Finnhub; 앱 시세 탭은 `watch`·`etf`·`coin`)
   - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve). runner는 `marketLists`(·기존 `marketQuotes`)를 로드한 뒤 조회한다.
   - 홈 지수: `market_quotes_indices` (Yahoo, `home_indices` caret 심볼 `^GSPC`·`^NDX`·`^DJI`·`^SOX`·`^KS11`·`^N225`)
   - 홈 시세·환율 레이어: `market_quotes_fx` (Yahoo, `home_fx` FX 심볼 `USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`; 앱은 compact 2·wide 3). 지수(`market_quotes_indices`)·국내(`yahooKrxQuotes`)·환율 모두 `quoteTime`은 Yahoo `regularMarketTime`

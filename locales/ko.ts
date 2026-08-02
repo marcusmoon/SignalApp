@@ -991,6 +991,8 @@ export const ko = {
   quotesAsOfTodayClose: '종가',
   /** @deprecated use quotesAsOfClose */
   quotesAsOfNamedClose: '종가',
+  /** 시세 탭 — 세그먼트와 리스트 사이 지연 as-of 칩 (`when` = 상대시간 또는 종가) */
+  quotesDelayedAsOf: '지연 · {{when}}',
 
   briefingHubEmptyTitle: '아직 브리핑이 없습니다.',
   briefingHubEmptyBody: '시간이 되면 곧 표시됩니다.',

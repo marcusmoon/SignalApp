@@ -991,6 +991,8 @@ export const ja = {
   quotesAsOfTodayClose: '終値',
   /** @deprecated use quotesAsOfClose */
   quotesAsOfNamedClose: '終値',
+  /** 相場タブ — セグメントとリストの間の遅延 as-of チップ */
+  quotesDelayedAsOf: '遅延 · {{when}}',
 
   briefingHubEmptyTitle: 'まだ市場ブリーフィングがありません。',
   briefingHubEmptyBody: '時間になればすぐ表示されます。',

@@ -294,7 +294,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | `UpdatePromptStrip` | chip·OTA strip |
 | `WebWheelFlatList` / `WebWheelScrollView` | 웹 스크롤 |
 | `FloatingGlassFab` | FAB (시세 관심 `+` · 뉴스 번역 · **iPhone 홈·시세 새로고침**) |
-| 시세 세그먼트 as-of | 세그먼트 바 아래 우측 칩 (`15분 전` / `종가`). 홈 시세 레이어와 동일 규칙 — **전부 종가→Close**, 관심처럼 국내·해외 혼재면 열린 시세 중 최신 상대시간(지역 이중 칩 없음) |
+| 시세 지연 as-of | **헤더 밖** · 세그먼트와 리스트 **사이** 칩 `지연 · 15분 전` / `Delayed · Close` (`quotesDelayedAsOf`). 홈 시세 레이어와 동일 규칙 — 전부 종가→Close, 관심 혼재면 열린 시세 중 최신 상대시간 |
 
 ## 웹 스크롤바
 

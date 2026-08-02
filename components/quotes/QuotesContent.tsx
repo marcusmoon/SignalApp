@@ -454,18 +454,19 @@ export function QuotesContent({
   const bottomPad = tabScreenScrollBottomPadding(barH, insets.bottom) + fabClearance;
 
   /**
-   * Segment as-of (home layer rules): all closed → Close; mixed KR/US → relative
-   * from newest open print (not dual-region chips).
+   * Between segment bar and list — "Delayed · …" chip.
+   * Home layer rules: all closed → Close; mixed KR/US → newest open relative time.
    */
-  const quotesAsOfLabel = useMemo(() => {
+  const quotesDelayedAsOfLabel = useMemo(() => {
     const asOfRows: WatchlistHomeAsOfRow[] = rows.map((row) => ({ quote: row.quote }));
     const resolved = resolveWatchlistHomeAsOf(asOfRows);
     if (!resolved) return null;
-    if (resolved.mode === 'relative') {
-      const label = formatFeedItemTimeLabel(resolved.iso, locale);
-      return label && label !== '—' ? label : null;
-    }
-    return t('quotesAsOfClose');
+    const when =
+      resolved.mode === 'relative'
+        ? formatFeedItemTimeLabel(resolved.iso, locale)
+        : t('quotesAsOfClose');
+    if (!when || when === '—') return null;
+    return t('quotesDelayedAsOf', { when });
   }, [locale, rows, t]);
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
@@ -674,45 +675,45 @@ export function QuotesContent({
 
   const quoteListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-      {showPhoneSegments || quotesAsOfLabel ? (
+      {showPhoneSegments ? (
         <View style={styles.topFixed}>
-          {showPhoneSegments ? (
-            <View style={styles.segment}>
-              {segmentOrder.map((key) => (
-                <Fragment key={key}>
-                  {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                  <Pressable
-                    onPress={() => onPickSegment(key)}
-                    style={[
-                      styles.segBtn,
-                      key === 'coin' && styles.segBtnCompact,
-                      segment === key && styles.segBtnActive,
-                    ]}
-                    accessibilityState={{ selected: segment === key }}>
-                    <Text
-                      style={[styles.segText, segment === key && styles.segTextActive]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.85}>
-                      {t(QUOTE_SEGMENT_LABEL[key])}
-                    </Text>
-                  </Pressable>
-                </Fragment>
-              ))}
-            </View>
-          ) : null}
-          {quotesAsOfLabel ? (
-            <View
-              style={[styles.asOfRow, !showPhoneSegments && styles.asOfRowWide]}
-              accessibilityRole="text"
-              accessibilityLabel={quotesAsOfLabel}>
-              <View style={styles.asOfChip}>
-                <Text style={styles.asOfChipText} numberOfLines={1}>
-                  {quotesAsOfLabel}
-                </Text>
-              </View>
-            </View>
-          ) : null}
+          <View style={styles.segment}>
+            {segmentOrder.map((key) => (
+              <Fragment key={key}>
+                {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                <Pressable
+                  onPress={() => onPickSegment(key)}
+                  style={[
+                    styles.segBtn,
+                    key === 'coin' && styles.segBtnCompact,
+                    segment === key && styles.segBtnActive,
+                  ]}
+                  accessibilityState={{ selected: segment === key }}>
+                  <Text
+                    style={[styles.segText, segment === key && styles.segTextActive]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}>
+                    {t(QUOTE_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
+              </Fragment>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Between chrome and list — delayed as-of chip (not in header strip). */}
+      {quotesDelayedAsOfLabel ? (
+        <View
+          style={[styles.asOfBand, !showPhoneSegments && styles.asOfBandWide]}
+          accessibilityRole="text"
+          accessibilityLabel={quotesDelayedAsOfLabel}>
+          <View style={styles.asOfChip}>
+            <Text style={styles.asOfChipText} numberOfLines={1}>
+              {quotesDelayedAsOfLabel}
+            </Text>
+          </View>
         </View>
       ) : null}
 
@@ -743,7 +744,7 @@ export function QuotesContent({
         contentContainerStyle={[
           styles.listContent,
           useTwoPane && styles.listContentWide,
-          quotesAsOfLabel && !showPhoneSegments ? styles.listContentBelowAsOf : null,
+          quotesDelayedAsOfLabel ? styles.listContentBelowAsOf : null,
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}

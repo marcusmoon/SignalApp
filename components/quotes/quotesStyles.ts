@@ -39,8 +39,8 @@ export function makeQuotesStyles(
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
-    /** As-of already sits in topFixed on wide — don't double the top pad. */
-    listContentBelowAsOf: { paddingTop: 8 },
+    /** Delayed chip sits above the list — keep list top pad tight. */
+    listContentBelowAsOf: { paddingTop: 4 },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnCompact: segmentTab.segBtnCompact,
@@ -48,24 +48,24 @@ export function makeQuotesStyles(
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    /** Below segment bar — home quotes as-of chip tone */
-    asOfRow: {
+    /** Between segment chrome and list — delayed as-of chip */
+    asOfBand: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingTop: 6,
-      paddingBottom: 8,
+      paddingTop: 8,
+      paddingBottom: 4,
     },
-    asOfRowWide: {
-      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP > 8 ? 4 : 6,
+    asOfBandWide: {
+      paddingTop: Math.max(8, SCREEN_WIDE_CONTENT_PADDING_TOP - 8),
     },
     asOfChip: {
-      flexShrink: 0,
-      maxWidth: '56%',
+      flexShrink: 1,
+      maxWidth: '88%',
       borderRadius: 999,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
@@ -75,7 +75,6 @@ export function makeQuotesStyles(
       lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
-      textAlign: 'right',
     },
     errBox: {
       marginHorizontal: 16,

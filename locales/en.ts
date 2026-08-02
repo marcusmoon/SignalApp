@@ -994,6 +994,8 @@ export const en = {
   quotesAsOfTodayClose: 'Close',
   /** @deprecated use quotesAsOfClose */
   quotesAsOfNamedClose: 'Close',
+  /** Quotes tab — delayed as-of chip between segment bar and list */
+  quotesDelayedAsOf: 'Delayed · {{when}}',
 
   briefingHubEmptyTitle: 'No market briefing yet.',
   briefingHubEmptyBody: 'It will appear here soon.',

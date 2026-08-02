@@ -2,6 +2,7 @@ import { Platform, StyleSheet } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { FEED_BADGE_PX } from '@/constants/feedTypography';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -38,6 +39,8 @@ export function makeQuotesStyles(
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
+    /** As-of already sits in topFixed on wide — don't double the top pad. */
+    listContentBelowAsOf: { paddingTop: 8 },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnCompact: segmentTab.segBtnCompact,
@@ -45,7 +48,35 @@ export function makeQuotesStyles(
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 14 },
+    /** Below segment bar — home quotes as-of chip tone */
+    asOfRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 6,
+      paddingBottom: 8,
+    },
+    asOfRowWide: {
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP > 8 ? 4 : 6,
+    },
+    asOfChip: {
+      flexShrink: 0,
+      maxWidth: '56%',
+      borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    asOfChipText: {
+      fontSize: ft.ff(FEED_BADGE_PX + 1),
+      lineHeight: sf(13),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      textAlign: 'right',
+    },
     errBox: {
       marginHorizontal: 16,
       marginBottom: 8,

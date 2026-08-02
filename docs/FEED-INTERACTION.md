@@ -256,7 +256,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | 마켓 | ✅ | ✅ | ✅ | ✅ session | — | 오늘만 chip |
 | 알림함 | ✅ | ✅ | ✅ | — 단일 | — | |
 | 유튜브 | ✅ | ✅ | — | — | — | |
-| 시세 | ✅ | ✅ | — | — | — | iPhone refresh FAB · 관심은 `+`와 스택 |
+| 시세 | ✅ | ✅ | — | — | — | iPhone refresh FAB · 관심은 `+`와 스택 · 세그먼트 아래 as-of(혼재는 최신 오픈 시각) |
 | 게시판 | ✅ | ✅ | — | — | — | source 필터 |
 | 홈 | ✅ | ✅ (날짜) | — | — | — | 대시보드 · iPhone refresh FAB |
 | 캘린더 | ✅ | ✅ | — | — | — | 스택 |

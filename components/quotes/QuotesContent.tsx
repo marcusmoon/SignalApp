@@ -38,6 +38,11 @@ import {
 } from '@/constants/screenLayout';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import {
+  resolveWatchlistHomeAsOf,
+  type WatchlistHomeAsOfRow,
+} from '@/domain/quotes/watchlistHomeAsOf';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -129,7 +134,7 @@ export function QuotesContent({
   active = true,
 }: QuotesContentProps) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
   const setRouteParams = useSafeSetRouteParams();
   const { segment: segmentParam } = useLocalSearchParams<{ segment?: string | string[] }>();
@@ -448,6 +453,21 @@ export function QuotesContent({
     (showRefreshFab && showWatchAddFab ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0);
   const bottomPad = tabScreenScrollBottomPadding(barH, insets.bottom) + fabClearance;
 
+  /**
+   * Segment as-of (home layer rules): all closed → Close; mixed KR/US → relative
+   * from newest open print (not dual-region chips).
+   */
+  const quotesAsOfLabel = useMemo(() => {
+    const asOfRows: WatchlistHomeAsOfRow[] = rows.map((row) => ({ quote: row.quote }));
+    const resolved = resolveWatchlistHomeAsOf(asOfRows);
+    if (!resolved) return null;
+    if (resolved.mode === 'relative') {
+      const label = formatFeedItemTimeLabel(resolved.iso, locale);
+      return label && label !== '—' ? label : null;
+    }
+    return t('quotesAsOfClose');
+  }, [locale, rows, t]);
+
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
     if (lockedSegment) return;
     if (segment === key) {
@@ -654,27 +674,47 @@ export function QuotesContent({
 
   const quoteListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-      {showPhoneSegments ? <View style={styles.topFixed}>
-        <View style={styles.segment}>
-          {segmentOrder.map((key) => (
-            <Fragment key={key}>
-              {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-              <Pressable
-                onPress={() => onPickSegment(key)}
-                style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
-                accessibilityState={{ selected: segment === key }}>
-                <Text
-                  style={[styles.segText, segment === key && styles.segTextActive]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.85}>
-                  {t(QUOTE_SEGMENT_LABEL[key])}
+      {showPhoneSegments || quotesAsOfLabel ? (
+        <View style={styles.topFixed}>
+          {showPhoneSegments ? (
+            <View style={styles.segment}>
+              {segmentOrder.map((key) => (
+                <Fragment key={key}>
+                  {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                  <Pressable
+                    onPress={() => onPickSegment(key)}
+                    style={[
+                      styles.segBtn,
+                      key === 'coin' && styles.segBtnCompact,
+                      segment === key && styles.segBtnActive,
+                    ]}
+                    accessibilityState={{ selected: segment === key }}>
+                    <Text
+                      style={[styles.segText, segment === key && styles.segTextActive]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}>
+                      {t(QUOTE_SEGMENT_LABEL[key])}
+                    </Text>
+                  </Pressable>
+                </Fragment>
+              ))}
+            </View>
+          ) : null}
+          {quotesAsOfLabel ? (
+            <View
+              style={[styles.asOfRow, !showPhoneSegments && styles.asOfRowWide]}
+              accessibilityRole="text"
+              accessibilityLabel={quotesAsOfLabel}>
+              <View style={styles.asOfChip}>
+                <Text style={styles.asOfChipText} numberOfLines={1}>
+                  {quotesAsOfLabel}
                 </Text>
-              </Pressable>
-            </Fragment>
-          ))}
+              </View>
+            </View>
+          ) : null}
         </View>
-      </View> : null}
+      ) : null}
 
       {error ? (
         <View style={styles.errBox}>
@@ -703,6 +743,7 @@ export function QuotesContent({
         contentContainerStyle={[
           styles.listContent,
           useTwoPane && styles.listContentWide,
+          quotesAsOfLabel && !showPhoneSegments ? styles.listContentBelowAsOf : null,
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}

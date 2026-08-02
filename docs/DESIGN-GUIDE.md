@@ -93,10 +93,19 @@ pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.
 
 | 상수 | px | 용도 |
 |---|---:|---|
+| `SCREEN_HEADER_CONTENT_GAP` | 12 | `SignalHeader` 아래 → 첫 고정 UI |
 | `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP` | 12 | 다이제스트 아래 리스트 상단 |
 | `SCREEN_LIST_CONTENT_PADDING_TOP` | 12 | 고정 UI 아래 리스트 상단 (다이제스트 없을 때) |
+| `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 12 | 홈·마켓·뉴스 등 탭 스크롤 하단 — **상단 리스트 pad와 동일** |
+| `SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE` | 4 | 시세 탭만 — 짧은 목록이라 탭바에 더 붙임 |
 
-상세 수치·헬퍼는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)를 따른다. 리터럴 `16`·`paddingBottom` 합산을 화면에 직접 쓰지 않는다.
+#### 탭 스크롤 하단 (의도)
+
+- **홈·마켓·뉴스 등**: 마지막 행과 플로팅 탭바 사이 여유를 상단 헤더↔본문 gap(`SCREEN_LIST_CONTENT_PADDING_TOP` = 12)과 맞춘다. `tabScreenScrollBottomPadding(tabBarHeight, insets.bottom)` 기본값.
+- **시세**: 목록이 짧아 타이트하게 — `tabScreenScrollBottomPadding(..., SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE)`.
+- **FAB**: 리스트 **위에 오버레이**. `paddingBottom`에 FAB `SIZE+GAP` 전체를 넣지 않는다 (`fabOverlayScrollCushion` — 기본 0). 넣으면 콘텐츠가 FAB 위에서 끊긴다.
+
+상세 수치·헬퍼는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#하단-스크롤-패딩)를 따른다. 리터럴 `16`·`paddingBottom` 합산을 화면에 직접 쓰지 않는다.
 
 ## 반응형 레이아웃
 
@@ -309,7 +318,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 1. `useResponsiveLayout()` → `useTwoPane` 분기
 2. Safe Area `edges` — [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)
 3. 고정 UI → `getScreenFixedHeaderStyles()` + `topFixed` (날짜 있으면 날짜 → 세그먼트)
-4. 여백·하단 패딩 → `screenLayout` 헬퍼만
+4. 여백·하단 패딩 → `screenLayout` 헬퍼만 (홈·마켓 등 base 12 / 시세 4 / FAB 높이 예약 금지)
 5. 색·radius·gap → `theme` / `uiCornerRadius` / `comfortDensity`
 6. wide 탭·플로우 루트 → `wideContentFill` (불필요한 1120 캡 금지)
 7. 피드 화면이면 → [FEED-INTERACTION.md 체크리스트](./FEED-INTERACTION.md#9-새-피드-화면-체크리스트)

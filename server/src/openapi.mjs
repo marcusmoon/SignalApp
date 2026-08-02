@@ -233,8 +233,8 @@ export function getOpenApiSpec() {
               in: 'query',
               schema: {
                 type: 'string',
-                enum: ['watch', 'popular', 'mcap'],
-                example: 'popular',
+                enum: ['watch', 'etf', 'coin', 'popular', 'mcap', 'watchlist', 'indices', 'fx', 'korea'],
+                example: 'etf',
               },
             },
             { name: 'symbols', in: 'query', schema: { type: 'string', example: 'AAPL,MSFT' } },

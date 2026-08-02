@@ -25,7 +25,7 @@ export function quotesListCountChoices(): number[] {
   return out;
 }
 
-export function quotesListCountChoicesForField(_field: 'popular' | 'mcap' | 'coin'): number[] {
+export function quotesListCountChoicesForField(_field: 'etf' | 'coin'): number[] {
   return quotesListCountChoices();
 }
 
@@ -51,25 +51,38 @@ function clamp(n: number, min: number, max: number): number {
 function normalizeQuotesCountField(
   raw: number | undefined,
   fallback: number,
-  field: 'popular' | 'mcap' | 'coin',
+  field: 'etf' | 'coin',
 ): number {
   const cap = QUOTES_COUNT_MAX;
   let n = raw ?? fallback;
-  if (field === 'popular' && n === 14) n = 20;
   n = clamp(n, QUOTES_COUNT_MIN, cap);
   const choices = quotesListCountChoicesForField(field);
   return snapToNearestChoice(n, choices);
 }
 
-export function normalizeQuotesListLimits(p: Partial<QuotesListLimits>): QuotesListLimits {
+export function normalizeQuotesListLimits(p: Partial<QuotesListLimits> & {
+  /** @deprecated 인기→ETF 마이그레이션 */
+  popularMax?: number;
+  /** @deprecated 시총→ETF 마이그레이션 */
+  mcapMax?: number;
+}): QuotesListLimits {
+  const etfRaw =
+    typeof p.etfMax === 'number'
+      ? p.etfMax
+      : typeof p.popularMax === 'number'
+        ? p.popularMax
+        : typeof p.mcapMax === 'number'
+          ? p.mcapMax
+          : undefined;
   return {
-    popularMax: normalizeQuotesCountField(p.popularMax, QUOTES_LIST_LIMITS_DEFAULTS.popularMax, 'popular'),
-    mcapMax: normalizeQuotesCountField(p.mcapMax, QUOTES_LIST_LIMITS_DEFAULTS.mcapMax, 'mcap'),
+    etfMax: normalizeQuotesCountField(etfRaw, QUOTES_LIST_LIMITS_DEFAULTS.etfMax, 'etf'),
     coinMax: normalizeQuotesCountField(p.coinMax, QUOTES_LIST_LIMITS_DEFAULTS.coinMax, 'coin'),
   };
 }
 
 /** 디스크 원시값이 구버전 기본(인기 14·시총 15·코인 20)이면 true */
-export function isLegacyQuotesListLimitsTripleRaw(j: Partial<QuotesListLimits>): boolean {
+export function isLegacyQuotesListLimitsTripleRaw(
+  j: Partial<QuotesListLimits> & { popularMax?: number; mcapMax?: number },
+): boolean {
   return j.popularMax === 14 && j.mcapMax === 15 && j.coinMax === 20;
 }

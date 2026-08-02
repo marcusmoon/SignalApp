@@ -148,4 +148,28 @@ export const POPULAR_SYMBOLS_ORDERED = [
   'XOM',
 ] as const;
 
+/** 시세 ETF 세그먼트 — 유동성 우선 큐레이션(~20). AUM 자동정렬 아님. */
+export const ETF_SYMBOLS_ORDERED = [
+  'SPY',
+  'QQQ',
+  'IWM',
+  'DIA',
+  'XLK',
+  'XLF',
+  'XLE',
+  'XLV',
+  'XLI',
+  'XLY',
+  'XLP',
+  'XLU',
+  'XLB',
+  'XLRE',
+  'SMH',
+  'SOXX',
+  'EEM',
+  'EWJ',
+  'GLD',
+  'TLT',
+] as const;
+
 export const DEFAULT_MCAP_TOP_N = 20;

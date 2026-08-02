@@ -439,11 +439,13 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
       if (kind === 'watchlist') {
         const segment = String(p.segment || '').trim();
-        setQuotesDrillSegment(
-          (QUOTES_SEGMENT_KEYS as readonly string[]).includes(segment)
-            ? (segment as QuoteSegmentKey)
-            : 'watch',
-        );
+        const migrated =
+          segment === 'popular' || segment === 'mcap'
+            ? 'etf'
+            : (QUOTES_SEGMENT_KEYS as readonly string[]).includes(segment)
+              ? (segment as QuoteSegmentKey)
+              : 'watch';
+        setQuotesDrillSegment(migrated);
         return;
       }
 

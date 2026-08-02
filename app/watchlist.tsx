@@ -13,16 +13,16 @@ import { firstRouteParam } from '@/utils/routeSearchParams';
 
 const HOME_TILE_QUOTES: Record<
   QuoteSegmentKey,
-  'homeTileQuotesWatch' | 'homeTileQuotesPopular' | 'homeTileQuotesMcap' | 'homeTileQuotesCoin'
+  'homeTileQuotesWatch' | 'homeTileQuotesEtf' | 'homeTileQuotesCoin'
 > = {
   watch: 'homeTileQuotesWatch',
-  popular: 'homeTileQuotesPopular',
-  mcap: 'homeTileQuotesMcap',
+  etf: 'homeTileQuotesEtf',
   coin: 'homeTileQuotesCoin',
 };
 
 function parseSegment(raw: string | undefined): QuoteSegmentKey {
   const value = String(raw || '').trim();
+  if (value === 'popular' || value === 'mcap') return 'etf';
   return (QUOTES_SEGMENT_KEYS as readonly string[]).includes(value)
     ? (value as QuoteSegmentKey)
     : 'watch';

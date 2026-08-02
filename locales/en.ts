@@ -98,8 +98,7 @@ export const en = {
   homeShortcutsTitle: 'Shortcuts',
   /** Home-tile short child labels (separate from tab segment titles) */
   homeTileQuotesWatch: 'Watch',
-  homeTileQuotesPopular: 'Hot',
-  homeTileQuotesMcap: 'MCap',
+  homeTileQuotesEtf: 'ETF',
   homeTileQuotesCoin: 'Coin',
   homeIndexSp500: 'S&P 500',
   homeIndexNasdaq: 'Nasdaq',
@@ -632,13 +631,12 @@ export const en = {
   settingsQuotesLimitsKicker: 'Count',
   settingsQuotesWatchKicker: 'WATCHLIST',
   settingsQuotesListLimitsHint:
-    'Popular, market cap, and crypto: pick 10–100 in steps of 10 (default 20) from the scroll list. Market cap options are capped by the symbol universe. Max: Popular {{popMax}} · MCap {{mcapMax}} · Crypto {{coinMax}}.',
-  settingsQuotesPopularCountLabel: 'Popular',
-  settingsQuotesMcapCountLabel: 'Market cap',
+    'ETF and crypto: pick 10–100 in steps of 10 (default 20) from the scroll list.',
+  settingsQuotesEtfCountLabel: 'ETF',
   settingsQuotesCoinCountLabel: 'Crypto',
   settingsQuotesSegmentOrderKicker: 'Order',
   settingsQuotesSegmentOrderHint:
-    'Order of Watch / Popular / Market cap / Crypto on the Quotes screen. Drag the ≡ handle to reorder.',
+    'Order of Watch / ETF / Crypto on the Quotes screen. Drag the ≡ handle to reorder.',
   settingsQuotesSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
   settingsQuotesChangeColorKicker: 'Price change colors',
   settingsQuotesChangeColorHint:
@@ -1040,8 +1038,7 @@ export const en = {
   marketMacroGold: 'Gold (GLD)',
 
   quotesSegmentWatch: 'Watch',
-  quotesSegmentPopular: 'Popular',
-  quotesSegmentMcap: 'MCap',
+  quotesSegmentEtf: 'ETF',
   quotesSegmentAfterHours: 'Night',
   quotesSegmentCoin: 'Crypto',
   quotesPrevCloseKrw: 'KR close',

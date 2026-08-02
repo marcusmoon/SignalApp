@@ -98,8 +98,7 @@ export const ja = {
   homeShortcutsTitle: 'ショートカット',
   /** ホームタイル用の短い下位名（タブセグメント正式名と分離） */
   homeTileQuotesWatch: '注目',
-  homeTileQuotesPopular: '人気',
-  homeTileQuotesMcap: '時価',
+  homeTileQuotesEtf: 'ETF',
   homeTileQuotesCoin: 'コイン',
   homeIndexSp500: 'S&P 500',
   homeIndexNasdaq: 'ナスダック',
@@ -631,13 +630,12 @@ export const ja = {
   settingsQuotesLimitsKicker: '件数',
   settingsQuotesWatchKicker: 'ウォッチリスト',
   settingsQuotesListLimitsHint:
-    '人気・時価・仮想通貨はいずれも10〜100を10件単位でスクロール選択（既定20）。時価はユニバース件数以下のみ表示。上限: 人気 {{popMax}} · 時価 {{mcapMax}} · コイン {{coinMax}}。',
-  settingsQuotesPopularCountLabel: '人気順',
-  settingsQuotesMcapCountLabel: '時価順',
+    'ETF・仮想通貨はいずれも10〜100を10件単位でスクロール選択します（既定20）。',
+  settingsQuotesEtfCountLabel: 'ETF',
   settingsQuotesCoinCountLabel: '仮想通貨',
   settingsQuotesSegmentOrderKicker: '順序',
   settingsQuotesSegmentOrderHint:
-    '相場画面上部のウォッチ・人気・時価・仮想通貨の順です。右の≡をドラッグして並べ替えます。',
+    '相場画面上部のウォッチ・ETF・仮想通貨の順です。右の≡をドラッグして並べ替えます。',
   settingsQuotesSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
   settingsQuotesChangeColorKicker: '騰落の色',
   settingsQuotesChangeColorHint:
@@ -1037,8 +1035,7 @@ export const ja = {
   marketMacroGold: '金 (GLD)',
 
   quotesSegmentWatch: 'ウォッチ',
-  quotesSegmentPopular: '人気順',
-  quotesSegmentMcap: '時価順',
+  quotesSegmentEtf: 'ETF',
   quotesSegmentAfterHours: '夜間',
   quotesSegmentCoin: '仮想通貨',
   quotesPrevCloseKrw: '韓国終値',

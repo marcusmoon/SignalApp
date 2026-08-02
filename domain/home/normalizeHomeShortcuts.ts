@@ -15,8 +15,13 @@ export type NormalizedHomeShortcut =
   | { type: 'settings' };
 
 const BOARD_SOURCES = new Set(['all', 'save_user_news', 'naver_likeusstock_free']);
-const QUOTE_SEGMENTS = new Set(['watch', 'popular', 'mcap', 'coin']);
+const QUOTE_SEGMENTS = new Set(['watch', 'etf', 'coin']);
 const NEWS_SEGMENTS = new Set(['all', 'global', 'korea', 'crypto', 'it', 'video']);
+
+function migrateQuotesSegment(raw: string): string {
+  if (raw === 'popular' || raw === 'mcap') return 'etf';
+  return raw;
+}
 
 export const HOME_SHORTCUTS_DEFAULT_NORMALIZED: NormalizedHomeShortcut[] = [
   { type: 'board', source: 'all' },
@@ -72,7 +77,7 @@ function parseHomeShortcut(raw: unknown): NormalizedHomeShortcut | null {
     return { type: 'board', source: BOARD_SOURCES.has(source) ? source : 'all' };
   }
   if (type === 'quotes') {
-    const segment = String(row.segment || '').trim();
+    const segment = migrateQuotesSegment(String(row.segment || '').trim());
     return { type: 'quotes', segment: QUOTE_SEGMENTS.has(segment) ? segment : 'watch' };
   }
   if (type === 'news') {

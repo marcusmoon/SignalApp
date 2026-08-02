@@ -69,7 +69,7 @@ import {
   withSoftTimeout,
   type QuoteRow,
 } from '@/domain/quotes/rows';
-import { POPULAR_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
+import { ETF_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
 import {
   DEFAULT_QUOTES_SEGMENT_ORDER,
@@ -96,8 +96,7 @@ const REFRESH_SPINNER_SOFT_TIMEOUT_MS = 1200;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
-  popular: 'quotesSegmentPopular',
-  mcap: 'quotesSegmentMcap',
+  etf: 'quotesSegmentEtf',
   coin: 'quotesSegmentCoin',
 };
 
@@ -105,6 +104,7 @@ type Row = QuoteRow;
 
 function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmentKey {
   const value = firstRouteParam(raw);
+  if (value === 'popular' || value === 'mcap') return 'etf';
   return (QUOTES_SEGMENT_KEYS as readonly string[]).includes(value)
     ? (value as QuoteSegmentKey)
     : 'watch';
@@ -112,8 +112,7 @@ function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmen
 
 const HOME_TILE_QUOTES: Record<QuoteSegmentKey, MessageId> = {
   watch: 'homeTileQuotesWatch',
-  popular: 'homeTileQuotesPopular',
-  mcap: 'homeTileQuotesMcap',
+  etf: 'homeTileQuotesEtf',
   coin: 'homeTileQuotesCoin',
 };
 
@@ -251,24 +250,24 @@ export function QuotesContent({
     }
 
     let symbols: string[] = [];
-    if (segment === 'popular') {
+    if (segment === 'etf') {
       try {
-        const list = await fetchSignalMarketList('popular_symbols', { cacheMode });
-        symbols = list.symbols.slice(0, limits.popularMax);
+        const list = await fetchSignalMarketList('etf_symbols', { cacheMode });
+        symbols = list.symbols.slice(0, limits.etfMax);
       } catch {
-        symbols = [...POPULAR_SYMBOLS_ORDERED].slice(0, limits.popularMax);
+        symbols = [...ETF_SYMBOLS_ORDERED].slice(0, limits.etfMax);
       }
     }
 
-    if (segment === 'popular' && symbols.length === 0) {
+    if (segment === 'etf' && symbols.length === 0) {
       setRows([]);
       return;
     }
 
     const serverRows = await fetchSignalMarketQuotes(
       {
-        segment: segment === 'popular' ? 'popular' : 'mcap',
-        limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
+        segment: 'etf',
+        limit: limits.etfMax,
       },
       { cacheMode },
     );

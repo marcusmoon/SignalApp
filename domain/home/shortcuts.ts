@@ -11,10 +11,12 @@ import {
   type HomeShortcutOption,
 } from '@/constants/homeShortcuts';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
-import { QUOTES_SEGMENT_KEYS, type QuoteSegmentKey } from '@/domain/quotes/constants';
+import {
+  migrateLegacyQuotesSegmentKey,
+  type QuoteSegmentKey,
+} from '@/domain/quotes/segmentOrder';
 
 const NEWS_SET = new Set<string>(NEWS_SEGMENT_ORDER);
-const QUOTES_SET = new Set<string>(QUOTES_SEGMENT_KEYS);
 const BOARD_SET = new Set<string>(COMMUNITY_SOURCE_ORDER);
 
 function parseNewsSegment(value: unknown): NewsSegmentKey | null {
@@ -23,8 +25,7 @@ function parseNewsSegment(value: unknown): NewsSegmentKey | null {
 }
 
 function parseQuotesSegment(value: unknown): QuoteSegmentKey | null {
-  const key = String(value || '').trim();
-  return QUOTES_SET.has(key) ? (key as QuoteSegmentKey) : null;
+  return migrateLegacyQuotesSegmentKey(value);
 }
 
 function parseBoardSource(value: unknown): CommunitySourceFilter | null {

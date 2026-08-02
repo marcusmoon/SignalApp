@@ -179,8 +179,7 @@ import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
-  popular: 'quotesSegmentPopular',
-  mcap: 'quotesSegmentMcap',
+  etf: 'quotesSegmentEtf',
   coin: 'quotesSegmentCoin',
 };
 
@@ -226,7 +225,7 @@ const NEWS_SEGMENT_ORDER_LIST_HEIGHT =
 
 const QUOTES_SEGMENT_ORDER_ROW_GAP = SEGMENT_ORDER_ROW_GAP;
 const QUOTES_SEGMENT_ORDER_LIST_HEIGHT =
-  SEGMENT_ORDER_ROW_HEIGHT * 4 + QUOTES_SEGMENT_ORDER_ROW_GAP * 3 + SEGMENT_ORDER_LIST_EXTRA;
+  SEGMENT_ORDER_ROW_HEIGHT * 3 + QUOTES_SEGMENT_ORDER_ROW_GAP * 2 + SEGMENT_ORDER_LIST_EXTRA;
 const HOME_SHORTCUT_ORDER_ROW_HEIGHT = 64;
 const HOME_SHORTCUT_ORDER_ROW_GAP = 8;
 
@@ -297,7 +296,7 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
 };
 
 type SettingsCountPicker =
-  | { kind: 'quotes'; field: 'popular' | 'mcap' | 'coin' }
+  | { kind: 'quotes'; field: 'etf' | 'coin' }
   | { kind: 'home'; field: 'newsFlow' | 'watchlist' | 'sectorFlow' };
 
 function settingsCountChoices(min: number, max: number): number[] {
@@ -1160,8 +1159,7 @@ export default function SettingsScreen({
   const countPickerTitle = useMemo(() => {
     if (!countPicker) return '';
     if (countPicker.kind === 'quotes') {
-      if (countPicker.field === 'popular') return t('settingsQuotesPopularCountLabel');
-      if (countPicker.field === 'mcap') return t('settingsQuotesMcapCountLabel');
+      if (countPicker.field === 'etf') return t('settingsQuotesEtfCountLabel');
       return t('settingsQuotesCoinCountLabel');
     }
     if (countPicker.field === 'newsFlow') return t('settingsHomeNewsFlowDisplaySection');
@@ -1172,8 +1170,7 @@ export default function SettingsScreen({
   const countPickerSelected = useMemo(() => {
     if (!countPicker) return null;
     if (countPicker.kind === 'quotes') {
-      if (countPicker.field === 'popular') return quotesListLimits.popularMax;
-      if (countPicker.field === 'mcap') return quotesListLimits.mcapMax;
+      if (countPicker.field === 'etf') return quotesListLimits.etfMax;
       return quotesListLimits.coinMax;
     }
     if (countPicker.field === 'newsFlow') return homeNewsFlowDisplayCount;
@@ -1192,12 +1189,7 @@ export default function SettingsScreen({
       if (!countPicker) return;
       if (countPicker.kind === 'quotes') {
         setQuotesListLimits((prev) => {
-          const patch =
-            countPicker.field === 'popular'
-              ? { popularMax: n }
-              : countPicker.field === 'mcap'
-                ? { mcapMax: n }
-                : { coinMax: n };
+          const patch = countPicker.field === 'etf' ? { etfMax: n } : { coinMax: n };
           const next = normalizeQuotesListLimits({ ...prev, ...patch });
           void saveQuotesListLimits(next);
           return next;
@@ -1603,24 +1595,13 @@ clearCalendarCache();
               ) : (
                 <>
                   <View style={[styles.limitRow, { marginTop: 8 }]}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesEtfCountLabel')}</Text>
                     <Pressable
-                      onPress={() => setCountPicker({ kind: 'quotes', field: 'popular' })}
+                      onPress={() => setCountPicker({ kind: 'quotes', field: 'etf' })}
                       style={styles.limitPickerTrigger}
                       accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                  <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setCountPicker({ kind: 'quotes', field: 'mcap' })}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
+                      accessibilityLabel={t('settingsQuotesEtfCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.etfMax}</Text>
                       <FontAwesome name="chevron-down" size={14} color={theme.green} />
                     </Pressable>
                   </View>

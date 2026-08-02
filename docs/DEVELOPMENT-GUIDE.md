@@ -50,6 +50,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/heatmaps/changeHeat` | 히트맵 채색 강도 |
 | `domain/quotes/ticker` | 티커·종목코드 검증 |
 | `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
+| `domain/quotes/constants` · `segmentOrder` · `listLimits` | 시세 탭 `watch`·`etf`·`coin` · 구 `popular`/`mcap`→`etf` 마이그레이션 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
 | `services/symbolLogo` | 서버 `imageUrl` 우선 · Parqet 폴백 |
 

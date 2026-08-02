@@ -51,6 +51,7 @@ export const JOB_PRESETS = {
     descriptionKey: 'jobPresetMarketRefreshDesc',
     jobKeys: [
       'market_quotes_popular',
+      'market_quotes_etf',
       'market_quotes_watchlist',
       'market_quotes_korea',
       'market_quotes_indices',

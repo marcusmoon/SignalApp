@@ -2,8 +2,9 @@ import type { NewsSegmentKey } from '@/constants/newsSegment';
 import type { SourceAccent } from '@/constants/sourceAccent';
 import { accentAlpha } from '@/constants/sourceAccent';
 import type { AppTheme } from '@/constants/theme';
+import type { QuoteSegmentKey } from '@/domain/quotes/constants';
 
-export type QuoteSegmentKey = 'watch' | 'popular' | 'mcap' | 'coin';
+export type { QuoteSegmentKey };
 
 export function newsSegmentAccent(key: NewsSegmentKey, theme: AppTheme): SourceAccent {
   switch (key) {
@@ -62,16 +63,9 @@ export function marketBriefingAccent(market: string, theme: AppTheme): SourceAcc
 
 export function quoteSegmentAccent(key: QuoteSegmentKey, theme: AppTheme): SourceAccent {
   switch (key) {
-    case 'popular':
+    case 'etf':
       return {
-        glyph: '🔥',
-        accent: '#F97316',
-        dim: accentAlpha('#F97316', theme.colorScheme === 'dark' ? 0.22 : 0.12),
-        border: accentAlpha('#F97316', theme.colorScheme === 'dark' ? 0.45 : 0.28),
-      };
-    case 'mcap':
-      return {
-        glyph: '◎',
+        glyph: '▣',
         accent: '#0EA5E9',
         dim: accentAlpha('#0EA5E9', theme.colorScheme === 'dark' ? 0.22 : 0.12),
         border: accentAlpha('#0EA5E9', theme.colorScheme === 'dark' ? 0.45 : 0.28),

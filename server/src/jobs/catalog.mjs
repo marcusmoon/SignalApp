@@ -20,6 +20,7 @@ export const JOB_CATALOG = {
   youtube_economy_latest: { area: 'youtube', stage: 'ingest' },
   youtube_economy_popular: { area: 'youtube', stage: 'ingest' },
   market_quotes_popular: { area: 'market', stage: 'ingest' },
+  market_quotes_etf: { area: 'market', stage: 'ingest' },
   market_quotes_watchlist: { area: 'market', stage: 'ingest' },
   market_quotes_korea: { area: 'market', stage: 'ingest' },
   market_quotes_indices: { area: 'market', stage: 'ingest' },

@@ -71,6 +71,17 @@ describe('normalizeHomeShortcutsRaw', () => {
     ]);
   });
 
+  it('migrates quotes popular/mcap to etf and dedupes', () => {
+    assert.deepEqual(
+      normalizeHomeShortcutsRaw([
+        { type: 'quotes', segment: 'popular' },
+        { type: 'quotes', segment: 'mcap' },
+        { type: 'quotes', segment: 'etf' },
+      ]),
+      [{ type: 'quotes', segment: 'etf' }],
+    );
+  });
+
   it('accepts news segment all', () => {
     assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'news', segment: 'all' }]), [
       { type: 'news', segment: 'all' },

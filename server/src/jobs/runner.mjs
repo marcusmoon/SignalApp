@@ -325,7 +325,13 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     return { kind: 'youtube', rows: await fetchYoutubeVideosByIds(ids, { order: 'preserve' }) };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'market_quotes') {
-    const listKey = params?.listKey || (params?.segment === 'popular' ? 'popular_symbols' : null);
+    const listKey =
+      params?.listKey ||
+      (params?.segment === 'etf'
+        ? 'etf_symbols'
+        : params?.segment === 'popular'
+          ? 'popular_symbols'
+          : null);
     const symbols = listKey
       ? marketListSymbols(dbBefore, listKey)
       : Array.isArray(params?.symbols) && params.symbols.length > 0

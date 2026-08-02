@@ -3,6 +3,8 @@ export const MARKET_LIST_KEYS = [
   'mcap_universe',
   'mcap_top_symbols',
   'popular_symbols',
+  /** Quotes tab ETF segment — curated liquidity-first basket. */
+  'etf_symbols',
   'default_watchlist',
   'korea_watchlist',
   /** Approximate kospi30+kosdaq50 ordinary shares for screener pool (not a live KRX mcap feed). */

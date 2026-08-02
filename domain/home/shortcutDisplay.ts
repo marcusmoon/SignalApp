@@ -29,16 +29,14 @@ export { homeShortcutCompoundLabel } from '@/domain/home/shortcutCompoundLabel';
 
 const QUOTE_SEGMENT_FORMAL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
-  popular: 'quotesSegmentPopular',
-  mcap: 'quotesSegmentMcap',
+  etf: 'quotesSegmentEtf',
   coin: 'quotesSegmentCoin',
 };
 
-/** 홈 타일용 시세 하위 (탭의 「인기순」등보다 짧게) */
+/** 홈 타일용 시세 하위 (탭의 정식명과 동일해도 짧은 표기 유지) */
 const QUOTE_SEGMENT_HOME: Record<QuoteSegmentKey, MessageId> = {
   watch: 'homeTileQuotesWatch',
-  popular: 'homeTileQuotesPopular',
-  mcap: 'homeTileQuotesMcap',
+  etf: 'homeTileQuotesEtf',
   coin: 'homeTileQuotesCoin',
 };
 

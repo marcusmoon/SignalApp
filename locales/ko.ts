@@ -97,8 +97,7 @@ export const ko = {
   homeShortcutsTitle: '바로가기',
   /** 홈 타일용 짧은 하위명 (탭 세그먼트 정식명과 분리) */
   homeTileQuotesWatch: '관심',
-  homeTileQuotesPopular: '인기',
-  homeTileQuotesMcap: '시총',
+  homeTileQuotesEtf: 'ETF',
   homeTileQuotesCoin: '코인',
   homeIndexSp500: 'S&P 500',
   homeIndexNasdaq: '나스닥',
@@ -631,13 +630,12 @@ export const ko = {
   settingsQuotesLimitsKicker: '개수',
   settingsQuotesWatchKicker: '관심 종목',
   settingsQuotesListLimitsHint:
-    '인기·시총·코인 모두 10~100까지 10개 단위로 선택합니다(기본 20). 시총은 유니버스 길이 이하만 표시됩니다. 상한: 인기 {{popMax}} · 시총 {{mcapMax}} · 코인 {{coinMax}}.',
-  settingsQuotesPopularCountLabel: '인기순',
-  settingsQuotesMcapCountLabel: '시총순',
+    'ETF·코인 모두 10~100까지 10개 단위로 선택합니다(기본 20).',
+  settingsQuotesEtfCountLabel: 'ETF',
   settingsQuotesCoinCountLabel: '코인',
   settingsQuotesSegmentOrderKicker: '순서',
   settingsQuotesSegmentOrderHint:
-    '실시간 시세 화면 상단의 관심·인기순·시총순·코인 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
+    '실시간 시세 화면 상단의 관심·ETF·코인 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
   settingsQuotesSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
   settingsQuotesChangeColorKicker: '등락 색상',
   settingsQuotesChangeColorHint:
@@ -1037,8 +1035,7 @@ export const ko = {
   marketMacroGold: '금 (GLD)',
 
   quotesSegmentWatch: '관심',
-  quotesSegmentPopular: '인기순',
-  quotesSegmentMcap: '시총순',
+  quotesSegmentEtf: 'ETF',
   quotesSegmentAfterHours: '야간',
   quotesSegmentCoin: '코인',
   quotesPrevCloseKrw: '국내 종가',

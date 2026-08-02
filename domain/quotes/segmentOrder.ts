@@ -1,10 +1,8 @@
-import {
-  DEFAULT_QUOTES_SEGMENT_ORDER,
-  QUOTES_SEGMENT_KEYS,
-  type QuoteSegmentKey,
-} from './constants';
+/** 시세 탭 상단 세그먼트 키·기본 순서 (순수 — Node 테스트 가능) */
+export const QUOTES_SEGMENT_KEYS = ['watch', 'etf', 'coin'] as const;
+export type QuoteSegmentKey = (typeof QUOTES_SEGMENT_KEYS)[number];
 
-export { DEFAULT_QUOTES_SEGMENT_ORDER, QUOTES_SEGMENT_KEYS, type QuoteSegmentKey };
+export const DEFAULT_QUOTES_SEGMENT_ORDER: QuoteSegmentKey[] = [...QUOTES_SEGMENT_KEYS];
 
 /** 구 인기·시총 세그먼트 → ETF */
 export function migrateLegacyQuotesSegmentKey(raw: unknown): QuoteSegmentKey | null {

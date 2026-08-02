@@ -1,19 +1,22 @@
-import {
-  QUOTES_COUNT_MAX,
-  QUOTES_COUNT_MIN,
-  QUOTES_COUNT_STEP,
-  QUOTES_LIST_LIMIT_BOUNDS,
-  QUOTES_LIST_LIMITS_DEFAULTS,
-  type QuotesListLimits,
-} from './constants';
+/** 시세 탭 목록 길이(ETF·코인) — 순수 규칙 (Node 테스트 가능) */
 
-export {
-  QUOTES_COUNT_MAX,
-  QUOTES_COUNT_MIN,
-  QUOTES_COUNT_STEP,
-  QUOTES_LIST_LIMIT_BOUNDS,
-  QUOTES_LIST_LIMITS_DEFAULTS,
-  type QuotesListLimits,
+export type QuotesListLimits = {
+  etfMax: number;
+  coinMax: number;
+};
+
+export const QUOTES_COUNT_MIN = 10;
+export const QUOTES_COUNT_MAX = 100;
+export const QUOTES_COUNT_STEP = 10;
+
+export const QUOTES_LIST_LIMIT_BOUNDS = {
+  etf: { min: QUOTES_COUNT_MIN, max: QUOTES_COUNT_MAX },
+  coin: { min: QUOTES_COUNT_MIN, max: QUOTES_COUNT_MAX },
+} as const;
+
+export const QUOTES_LIST_LIMITS_DEFAULTS: QuotesListLimits = {
+  etfMax: 20,
+  coinMax: 20,
 };
 
 /** 10, 20, …, 100 */
@@ -60,12 +63,14 @@ function normalizeQuotesCountField(
   return snapToNearestChoice(n, choices);
 }
 
-export function normalizeQuotesListLimits(p: Partial<QuotesListLimits> & {
-  /** @deprecated 인기→ETF 마이그레이션 */
-  popularMax?: number;
-  /** @deprecated 시총→ETF 마이그레이션 */
-  mcapMax?: number;
-}): QuotesListLimits {
+export function normalizeQuotesListLimits(
+  p: Partial<QuotesListLimits> & {
+    /** @deprecated 인기→ETF 마이그레이션 */
+    popularMax?: number;
+    /** @deprecated 시총→ETF 마이그레이션 */
+    mcapMax?: number;
+  },
+): QuotesListLimits {
   const etfRaw =
     typeof p.etfMax === 'number'
       ? p.etfMax

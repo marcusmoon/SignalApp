@@ -178,8 +178,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 홈 섹션 제목 앞: `HomeSectionLeadIcon` (트렌드 `trending-up` · 히어로 `reader` · 뉴스 `newspaper` · 일정 `calendar` · 바로가기 `apps` · 시세 `stats-chart` · 섹터 `grid`). 홈에서는 `AiBadge` 없음. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 섹터 기준일 · 뉴스 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
-  - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → 뉴스 → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
-  - **과거**: **트렌드**(없으면 숨김) → 히어로 1장 → 뉴스 → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 · 시세 숨김
+  - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → **뉴스**(없으면 숨김 · 빈 카드 없음) → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
+  - **과거**: **트렌드**(없으면 숨김) → 히어로 1장 → **뉴스**(없으면 숨김) → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 · 시세 숨김
   - **트렌드 UI**: 홈 **최상단**. 다른 섹션과 같이 `HomeSectionHeader` — 좌측 `trending-up-outline` + **트렌드** · 우측 as-of 칩(기여 소스 최신 `generatedAt`/`publishedAt`). 아래 **칩 카드**(`theme.greenBorder`·1px · wrap). 종목은 로고+회사명. `why`는 a11y만. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.

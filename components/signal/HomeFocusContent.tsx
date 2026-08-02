@@ -1346,20 +1346,16 @@ export function HomeFocusContent({
             </View>
           ) : null}
 
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('newsIssuesTitle')}
-              badge={<HomeSectionLeadIcon name="newspaper-outline" />}
-              meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
-            />
-            {homeIssues.length > 0 ? (
-              renderIssueCard(homeIssues)
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
-              </View>
-            )}
-          </View>
+          {homeIssues.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('newsIssuesTitle')}
+                badge={<HomeSectionLeadIcon name="newspaper-outline" />}
+                meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
+              />
+              {renderIssueCard(homeIssues)}
+            </View>
+          ) : null}
 
           {homeCalendarChips.length > 0 ? (
             <View style={styles.section}>
@@ -1706,13 +1702,6 @@ function makeStyles(
       lineHeight: sf(21),
       fontWeight: ft.signalBodyWeight,
       color: theme.textMuted,
-    },
-    emptyCard: {
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      padding: 12,
     },
     emptyText: {
       fontSize: ft.ff(13),

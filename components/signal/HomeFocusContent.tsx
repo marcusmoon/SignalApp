@@ -221,8 +221,10 @@ type HomeFocusContentProps = {
   scrollContentPaddingBottom?: number;
   headerAccessory?: ReactNode;
   showIssueSummary?: boolean;
-  /** iPhone `SignalHeader` 브랜드 탭 → PTR 연결용 */
+  /** iPhone `SignalHeader` 브랜드 탭 · refresh FAB → PTR 연결용 */
   onPullRefreshReady?: (refresh: () => void) => void;
+  /** PTR/FAB 진행 상태 (FAB disabled 등) */
+  onRefreshingChange?: (refreshing: boolean) => void;
 };
 
 type IssueRow = {
@@ -360,6 +362,7 @@ export function HomeFocusContent({
   headerAccessory,
   showIssueSummary = false,
   onPullRefreshReady,
+  onRefreshingChange,
 }: HomeFocusContentProps) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -800,6 +803,10 @@ export function HomeFocusContent({
   useEffect(() => {
     onPullRefreshReady?.(() => void refresh());
   }, [onPullRefreshReady, refresh]);
+
+  useEffect(() => {
+    onRefreshingChange?.(refreshing);
+  }, [onRefreshingChange, refreshing]);
 
   useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
 

@@ -23,7 +23,7 @@
 |---|---|---|---|
 | **진입·재포커스** | 탭 포커스, 최초 mount | `signalCacheMode()` → `use` | 유지 |
 | **필터·탭·날짜 변경** | 세그먼트·필터·날짜 deps 변경 | `use` | **맨 위** (`useScrollToTopOnChange`) |
-| **새로고침** | PTR · 헤더 탭 · chip 탭 | `signalCacheMode(true)` → `bypass` | **유지** |
+| **새로고침** | PTR · 헤더 탭 · chip 탭 · **iPhone 홈 refresh FAB** | `signalCacheMode(true)` → `bypass` | **유지** |
 
 ```ts
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -44,6 +44,7 @@ fetchXxx(params, { cacheMode: signalCacheMode(true) });
 - `ThemedRefreshControl` + (탭 화면) `useResetRefreshingOnTabBlur(setRefreshing)`을 쓴다.
 - wide 웹·iPad는 `useRegisterWebHeaderRefresh(() => void onRefresh())`로 헤더 로고와 연결한다.
 - iPhone 탭은 `SignalHeader compact onBrandPress={() => void onRefresh()}`로 PTR과 동일 동작을 연결한다.
+- **iPhone 홈만** `FloatingGlassFab`(sync)으로 동일 `onRefresh`를 제공한다 (`app/(tabs)/home.tsx`). `listRef` 없음 — 스크롤 유지·데이터만 교체. 웹 폰·iPad 홈에는 두지 않는다.
 - 고정 UI(세그먼트·날짜·digest·OTA·에러)는 스크롤 밖(`topFixed`)에 둔다.
 
 ### DON'T
@@ -257,7 +258,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | 유튜브 | ✅ | ✅ | — | — | — | |
 | 시세 | ✅ | ✅ | — | — | — | |
 | 게시판 | ✅ | ✅ | — | — | — | source 필터 |
-| 홈 | ✅ | ✅ (날짜) | — | — | — | 대시보드 |
+| 홈 | ✅ | ✅ (날짜) | — | — | — | 대시보드 · iPhone refresh FAB |
 | 캘린더 | ✅ | ✅ | — | — | — | 스택 |
 
 ## 9. 새 피드 화면 체크리스트

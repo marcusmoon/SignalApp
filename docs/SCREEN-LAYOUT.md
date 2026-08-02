@@ -217,7 +217,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 6. 리스트 `paddingTop`: 다이제스트 있으면 `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`, 없으면 `SCREEN_LIST_CONTENT_PADDING_TOP`
 7. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 8. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
-9. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 · **iPhone 홈 refresh**)
+9. FAB: `fabStackBottom` (예: 시세 관심 `+` · **iPhone 홈·시세 refresh**)
 10. PTR·chip·폴링: [FEED-INTERACTION.md](./FEED-INTERACTION.md) 체크리스트
 
 ## 관련 파일

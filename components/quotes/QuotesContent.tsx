@@ -21,7 +21,11 @@ import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import {
+  FLOATING_GLASS_FAB_GAP,
+  FLOATING_GLASS_FAB_SIZE,
+  FloatingGlassFab,
+} from '@/components/signal/FloatingGlassFab';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
@@ -159,8 +163,12 @@ export function QuotesContent({
   }, [lockedSegment]);
 
   const [loading, setLoading] = useState(true);
+  /** Any in-flight refresh (FAB disable / a11y). */
   const [refreshing, setRefreshing] = useState(false);
+  /** Only true for pull gesture — drives RefreshControl inset/spinner. */
+  const [ptrRefreshing, setPtrRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
+  useResetRefreshingOnTabBlur(setPtrRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const { ref: listRef } = useScrollToTopOnChange([segment], { resyncDeps: [rows] });
@@ -305,8 +313,13 @@ export function QuotesContent({
     };
   }, [isEffectivelyFocused, load, t]);
 
-  const onRefreshBase = useCallback(async () => {
+  /**
+   * `ptr`: show native RefreshControl (pull gesture).
+   * `silent`: FAB/header — keep scroll; do not toggle PTR inset (same as home).
+   */
+  const onRefreshBase = useCallback(async (mode: 'ptr' | 'silent' = 'silent') => {
     setRefreshing(true);
+    if (mode === 'ptr') setPtrRefreshing(true);
     const refreshPromise = load(true);
     try {
       const finished = await withSoftTimeout(refreshPromise.then(() => true), REFRESH_SPINNER_SOFT_TIMEOUT_MS, false);
@@ -319,11 +332,12 @@ export function QuotesContent({
       if (rowsRef.current.length === 0) setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
     } finally {
       setRefreshing(false);
+      setPtrRefreshing(false);
     }
   }, [load, t]);
 
-  const onRefresh = onRefreshBase;
-  useRegisterWebHeaderRefresh(() => void onRefresh());
+  const onRefreshSilent = useCallback(() => void onRefreshBase('silent'), [onRefreshBase]);
+  useRegisterWebHeaderRefresh(onRefreshSilent);
 
   const onAddWatch = useCallback(async (): Promise<boolean> => {
     const raw = draftTicker.trim();
@@ -421,8 +435,18 @@ export function QuotesContent({
     );
   }, [load, t]);
 
-  const bottomPad = tabScreenScrollBottomPadding(barH, insets.bottom);
+  /** iPhone tab only (not web phone, not iPad/wide, not home-shortcut embed). */
+  const showRefreshFab = Platform.OS === 'ios' && !useTwoPane && !embedded && isEffectivelyFocused;
+  const showWatchAddFab = segment === 'watch' && isEffectivelyFocused;
   const fabBottom = fabStackBottom(barH, insets.bottom);
+  const refreshFabBottom =
+    showWatchAddFab && showRefreshFab
+      ? fabBottom + FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP
+      : fabBottom;
+  const fabClearance =
+    (showRefreshFab || showWatchAddFab ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0) +
+    (showRefreshFab && showWatchAddFab ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0);
+  const bottomPad = tabScreenScrollBottomPadding(barH, insets.bottom) + fabClearance;
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
     if (lockedSegment) return;
@@ -682,7 +706,9 @@ export function QuotesContent({
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
+        }
         removeClippedSubviews={Platform.OS === 'android'}
         initialNumToRender={12}
         windowSize={8}
@@ -699,7 +725,7 @@ export function QuotesContent({
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane || embedded ? [] : ['top']}>
       {!embedded && !useTwoPane && !onBack ? (
-        <SignalHeader compact onBrandPress={() => void onRefresh()} />
+        <SignalHeader compact onBrandPress={onRefreshSilent} />
       ) : null}
       {onBack ? <WideSubpaneHeader title={subpaneTitle} onBack={onBack} /> : null}
       {isEffectivelyFocused ? <OtaUpdateBanner /> : null}
@@ -716,7 +742,17 @@ export function QuotesContent({
         }
       />
 
-      {segment === 'watch' && isEffectivelyFocused ? (
+      {showRefreshFab ? (
+        <FloatingGlassFab
+          bottom={refreshFabBottom}
+          iconName="sync-alt"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing}
+          active={refreshing}
+          onPress={onRefreshSilent}
+        />
+      ) : null}
+      {showWatchAddFab ? (
         <FloatingGlassFab
           bottom={fabBottom}
           iconName="plus"

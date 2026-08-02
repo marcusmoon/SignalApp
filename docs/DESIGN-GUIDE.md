@@ -293,7 +293,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | `ThemedRefreshControl` | PTR |
 | `UpdatePromptStrip` | chip·OTA strip |
 | `WebWheelFlatList` / `WebWheelScrollView` | 웹 스크롤 |
-| `FloatingGlassFab` | FAB (시세 관심·뉴스 번역 · **iPhone 홈 새로고침**) |
+| `FloatingGlassFab` | FAB (시세 관심 `+` · 뉴스 번역 · **iPhone 홈·시세 새로고침**) |
 
 ## 웹 스크롤바
 

@@ -23,7 +23,7 @@
 |---|---|---|---|
 | **진입·재포커스** | 탭 포커스, 최초 mount | `signalCacheMode()` → `use` | 유지 |
 | **필터·탭·날짜 변경** | 세그먼트·필터·날짜 deps 변경 | `use` | **맨 위** (`useScrollToTopOnChange`) |
-| **새로고침** | PTR · 헤더 탭 · chip 탭 · **iPhone 홈 refresh FAB** | `signalCacheMode(true)` → `bypass` | **유지** |
+| **새로고침** | PTR · 헤더 탭 · chip 탭 · **iPhone 홈·시세 refresh FAB** | `signalCacheMode(true)` → `bypass` | **유지** |
 
 ```ts
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -44,7 +44,7 @@ fetchXxx(params, { cacheMode: signalCacheMode(true) });
 - `ThemedRefreshControl` + (탭 화면) `useResetRefreshingOnTabBlur(setRefreshing)`을 쓴다.
 - wide 웹·iPad는 `useRegisterWebHeaderRefresh(() => void onRefresh())`로 헤더 로고와 연결한다.
 - iPhone 탭은 `SignalHeader compact onBrandPress={() => void onRefresh()}`로 PTR과 동일 동작을 연결한다.
-- **iPhone 홈만** `FloatingGlassFab`(sync)으로 동일 `load(true)`를 제공한다 (`app/(tabs)/home.tsx`). `listRef` 없음 — 스크롤 유지·데이터만 교체. **FAB·헤더 탭은 silent refresh** — `RefreshControl.refreshing`을 켜지 않아 중간 스크롤에서 content inset으로 화면이 살짝 올라가지 않게 한다. PTR(당기기)만 네이티브 스피너. 웹 폰·iPad 홈에는 FAB 없음.
+- **iPhone 홈·시세** `FloatingGlassFab`(sync)으로 동일 `load(true)`를 제공한다 (`app/(tabs)/home.tsx`, `QuotesContent`). `listRef` 없음 — 스크롤 유지·데이터만 교체. **FAB·헤더 탭은 silent refresh** — `RefreshControl.refreshing`을 켜지 않아 중간 스크롤에서 content inset으로 화면이 살짝 올라가지 않게 한다. PTR(당기기)만 네이티브 스피너. 웹 폰·iPad·시세 임베드에는 refresh FAB 없음. 시세 **관심** 세그먼트는 sync FAB를 `+` 위에 스택.
 - 고정 UI(세그먼트·날짜·digest·OTA·에러)는 스크롤 밖(`topFixed`)에 둔다.
 
 ### DON'T
@@ -256,7 +256,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | 마켓 | ✅ | ✅ | ✅ | ✅ session | — | 오늘만 chip |
 | 알림함 | ✅ | ✅ | ✅ | — 단일 | — | |
 | 유튜브 | ✅ | ✅ | — | — | — | |
-| 시세 | ✅ | ✅ | — | — | — | |
+| 시세 | ✅ | ✅ | — | — | — | iPhone refresh FAB · 관심은 `+`와 스택 |
 | 게시판 | ✅ | ✅ | — | — | — | source 필터 |
 | 홈 | ✅ | ✅ (날짜) | — | — | — | 대시보드 · iPhone refresh FAB |
 | 캘린더 | ✅ | ✅ | — | — | — | 스택 |

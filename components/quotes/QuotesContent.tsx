@@ -249,30 +249,42 @@ export function QuotesContent({
       return;
     }
 
-    let symbols: string[] = [];
+    // ETF: market_lists.etf_symbols 저장 순 유지 (segment-only 조회는 fetched_at DESC라 순서가 깨짐)
     if (segment === 'etf') {
+      let symbols: string[] = [];
       try {
         const list = await fetchSignalMarketList('etf_symbols', { cacheMode });
         symbols = list.symbols.slice(0, limits.etfMax);
       } catch {
         symbols = [...ETF_SYMBOLS_ORDERED].slice(0, limits.etfMax);
       }
-    }
-
-    if (segment === 'etf' && symbols.length === 0) {
-      setRows([]);
+      if (symbols.length === 0) {
+        setRows([]);
+        return;
+      }
+      const quoteRows = await fetchSignalMarketQuotes(
+        {
+          segment: 'etf',
+          symbols,
+          limit: Math.max(symbols.length, 1),
+        },
+        { cacheMode },
+      ).catch(() => [] as SignalApiMarketQuote[]);
+      const quoteBySymbol = new Map<string, Row>();
+      for (const item of quoteRows) {
+        const row = mapSignalQuoteToRow(item);
+        for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
+      }
+      setRows(
+        symbols.map((sym) => {
+          const up = sym.trim().toUpperCase();
+          return quoteBySymbol.get(up) ?? { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
+        }),
+      );
       return;
     }
 
-    const serverRows = await fetchSignalMarketQuotes(
-      {
-        segment: 'etf',
-        limit: limits.etfMax,
-      },
-      { cacheMode },
-    );
-    const baseRows = serverRows.map(mapSignalQuoteToRow);
-    setRows(baseRows);
+    setRows([]);
   }, [segment, t]);
 
   useEffect(() => {

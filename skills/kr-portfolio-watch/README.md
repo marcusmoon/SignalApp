@@ -21,33 +21,52 @@ cp ~/.claude/skills/kr-portfolio-watch/holdings.example.json \
 `GET /v1/disclosures?market=kr` 만 호출한다. **쓰기 호출 없음** — ingest 토큰도 쓰지 않는다.
 
 ```
-python3 watch.py [--hours 24] [--holdings PATH] [--base-url URL] [--max-rows 300]
+python3 watch.py [--holdings holdings.json] [--limit 300] [--hours 24]
 ```
 
-`--base-url` 기본값은 `https://signalapp.up.railway.app`이며 `SIGNAL_BASE_URL`로도 바꿀 수 있다.
+서버 주소는 파일 상단 `BASE` 상수. 공개 API의 페이지 상한이 100이라 100건씩 끊어 `--limit`까지 받아온다.
 
-종료 코드: `0` 정상 · `2` holdings.json 없음/형식 오류 · `3` 피드 조회 실패.
-실패해도 stdout에 `{"ok": false, "error": ...}` JSON을 남기므로 브리핑에서 한 줄로 보고할 수 있다.
+### 출력
+
+| 키 | 내용 |
+|---|---|
+| `holdings_hits` | 보유종목 공시. 심각도 → 비중 내림차순 정렬 |
+| `action_required` | `holdings_hits` 중 SELL·NEEDS_CHECK |
+| `universe_alerts` | 미보유 종목의 SELL·NEEDS_CHECK, 최대 15건 |
+| `scanned` / `window_hours` / `holdings_count` / `asof` | 스캔 메타 |
+
+보유종목 히트에는 `weight`와 `thesis_breakers`가 함께 실린다 (3단계 논리 훼손 점검용).
 
 ### 분류 규칙
 
 `RULES` 리스트가 사양서 §8.1 트리거 표를 코드로 옮긴 것이다. 위에서부터 먼저 걸리는 규칙이 이긴다.
-DART 보고서명(`formType`)과 제목을 접두 태그(`[기재정정]` 등) 제거 + 공백 제거 후 정규식으로 검사한다.
+매칭 대상은 `formType + title + summary` 문자열이다.
 
-`NEEDS_CHECK`로 올리는 트리거는 반드시 `NEEDS_CHECK_CRITERIA`에 매도/유지 기준이 있어야 한다.
-기준 없는 트리거를 `NEEDS_CHECK`로 두면 브리핑 2단계에서 판정 기준을 붙일 수 없다.
+## 알려진 동작
 
-### 시간 윈도우
+**1. `--hours 24`는 전일 공시를 놓친다.**
+DART 접수일(`rcept_dt`)은 날짜 단위라 서버가 `filedAt`을 **KST 자정**으로 채운다
+(`server/src/providers/news/dartFilings.mjs`의 `parseRceptDate`). 반면 컷오프는 실행 시각 기준이라,
+전일 접수 공시는 실제로 24시간보다 더 과거로 계산된다.
 
-DART 접수일은 날짜 단위(KST 자정)로 들어온다. 자정 그대로 비교하면 당일 공시가 윈도우 밖으로
-밀려나므로, 시각이 KST 자정인 행은 그날 마감(23:59:59 KST)으로 보정해 `--hours`와 비교한다.
+전일 공시를 포함하려면 `--hours ≥ 24 + (현재 KST 시각)` 이 필요하다.
+장 시작 전 08:00 KST 실행이면 **`--hours 32` 이상**, 11:30 실행이면 36 이상.
+전일 장중·장마감 후 공시가 감시 대상의 대부분이므로, 실행 시각에 맞춰 값을 올리거나
+넉넉히 `--hours 48`로 두는 편이 안전하다.
+
+**2. 해제·해소 공시가 SELL로 잡힌다.**
+`관리종목` 패턴이 `관리종목지정해제`에도, `상장적격성` 패턴이 `상장적격성 실질심사 사유 해소`에도
+걸린다. 브리핑 2단계에서 원문 제목을 확인해 걸러야 한다.
+
+**3. `ticker`는 문자열 6자리로 적는다.**
+공시 피드의 `symbol`과 정확히 일치해야 매칭된다. `5930`(숫자), `"005930.KS"`, `"A005930"`은
+조용히 미매칭 처리되어 보유종목인데도 `universe_alerts`로 빠진다.
 
 ### `holdings.json`
 
 | 필드 | 설명 |
 |---|---|
-| `holdings[].symbol` | 6자리 종목코드. `005930.KS`, `A005930`도 6자리로 정규화된다 |
-| `holdings[].name` | 종목명 (없으면 공시의 `companyName` 사용) |
-| `holdings[].weight` | 포트폴리오 비중. 브리핑에 그대로 표기된다 |
-| `holdings[].thesis_breakers` | Stage 3 정성검증에서 적은 논리 훼손 조건 문장. 비면 3단계가 반만 동작한다 |
-| `watchlist` | (선택) 후보군 종목코드. 있으면 `universe_alerts`를 이 목록으로 좁힌다 |
+| `positions[].ticker` | 6자리 종목코드 문자열. 필수 |
+| `positions[].name` | 종목명 |
+| `positions[].weight` | 포트폴리오 비중. 정렬 키이자 브리핑 표기값 |
+| `positions[].thesis_breakers` | Stage 3 정성검증에서 적은 논리 훼손 조건 문장. 비면 3단계가 반만 동작한다 |

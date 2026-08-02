@@ -294,8 +294,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | `UpdatePromptStrip` | chip·OTA strip |
 | `WebWheelFlatList` / `WebWheelScrollView` | 웹 스크롤 |
 | `FloatingGlassFab` | FAB (시세 관심 `+` · 뉴스 번역 · **iPhone 홈·시세 새로고침**) |
-| 시세 관심 순서 | 행 왼쪽 ≡ 드래그로 저장순 변경(표시순=저장순). 스와이프 삭제와 병행 |
-| 시세 ETF 그룹 | 저장순 유지 · 연속 구간에 muted 라벨 **지수 / 섹터 / 해외·매크로** (`etfGroups`) — 카드화 금지 |
+| 시세 관심 순서 | 행 **롱프레스**로 저장순 변경(≡ 핸들 없음 · 표시순=저장순). 스와이프 삭제와 병행 |
+| 시세 ETF 그룹 | 저장순 유지 · 홈 시세와 같은 **라벨+구분선** 서브헤더 **지수 / 섹터 / 해외·매크로** (`etfGroups`) |
 | 시세 지연 as-of | **헤더 밖** · 세그먼트와 리스트 **사이** 우측 칩 `지연 · 15분 전` / `Delayed · Close` (`quotesDelayedAsOf`, 홈 메타·레이어 as-of와 동일 end 정렬). 홈 시세 레이어와 동일 규칙 — 전부 종가→Close, 관심 혼재면 열린 시세 중 최신 상대시간 |
 
 ## 웹 스크롤바

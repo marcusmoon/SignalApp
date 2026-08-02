@@ -605,7 +605,7 @@ export function QuotesContent({
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
       const useNaverLink = isKoreaStockQuote(r);
       const titleText = r.symbol;
-      const showWatchDrag = segment === 'watch' && typeof drag === 'function';
+      const watchReorder = segment === 'watch' && typeof drag === 'function';
 
       const cardInner = (
         <>
@@ -613,19 +613,6 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  {showWatchDrag ? (
-                    <GHPressable
-                      style={styles.watchDragHandle}
-                      {...(Platform.OS === 'web'
-                        ? { onPressIn: drag }
-                        : { onLongPress: drag, delayLongPress: 180 })}
-                      accessibilityRole="button"
-                      accessibilityLabel={formatMessage(t('quotesWatchDragHandleA11y'), {
-                        symbol: r.symbol,
-                      })}>
-                      <FontAwesome name="bars" size={14} color={theme.textMuted} />
-                    </GHPressable>
-                  ) : null}
                   <SymbolLogo symbol={r.symbol} imageUrl={r.imageUrl} size={28} />
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
                     <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
@@ -720,6 +707,7 @@ export function QuotesContent({
         </>
       );
 
+      const card = <View style={styles.cardGrouped}>{cardInner}</View>;
       const body = watchSwipe ? (
         <ReanimatedSwipeable
           enabled={!loading && !isActive}
@@ -736,14 +724,28 @@ export function QuotesContent({
               </RectButton>
             </View>
           )}>
-          <View style={styles.cardGrouped}>{cardInner}</View>
+          {card}
         </ReanimatedSwipeable>
       ) : (
-        <View style={styles.cardGrouped}>{cardInner}</View>
+        card
       );
 
-      const row = <View style={shellStyle}>{body}</View>;
-      return showWatchDrag ? <ScaleDecorator>{row}</ScaleDecorator> : row;
+      // ≡ 핸들 없이 행 롱프레스로 순서 변경 (웹도 동일)
+      const row = watchReorder ? (
+        <GHPressable
+          style={shellStyle}
+          onLongPress={drag}
+          delayLongPress={220}
+          disabled={isActive}
+          accessibilityRole="button"
+          accessibilityHint={formatMessage(t('quotesWatchReorderA11y'), { symbol: r.symbol })}
+          accessibilityLabel={r.symbol}>
+          {body}
+        </GHPressable>
+      ) : (
+        <View style={shellStyle}>{body}</View>
+      );
+      return watchReorder ? <ScaleDecorator>{row}</ScaleDecorator> : row;
     },
     [
       loading,
@@ -758,18 +760,22 @@ export function QuotesContent({
       theme,
       theme.green,
       theme.textDim,
-      theme.textMuted,
     ],
   );
 
   const renderEtfListItem = useCallback(
     ({ item, index }: { item: EtfListItem; index: number }) => {
       if (item.type === 'header') {
+        const title = t(ETF_GROUP_LABEL[item.group]);
         return (
           <View
             style={[styles.etfGroupHeader, index === 0 && styles.etfGroupHeaderFirst]}
-            accessibilityRole="header">
-            <Text style={styles.etfGroupHeaderText}>{t(ETF_GROUP_LABEL[item.group])}</Text>
+            accessibilityRole="header"
+            accessibilityLabel={title}>
+            <Text style={styles.etfGroupHeaderLabel} numberOfLines={1}>
+              {title}
+            </Text>
+            <View style={styles.etfGroupHeaderLine} />
           </View>
         );
       }

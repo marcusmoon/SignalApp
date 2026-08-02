@@ -983,7 +983,7 @@ export const ko = {
   quotesPendingHint: '잠시 후 새로고침해 주세요',
   quotesEmptyWatch: '관심 종목이 없습니다. + 버튼으로 티커를 추가해 주세요.',
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
-  quotesWatchDragHandleA11y: '{{symbol}} 순서 바꾸기(드래그)',
+  quotesWatchReorderA11y: '{{symbol}} 길게 눌러 순서 바꾸기',
   quotesEtfGroupBroad: '지수',
   quotesEtfGroupSector: '섹터',
   quotesEtfGroupMacro: '해외·매크로',

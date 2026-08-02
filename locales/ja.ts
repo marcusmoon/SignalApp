@@ -983,7 +983,7 @@ export const ja = {
   quotesPendingHint: 'しばらくしてから更新してください',
   quotesEmptyWatch: 'ウォッチがありません。+ ボタンでティッカーを追加してください。',
   quotesEmptyGeneric: '表示する相場がありません。',
-  quotesWatchDragHandleA11y: '{{symbol}}の順番を変更（ドラッグ）',
+  quotesWatchReorderA11y: '{{symbol}}を長押しで並べ替え',
   quotesEtfGroupBroad: '指数',
   quotesEtfGroupSector: 'セクター',
   quotesEtfGroupMacro: '海外・マクロ',

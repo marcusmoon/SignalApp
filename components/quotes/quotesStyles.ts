@@ -3,6 +3,7 @@ import { Platform, StyleSheet } from 'react-native';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { FEED_BADGE_PX } from '@/constants/feedTypography';
+import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -93,27 +94,30 @@ export function makeQuotesStyles(
       paddingVertical: 48,
     },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
-    /** ETF 그룹 — hairline 없는 muted 라벨만 (카드 아님) */
+    /** ETF 그룹 — 홈 시세 레이어 룰과 동일 (라벨 + 구분선) */
     etfGroupHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
       paddingTop: 14,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     etfGroupHeaderFirst: {
       paddingTop: 4,
     },
-    etfGroupHeaderText: {
-      fontSize: ft.ff(FEED_BADGE_PX + 1),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
+    etfGroupHeaderLabel: {
+      flexShrink: 0,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
-      letterSpacing: 0.2,
     },
-    watchDragHandle: {
-      paddingVertical: 4,
-      paddingHorizontal: 2,
-      marginRight: 2,
-      justifyContent: 'center',
-      alignItems: 'center',
+    etfGroupHeaderLine: {
+      flex: 1,
+      minWidth: 16,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
     },
     watchRowActive: {
       opacity: 0.92,

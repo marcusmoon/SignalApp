@@ -986,7 +986,7 @@ export const en = {
   quotesPendingHint: 'Pull to refresh in a moment',
   quotesEmptyWatch: 'No watchlist tickers. Tap + to add a ticker.',
   quotesEmptyGeneric: 'No quotes to show.',
-  quotesWatchDragHandleA11y: 'Reorder {{symbol}} (drag)',
+  quotesWatchReorderA11y: 'Long-press {{symbol}} to reorder',
   quotesEtfGroupBroad: 'Index',
   quotesEtfGroupSector: 'Sectors',
   quotesEtfGroupMacro: 'Intl & macro',

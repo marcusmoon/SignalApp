@@ -52,6 +52,8 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
 | `domain/quotes/constants` · `segmentOrder` · `listLimits` | 시세 탭 `watch`·`etf`·`coin` · 구 `popular`/`mcap`→`etf` 마이그레이션 |
 | 시세 ETF 목록 순서 | `etf_symbols` 저장 순 (`QuotesContent`가 `symbols`로 조회·재정렬; segment-only는 `fetched_at` DESC) |
+| `domain/quotes/etfGroups` | ETF 연속 구간 헤더(지수·섹터·해외·매크로) |
+| 시세 관심 드래그 | `QuotesContent` + `saveWatchlistSymbols` — ≡ 핸들로 저장순 변경 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
 | `services/symbolLogo` | 서버 `imageUrl` 우선 · Parqet 폴백 |
 

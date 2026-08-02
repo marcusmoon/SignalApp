@@ -10,7 +10,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { RectButton } from 'react-native-gesture-handler';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { Pressable as GHPressable, RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -42,6 +43,11 @@ import {
   resolveWatchlistHomeAsOf,
   type WatchlistHomeAsOfRow,
 } from '@/domain/quotes/watchlistHomeAsOf';
+import {
+  insertEtfQuoteGroupHeaders,
+  type EtfQuoteGroupKey,
+  type EtfQuoteListEntry,
+} from '@/domain/quotes/etfGroups';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -87,7 +93,7 @@ import {
 } from '@/services/quoteWatchlist';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
-import type { MessageId } from '@/locales/messages';
+import { formatMessage, type MessageId } from '@/locales/messages';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
@@ -100,7 +106,14 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   coin: 'quotesSegmentCoin',
 };
 
+const ETF_GROUP_LABEL: Record<EtfQuoteGroupKey, MessageId> = {
+  broad: 'quotesEtfGroupBroad',
+  sector: 'quotesEtfGroupSector',
+  macro: 'quotesEtfGroupMacro',
+};
+
 type Row = QuoteRow;
+type EtfListItem = EtfQuoteListEntry<Row>;
 
 function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmentKey {
   const value = firstRouteParam(raw);
@@ -403,6 +416,16 @@ export function QuotesContent({
     [load],
   );
 
+  const onReorderWatch = useCallback((next: Row[]) => {
+    setRows(next);
+    void saveWatchlistSymbols(next.map((row) => row.symbol));
+  }, []);
+
+  const etfListItems = useMemo(
+    () => (segment === 'etf' ? insertEtfQuoteGroupHeaders(rows) : null),
+    [rows, segment],
+  );
+
   const openFinanceQuote = useCallback(
     (r: Row) => {
       const sym = r.symbol?.trim();
@@ -525,18 +548,34 @@ export function QuotesContent({
   }, [embedded, isEffectivelyFocused, lockedSegment, registerQuoteSubTabs, useTwoPane]);
 
   const renderQuoteItem = useCallback(
-    ({ item: r, index }: { item: Row; index: number }) => {
-      const edges = {
+    ({
+      item: r,
+      index,
+      drag,
+      isActive = false,
+      edgesOverride,
+    }: {
+      item: Row;
+      index: number;
+      drag?: () => void;
+      isActive?: boolean;
+      edgesOverride?: { isFirst: boolean; isLast: boolean };
+    }) => {
+      const edges = edgesOverride ?? {
         isFirst: index === 0,
         isLast: index === rows.length - 1,
       };
-      const shellStyle = groupedFeedRowShell(theme, edges);
+      const shellStyle = [
+        groupedFeedRowShell(theme, edges),
+        isActive ? styles.watchRowActive : null,
+      ];
       const symTrim = r.symbol?.trim() ?? '';
       const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
-      const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
+      const watchSwipe = segment === 'watch' && Platform.OS !== 'web' && !isActive;
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
       const useNaverLink = isKoreaStockQuote(r);
       const titleText = r.symbol;
+      const showWatchDrag = segment === 'watch' && typeof drag === 'function';
 
       const cardInner = (
         <>
@@ -544,6 +583,19 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
+                  {showWatchDrag ? (
+                    <GHPressable
+                      style={styles.watchDragHandle}
+                      {...(Platform.OS === 'web'
+                        ? { onPressIn: drag }
+                        : { onLongPress: drag, delayLongPress: 180 })}
+                      accessibilityRole="button"
+                      accessibilityLabel={formatMessage(t('quotesWatchDragHandleA11y'), {
+                        symbol: r.symbol,
+                      })}>
+                      <FontAwesome name="bars" size={14} color={theme.textMuted} />
+                    </GHPressable>
+                  ) : null}
                   <SymbolLogo symbol={r.symbol} imageUrl={r.imageUrl} size={28} />
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
                     <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
@@ -638,35 +690,30 @@ export function QuotesContent({
         </>
       );
 
-      if (watchSwipe) {
-        return (
-          <View style={shellStyle}>
-            <ReanimatedSwipeable
-              enabled={!loading}
-              overshootRight={false}
-              containerStyle={styles.swipeRowGrouped}
-              renderRightActions={() => (
-                <View style={styles.swipeRight}>
-                  <RectButton
-                    style={styles.swipeDeleteBtn}
-                    onPress={() => void onRemoveWatch(r.symbol)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
-                    <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
-                  </RectButton>
-                </View>
-              )}>
-              <View style={styles.cardGrouped}>{cardInner}</View>
-            </ReanimatedSwipeable>
-          </View>
-        );
-      }
-
-      return (
-        <View style={shellStyle}>
+      const body = watchSwipe ? (
+        <ReanimatedSwipeable
+          enabled={!loading && !isActive}
+          overshootRight={false}
+          containerStyle={styles.swipeRowGrouped}
+          renderRightActions={() => (
+            <View style={styles.swipeRight}>
+              <RectButton
+                style={styles.swipeDeleteBtn}
+                onPress={() => void onRemoveWatch(r.symbol)}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
+                <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
+              </RectButton>
+            </View>
+          )}>
           <View style={styles.cardGrouped}>{cardInner}</View>
-        </View>
+        </ReanimatedSwipeable>
+      ) : (
+        <View style={styles.cardGrouped}>{cardInner}</View>
       );
+
+      const row = <View style={shellStyle}>{body}</View>;
+      return showWatchDrag ? <ScaleDecorator>{row}</ScaleDecorator> : row;
     },
     [
       loading,
@@ -681,8 +728,49 @@ export function QuotesContent({
       theme,
       theme.green,
       theme.textDim,
+      theme.textMuted,
     ],
   );
+
+  const renderEtfListItem = useCallback(
+    ({ item, index }: { item: EtfListItem; index: number }) => {
+      if (item.type === 'header') {
+        return (
+          <View
+            style={[styles.etfGroupHeader, index === 0 && styles.etfGroupHeaderFirst]}
+            accessibilityRole="header">
+            <Text style={styles.etfGroupHeaderText}>{t(ETF_GROUP_LABEL[item.group])}</Text>
+          </View>
+        );
+      }
+      const items = etfListItems ?? [];
+      const prev = items[index - 1];
+      const next = items[index + 1];
+      return renderQuoteItem({
+        item: item.row,
+        index,
+        edgesOverride: {
+          isFirst: !prev || prev.type === 'header',
+          isLast: !next || next.type === 'header',
+        },
+      });
+    },
+    [etfListItems, renderQuoteItem, styles, t],
+  );
+
+  const listContentStyle = [
+    styles.listContent,
+    useTwoPane && styles.listContentWide,
+    quotesDelayedAsOfLabel ? styles.listContentBelowAsOf : null,
+    { paddingBottom: bottomPad },
+  ];
+
+  const listEmpty =
+    !loading && !error && rows.length === 0 ? (
+      <Text style={styles.empty}>
+        {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
+      </Text>
+    ) : null;
 
   const quoteListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
@@ -737,36 +825,73 @@ export function QuotesContent({
         <View style={styles.loadingBox}>
           <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
+      ) : segment === 'watch' ? (
+        <DraggableFlatList
+          ref={listRef as never}
+          data={rows}
+          keyExtractor={(r) => `watch-${r.symbol}`}
+          onDragEnd={({ data }) => onReorderWatch(data)}
+          renderItem={({ item, drag, isActive, getIndex }) =>
+            renderQuoteItem({
+              item,
+              index: getIndex() ?? 0,
+              drag,
+              isActive,
+            })
+          }
+          ListEmptyComponent={listEmpty}
+          style={styles.list}
+          contentContainerStyle={listContentStyle}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
+          }
+          removeClippedSubviews={false}
+          activationDistance={Platform.OS === 'web' ? 8 : 12}
+          initialNumToRender={12}
+          windowSize={8}
+          maxToRenderPerBatch={16}
+        />
+      ) : segment === 'etf' && etfListItems ? (
+        <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
+          ref={listRef as never}
+          data={etfListItems}
+          keyExtractor={(item, index) =>
+            item.type === 'header' ? `etf-h-${item.group}-${index}` : `etf-${item.row.symbol}`
+          }
+          renderItem={renderEtfListItem}
+          ListEmptyComponent={listEmpty}
+          style={styles.list}
+          contentContainerStyle={listContentStyle}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
+          }
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={16}
+          windowSize={8}
+          maxToRenderPerBatch={16}
+        />
       ) : (
-      <WebWheelFlatList
-        scrollResetKey={listScrollResetKey}
-        ref={listRef as never}
-        data={rows}
-        keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
-        renderItem={renderQuoteItem}
-        ListEmptyComponent={
-          !loading && !error && rows.length === 0 ? (
-            <Text style={styles.empty}>
-              {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
-            </Text>
-          ) : null
-        }
-        style={styles.list}
-        contentContainerStyle={[
-          styles.listContent,
-          useTwoPane && styles.listContentWide,
-          quotesDelayedAsOfLabel ? styles.listContentBelowAsOf : null,
-          { paddingBottom: bottomPad },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
-        }
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={12}
-        windowSize={8}
-        maxToRenderPerBatch={16}
-      />
+        <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
+          ref={listRef as never}
+          data={rows}
+          keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
+          renderItem={renderQuoteItem}
+          ListEmptyComponent={listEmpty}
+          style={styles.list}
+          contentContainerStyle={listContentStyle}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
+          }
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={12}
+          windowSize={8}
+          maxToRenderPerBatch={16}
+        />
       )}
     </View>
   );

@@ -93,6 +93,31 @@ export function makeQuotesStyles(
       paddingVertical: 48,
     },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
+    /** ETF 그룹 — hairline 없는 muted 라벨만 (카드 아님) */
+    etfGroupHeader: {
+      paddingTop: 14,
+      paddingBottom: 4,
+    },
+    etfGroupHeaderFirst: {
+      paddingTop: 4,
+    },
+    etfGroupHeaderText: {
+      fontSize: ft.ff(FEED_BADGE_PX + 1),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      letterSpacing: 0.2,
+    },
+    watchDragHandle: {
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+      marginRight: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    watchRowActive: {
+      opacity: 0.92,
+    },
     cardGrouped: {
       backgroundColor: 'transparent',
       borderWidth: 0,

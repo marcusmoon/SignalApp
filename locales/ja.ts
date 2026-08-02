@@ -983,6 +983,10 @@ export const ja = {
   quotesPendingHint: 'しばらくしてから更新してください',
   quotesEmptyWatch: 'ウォッチがありません。+ ボタンでティッカーを追加してください。',
   quotesEmptyGeneric: '表示する相場がありません。',
+  quotesWatchDragHandleA11y: '{{symbol}}の順番を変更（ドラッグ）',
+  quotesEtfGroupBroad: '指数',
+  quotesEtfGroupSector: 'セクター',
+  quotesEtfGroupMacro: '海外・マクロ',
   /** ホーム相場レイヤー — 終了・古い (曜日/日付なし) */
   quotesAsOfClose: '終値',
   /** @deprecated use quotesAsOfClose */

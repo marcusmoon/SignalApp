@@ -986,6 +986,10 @@ export const en = {
   quotesPendingHint: 'Pull to refresh in a moment',
   quotesEmptyWatch: 'No watchlist tickers. Tap + to add a ticker.',
   quotesEmptyGeneric: 'No quotes to show.',
+  quotesWatchDragHandleA11y: 'Reorder {{symbol}} (drag)',
+  quotesEtfGroupBroad: 'Index',
+  quotesEtfGroupSector: 'Sectors',
+  quotesEtfGroupMacro: 'Intl & macro',
   /** Home quotes layer — closed/stale (no weekday/date) */
   quotesAsOfClose: 'Close',
   /** @deprecated use quotesAsOfClose */

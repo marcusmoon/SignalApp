@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  fabOverlayScrollCushion,
   fabStackBottom,
   SCREEN_CHIP_LIST_CONTENT_PADDING_TOP,
   SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
@@ -26,10 +27,6 @@ import {
   WEB_FLATLIST_WINDOW,
   WEB_NEWS_ESTIMATED_ITEM_HEIGHT,
 } from '@/constants/webLayout';
-import {
-  FLOATING_GLASS_FAB_GAP,
-  FLOATING_GLASS_FAB_SIZE,
-} from '@/components/signal/FloatingGlassFab';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
 import { HOME_DIGEST_CATEGORIES, newsSegmentToIssuesCategory } from '@/constants/ipadHomeNav';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
@@ -782,12 +779,12 @@ export function LegacyNewsFeedScreen({
     ? fabStackBottom(0, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET)
     : fabStackBottom(tabBarHeight, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET);
   const useNewsTitleFab = showNewsTitleListToggle;
-  // Wide CSS FAB sits at ~12px + safe area (see +html); clear FAB height so last rows aren't covered.
-  const bottomPad = useTwoPane
-    ? useNewsTitleFab
-      ? SCREEN_WIDE_SCROLL_BOTTOM_BASE + FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP
-      : SCREEN_WIDE_SCROLL_BOTTOM_BASE
-    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  /** FAB 전체 높이를 비우지 않음 — 탭바/바닥에 붙이고 FAB는 오버레이 */
+  const bottomPad =
+    (useTwoPane
+      ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
+      : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom)) +
+    fabOverlayScrollCushion(useNewsTitleFab ? 1 : 0);
   const useNewsTitleListMode = showNewsTitleListToggle;
   const showDigest = segment !== 'video' && segment !== 'it';
   const newContentAvailable = newContentSegments.has(segment);

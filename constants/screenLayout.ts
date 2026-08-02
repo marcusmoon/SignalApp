@@ -1,6 +1,10 @@
 import { tabBarBottomInset } from '@/constants/tabBar';
 
-export { fabScrollClearanceAboveBase } from '@/utils/fabScrollClearance';
+export {
+  FAB_OVERLAY_SCROLL_CUSHION,
+  fabOverlayScrollCushion,
+  fabScrollClearanceAboveBase,
+} from '@/utils/fabScrollClearance';
 
 /**
  * 화면 레이아웃 공통 여백 — iPhone / iPad / 웹.
@@ -41,14 +45,14 @@ export const SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM = 16;
 export const SCREEN_EMBEDDED_WIDE_PADDING_TOP = 18;
 export const SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL = 20;
 
-/** 하단 탭 화면 스크롤 하단 기본값(탭바·FAB 위) */
-export const SCREEN_TAB_SCROLL_BOTTOM_BASE = 24;
-
 /**
- * 시세 탭 스크롤 하단 base — 목록이 짧아 탭 기본(24)이면 마지막 행 아래 공백이 커 보여
- * 탭바에 더 붙인다. FAB가 있으면 `quotesFabScrollClearance`로 겹침분만 추가.
+ * 하단 탭 화면 스크롤 하단 기본값(탭바 위).
+ * FAB 높이는 넣지 않는다 — FAB는 오버레이, 콘텐츠는 탭바에 붙인다.
  */
-export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = 12;
+export const SCREEN_TAB_SCROLL_BOTTOM_BASE = 12;
+
+/** @deprecated `SCREEN_TAB_SCROLL_BOTTOM_BASE`와 동일 */
+export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = SCREEN_TAB_SCROLL_BOTTOM_BASE;
 
 /** 스택 화면 스크롤 하단 기본값 */
 export const SCREEN_STACK_SCROLL_BOTTOM_BASE = 28;

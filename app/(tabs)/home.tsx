@@ -5,14 +5,14 @@ import { Platform, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
-import {
-  FLOATING_GLASS_FAB_GAP,
-  FLOATING_GLASS_FAB_SIZE,
-  FloatingGlassFab,
-} from '@/components/signal/FloatingGlassFab';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { fabStackBottom, tabScreenScrollBottomPadding } from '@/constants/screenLayout';
+import {
+  fabOverlayScrollCushion,
+  fabStackBottom,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import { webFlexFill, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -42,11 +42,13 @@ export default function HomeTabScreen() {
   }, [todayYmd]);
 
   const showRefreshFab = SHOW_HOME_REFRESH_FAB && isFocused;
-  const scrollBottom = useMemo(() => {
-    const base = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-    if (!SHOW_HOME_REFRESH_FAB) return base;
-    return base + FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP;
-  }, [insets.bottom, tabBarHeight]);
+  /** FAB 높이만큼 비우지 않음 — 탭바에 붙이고 FAB는 오버레이 */
+  const scrollBottom = useMemo(
+    () =>
+      tabScreenScrollBottomPadding(tabBarHeight, insets.bottom) +
+      fabOverlayScrollCushion(SHOW_HOME_REFRESH_FAB ? 1 : 0),
+    [insets.bottom, tabBarHeight],
+  );
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
   // Wide: home lives in the overlay pane (`IpadHomeScreen`). Skip the hidden tab tree.

@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
-import { Pressable as GHPressable, RectButton } from 'react-native-gesture-handler';
+import { RectButton, TouchableOpacity } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -707,11 +707,31 @@ export function QuotesContent({
         </>
       );
 
-      const card = <View style={styles.cardGrouped}>{cardInner}</View>;
+      // DraggableFlatList: onLongPress에서 drag() 호출 (README).
+      // Swipeable이 바깥 Pressable 롱프레스를 가로채므로, 활성화는 Swipeable *안* TouchableOpacity에 둔다.
+      const card = watchReorder ? (
+        <TouchableOpacity
+          onLongPress={drag}
+          delayLongPress={320}
+          disabled={isActive || loading}
+          activeOpacity={0.92}
+          style={styles.cardGrouped}
+          accessibilityRole="button"
+          accessibilityHint={formatMessage(t('quotesWatchReorderA11y'), { symbol: r.symbol })}
+          accessibilityLabel={r.symbol}>
+          {cardInner}
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.cardGrouped}>{cardInner}</View>
+      );
+
       const body = watchSwipe ? (
         <ReanimatedSwipeable
           enabled={!loading && !isActive}
           overshootRight={false}
+          // 가로 의도가 분명할 때만 스와이프 — 롱프레스·세로 스크롤 우선
+          dragOffsetFromRightEdge={28}
+          dragOffsetFromLeftEdge={28}
           containerStyle={styles.swipeRowGrouped}
           renderRightActions={() => (
             <View style={styles.swipeRight}>
@@ -730,21 +750,7 @@ export function QuotesContent({
         card
       );
 
-      // ≡ 핸들 없이 행 롱프레스로 순서 변경 (웹도 동일)
-      const row = watchReorder ? (
-        <GHPressable
-          style={shellStyle}
-          onLongPress={drag}
-          delayLongPress={220}
-          disabled={isActive}
-          accessibilityRole="button"
-          accessibilityHint={formatMessage(t('quotesWatchReorderA11y'), { symbol: r.symbol })}
-          accessibilityLabel={r.symbol}>
-          {body}
-        </GHPressable>
-      ) : (
-        <View style={shellStyle}>{body}</View>
-      );
+      const row = <View style={shellStyle}>{body}</View>;
       return watchReorder ? <ScaleDecorator>{row}</ScaleDecorator> : row;
     },
     [
@@ -885,7 +891,8 @@ export function QuotesContent({
             <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void onRefreshBase('ptr')} />
           }
           removeClippedSubviews={false}
-          activationDistance={Platform.OS === 'web' ? 8 : 12}
+          /** 높게 잡아 롱프레스 전에 리스트 팬이 가로채지 않게 */
+          activationDistance={24}
           initialNumToRender={12}
           windowSize={8}
           maxToRenderPerBatch={16}

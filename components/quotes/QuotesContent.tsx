@@ -36,6 +36,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   fabOverlayScrollCushion,
   fabStackBottom,
+  SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
@@ -486,12 +487,15 @@ export function QuotesContent({
       ? fabBottom + FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP
       : fabBottom;
   const fabCount = (showRefreshFab ? 1 : 0) + (showWatchAddFab ? 1 : 0);
-  /** FAB 전체 높이를 비우지 않음 — 탭바/바닥에 붙이고 FAB는 오버레이 */
+  /** 시세만 타이트 base — 홈·마켓 등과 달리 탭바에 더 붙임. FAB는 오버레이. */
   const bottomPad = (() => {
     const cushion = fabOverlayScrollCushion(fabCount);
     if (useTwoPane) return SCREEN_WIDE_SCROLL_BOTTOM_BASE + cushion;
     if (embedded) return stackScreenScrollBottomPadding(insets.bottom) + cushion;
-    return tabScreenScrollBottomPadding(barH, insets.bottom) + cushion;
+    return (
+      tabScreenScrollBottomPadding(barH, insets.bottom, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE) +
+      cushion
+    );
   })();
 
   /**

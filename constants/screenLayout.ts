@@ -47,16 +47,13 @@ export const SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL = 20;
 
 /**
  * 하단 탭 화면 스크롤 하단 기본값(탭바 위).
- * 홈·마켓·뉴스 등 — 상단 헤더↔본문 gap(`SCREEN_LIST_CONTENT_PADDING_TOP`)과 동일.
+ * 홈·마켓·뉴스·시세 공통 — 상단 헤더↔본문 gap(`SCREEN_LIST_CONTENT_PADDING_TOP`)과 동일.
  * FAB 높이는 넣지 않는다 — FAB는 오버레이.
  */
 export const SCREEN_TAB_SCROLL_BOTTOM_BASE = SCREEN_LIST_CONTENT_PADDING_TOP;
 
-/**
- * 시세 탭만 — 목록이 짧아 탭바에 더 붙인다.
- * `tabScreenScrollBottomPadding(..., SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE)`로 명시.
- */
-export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = 4;
+/** @deprecated `SCREEN_TAB_SCROLL_BOTTOM_BASE`와 동일 — 시세 예외 없음 */
+export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = SCREEN_TAB_SCROLL_BOTTOM_BASE;
 
 /** 스택 화면 스크롤 하단 기본값 */
 export const SCREEN_STACK_SCROLL_BOTTOM_BASE = 28;

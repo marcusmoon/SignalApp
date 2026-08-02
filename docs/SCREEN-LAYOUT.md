@@ -150,14 +150,13 @@ PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTIO
 
 | 상수 | px | 용도 |
 |---|---:|---|
-| `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 12 | 홈·마켓·뉴스 등 — 상단 리스트 pad(`SCREEN_LIST_CONTENT_PADDING_TOP`)와 동일 |
-| `SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE` | 4 | 시세 탭만 — 탭바에 더 붙임 |
+| `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 12 | 홈·마켓·뉴스·시세 공통 — 상단 리스트 pad(`SCREEN_LIST_CONTENT_PADDING_TOP`)와 동일 |
 | `SCREEN_STACK_SCROLL_BOTTOM_BASE` | 28 | 스택 화면 |
 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` | 32 | iPad·wide (탭바 없음) |
 | `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB lift |
 | `FAB_OVERLAY_SCROLL_CUSHION` | 0 | FAB용 추가 여유(기본 0). FAB 높이만큼 패딩하지 않음 |
 
-FAB는 리스트 **위에 오버레이**한다. `paddingBottom`에 FAB 전체 높이(`SIZE+GAP`)를 넣지 않는다. 하단은 `tabBarHeight + inset + base`까지. 시세만 `SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE`를 넘긴다.
+FAB는 리스트 **위에 오버레이**한다. `paddingBottom`에 FAB 전체 높이(`SIZE+GAP`)를 넣지 않는다. 하단은 `tabBarHeight + inset + base`까지. 탭별 base 예외 없음.
 
 ### 헬퍼 (직접 숫자 합산 지양)
 
@@ -181,14 +180,9 @@ paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE;
 // FAB 위치
 bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
-// FAB가 있는 홈·뉴스 — cushion만 (기본 base 12)
+// FAB가 있는 홈·뉴스·시세 — cushion만 (공통 base 12)
 paddingBottom:
   tabScreenScrollBottomPadding(tabBarHeight, insets.bottom) +
-  fabOverlayScrollCushion(fabCount);
-
-// 시세 — 타이트 base
-paddingBottom:
-  tabScreenScrollBottomPadding(tabBarHeight, insets.bottom, SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE) +
   fabOverlayScrollCushion(fabCount);
 ```
 

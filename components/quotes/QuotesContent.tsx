@@ -870,7 +870,9 @@ export function QuotesContent({
             })
           }
           ListEmptyComponent={listEmpty}
-          style={styles.list}
+          /** outer wrapper needs viewport flex — `style` alone collapses height to 0 */
+          containerStyle={styles.list}
+          style={{ flex: 1 }}
           contentContainerStyle={listContentStyle}
           showsVerticalScrollIndicator={false}
           refreshControl={

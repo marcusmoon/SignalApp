@@ -49,7 +49,7 @@ export const SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL = 20;
  * 하단 탭 화면 스크롤 하단 기본값(탭바 위).
  * FAB 높이는 넣지 않는다 — FAB는 오버레이, 콘텐츠는 탭바에 붙인다.
  */
-export const SCREEN_TAB_SCROLL_BOTTOM_BASE = 12;
+export const SCREEN_TAB_SCROLL_BOTTOM_BASE = 4;
 
 /** @deprecated `SCREEN_TAB_SCROLL_BOTTOM_BASE`와 동일 */
 export const SCREEN_QUOTES_TAB_SCROLL_BOTTOM_BASE = SCREEN_TAB_SCROLL_BOTTOM_BASE;

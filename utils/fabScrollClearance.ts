@@ -3,7 +3,8 @@
  * FAB 높이 전체를 비우지 않는다 — 마지막 행은 탭바 근처까지 오고 FAB는 그 위를 오버레이.
  */
 
-export const FAB_OVERLAY_SCROLL_CUSHION = 8;
+/** FAB 오버레이 시 추가 여유 — 0이면 탭바 clearance까지만 (FAB 아래로 콘텐츠가 옴). */
+export const FAB_OVERLAY_SCROLL_CUSHION = 0;
 
 export function fabOverlayScrollCushion(fabCount: number): number {
   return Math.max(0, Math.floor(fabCount)) > 0 ? FAB_OVERLAY_SCROLL_CUSHION : 0;

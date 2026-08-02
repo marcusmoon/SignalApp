@@ -150,13 +150,13 @@ PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTIO
 
 | 상수 | px | 용도 |
 |---|---:|---|
-| `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 12 | iPhone 탭 + 플로팅 탭바 (콘텐츠는 탭바에 붙임) |
+| `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 4 | iPhone 탭 + 플로팅 탭바 (콘텐츠는 탭바에 거의 붙임) |
 | `SCREEN_STACK_SCROLL_BOTTOM_BASE` | 28 | 스택 화면 |
 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` | 32 | iPad·wide (탭바 없음) |
 | `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB lift |
-| `FAB_OVERLAY_SCROLL_CUSHION` | 8 | FAB가 있을 때만 스크롤 하단에 더하는 소량 여유 |
+| `FAB_OVERLAY_SCROLL_CUSHION` | 0 | FAB용 추가 여유(기본 0). FAB 높이만큼 패딩하지 않음 |
 
-FAB는 리스트 **위에 오버레이**한다. `paddingBottom`에 FAB 전체 높이(`SIZE+GAP`)를 넣지 않는다 — 넣으면 홈·뉴스·시세 모두 마지막 행이 FAB 위에서 끊긴다.
+FAB는 리스트 **위에 오버레이**한다. `paddingBottom`에 FAB 전체 높이(`SIZE+GAP`)를 넣지 않는다 — 넣으면 홈·뉴스·시세 모두 마지막 행이 FAB 위에서 끊긴다. 하단은 `tabBarHeight + inset + base`까지만 비운다.
 
 ### 헬퍼 (직접 숫자 합산 지양)
 

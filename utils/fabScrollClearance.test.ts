@@ -12,16 +12,16 @@ describe('fabOverlayScrollCushion', () => {
     assert.equal(fabOverlayScrollCushion(0), 0);
   });
 
-  it('adds only a small cushion when FAB is present (not full FAB height)', () => {
+  it('does not reserve FAB height (cushion stays 0)', () => {
     assert.equal(fabOverlayScrollCushion(1), FAB_OVERLAY_SCROLL_CUSHION);
     assert.equal(fabOverlayScrollCushion(2), FAB_OVERLAY_SCROLL_CUSHION);
-    assert.equal(FAB_OVERLAY_SCROLL_CUSHION, 8);
+    assert.equal(FAB_OVERLAY_SCROLL_CUSHION, 0);
   });
 });
 
 describe('fabScrollClearanceAboveBase (compat)', () => {
   it('delegates to overlay cushion', () => {
-    assert.equal(fabScrollClearanceAboveBase(0, 12), 0);
-    assert.equal(fabScrollClearanceAboveBase(1, 12), FAB_OVERLAY_SCROLL_CUSHION);
+    assert.equal(fabScrollClearanceAboveBase(0, 4), 0);
+    assert.equal(fabScrollClearanceAboveBase(1, 4), FAB_OVERLAY_SCROLL_CUSHION);
   });
 });

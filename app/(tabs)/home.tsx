@@ -74,6 +74,7 @@ export default function HomeTabScreen() {
           iconName="sync-alt"
           accessibilityLabel={t('fabRefreshA11y')}
           disabled={refreshing}
+          active={refreshing}
           onPress={() => pullRefreshRef.current?.()}
         />
       ) : null}

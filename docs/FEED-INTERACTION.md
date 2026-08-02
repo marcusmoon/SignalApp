@@ -44,7 +44,7 @@ fetchXxx(params, { cacheMode: signalCacheMode(true) });
 - `ThemedRefreshControl` + (탭 화면) `useResetRefreshingOnTabBlur(setRefreshing)`을 쓴다.
 - wide 웹·iPad는 `useRegisterWebHeaderRefresh(() => void onRefresh())`로 헤더 로고와 연결한다.
 - iPhone 탭은 `SignalHeader compact onBrandPress={() => void onRefresh()}`로 PTR과 동일 동작을 연결한다.
-- **iPhone 홈만** `FloatingGlassFab`(sync)으로 동일 `onRefresh`를 제공한다 (`app/(tabs)/home.tsx`). `listRef` 없음 — 스크롤 유지·데이터만 교체. 웹 폰·iPad 홈에는 두지 않는다.
+- **iPhone 홈만** `FloatingGlassFab`(sync)으로 동일 `load(true)`를 제공한다 (`app/(tabs)/home.tsx`). `listRef` 없음 — 스크롤 유지·데이터만 교체. **FAB·헤더 탭은 silent refresh** — `RefreshControl.refreshing`을 켜지 않아 중간 스크롤에서 content inset으로 화면이 살짝 올라가지 않게 한다. PTR(당기기)만 네이티브 스피너. 웹 폰·iPad 홈에는 FAB 없음.
 - 고정 UI(세그먼트·날짜·digest·OTA·에러)는 스크롤 밖(`topFixed`)에 둔다.
 
 ### DON'T

@@ -380,8 +380,12 @@ export function HomeFocusContent({
   const loadGenerationRef = useRef(0);
 
   const [loading, setLoading] = useState(true);
+  /** Any in-flight refresh (FAB disable / a11y). */
   const [refreshing, setRefreshing] = useState(false);
+  /** Only true for pull gesture — drives RefreshControl inset/spinner. */
+  const [ptrRefreshing, setPtrRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
+  useResetRefreshingOnTabBlur(setPtrRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
@@ -791,24 +795,30 @@ export function HomeFocusContent({
     }
   }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
 
-  const refresh = useCallback(async () => {
+  /**
+   * `ptr`: show native RefreshControl (pull gesture).
+   * `silent`: FAB/header — keep scroll; do not toggle PTR inset (avoids mid-list jump).
+   */
+  const refresh = useCallback(async (mode: 'ptr' | 'silent' = 'silent') => {
     setRefreshing(true);
+    if (mode === 'ptr') setPtrRefreshing(true);
     try {
       await load(true);
     } finally {
       setRefreshing(false);
+      setPtrRefreshing(false);
     }
   }, [load]);
 
   useEffect(() => {
-    onPullRefreshReady?.(() => void refresh());
+    onPullRefreshReady?.(() => void refresh('silent'));
   }, [onPullRefreshReady, refresh]);
 
   useEffect(() => {
     onRefreshingChange?.(refreshing);
   }, [onRefreshingChange, refreshing]);
 
-  useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
+  useRegisterWebHeaderRefresh(() => void refresh('silent'), showIssueSummary ? 'mount' : 'focus');
 
   useEffect(() => {
     if (!homeDisplayPrefsReady) return;
@@ -1295,7 +1305,9 @@ export function HomeFocusContent({
           { paddingBottom: scrollContentPaddingBottom },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+        refreshControl={
+          <ThemedRefreshControl refreshing={ptrRefreshing} onRefresh={() => void refresh('ptr')} />
+        }>
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>

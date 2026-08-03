@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
+import { DigestCopyTextButton } from '@/components/signal/DigestCopyTextButton';
 import type { DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
@@ -139,13 +140,18 @@ export function DigestDetailContent({
       emptyText={!error && !item ? t(emptyKey) : null}
       headline={item ? headline : null}
       headlineMeta={headlineMeta}
+      headlineAccessory={
+        item ? <DigestCopyTextButton title={headline} summary={summary} /> : null
+      }
       scrollResetKey={scrollResetKey}
       contentRevision={item}>
       {item ? (
         <View style={styles.root}>
           {summaryBody ? (
             <View style={styles.leadPanel}>
-              <ChangeTintedText style={styles.summary}>{summaryBody}</ChangeTintedText>
+              <ChangeTintedText style={styles.summary} selectable>
+                {summaryBody}
+              </ChangeTintedText>
             </View>
           ) : null}
 

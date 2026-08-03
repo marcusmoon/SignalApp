@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { DigestCopyTextButton } from '@/components/signal/DigestCopyTextButton';
 import type { SourceIconEntry } from '@/components/signal/SourceIconStack';
 import {
   COMFORT_GAP_LG,
@@ -86,10 +87,17 @@ export function DigestSourcesSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.section}>
-              <HomeSectionHeader title={digestTitle} showChevron={false} />
+              <View style={styles.titleRow}>
+                <View style={styles.titleGrow}>
+                  <HomeSectionHeader title={digestTitle} showChevron={false} />
+                </View>
+                <DigestCopyTextButton title={digestTitle} summary={summary} />
+              </View>
               {summary ? (
                 <View style={styles.feedCard}>
-                  <Text style={styles.digestSummary}>{summary}</Text>
+                  <Text style={styles.digestSummary} selectable>
+                    {summary}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -194,6 +202,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     section: {
       gap: COMFORT_GAP_SM,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      minWidth: 0,
+    },
+    titleGrow: {
+      flex: 1,
+      minWidth: 0,
     },
     feedCard: {
       borderRadius: UI_RADIUS_CARD_LG,

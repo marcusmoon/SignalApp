@@ -38,6 +38,8 @@ export type BriefingDetailShellProps = {
   headline?: string | null;
   /** 헤드라인 아래 시간·회차 메타 (예: `장중 · 3시간 전 · 7/18 14:30`) */
   headlineMeta?: string | null;
+  /** 메타 행 우측 — 다이제스트 텍스트 복사 등 */
+  headlineAccessory?: ReactNode;
   scrollResetKey?: string;
   contentRevision?: unknown;
   children?: ReactNode;
@@ -60,6 +62,7 @@ export function BriefingDetailShell({
   emptyText = null,
   headline = null,
   headlineMeta = null,
+  headlineAccessory = null,
   scrollResetKey = '',
   contentRevision,
   children,
@@ -74,6 +77,7 @@ export function BriefingDetailShell({
   const sectionTitle = String(chromeTitle || '').trim();
   const title = String(headline || '').trim();
   const meta = String(headlineMeta || '').trim();
+  const showHeadlineBlock = Boolean(title || meta || headlineAccessory);
 
   return (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
@@ -115,10 +119,25 @@ export function BriefingDetailShell({
           {!error && emptyText ? <Text style={styles.emptyText}>{emptyText}</Text> : null}
           {!error && !emptyText ? (
             <>
-              {title || meta ? (
+              {showHeadlineBlock ? (
                 <View style={styles.headlineBlock}>
-                  {title ? <Text style={styles.headline}>{title}</Text> : null}
-                  {meta ? <Text style={styles.headlineMeta}>{meta}</Text> : null}
+                  {title ? (
+                    <Text style={styles.headline} selectable>
+                      {title}
+                    </Text>
+                  ) : null}
+                  {meta || headlineAccessory ? (
+                    <View style={styles.headlineMetaRow}>
+                      {meta ? (
+                        <Text style={styles.headlineMeta} selectable>
+                          {meta}
+                        </Text>
+                      ) : (
+                        <View style={styles.headlineMetaSpacer} />
+                      )}
+                      {headlineAccessory}
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
               {children}
@@ -189,7 +208,19 @@ function makeStyles(
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
+    headlineMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    headlineMetaSpacer: {
+      flex: 1,
+      minWidth: 0,
+    },
     headlineMeta: {
+      flex: 1,
+      minWidth: 0,
       fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,

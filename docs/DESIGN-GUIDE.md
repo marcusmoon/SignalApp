@@ -270,7 +270,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 | 오늘 정리 | 홈 히어로 · 알림 | `TodayBriefingBlock` — lead(요약) · 핵심 포인트 · 출처 |
 | 장중 브리핑 | 홈 히어로 · 알림 (`/market-briefing`) | `MarketBriefingDetailContent` → `MarketBriefingBlock` (시장 탭 허브와 분리) |
 | ETF | 홈·리스트 · 알림 | `EtfInsightBlock` |
-| 뉴스/공시 다이제스트 | 홈 뉴스 · 목록 · 알림 | `DigestDetailContent` — lead(요약) · 출처 |
+| 뉴스/공시 다이제스트 | 홈 뉴스 · 목록 · 알림 | `DigestDetailContent` — lead(요약) · 출처 · **텍스트 복사**(`DigestCopyTextButton`: 제목+요약) |
+
+제목·요약은 `selectable` + 복사 버튼. 페이로드는 `formatDigestCopyText` (`domain/digests/copyText.ts`). 뉴스 피드 출처 시트(`DigestSourcesSheet`)에도 동일 버튼.
 
 ### 종목 상세 바로가기
 

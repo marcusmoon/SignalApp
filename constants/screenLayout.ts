@@ -1,10 +1,10 @@
-import { tabBarBottomInset } from '@/constants/tabBar';
+import { tabBarBottomInset } from './tabBar';
 
 export {
   FAB_OVERLAY_SCROLL_CUSHION,
   fabOverlayScrollCushion,
   fabScrollClearanceAboveBase,
-} from '@/utils/fabScrollClearance';
+} from '../utils/fabScrollClearance';
 
 /**
  * 화면 레이아웃 공통 여백 — iPhone / iPad / 웹.
@@ -89,4 +89,3 @@ export function fabStackBottom(
 ): number {
   return tabBarHeight + tabBarBottomInset(safeAreaBottom) + offset;
 }
-

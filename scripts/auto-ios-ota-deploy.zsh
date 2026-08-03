@@ -130,6 +130,7 @@ printf '[%s] current sha: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${before_sha
 
 git fetch origin
 after_sha="$(git rev-parse origin/main)"
+manifest_changed_count="$(git diff --name-only "${before_sha}" "${after_sha}" -- package.json package-lock.json | wc -l | tr -d ' ')"
 
 if [[ "${before_sha}" == "${after_sha}" ]]; then
   printf '[%s] no source changes\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -139,6 +140,11 @@ fi
 git reset --hard "${after_sha}"
 
 printf '[%s] updated sha: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${after_sha}"
+
+if [[ "${manifest_changed_count}" != "0" ]]; then
+  printf '[%s] package manifest changed, syncing dependencies\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  (cd "${SOURCE_REPO_DIR}" && npm install)
+fi
 
 "${SOURCE_REPO_DIR}/node_modules/.bin/tsc" --noEmit --pretty false
 

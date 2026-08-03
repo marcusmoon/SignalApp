@@ -1,5 +1,14 @@
-import type { NewsSegmentKey } from '@/constants/newsSegment';
-import { NEWS_SEGMENT_ORDER } from '@/constants/newsSegment';
+/**
+ * 뉴스 탭 세그먼트 키·기본 순서 (순수 — Node 테스트 가능).
+ * `all` = global+korea+crypto+it (video 제외).
+ */
+
+export const NEWS_SEGMENT_KEYS = ['all', 'global', 'korea', 'crypto', 'it', 'video'] as const;
+export type NewsSegmentKey = (typeof NEWS_SEGMENT_KEYS)[number];
+
+export const NEWS_SEGMENT_ORDER: NewsSegmentKey[] = [...NEWS_SEGMENT_KEYS];
+
+export const DEFAULT_NEWS_SEGMENT: NewsSegmentKey = 'all';
 
 const ALL_KEYS: NewsSegmentKey[] = [...NEWS_SEGMENT_ORDER];
 
@@ -43,4 +52,9 @@ export function normalizeNewsSegmentOrder(raw: unknown): NewsSegmentKey[] {
     seen.add(k);
   }
   return out;
+}
+
+export function parseNewsSegmentKey(value: unknown): NewsSegmentKey | null {
+  const key = String(value || '').trim();
+  return (NEWS_SEGMENT_ORDER as readonly string[]).includes(key) ? (key as NewsSegmentKey) : null;
 }

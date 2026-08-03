@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { NEWS_SEGMENT_ORDER } from '../../constants/newsSegment.ts';
-import { normalizeNewsSegmentOrder } from './segmentOrder.ts';
+import {
+  NEWS_SEGMENT_ORDER,
+  normalizeNewsSegmentOrder,
+} from './segmentOrder.ts';
 
 describe('normalizeNewsSegmentOrder', () => {
   it('returns canonical order for non-array', () => {

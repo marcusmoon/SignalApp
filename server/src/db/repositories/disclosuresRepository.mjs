@@ -7,6 +7,11 @@ import {
   sqlDateOrTimestamp,
   sqlStringList,
 } from './publicHelpers.mjs';
+import {
+  fetchSymbolProfilesByKeys,
+  resolvePublicSymbolMeta,
+  symbolProfileLookupKeys,
+} from './symbolProfilesRepository.mjs';
 
 function publicDisclosure(item) {
   return {
@@ -24,6 +29,7 @@ function publicDisclosure(item) {
     periodEndDate: item.periodEndDate || null,
     fetchedAt: item.fetchedAt || null,
     rawPayload: item.rawPayload || null,
+    symbolMeta: null,
   };
 }
 
@@ -101,7 +107,7 @@ export async function queryPublicDisclosureRows(options = {}) {
     `,
     params,
   );
-  const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicDisclosure);
+  const rows = await enrichDisclosures(result.rows.map(payloadFromRow).filter(Boolean).map(publicDisclosure));
   const pageRows = rows.slice(0, limit);
   const hasMore = rows.length > limit;
   return {
@@ -119,7 +125,9 @@ export async function queryPublicDisclosureByIdRow(id) {
   if (!key) return null;
   const result = await queryKysely('SELECT payload FROM disclosures WHERE id = $1 LIMIT 1', [key]);
   const item = payloadFromRow(result.rows[0]);
-  return item ? publicDisclosure(item) : null;
+  if (!item) return null;
+  const rows = await enrichDisclosures([publicDisclosure(item)]);
+  return rows[0] || null;
 }
 
 export async function fetchPublicDisclosuresByIds(ids = []) {
@@ -127,10 +135,38 @@ export async function fetchPublicDisclosuresByIds(ids = []) {
   const map = new Map();
   if (safeIds.length === 0) return map;
   const result = await queryKysely('SELECT payload FROM disclosures WHERE id = ANY($1::text[])', [safeIds]);
-  for (const row of result.rows) {
-    const item = payloadFromRow(row);
+  const rows = await enrichDisclosures(result.rows.map(payloadFromRow).filter(Boolean).map(publicDisclosure));
+  for (const item of rows) {
     if (!item?.id) continue;
-    map.set(item.id, publicDisclosure(item));
+    map.set(item.id, item);
   }
   return map;
+}
+
+async function enrichDisclosures(rows = []) {
+  const keys = [
+    ...new Set(
+      rows.flatMap((row) => symbolProfileLookupKeys({
+        market: row.market,
+        symbol: row.symbol,
+        companyName: row.companyName,
+      })),
+    ),
+  ];
+  const profiles = await fetchSymbolProfilesByKeys(keys);
+  return rows.map((row) => {
+    const profile = symbolProfileLookupKeys({
+      market: row.market,
+      symbol: row.symbol,
+      companyName: row.companyName,
+    }).map((key) => profiles.get(key)).find(Boolean) || null;
+    return {
+      ...row,
+      symbolMeta: resolvePublicSymbolMeta({
+        market: row.market,
+        symbol: row.symbol,
+        companyName: row.companyName,
+      }, profile),
+    };
+  });
 }

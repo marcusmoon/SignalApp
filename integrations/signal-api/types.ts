@@ -60,6 +60,14 @@ export type SignalApiKeyword = {
   context?: string;
 };
 
+export type SignalApiSymbolMeta = {
+  market: 'kr' | 'global' | 'unknown' | string;
+  symbol: string;
+  displaySymbol: string;
+  name?: string | null;
+  logoUrl?: string | null;
+};
+
 export type SignalApiNewsDigestItem = {
   id: string;
   category: string;
@@ -91,6 +99,7 @@ export type SignalApiMarketBriefingSourceRef = {
 export type SignalApiMarketBriefingCompany = {
   symbol: string;
   name?: string | null;
+  symbolMeta?: SignalApiSymbolMeta | null;
   price?: number | null;
   changePercent?: number | null;
   summary: string;
@@ -226,6 +235,7 @@ export type SignalApiDisclosure = {
   filedAt: string | null;
   periodEndDate: string | null;
   fetchedAt: string | null;
+  symbolMeta?: SignalApiSymbolMeta | null;
   rawPayload?: unknown;
 };
 
@@ -376,6 +386,7 @@ export type SignalApiMarketQuote = {
   official?: boolean | null;
   notice?: string | null;
   afterHoursAvailable?: boolean | null;
+  symbolMeta?: SignalApiSymbolMeta | null;
   regularSession?: {
     yahooSymbol?: string | null;
     currentPrice: number | null;

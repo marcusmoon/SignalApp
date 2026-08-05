@@ -27,7 +27,7 @@ import {
   FLOATING_GLASS_FAB_SIZE,
   FloatingGlassFab,
 } from '@/components/signal/FloatingGlassFab';
-import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -581,7 +581,6 @@ export function QuotesContent({
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web' && !isActive;
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
       const useNaverLink = isKoreaStockQuote(r);
-      const titleText = r.symbol;
       const watchReorder = segment === 'watch' && typeof drag === 'function';
 
       const cardInner = (
@@ -590,11 +589,16 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  <SymbolLogo symbol={r.symbol} imageUrl={r.imageUrl} size={28} />
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
-                    <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                      {titleText}
-                    </Text>
+          <SymbolIdentityChip
+            symbol={r.symbol}
+            identifier={r.symbol}
+            name={r.symbolMeta?.name ?? r.name ?? null}
+            imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
+            logoSize={28}
+            chrome="plain"
+            expandable={Boolean(r.symbolMeta?.name ?? r.name)}
+          />
                   </Pressable>
                   {yahooEnabled ? (
                     <Pressable

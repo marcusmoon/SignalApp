@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SourceBadge } from '@/components/signal/SourceBadge';
-import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import {
   FEED_ARTICLE_TITLE_PX,
   FEED_BODY_PX,
@@ -54,9 +54,9 @@ export function DisclosureCard({
     [item.url, providerName, theme],
   );
   const symbol = item.symbol?.trim().toUpperCase() ?? '';
-  const companyName = item.companyName?.trim() ?? '';
+  const companyName = item.symbolMeta?.name?.trim() || item.companyName?.trim() || '';
+  const companyLogoUrl = item.symbolMeta?.logoUrl || null;
   const canOpenSymbol = symbol.length > 0;
-  const headerLabel = symbol || companyName || providerName;
   const timeLabel = disclosureFiledTimeLabel(item, locale);
 
   const openSymbol = useCallback(() => {
@@ -101,16 +101,19 @@ export function DisclosureCard({
     <View style={styles.compactMetaRow}>
       {canOpenSymbol ? (
         <Pressable onPress={openSymbol} hitSlop={8} style={styles.compactTickerWrap}>
-          <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={18} />
-            <Text style={styles.compactTicker} numberOfLines={1}>
-              {headerLabel}
-            </Text>
-          </View>
+          <SymbolIdentityChip
+            symbol={symbol}
+            identifier={symbol}
+            name={companyName || null}
+            imageUrl={companyLogoUrl}
+            logoSize={18}
+            chrome="plain"
+            expandable={Boolean(companyName)}
+          />
         </Pressable>
-      ) : headerLabel && headerLabel !== providerName ? (
+      ) : companyName && companyName !== providerName ? (
         <Text style={styles.compactTicker} numberOfLines={1}>
-          {headerLabel}
+          {companyName}
         </Text>
       ) : null}
       <View style={styles.compactMetaMain}>{sourceContent}</View>
@@ -124,12 +127,15 @@ export function DisclosureCard({
     <View style={styles.metaRow}>
       {canOpenSymbol ? (
         <Pressable onPress={openSymbol} hitSlop={8} style={styles.metaLead}>
-          <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={20} />
-            <Text style={styles.ticker} numberOfLines={1}>
-              {headerLabel}
-            </Text>
-          </View>
+          <SymbolIdentityChip
+            symbol={symbol}
+            identifier={symbol}
+            name={companyName || null}
+            imageUrl={companyLogoUrl}
+            logoSize={20}
+            chrome="plain"
+            expandable={Boolean(companyName)}
+          />
         </Pressable>
       ) : (
         <View style={styles.metaLead}>{sourceContent}</View>

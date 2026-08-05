@@ -1,12 +1,14 @@
 import type {
   SignalApiCoinMarket,
   SignalApiMarketQuote,
+  SignalApiSymbolMeta,
 } from '@/integrations/signal-api';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 
 export type QuoteRow = {
   symbol: string;
   name?: string;
+  symbolMeta?: SignalApiSymbolMeta | null;
   quote: SignalApiMarketQuote | null;
   error?: string;
   /** 서버 제공 로고 (코인). 없으면 SymbolLogo가 Parqet 시도 */
@@ -125,9 +127,10 @@ export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApi
 export function mapSignalQuoteToRow(item: SignalApiMarketQuote): QuoteRow {
   return {
     symbol: item.displaySymbol || item.symbol,
-    name: item.name || undefined,
+    name: item.symbolMeta?.name || item.name || undefined,
+    symbolMeta: item.symbolMeta ?? null,
     quote: signalMarketQuoteHasValidPrice(item) ? item : null,
-    imageUrl: item.imageUrl ?? null,
+    imageUrl: item.symbolMeta?.logoUrl ?? item.imageUrl ?? null,
   };
 }
 

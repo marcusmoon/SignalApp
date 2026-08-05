@@ -7,6 +7,11 @@ import {
   payloadFromRow,
   sqlStringList,
 } from './publicHelpers.mjs';
+import {
+  fetchSymbolProfilesByKeys,
+  resolvePublicSymbolMeta,
+  symbolProfileLookupKeys,
+} from './symbolProfilesRepository.mjs';
 
 function publicMarketQuote(item) {
   return {
@@ -33,6 +38,7 @@ function publicMarketQuote(item) {
     notice: item.notice || null,
     afterHoursAvailable: item.afterHoursAvailable === true ? true : item.afterHoursAvailable === false ? false : null,
     regularSession: item.regularSession || null,
+    symbolMeta: null,
   };
 }
 
@@ -125,7 +131,7 @@ export async function queryPublicMarketQuoteRows(options = {}) {
       `,
       lookupParams,
     );
-    const rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
+    const rows = await enrichMarketQuoteRows(result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean));
     return {
       rows,
       total: rows.length,
@@ -147,7 +153,7 @@ export async function queryPublicMarketQuoteRows(options = {}) {
     `,
     params,
   );
-  let rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
+  let rows = await enrichMarketQuoteRows(result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean));
   if (symbols.length > 0 && !segment) {
     const bestBySymbol = new Map();
     for (const row of rows) {
@@ -171,6 +177,41 @@ export async function queryPublicMarketQuoteRows(options = {}) {
     hasMore,
     nextOffset: hasMore ? offset + pageRows.length : null,
   };
+}
+
+async function enrichMarketQuoteRows(rows = []) {
+  const keys = [
+    ...new Set(
+      rows.flatMap((row) => symbolProfileLookupKeys({
+        market: row.segment === 'korea' ? 'kr' : 'global',
+        symbol: row.symbol,
+        displaySymbol: row.displaySymbol,
+        krxSymbol: row.krxSymbol,
+        providerItemId: row.providerItemId,
+      })),
+    ),
+  ];
+  if (keys.length === 0) return rows;
+  const profiles = await fetchSymbolProfilesByKeys(keys);
+  return rows.map((row) => {
+    const profile = symbolProfileLookupKeys({
+      market: row.segment === 'korea' ? 'kr' : 'global',
+      symbol: row.symbol,
+      displaySymbol: row.displaySymbol,
+      krxSymbol: row.krxSymbol,
+      providerItemId: row.providerItemId,
+    }).map((key) => profiles.get(key)).find(Boolean) || null;
+    return {
+      ...row,
+      symbolMeta: resolvePublicSymbolMeta({
+        market: row.segment === 'korea' ? 'kr' : 'global',
+        symbol: row.symbol,
+        displaySymbol: row.displaySymbol,
+        krxSymbol: row.krxSymbol,
+        name: row.name,
+      }, profile),
+    };
+  });
 }
 
 export async function queryPublicCoinMarketRows(options = {}) {

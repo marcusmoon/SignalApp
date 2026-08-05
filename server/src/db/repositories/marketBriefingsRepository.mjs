@@ -8,6 +8,11 @@ import {
   sqlUtcRangeFrom,
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
+import {
+  fetchSymbolProfilesByKeys,
+  resolvePublicSymbolMeta,
+  symbolProfileLookupKeys,
+} from './symbolProfilesRepository.mjs';
 
 function publicBriefing(item) {
   if (!item) return null;
@@ -35,7 +40,7 @@ function publicBriefing(item) {
     companies: Array.isArray(item.companies)
       ? item.companies.map((company) => {
           const symbol = normalizeSymbol(company?.symbol || company?.ticker);
-          return symbol ? { ...company, symbol } : company;
+          return symbol ? { ...company, symbol, symbolMeta: null } : company;
         })
       : [],
     macro: Array.isArray(item.macro) ? item.macro : [],
@@ -98,9 +103,9 @@ async function enrichBriefingCompanies(rows) {
       if (!quoteByKey.has(key)) quoteByKey.set(key, quote);
     }
   }
-  if (quoteByKey.size === 0) return rows;
+  if (quoteByKey.size === 0) return enrichBriefingCompanyProfiles(rows);
 
-  return rows.map((briefing) => ({
+  const enriched = rows.map((briefing) => ({
     ...briefing,
     companies: (briefing.companies || []).map((company) => {
       const quote = companyKeys(company).map((key) => quoteByKey.get(key)).find(Boolean);
@@ -115,6 +120,42 @@ async function enrichBriefingCompanies(rows) {
           : shouldFallbackChangePercent
             ? quote.changePercent
             : null,
+      };
+    }),
+  }));
+  return enrichBriefingCompanyProfiles(enriched);
+}
+
+async function enrichBriefingCompanyProfiles(rows) {
+  const keys = [
+    ...new Set(
+      rows
+        .flatMap((briefing) => briefing.companies || [])
+        .flatMap((company) => symbolProfileLookupKeys({
+          market: company?.market,
+          symbol: company?.symbol,
+          displaySymbol: company?.symbol,
+          name: company?.name,
+        })),
+    ),
+  ];
+  const profiles = await fetchSymbolProfilesByKeys(keys);
+  return rows.map((briefing) => ({
+    ...briefing,
+    companies: (briefing.companies || []).map((company) => {
+      const profile = symbolProfileLookupKeys({
+        market: briefing.market,
+        symbol: company?.symbol,
+        displaySymbol: company?.symbol,
+        name: company?.name,
+      }).map((key) => profiles.get(key)).find(Boolean) || null;
+      return {
+        ...company,
+        symbolMeta: resolvePublicSymbolMeta({
+          market: briefing.market,
+          symbol: company?.symbol,
+          name: company?.name,
+        }, profile),
       };
     }),
   }));

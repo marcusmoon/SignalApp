@@ -97,6 +97,8 @@ function CompanyHighlightRow({
   const changeColor =
     changePositive === null ? theme.textMuted : changePositive ? changeColors.up : changeColors.down;
   const companyName = item.name?.trim() || '';
+  const resolvedName = item.symbolMeta?.name?.trim() || companyName || null;
+  const resolvedLogoUrl = item.symbolMeta?.logoUrl || null;
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
@@ -104,8 +106,9 @@ function CompanyHighlightRow({
         <SymbolIdentityChip
           symbol={item.symbol}
           identifier={item.symbol}
-          name={companyName || null}
-          expandable={Boolean(companyName)}
+          name={resolvedName}
+          imageUrl={resolvedLogoUrl}
+          expandable={Boolean(resolvedName)}
         />
         {hasPrice || hasChange ? (
           <View style={styles.companyQuoteInline}>

@@ -13,7 +13,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesByKeys,
+  ensureSymbolProfilesForKeys,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -46,26 +46,23 @@ function publicNews(item, translations, locale) {
 }
 
 async function enrichNewsSymbolMeta(rows = []) {
-  const keys = [
-    ...new Set(
-      rows.flatMap((row) => {
-        const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
-        if (!symbol) return [];
-        return symbolProfileLookupKeys({ symbol, displaySymbol: symbol });
-      }),
-    ),
-  ];
-  if (keys.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesByKeys(keys);
+  const inputs = rows
+    .map((row) => {
+      const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
+      if (!symbol) return null;
+      return { symbol, displaySymbol: symbol, source: 'news_ensure' };
+    })
+    .filter(Boolean);
+  if (inputs.length === 0) return rows;
+  const profiles = await ensureSymbolProfilesForKeys(inputs);
   return rows.map((row) => {
     const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
     if (!symbol) return row;
-    const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
-      .map((key) => profiles.get(key))
-      .find(Boolean) || null;
+    const identity = { symbol, displaySymbol: symbol };
+    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+      symbolMeta: resolvePublicSymbolMeta(identity, profile),
     };
   });
 }

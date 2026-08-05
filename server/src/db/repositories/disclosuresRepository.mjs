@@ -8,7 +8,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesByKeys,
+  ensureSymbolProfilesForKeys,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -144,29 +144,24 @@ export async function fetchPublicDisclosuresByIds(ids = []) {
 }
 
 async function enrichDisclosures(rows = []) {
-  const keys = [
-    ...new Set(
-      rows.flatMap((row) => symbolProfileLookupKeys({
-        market: row.market,
-        symbol: row.symbol,
-        companyName: row.companyName,
-      })),
-    ),
-  ];
-  const profiles = await fetchSymbolProfilesByKeys(keys);
+  const inputs = rows.map((row) => ({
+    market: row.market,
+    symbol: row.symbol,
+    companyName: row.companyName,
+    source: 'disclosures_ensure',
+  }));
+  if (inputs.length === 0) return rows;
+  const profiles = await ensureSymbolProfilesForKeys(inputs);
   return rows.map((row) => {
-    const profile = symbolProfileLookupKeys({
+    const identity = {
       market: row.market,
       symbol: row.symbol,
       companyName: row.companyName,
-    }).map((key) => profiles.get(key)).find(Boolean) || null;
+    };
+    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta({
-        market: row.market,
-        symbol: row.symbol,
-        companyName: row.companyName,
-      }, profile),
+      symbolMeta: resolvePublicSymbolMeta(identity, profile),
     };
   });
 }

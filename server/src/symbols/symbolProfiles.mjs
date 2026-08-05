@@ -21,6 +21,16 @@ export function detectSymbolMarket(symbol) {
   return 'unknown';
 }
 
+/** Briefing `us` · quotes `korea` 등 → DB market (`kr` | `global`). */
+export function normalizeSymbolMarket(market, symbol) {
+  const raw = cleanText(market).toLowerCase();
+  if (raw === 'kr' || raw === 'korea') return 'kr';
+  if (raw === 'global' || raw === 'us' || raw === 'usa' || raw === 'nyse' || raw === 'nasdaq') {
+    return 'global';
+  }
+  return detectSymbolMarket(symbol);
+}
+
 export function symbolLogoUrl(symbol, preferredUrl = null) {
   const preferred = cleanText(preferredUrl);
   if (/^https?:\/\//i.test(preferred)) return preferred;
@@ -55,7 +65,7 @@ export function buildSymbolProfile(row = {}) {
   const name = isUsableDisplayName(row.name || row.companyName || row.displayName, symbol)
     ? cleanText(row.name || row.companyName || row.displayName)
     : null;
-  const market = row.market || detectSymbolMarket(symbol);
+  const market = normalizeSymbolMarket(row.market, symbol);
   const logoUrl = symbolLogoUrl(symbol, row.imageUrl || row.logoUrl || row.profileImageUrl || null);
   return {
     symbolKey: `${market}:${symbol}`,
@@ -76,7 +86,7 @@ export function publicSymbolMeta(profile = {}) {
   const symbol = normalizeSymbolDisplay(profile.symbol || profile.displaySymbol);
   if (!symbol) return null;
   return {
-    market: cleanText(profile.market) || detectSymbolMarket(symbol),
+    market: normalizeSymbolMarket(profile.market, symbol),
     symbol,
     displaySymbol: normalizeSymbolDisplay(profile.displaySymbol || symbol),
     name: isUsableDisplayName(profile.name, symbol) ? cleanText(profile.name) : null,

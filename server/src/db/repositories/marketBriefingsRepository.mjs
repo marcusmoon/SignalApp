@@ -9,7 +9,7 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesByKeys,
+  ensureSymbolProfilesForKeys,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -127,35 +127,30 @@ async function enrichBriefingCompanies(rows) {
 }
 
 async function enrichBriefingCompanyProfiles(rows) {
-  const keys = [
-    ...new Set(
-      rows
-        .flatMap((briefing) => briefing.companies || [])
-        .flatMap((company) => symbolProfileLookupKeys({
-          market: company?.market,
-          symbol: company?.symbol,
-          displaySymbol: company?.symbol,
-          name: company?.name,
-        })),
-    ),
-  ];
-  const profiles = await fetchSymbolProfilesByKeys(keys);
+  const inputs = rows.flatMap((briefing) =>
+    (briefing.companies || []).map((company) => ({
+      market: briefing.market,
+      symbol: company?.symbol,
+      displaySymbol: company?.symbol,
+      name: company?.name,
+      source: 'market_briefings_ensure',
+    })),
+  );
+  if (inputs.length === 0) return rows;
+  const profiles = await ensureSymbolProfilesForKeys(inputs);
   return rows.map((briefing) => ({
     ...briefing,
     companies: (briefing.companies || []).map((company) => {
-      const profile = symbolProfileLookupKeys({
+      const identity = {
         market: briefing.market,
         symbol: company?.symbol,
         displaySymbol: company?.symbol,
         name: company?.name,
-      }).map((key) => profiles.get(key)).find(Boolean) || null;
+      };
+      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...company,
-        symbolMeta: resolvePublicSymbolMeta({
-          market: briefing.market,
-          symbol: company?.symbol,
-          name: company?.name,
-        }, profile),
+        symbolMeta: resolvePublicSymbolMeta(identity, profile),
       };
     }),
   }));

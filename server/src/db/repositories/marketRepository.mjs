@@ -8,7 +8,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesByKeys,
+  ensureSymbolProfilesForKeys,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -180,36 +180,31 @@ export async function queryPublicMarketQuoteRows(options = {}) {
 }
 
 async function enrichMarketQuoteRows(rows = []) {
-  const keys = [
-    ...new Set(
-      rows.flatMap((row) => symbolProfileLookupKeys({
-        market: row.segment === 'korea' ? 'kr' : 'global',
-        symbol: row.symbol,
-        displaySymbol: row.displaySymbol,
-        krxSymbol: row.krxSymbol,
-        providerItemId: row.providerItemId,
-      })),
-    ),
-  ];
-  if (keys.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesByKeys(keys);
+  const inputs = rows.map((row) => ({
+    market: row.segment === 'korea' ? 'kr' : 'global',
+    symbol: row.symbol,
+    displaySymbol: row.displaySymbol,
+    krxSymbol: row.krxSymbol,
+    providerItemId: row.providerItemId,
+    name: row.name,
+    imageUrl: row.imageUrl,
+    source: 'market_quotes_ensure',
+  }));
+  if (inputs.length === 0) return rows;
+  const profiles = await ensureSymbolProfilesForKeys(inputs);
   return rows.map((row) => {
-    const profile = symbolProfileLookupKeys({
+    const identity = {
       market: row.segment === 'korea' ? 'kr' : 'global',
       symbol: row.symbol,
       displaySymbol: row.displaySymbol,
       krxSymbol: row.krxSymbol,
       providerItemId: row.providerItemId,
-    }).map((key) => profiles.get(key)).find(Boolean) || null;
+      name: row.name,
+    };
+    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta({
-        market: row.segment === 'korea' ? 'kr' : 'global',
-        symbol: row.symbol,
-        displaySymbol: row.displaySymbol,
-        krxSymbol: row.krxSymbol,
-        name: row.name,
-      }, profile),
+      symbolMeta: resolvePublicSymbolMeta(identity, profile),
     };
   });
 }

@@ -7,7 +7,7 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesByKeys,
+  ensureSymbolProfilesForKeys,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -45,47 +45,45 @@ function heatmapSymbol(row) {
 }
 
 async function enrichEtfInsightRows(rows = []) {
-  const keys = [
-    ...new Set(
-      rows.flatMap((insight) => {
-        const flowKeys = (insight.flowHighlights || []).flatMap((row) => {
-          const symbol = flowSymbol(row);
-          return symbol ? symbolProfileLookupKeys({ symbol, displaySymbol: symbol }) : [];
-        });
-        const heatKeys = (insight.heatmap || []).flatMap((row) => {
-          const symbol = heatmapSymbol(row);
-          return symbol ? symbolProfileLookupKeys({ symbol, displaySymbol: symbol }) : [];
-        });
-        return [...flowKeys, ...heatKeys];
-      }),
-    ),
-  ];
-  if (keys.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesByKeys(keys);
+  const inputs = rows.flatMap((insight) => {
+    const flowInputs = (insight.flowHighlights || [])
+      .map((row) => {
+        const symbol = flowSymbol(row);
+        return symbol ? { symbol, displaySymbol: symbol, source: 'etf_flow_ensure' } : null;
+      })
+      .filter(Boolean);
+    const heatInputs = (insight.heatmap || [])
+      .map((row) => {
+        const symbol = heatmapSymbol(row);
+        return symbol ? { symbol, displaySymbol: symbol, source: 'etf_heatmap_ensure' } : null;
+      })
+      .filter(Boolean);
+    return [...flowInputs, ...heatInputs];
+  });
+  if (inputs.length === 0) return rows;
+  const profiles = await ensureSymbolProfilesForKeys(inputs);
   return rows.map((insight) => ({
     ...insight,
     flowHighlights: (insight.flowHighlights || []).map((row) => {
       if (!row || typeof row !== 'object') return row;
       const symbol = flowSymbol(row);
       if (!symbol) return row;
-      const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
-        .map((key) => profiles.get(key))
-        .find(Boolean) || null;
+      const identity = { symbol, displaySymbol: symbol };
+      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...row,
-        symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+        symbolMeta: resolvePublicSymbolMeta(identity, profile),
       };
     }),
     heatmap: (insight.heatmap || []).map((row) => {
       if (!row || typeof row !== 'object') return row;
       const symbol = heatmapSymbol(row);
       if (!symbol) return row;
-      const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
-        .map((key) => profiles.get(key))
-        .find(Boolean) || null;
+      const identity = { symbol, displaySymbol: symbol };
+      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...row,
-        symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+        symbolMeta: resolvePublicSymbolMeta(identity, profile),
       };
     }),
   }));

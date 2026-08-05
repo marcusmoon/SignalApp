@@ -13,7 +13,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  ensureSymbolProfilesForKeys,
+  fetchSymbolProfilesForInputs,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -50,11 +50,11 @@ async function enrichNewsSymbolMeta(rows = []) {
     .map((row) => {
       const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
       if (!symbol) return null;
-      return { symbol, displaySymbol: symbol, source: 'news_ensure' };
+      return { symbol, displaySymbol: symbol };
     })
     .filter(Boolean);
   if (inputs.length === 0) return rows;
-  const profiles = await ensureSymbolProfilesForKeys(inputs);
+  const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((row) => {
     const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
     if (!symbol) return row;
@@ -62,7 +62,7 @@ async function enrichNewsSymbolMeta(rows = []) {
     const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta(identity, profile),
+      symbolMeta: resolvePublicSymbolMeta(profile),
     };
   });
 }

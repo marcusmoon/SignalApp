@@ -8,7 +8,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  ensureSymbolProfilesForKeys,
+  fetchSymbolProfilesForInputs,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -186,12 +186,9 @@ async function enrichMarketQuoteRows(rows = []) {
     displaySymbol: row.displaySymbol,
     krxSymbol: row.krxSymbol,
     providerItemId: row.providerItemId,
-    name: row.name,
-    imageUrl: row.imageUrl,
-    source: 'market_quotes_ensure',
   }));
   if (inputs.length === 0) return rows;
-  const profiles = await ensureSymbolProfilesForKeys(inputs);
+  const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((row) => {
     const identity = {
       market: row.segment === 'korea' ? 'kr' : 'global',
@@ -199,12 +196,11 @@ async function enrichMarketQuoteRows(rows = []) {
       displaySymbol: row.displaySymbol,
       krxSymbol: row.krxSymbol,
       providerItemId: row.providerItemId,
-      name: row.name,
     };
     const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta(identity, profile),
+      symbolMeta: resolvePublicSymbolMeta(profile),
     };
   });
 }

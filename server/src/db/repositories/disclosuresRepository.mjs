@@ -8,7 +8,7 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  ensureSymbolProfilesForKeys,
+  fetchSymbolProfilesForInputs,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -147,21 +147,18 @@ async function enrichDisclosures(rows = []) {
   const inputs = rows.map((row) => ({
     market: row.market,
     symbol: row.symbol,
-    companyName: row.companyName,
-    source: 'disclosures_ensure',
   }));
   if (inputs.length === 0) return rows;
-  const profiles = await ensureSymbolProfilesForKeys(inputs);
+  const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((row) => {
     const identity = {
       market: row.market,
       symbol: row.symbol,
-      companyName: row.companyName,
     };
     const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta(identity, profile),
+      symbolMeta: resolvePublicSymbolMeta(profile),
     };
   });
 }

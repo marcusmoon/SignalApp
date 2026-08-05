@@ -165,12 +165,12 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 | 구분 | 소스 | 저장·API |
 |---|---|---|
-| 주식·ETF | Parqet CDN URL을 서버가 합성(`symbolLogoUrl`) · ingest upsert + **공개 enrich 시 미등록 티커 ensure** | `symbol_profiles` → quotes/briefings/disclosures/news/ETF → `symbolMeta` |
-| 코인 | CoinGecko markets `image` | Job `market_coins_top` → `coin_markets.payload.imageUrl` · `GET /v1/coins` `imageUrl` (프로필 ensure 대상 아님) |
+| 주식·ETF | Parqet CDN URL을 서버가 합성(`symbolLogoUrl`) · ingest/Admin upsert | `symbol_profiles` → quotes/briefings/disclosures/news/ETF → `symbolMeta` (미등록이면 `null`) |
+| 코인 | CoinGecko markets `image` | Job `market_coins_top` → `coin_markets.payload.imageUrl` · `GET /v1/coins` `imageUrl` |
 
 - normalize/합성: `server/src/symbols/symbolProfiles.mjs`
-- upsert/조회/ensure: `server/src/db/repositories/symbolProfilesRepository.mjs` (`ensureSymbolProfilesForKeys` — 조회 시 없으면 등록, 이름 없으면 null·로고는 Parqet)
-- 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 `symbolMeta` 우선**, 클라이언트 Parqet은 폴백만.
+- upsert/조회: `server/src/db/repositories/symbolProfilesRepository.mjs` — 공개 enrich는 **등록된 프로필만** 붙인다. 없으면 `symbolMeta: null` (자동 등록 없음; Admin·ingest로 채움)
+- 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 `symbolMeta` 우선**, 없으면 클라이언트 Parqet·레거시 필드 폴백.
 
 ## 배포
 

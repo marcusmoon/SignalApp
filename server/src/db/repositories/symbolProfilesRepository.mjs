@@ -7,19 +7,12 @@ import {
   publicSymbolMeta,
 } from '../../symbols/symbolProfiles.mjs';
 
-/** Process-local: avoid re-upserting the same key on every enrich within a short window. */
-const ensuredKeys = new Set();
-
 function keyFor(market, symbol) {
   const display = normalizeSymbolDisplay(symbol);
   if (!display) return '';
   const resolvedMarket = normalizeSymbolMarket(market, display);
   if (resolvedMarket === 'unknown') return '';
   return `${resolvedMarket}:${display}`;
-}
-
-function dbWriteClient() {
-  return { query: (text, params) => queryKysely(text, params) };
 }
 
 export async function upsertSymbolProfilesRows(client, rows = []) {
@@ -104,67 +97,21 @@ export function symbolProfileLookupKeys(input = {}) {
 }
 
 /**
- * Fetch profiles; upsert any missing equity/ETF tickers so later reads hit DB.
- * Ticker-only rows get name=null and a synthesized Parqet logoUrl.
- * Coins are not registered here (CoinGecko imageUrl path).
+ * Look up registered profiles only. Missing keys stay missing (no auto-insert)
+ * so Admin/ingest can fill them later.
  */
-export async function ensureSymbolProfilesForKeys(inputs = []) {
-  const built = [];
-  const seenBuild = new Set();
-  for (const input of Array.isArray(inputs) ? inputs : []) {
-    const profile = buildSymbolProfile({
-      ...input,
-      source: input?.source || 'ensure',
-    });
-    if (!profile?.symbolKey || seenBuild.has(profile.symbolKey)) continue;
-    // Skip unknown markets (non equity-like) — do not invent coin/index rows here.
-    if (profile.market !== 'kr' && profile.market !== 'global') continue;
-    seenBuild.add(profile.symbolKey);
-    built.push(profile);
-  }
-  if (built.length === 0) return new Map();
-
-  const keys = [...new Set(built.map((row) => row.symbolKey))];
-  const profiles = await fetchSymbolProfilesByKeys(keys);
-
-  const missing = built.filter((row) => {
-    if (profiles.has(row.symbolKey)) return false;
-    if (ensuredKeys.has(row.symbolKey)) return false;
-    return true;
-  });
-
-  if (missing.length > 0) {
-    await upsertSymbolProfilesRows(dbWriteClient(), missing);
-    for (const row of missing) {
-      ensuredKeys.add(row.symbolKey);
-      profiles.set(row.symbolKey, {
-        symbolKey: row.symbolKey,
-        market: row.market,
-        symbol: row.symbol,
-        displaySymbol: row.displaySymbol,
-        name: row.name,
-        exchange: row.exchange,
-        logoUrl: row.logoUrl,
-        payload: row.payload || null,
-      });
-    }
-  }
-
-  return profiles;
+export async function fetchSymbolProfilesForInputs(inputs = []) {
+  const keys = [
+    ...new Set(
+      (Array.isArray(inputs) ? inputs : []).flatMap((input) => symbolProfileLookupKeys(input)),
+    ),
+  ];
+  if (keys.length === 0) return new Map();
+  return fetchSymbolProfilesByKeys(keys);
 }
 
-export function resolvePublicSymbolMeta(input = {}, profile = null) {
-  if (profile) return publicSymbolMeta(profile);
-  return publicSymbolMeta({
-    market: input.market,
-    symbol: input.symbol || input.displaySymbol || input.krxSymbol,
-    displaySymbol: input.displaySymbol || input.symbol || input.krxSymbol,
-    name: input.name || input.companyName || null,
-    logoUrl: input.imageUrl || null,
-  });
-}
-
-/** Test helper — clear process-local ensure cache. */
-export function _resetEnsuredSymbolProfileKeysForTests() {
-  ensuredKeys.clear();
+/** DB profile only — no synthetic row when unregistered. */
+export function resolvePublicSymbolMeta(profile = null) {
+  if (!profile) return null;
+  return publicSymbolMeta(profile);
 }

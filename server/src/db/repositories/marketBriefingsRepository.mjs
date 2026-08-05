@@ -9,7 +9,7 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  ensureSymbolProfilesForKeys,
+  fetchSymbolProfilesForInputs,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -132,12 +132,10 @@ async function enrichBriefingCompanyProfiles(rows) {
       market: briefing.market,
       symbol: company?.symbol,
       displaySymbol: company?.symbol,
-      name: company?.name,
-      source: 'market_briefings_ensure',
     })),
   );
   if (inputs.length === 0) return rows;
-  const profiles = await ensureSymbolProfilesForKeys(inputs);
+  const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((briefing) => ({
     ...briefing,
     companies: (briefing.companies || []).map((company) => {
@@ -145,12 +143,11 @@ async function enrichBriefingCompanyProfiles(rows) {
         market: briefing.market,
         symbol: company?.symbol,
         displaySymbol: company?.symbol,
-        name: company?.name,
       };
       const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...company,
-        symbolMeta: resolvePublicSymbolMeta(identity, profile),
+        symbolMeta: resolvePublicSymbolMeta(profile),
       };
     }),
   }));

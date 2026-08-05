@@ -130,7 +130,7 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 
 | 구분 | 우선 URL | 실패 시 |
 |---|---|---|
-| 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`, 서버가 Parqet URL 합성) | 앱 `symbolLogoUrls` Parqet → 글자 아바타 |
+| 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`에 등록된 경우; 미등록이면 `symbolMeta` null) | 앱 `symbolLogoUrls` Parqet → 글자 아바타 |
 | 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | Parqet → 글자 아바타 |
 | 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 

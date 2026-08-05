@@ -7,7 +7,7 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  ensureSymbolProfilesForKeys,
+  fetchSymbolProfilesForInputs,
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
@@ -49,19 +49,19 @@ async function enrichEtfInsightRows(rows = []) {
     const flowInputs = (insight.flowHighlights || [])
       .map((row) => {
         const symbol = flowSymbol(row);
-        return symbol ? { symbol, displaySymbol: symbol, source: 'etf_flow_ensure' } : null;
+        return symbol ? { symbol, displaySymbol: symbol } : null;
       })
       .filter(Boolean);
     const heatInputs = (insight.heatmap || [])
       .map((row) => {
         const symbol = heatmapSymbol(row);
-        return symbol ? { symbol, displaySymbol: symbol, source: 'etf_heatmap_ensure' } : null;
+        return symbol ? { symbol, displaySymbol: symbol } : null;
       })
       .filter(Boolean);
     return [...flowInputs, ...heatInputs];
   });
   if (inputs.length === 0) return rows;
-  const profiles = await ensureSymbolProfilesForKeys(inputs);
+  const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((insight) => ({
     ...insight,
     flowHighlights: (insight.flowHighlights || []).map((row) => {
@@ -72,7 +72,7 @@ async function enrichEtfInsightRows(rows = []) {
       const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...row,
-        symbolMeta: resolvePublicSymbolMeta(identity, profile),
+        symbolMeta: resolvePublicSymbolMeta(profile),
       };
     }),
     heatmap: (insight.heatmap || []).map((row) => {
@@ -83,7 +83,7 @@ async function enrichEtfInsightRows(rows = []) {
       const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
       return {
         ...row,
-        symbolMeta: resolvePublicSymbolMeta(identity, profile),
+        symbolMeta: resolvePublicSymbolMeta(profile),
       };
     }),
   }));

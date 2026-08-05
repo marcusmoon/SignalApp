@@ -17,13 +17,13 @@ describe('normalizeSymbolMarket', () => {
 });
 
 describe('buildSymbolProfile', () => {
-  it('registers ticker-only equity with Parqet logo and null name', () => {
-    const profile = buildSymbolProfile({ symbol: 'NVDA', source: 'ensure' });
+  it('builds equity profile with Parqet logo; name may be null until curated', () => {
+    const profile = buildSymbolProfile({ symbol: 'NVDA', source: 'admin' });
     assert.equal(profile.symbolKey, 'global:NVDA');
     assert.equal(profile.market, 'global');
     assert.equal(profile.name, null);
     assert.match(profile.logoUrl, /parqet\.com\/logos\/symbol\/NVDA/);
-    assert.equal(profile.payload.source, 'ensure');
+    assert.equal(profile.payload.source, 'admin');
   });
 
   it('normalizes us market to global for briefing companies', () => {
@@ -31,7 +31,7 @@ describe('buildSymbolProfile', () => {
       market: 'us',
       symbol: 'AAPL',
       name: 'Apple Inc.',
-      source: 'market_briefings_ensure',
+      source: 'market_briefings',
     });
     assert.equal(profile.symbolKey, 'global:AAPL');
     assert.equal(profile.name, 'Apple Inc.');

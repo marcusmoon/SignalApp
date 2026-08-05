@@ -112,7 +112,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     chipExpandable: {
       flexShrink: 1,
       minWidth: 56,
-      maxWidth: '58%',
+      maxWidth: '100%',
     },
     chipPressed: {
       opacity: 0.72,
@@ -126,6 +126,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+      flex: 1,
       flexShrink: 1,
       minWidth: 0,
     },
@@ -133,6 +134,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
       color: theme.green,
       fontVariant: ['tabular-nums'],
+      flexShrink: 0,
     },
     labelName: {
       fontWeight: ft.bodyWeight,

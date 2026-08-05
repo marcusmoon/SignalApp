@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   buildHomeKeywordSymbolNames,
+  buildHomeKeywordSymbolProfiles,
   homeKeywordChipIdentity,
   homeKeywordChipLabel,
   homeKeywordIsSymbolChip,
@@ -38,6 +39,20 @@ describe('buildHomeKeywordSymbolNames', () => {
     assert.equal(map.get('005930'), '삼성전자');
     assert.equal(map.get('AAPL'), 'Apple');
     assert.equal(map.has('000660'), false);
+  });
+
+  it('prefers symbolMeta name and logo over legacy row fields', () => {
+    const map = buildHomeKeywordSymbolProfiles({
+      quotes: [
+        {
+          symbol: 'AAPL',
+          name: 'Wrong',
+          symbolMeta: { name: 'Apple Inc.', logoUrl: 'https://cdn.example/aapl.png' },
+        },
+      ],
+    });
+    assert.equal(map.get('AAPL')?.name, 'Apple Inc.');
+    assert.equal(map.get('AAPL')?.logoUrl, 'https://cdn.example/aapl.png');
   });
 });
 

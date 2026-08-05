@@ -161,16 +161,16 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 ### 종목·코인 로고 (서버)
 
-로고 **이미지 파일은 서버/앱에 저장하지 않는다.** URL만 쓰거나 CDN 패턴으로 조합한다.
+로고 **이미지 파일은 서버/앱에 저장하지 않는다.** URL은 `symbol_profiles.logo_url`에 두고 공개 API `symbolMeta.logoUrl`로 내린다.
 
 | 구분 | 소스 | 저장·API |
 |---|---|---|
-| 주식 (US·KR) | Parqet CDN — 앱이 티커로 URL 조합 (`…/logos/symbol/{TICKER}`, 국장 `.KS`→`.KQ`) | DB·API에 로고 필드 없음. 시장 브리핑 companies/sectors는 read·ingest 시 `005930.KS` → `005930`으로 정규화 |
-| 코인 | CoinGecko markets `image` | Job `market_coins_top`이 `coin_markets.payload.imageUrl`에 저장. 공개 `GET /v1/coins` → `imageUrl`. 구 payload는 `rawPayload.image` 폴백 |
+| 주식·ETF | Parqet CDN URL을 서버가 합성(`symbolLogoUrl`) · ingest 시 upsert | `symbol_profiles` → quotes/briefings/disclosures/news/ETF enrich → `symbolMeta` |
+| 코인 | CoinGecko markets `image` | Job `market_coins_top` → `coin_markets.payload.imageUrl` · `GET /v1/coins` `imageUrl` (프로필 enrich는 후속) |
 
-- normalize: `server/src/providers/market/coingecko.mjs`
-- 공개 shape: `server/src/db/repositories/marketRepository.mjs` → `publicCoinMarket`
-- 앱 표시 규칙은 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고
+- normalize/합성: `server/src/symbols/symbolProfiles.mjs`
+- upsert/조회: `server/src/db/repositories/symbolProfilesRepository.mjs`
+- 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 `symbolMeta` 우선**, 클라이언트 Parqet은 폴백만.
 
 ## 배포
 

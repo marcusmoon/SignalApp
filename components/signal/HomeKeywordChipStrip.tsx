@@ -9,23 +9,22 @@ import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
 import {
   homeKeywordChipIdentity,
   homeKeywordIsSymbolChip,
+  type HomeKeywordSymbolProfile,
 } from '@/domain/home/homeKeywordDisplay';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
 type Props = {
   items: HomeKeywordChip[];
-  symbolNames: Map<string, string>;
+  symbolProfiles: Map<string, HomeKeywordSymbolProfile>;
   onPressItem: (chip: HomeKeywordChip) => void;
 };
 
 /**
  * Home keyword chip card — wrap chips only.
- * Section header (trend icon · title · as-of) lives in HomeFocusContent.
- * Symbol chips use logo+label directly (not nested SymbolIdentityChip) so
- * pill height/padding stays balanced with topic chips.
+ * Symbol chips prefer DB-backed `symbolMeta` name/logo via `symbolProfiles`.
  */
-export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props) {
+export function HomeKeywordChipStrip({ items, symbolProfiles, onPressItem }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo),
@@ -39,7 +38,7 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
       <View style={styles.row}>
         {items.map((chip) => {
           const isSymbol = homeKeywordIsSymbolChip(chip);
-          const identity = isSymbol ? homeKeywordChipIdentity(chip, symbolNames) : null;
+          const identity = isSymbol ? homeKeywordChipIdentity(chip, symbolProfiles) : null;
           const label = identity
             ? identity.displayName || identity.displaySymbol
             : chip.label;
@@ -58,7 +57,11 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
               ]}>
               {identity ? (
                 <>
-                  <SymbolLogo symbol={identity.symbol} size={16} />
+                  <SymbolLogo
+                    symbol={identity.symbol}
+                    size={16}
+                    imageUrl={identity.imageUrl}
+                  />
                   <Text
                     style={[styles.chipText, styles.chipTextSymbol]}
                     numberOfLines={1}>

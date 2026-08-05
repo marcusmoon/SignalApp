@@ -6,6 +6,11 @@ import {
   sqlUtcRangeFrom,
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
+import {
+  fetchSymbolProfilesByKeys,
+  resolvePublicSymbolMeta,
+  symbolProfileLookupKeys,
+} from './symbolProfilesRepository.mjs';
 
 function publicEtfInsight(item) {
   if (!item) return null;
@@ -27,6 +32,63 @@ function publicEtfInsight(item) {
     createdAt: item.createdAt || null,
     updatedAt: item.updatedAt || null,
   };
+}
+
+function flowSymbol(row) {
+  if (!row || typeof row !== 'object') return '';
+  return cleanText(row.etf || row.symbol);
+}
+
+function heatmapSymbol(row) {
+  if (!row || typeof row !== 'object') return '';
+  return cleanText(row.etf || row.symbol || row.ticker);
+}
+
+async function enrichEtfInsightRows(rows = []) {
+  const keys = [
+    ...new Set(
+      rows.flatMap((insight) => {
+        const flowKeys = (insight.flowHighlights || []).flatMap((row) => {
+          const symbol = flowSymbol(row);
+          return symbol ? symbolProfileLookupKeys({ symbol, displaySymbol: symbol }) : [];
+        });
+        const heatKeys = (insight.heatmap || []).flatMap((row) => {
+          const symbol = heatmapSymbol(row);
+          return symbol ? symbolProfileLookupKeys({ symbol, displaySymbol: symbol }) : [];
+        });
+        return [...flowKeys, ...heatKeys];
+      }),
+    ),
+  ];
+  if (keys.length === 0) return rows;
+  const profiles = await fetchSymbolProfilesByKeys(keys);
+  return rows.map((insight) => ({
+    ...insight,
+    flowHighlights: (insight.flowHighlights || []).map((row) => {
+      if (!row || typeof row !== 'object') return row;
+      const symbol = flowSymbol(row);
+      if (!symbol) return row;
+      const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
+        .map((key) => profiles.get(key))
+        .find(Boolean) || null;
+      return {
+        ...row,
+        symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+      };
+    }),
+    heatmap: (insight.heatmap || []).map((row) => {
+      if (!row || typeof row !== 'object') return row;
+      const symbol = heatmapSymbol(row);
+      if (!symbol) return row;
+      const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
+        .map((key) => profiles.get(key))
+        .find(Boolean) || null;
+      return {
+        ...row,
+        symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+      };
+    }),
+  }));
 }
 
 export async function queryPublicEtfInsights(options = {}) {
@@ -73,7 +135,7 @@ export async function queryPublicEtfInsights(options = {}) {
     params,
   );
   const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicEtfInsight);
-  const pageRows = rows.slice(0, limit);
+  const pageRows = await enrichEtfInsightRows(rows.slice(0, limit));
   const hasMore = rows.length > limit;
   return {
     rows: pageRows,

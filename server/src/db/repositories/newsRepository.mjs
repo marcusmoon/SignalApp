@@ -12,6 +12,11 @@ import {
   sqlDateOrTimestamp,
   sqlStringList,
 } from './publicHelpers.mjs';
+import {
+  fetchSymbolProfilesByKeys,
+  resolvePublicSymbolMeta,
+  symbolProfileLookupKeys,
+} from './symbolProfilesRepository.mjs';
 
 function sqlPendingTranslation(alias) {
   return `(${alias}.id IS NULL OR ${alias}.status NOT IN ('completed', 'manual'))`;
@@ -36,7 +41,33 @@ function publicNews(item, translations, locale) {
     provider: displayed.provider,
     publishedAt: displayed.publishedAt || null,
     fetchedAt: displayed.fetchedAt,
+    symbolMeta: null,
   };
+}
+
+async function enrichNewsSymbolMeta(rows = []) {
+  const keys = [
+    ...new Set(
+      rows.flatMap((row) => {
+        const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
+        if (!symbol) return [];
+        return symbolProfileLookupKeys({ symbol, displaySymbol: symbol });
+      }),
+    ),
+  ];
+  if (keys.length === 0) return rows;
+  const profiles = await fetchSymbolProfilesByKeys(keys);
+  return rows.map((row) => {
+    const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
+    if (!symbol) return row;
+    const profile = symbolProfileLookupKeys({ symbol, displaySymbol: symbol })
+      .map((key) => profiles.get(key))
+      .find(Boolean) || null;
+    return {
+      ...row,
+      symbolMeta: resolvePublicSymbolMeta({ symbol, displaySymbol: symbol }, profile),
+    };
+  });
 }
 
 function canonicalNewsUrl(raw) {
@@ -172,7 +203,7 @@ export async function queryPublicNewsRows(options = {}) {
     })
     .filter(Boolean);
   const hasMore = rows.length > limit;
-  const pageRows = dedupePublicNewsRows(rows).slice(0, limit);
+  const pageRows = await enrichNewsSymbolMeta(dedupePublicNewsRows(rows).slice(0, limit));
   return {
     rows: pageRows,
     total: offset + rows.slice(0, limit).length + (hasMore ? 1 : 0),
@@ -273,6 +304,9 @@ export async function fetchPublicNewsByIds(ids = [], locale = 'ko') {
     const translations = [translation, koTranslation].filter(Boolean);
     map.set(item.id, publicNews(item, translations, loc));
   }
+  const enriched = await enrichNewsSymbolMeta([...map.values()]);
+  map.clear();
+  for (const item of enriched) map.set(item.id, item);
   return map;
 }
 

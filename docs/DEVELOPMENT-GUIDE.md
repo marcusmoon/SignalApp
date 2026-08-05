@@ -130,20 +130,21 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 
 | 구분 | 우선 URL | 실패 시 |
 |---|---|---|
-| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) | Parqet → 글자 아바타 |
-| 주식 | Parqet (`assets.parqet.com/logos/symbol/…`, 국장 `.KS`→`.KQ`) | 글자 아바타 |
+| 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`, 서버가 Parqet URL 합성) | 앱 `symbolLogoUrls` Parqet → 글자 아바타 |
+| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | Parqet → 글자 아바타 |
 | 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 
-국장 심볼은 브리핑 ingest가 `005930.KS`처럼 Yahoo 접미사를 붙이더라도 `logoBaseSymbol`이 6자리로 정규화한 뒤 Parqet을 조회한다. 서버 공개 API도 companies/sectors `symbol`에서 `.KS`/`.KQ`를 벗겨 내려준다.
+표시명·코드도 동일하게 **`symbolMeta.name` / `symbolMeta.displaySymbol`** 을 우선한다. 레거시 `name`·티커 문자열만 쓰는 UI는 맞출 것.
 
 | 역할 | 경로 |
 |---|---|
-| URL 후보·실패 캐시 | `services/symbolLogo.ts` (`logoBaseSymbol`, `symbolLogoUrls`) |
-| UI | `components/signal/SymbolLogo.tsx` — `imageUrl` prop이 있으면 Parqet보다 먼저 시도 |
-| 코인 행 매핑 | `domain/quotes/rows.ts` (`mapSignalCoinToRow` → `QuoteRow.imageUrl`) |
-| 시세 리스트 | `components/quotes/QuotesContent.tsx` |
+| DB·upsert·enrich | `symbol_profiles` · `server/src/symbols/symbolProfiles.mjs` · `symbolProfilesRepository.mjs` |
+| 공개 필드 | `symbolMeta: { market, symbol, displaySymbol, name, logoUrl }` |
+| URL 후보·실패 캐시 (UI 폴백) | `services/symbolLogo.ts` |
+| UI | `SymbolLogo` (`imageUrl`=logoUrl 우선) · `SymbolIdentityChip` |
+| 시세 행 매핑 | `domain/quotes/rows.ts` |
 
-서버 저장·Job은 [SERVER.md](./SERVER.md) 「종목·코인 로고」. 코인 `imageUrl`은 티커 패턴으로 만들 수 없어서 시세 ingest 때 URL을 같이 둔다(주식 Parqet과 다름).
+서버 저장·Job은 [SERVER.md](./SERVER.md) 「종목·코인 로고」.
 
 ## 홈 바로가기
 

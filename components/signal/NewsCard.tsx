@@ -65,10 +65,14 @@ export function NewsCard({
   );
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
+  const symbolLabel =
+    item.symbolMeta?.name?.trim() ||
+    item.symbolMeta?.displaySymbol?.trim() ||
+    item.ticker;
   const showSourceInHeader =
     symbol.length === 0 || symbol === 'GLOBAL' || symbol === '—';
   const canOpenSymbol = !showSourceInHeader;
-  const headerLabel = showSourceInHeader ? sourceName : item.ticker;
+  const headerLabel = showSourceInHeader ? sourceName : symbolLabel;
   const openSymbol = useCallback(() => {
     if (!symbol) return;
     if (ipadNav.isAvailable) {
@@ -191,7 +195,7 @@ export function NewsCard({
           hitSlop={8}
           style={styles.compactTickerWrap}>
           <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={18} />
+            <SymbolLogo symbol={symbol} size={18} imageUrl={item.symbolMeta?.logoUrl} />
             <Text style={styles.compactTicker} numberOfLines={1}>
               {headerLabel}
             </Text>
@@ -216,7 +220,7 @@ export function NewsCard({
             hitSlop={8}
             style={styles.metaLead}>
             <View style={styles.tickerLead}>
-              <SymbolLogo symbol={symbol} size={20} />
+              <SymbolLogo symbol={symbol} size={20} imageUrl={item.symbolMeta?.logoUrl} />
               <Text style={styles.ticker} numberOfLines={1}>
                 {headerLabel}
               </Text>

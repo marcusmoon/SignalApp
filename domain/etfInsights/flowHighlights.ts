@@ -13,6 +13,12 @@ export type EtfFlowHighlight = {
   /** 있으면 출처·외부 기사 */
   url: string | null;
   sourceName: string | null;
+  /** DB symbol_profiles */
+  symbolMeta?: {
+    name?: string | null;
+    logoUrl?: string | null;
+    displaySymbol?: string | null;
+  } | null;
 };
 
 function clean(value: unknown): string {
@@ -78,6 +84,10 @@ export function parseEtfFlowHighlights(
       null;
     const url = clean(row.url || row.sourceUrl) || null;
     const sourceName = clean(row.sourceName) || null;
+    const symbolMeta =
+      row.symbolMeta && typeof row.symbolMeta === 'object'
+        ? (row.symbolMeta as EtfFlowHighlight['symbolMeta'])
+        : null;
     if (!signal && !etf) continue;
     out.push({
       key: `${insightId}-flow-${index}`,
@@ -89,6 +99,7 @@ export function parseEtfFlowHighlights(
       amountLabel: amountLabel || null,
       url,
       sourceName,
+      symbolMeta,
     });
   }
 

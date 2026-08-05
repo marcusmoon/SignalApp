@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -106,8 +107,21 @@ export default function DisclosureDetailScreen() {
                   {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
                 </View>
                 <Text style={styles.heroTitle}>{item.title}</Text>
-                {item.companyName || item.symbol ? (
-                  <Text style={styles.company}>{[item.symbol, item.companyName].filter(Boolean).join(' · ')}</Text>
+                {item.symbol || item.companyName || item.symbolMeta ? (
+                  <View style={styles.companyRow}>
+                    {item.symbol ? (
+                      <SymbolIdentityChip
+                        symbol={item.symbol}
+                        identifier={item.symbolMeta?.displaySymbol || item.symbol}
+                        name={item.symbolMeta?.name || item.companyName || null}
+                        imageUrl={item.symbolMeta?.logoUrl || null}
+                        chrome="plain"
+                        expandable={Boolean(item.symbolMeta?.name || item.companyName)}
+                      />
+                    ) : (
+                      <Text style={styles.company}>{item.companyName}</Text>
+                    )}
+                  </View>
                 ) : null}
               </View>
               <View style={styles.card}>
@@ -204,6 +218,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     heroTitle: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '700' },
     company: { marginTop: 8, color: theme.textMuted, fontSize: sf(13), fontWeight: '600' },
+    companyRow: { marginTop: 8, alignSelf: 'flex-start', maxWidth: '100%' },
     card: {
       borderRadius: 8,
       borderWidth: 1,

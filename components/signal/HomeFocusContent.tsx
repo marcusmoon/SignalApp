@@ -71,7 +71,7 @@ import {
   type HomeKeywordChip,
 } from '@/domain/home/aggregateHomeKeywords';
 import {
-  buildHomeKeywordSymbolNames,
+  buildHomeKeywordSymbolProfiles,
   homeKeywordIsSymbolChip,
   homeKeywordSymbolKey,
   isUsableCompanyName,
@@ -471,14 +471,16 @@ export function HomeFocusContent({
     return label && label !== '—' ? label : null;
   }, [briefings, homeIssues, locale, selectedYmd, todayBriefing]);
 
-  const homeKeywordSymbolNames = useMemo(() => {
+  const homeKeywordSymbolProfiles = useMemo(() => {
     const companies = briefingsForYmd(briefings, selectedYmd).flatMap((b) => b.companies ?? []);
-    return buildHomeKeywordSymbolNames({
+    return buildHomeKeywordSymbolProfiles({
       companies,
       quotes: [
         ...quotes.map((row) => ({
           symbol: row.symbol,
-          name: row.name ?? row.quote?.name ?? null,
+          name: row.symbolMeta?.name ?? row.name ?? row.quote?.name ?? null,
+          imageUrl: row.symbolMeta?.logoUrl ?? row.imageUrl ?? null,
+          symbolMeta: row.symbolMeta ?? null,
         })),
         ...[...keywordQuoteNames.entries()].map(([symbol, name]) => ({ symbol, name })),
       ],
@@ -493,7 +495,7 @@ export function HomeFocusContent({
     }
     const symbols = homeKeywordSymbolsMissingNames(homeKeywords).filter((symbol) => {
       if (keywordNameAttemptedRef.current.has(symbol)) return false;
-      return !homeKeywordSymbolNames.has(symbol);
+      return !homeKeywordSymbolProfiles.get(symbol)?.name;
     });
     if (symbols.length === 0) return;
 
@@ -504,25 +506,29 @@ export function HomeFocusContent({
       const next = new Map<string, string>();
       await Promise.all(
         symbols.map(async (symbol) => {
-          const profile = await fetchSignalStockProfile(symbol);
-          const name = String(profile?.name || '').trim();
-          if (isUsableCompanyName(name, symbol)) {
-            next.set(homeKeywordSymbolKey(symbol), name);
-            return;
-          }
-          // Fallback: market quote row (may still lack a real company name).
           try {
             const rows = await fetchSignalMarketQuotes(
               { symbols: [symbol], limit: 1 },
               { cacheMode: signalCacheMode() },
             );
             const row = rows[0];
+            const metaName = String(row?.symbolMeta?.name || '').trim();
+            if (isUsableCompanyName(metaName, symbol)) {
+              next.set(homeKeywordSymbolKey(symbol), metaName);
+              return;
+            }
             const quoteName = String(row?.name || '').trim();
             if (isUsableCompanyName(quoteName, symbol)) {
               next.set(homeKeywordSymbolKey(symbol), quoteName);
+              return;
             }
           } catch {
             // keep ticker label
+          }
+          const profile = await fetchSignalStockProfile(symbol);
+          const name = String(profile?.name || '').trim();
+          if (isUsableCompanyName(name, symbol)) {
+            next.set(homeKeywordSymbolKey(symbol), name);
           }
         }),
       );
@@ -539,7 +545,7 @@ export function HomeFocusContent({
     return () => {
       cancelled = true;
     };
-  }, [homeKeywordSymbolNames, homeKeywords]);
+  }, [homeKeywordSymbolProfiles, homeKeywords]);
 
   const etfHeatmapCells = useMemo((): ChangeHeatmapCell[] => {
     if (!etfInsight) return [];
@@ -937,13 +943,15 @@ export function HomeFocusContent({
       const hasQuote = Boolean(row.quote);
       const indexDef = opts?.index ? homeIndexDefForSymbol(row.symbol) : null;
       const fxDef = opts?.fx ? homeFxDefForSymbol(row.symbol) : null;
-      const label = indexDef
+          const label = indexDef
         ? t(indexDef.labelId)
         : fxDef
           ? t(fxDef.labelId)
-          : row.symbol;
+          : row.symbolMeta?.name?.trim() || row.name?.trim() || row.symbol;
       const logoSymbol = indexDef?.logoSymbol || fxDef?.logoSymbol || row.symbol;
-      const logoImageUrl = fxDef ? homeFxFlagImageUrl(fxDef) : row.imageUrl;
+      const logoImageUrl = fxDef
+        ? homeFxFlagImageUrl(fxDef)
+        : row.symbolMeta?.logoUrl || row.imageUrl;
       const priceLabel = indexDef
         ? formatHomeIndexLevel(row.quote?.currentPrice)
         : fxDef
@@ -1329,7 +1337,7 @@ export function HomeFocusContent({
               />
               <HomeKeywordChipStrip
                 items={homeKeywords}
-                symbolNames={homeKeywordSymbolNames}
+                symbolProfiles={homeKeywordSymbolProfiles}
                 onPressItem={openHomeKeyword}
               />
             </View>

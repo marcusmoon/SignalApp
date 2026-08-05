@@ -1,6 +1,12 @@
 export type NewsItem = {
   id: string;
   ticker: string;
+  /** DB symbol_profiles — 표시명·로고 */
+  symbolMeta?: {
+    name?: string | null;
+    logoUrl?: string | null;
+    displaySymbol?: string | null;
+  } | null;
   titleKo: string;
   originalTitle?: string;
   originalSummary?: string;

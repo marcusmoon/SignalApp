@@ -103,6 +103,7 @@ export function signalNewsToNewsItem(item: SignalApiNewsItem, locale: AppLocale)
   return {
     id: item.id,
     ticker: item.symbols?.[0]?.trim() || '',
+    symbolMeta: item.symbolMeta ?? null,
     titleKo: primaryTitle,
     originalTitle: item.originalTitle,
     originalSummary: item.originalSummary,

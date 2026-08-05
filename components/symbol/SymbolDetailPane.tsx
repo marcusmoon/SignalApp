@@ -505,11 +505,13 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
 
   const companyName = useMemo(
     () =>
+      normalizeCompanyName(quote?.symbolMeta?.name ?? undefined, ticker) ??
       normalizeCompanyName(profile?.name, ticker) ??
       normalizeCompanyName(quote?.name ?? undefined, ticker),
-    [profile?.name, quote?.name, ticker],
+    [profile?.name, quote?.name, quote?.symbolMeta?.name, ticker],
   );
   const displayCompanyName = companyName ?? (isKorea ? ticker : t('symbolDetailCompanyUnknown'));
+  const heroLogoUrl = quote?.symbolMeta?.logoUrl || null;
 
   useEffect(() => {
     if (loading || !onDisplayNameResolved) return;
@@ -534,7 +536,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
           showsVerticalScrollIndicator={false}>
           <View style={styles.heroCard}>
             <View style={styles.heroHead}>
-              <SymbolLogo symbol={ticker} size={40} />
+              <SymbolLogo symbol={ticker} size={40} imageUrl={heroLogoUrl} />
               <View style={styles.heroTitleCol}>
                 <Text style={styles.company}>{displayCompanyName}</Text>
                 {isKorea && ticker ? (

@@ -17,6 +17,8 @@ export type SignalApiNewsItem = {
   sourceUrl: string;
   imageUrl?: string | null;
   symbols: string[];
+  /** 첫 symbols[0]에 대한 DB 종목 프로필 */
+  symbolMeta?: SignalApiSymbolMeta | null;
   /** 서버 관리: 노출 순서(order) 기준 정렬된 태그 */
   hashtags?: SignalApiNewsHashtag[];
   provider: string;

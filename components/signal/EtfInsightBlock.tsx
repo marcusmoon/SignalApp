@@ -302,7 +302,9 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     {flow.etf ? (
                       <SymbolIdentityChip
                         symbol={flow.etf}
-                        identifier={ticker}
+                        identifier={flow.symbolMeta?.displaySymbol || ticker}
+                        name={flow.symbolMeta?.name || null}
+                        imageUrl={flow.symbolMeta?.logoUrl || null}
                         expandable
                         onPress={openSymbol}
                         accessibilityLabel={

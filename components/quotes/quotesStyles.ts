@@ -176,10 +176,12 @@ export function makeQuotesStyles(
       minWidth: 0,
     },
     symPressable: {
+      flex: 1,
+      minWidth: 72,
       flexShrink: 1,
-      minWidth: 0,
-      maxWidth: '100%',
+      alignSelf: 'stretch',
       justifyContent: 'center',
+      paddingVertical: 4,
     },
     sym: {
       fontSize: ft.ff(16),
@@ -234,10 +236,10 @@ export function makeQuotesStyles(
       alignItems: 'center',
       gap: 6,
       flexShrink: 0,
-      marginLeft: 8,
-      paddingVertical: 2,
+      marginLeft: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
     },
-    yahooInlinePressed: { opacity: 0.75 },
     yahooInlineText: {
       flexShrink: 0,
       fontSize: ft.ff(12),

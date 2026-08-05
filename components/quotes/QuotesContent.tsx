@@ -583,13 +583,27 @@ export function QuotesContent({
       const useNaverLink = isKoreaStockQuote(r);
       const watchReorder = segment === 'watch' && typeof drag === 'function';
 
+      const openRowSymbol = () => {
+        if (segment === 'coin') {
+          openFinanceQuote(r);
+          return;
+        }
+        openSymbolDetail(r.symbol);
+      };
+
       const cardInner = (
         <>
           <View style={styles.cardTop}>
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={8} style={styles.symPressable}>
+                  <TouchableOpacity
+                    onPress={openRowSymbol}
+                    activeOpacity={0.72}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    style={styles.symPressable}
+                    accessibilityRole="button"
+                    accessibilityLabel={r.symbol}>
                     <SymbolIdentityChip
                       symbol={r.symbol}
                       identifier={r.symbol}
@@ -598,12 +612,13 @@ export function QuotesContent({
                       logoSize={28}
                       chrome="plain"
                     />
-                  </Pressable>
+                  </TouchableOpacity>
                   {yahooEnabled ? (
-                    <Pressable
+                    <TouchableOpacity
                       onPress={() => openFinanceQuote(r)}
-                      style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
-                      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                      activeOpacity={0.72}
+                      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                      style={styles.yahooInline}
                       accessibilityRole="link"
                       accessibilityLabel={
                         useNaverLink
@@ -617,7 +632,7 @@ export function QuotesContent({
                         maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                         {useNaverLink ? t('quotesNaverShort') : t('quotesYahooShort')}
                       </Text>
-                    </Pressable>
+                    </TouchableOpacity>
                   ) : null}
                 </View>
                 {r.quote ? (

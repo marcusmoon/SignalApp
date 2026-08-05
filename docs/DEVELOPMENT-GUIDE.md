@@ -55,7 +55,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/quotes/etfGroups` | ETF 연속 구간 헤더(지수·섹터·해외·매크로) |
 | 시세 관심 드래그 | `QuotesContent` + `saveWatchlistSymbols` — 행 롱프레스로 저장순 변경 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
-| `services/symbolLogo` | 서버 `imageUrl` 우선 · Parqet 폴백 |
+| `services/symbolLogo` | 서버 제공 URL만 · 없으면 글자 아바타 |
 
 ## 디렉터리 규칙
 
@@ -128,10 +128,10 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 
 시세·뉴스·공시·브리핑 등에서 쓰는 심볼 아이콘. **로컬 에셋 파일로 관리하지 않는다.**
 
-| 구분 | 우선 URL | 실패 시 |
+| 구분 | 우선 URL | 실패·미등록 시 |
 |---|---|---|
-| 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`에 등록된 경우; 미등록이면 `symbolMeta` null) | 앱 `symbolLogoUrls` Parqet → 글자 아바타 |
-| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | Parqet → 글자 아바타 |
+| 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`; 서버가 Parqet URL 등을 저장) | 글자 아바타 (클라이언트 URL 합성 없음) |
+| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | 글자 아바타 |
 | 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 
 표시명·코드도 동일하게 **`symbolMeta.name` / `symbolMeta.displaySymbol`** 을 우선한다. 레거시 `name`·티커 문자열만 쓰는 UI는 맞출 것.
@@ -140,8 +140,8 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 |---|---|
 | DB·upsert·enrich | `symbol_profiles` · `server/src/symbols/symbolProfiles.mjs` · `symbolProfilesRepository.mjs` |
 | 공개 필드 | `symbolMeta: { market, symbol, displaySymbol, name, logoUrl }` |
-| URL 후보·실패 캐시 (UI 폴백) | `services/symbolLogo.ts` |
-| UI | `SymbolLogo` (`imageUrl`=logoUrl 우선) · `SymbolIdentityChip` |
+| URL 후보·실패 캐시 | `services/symbolLogo.ts` (서버 URL만) |
+| UI | `SymbolLogo` (`imageUrl`=서버 logoUrl) · `SymbolIdentityChip` |
 | 시세 행 매핑 | `domain/quotes/rows.ts` |
 
 서버 저장·Job은 [SERVER.md](./SERVER.md) 「종목·코인 로고」.

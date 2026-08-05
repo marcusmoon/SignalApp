@@ -14,8 +14,8 @@ export type HomeIndexDef = {
   /** Stored / API symbol (Yahoo caret ticker). */
   symbol: string;
   /**
-   * Parqet logo lookup ticker (지수 caret는 CDN에 없음 → 추종 ETF/대표 종목).
-   * 표시 라벨·시세 심볼과는 별개.
+   * 아바타 글리프용 프록시 티커 (지수 caret는 표시용으로 부적합 → 추종 ETF/대표 종목).
+   * 로고 이미지는 `symbolMeta.logoUrl` 등 서버 URL만 사용한다.
    */
   logoSymbol: string;
   labelId: MessageId;

@@ -85,11 +85,13 @@ export function buildSymbolProfile(row = {}) {
 export function publicSymbolMeta(profile = {}) {
   const symbol = normalizeSymbolDisplay(profile.symbol || profile.displaySymbol);
   if (!symbol) return null;
+  const logoPreferred = cleanText(profile.logoUrl || null);
   return {
     market: normalizeSymbolMarket(profile.market, symbol),
     symbol,
     displaySymbol: normalizeSymbolDisplay(profile.displaySymbol || symbol),
     name: isUsableDisplayName(profile.name, symbol) ? cleanText(profile.name) : null,
-    logoUrl: symbolLogoUrl(symbol, profile.logoUrl || null),
+    // Serve stored URL only — do not invent Parqet at read time.
+    logoUrl: /^https?:\/\//i.test(logoPreferred) ? logoPreferred : null,
   };
 }

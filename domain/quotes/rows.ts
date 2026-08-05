@@ -11,7 +11,7 @@ export type QuoteRow = {
   symbolMeta?: SignalApiSymbolMeta | null;
   quote: SignalApiMarketQuote | null;
   error?: string;
-  /** 서버 제공 로고 (코인). 없으면 SymbolLogo가 Parqet 시도 */
+  /** 서버 제공 로고 (코인 `imageUrl` 등). 없으면 SymbolLogo는 글자 아바타 */
   imageUrl?: string | null;
 };
 

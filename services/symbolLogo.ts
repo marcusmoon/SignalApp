@@ -1,9 +1,3 @@
-const PARQET_LOGO_BASE = 'https://assets.parqet.com/logos/symbol';
-
-function isKoreaStockCode(symbol: string): boolean {
-  return /^\d{6}$/.test(symbol);
-}
-
 /**
  * 로고·국장 판별용 베이스 티커.
  * 브리핑 ingest가 `005930.KS`처럼 Yahoo 접미사를 붙인 경우 제거한다.
@@ -25,10 +19,6 @@ function logoCacheKey(symbol: string, url: string): string {
   return `${logoBaseSymbol(symbol) || symbol.trim().toUpperCase()}|${url}`;
 }
 
-function parqetLogoUrl(ticker: string): string {
-  return `${PARQET_LOGO_BASE}/${encodeURIComponent(ticker)}`;
-}
-
 export function markSymbolLogoFailed(symbol: string, url: string): void {
   failedLogoKeys.add(logoCacheKey(symbol, url));
 }
@@ -42,21 +32,24 @@ function isHttpLogoUrl(url: string): boolean {
 }
 
 /**
- * 로고 후보 URL.
- * - `preferredUrls`: 서버 제공 (코인 CoinGecko `imageUrl` 등) — Parqet보다 우선
- * - 이어서 Parqet (국장 .KS → .KQ). `005930.KS` 입력도 국장으로 인식.
+ * 로고 후보 URL — 서버가 준 URL만 사용한다.
+ * (`symbolMeta.logoUrl` · 코인 `imageUrl` · FX 국기 등)
+ * 없으면 빈 배열 → UI는 글자 아바타. 클라이언트에서 Parqet 등을 합성하지 않는다.
  */
 export function symbolLogoUrls(
   symbol: string,
   preferredUrls?: Array<string | null | undefined>,
 ): string[] {
   const sym = logoBaseSymbol(symbol);
-  if (!sym) return [];
+  const cacheKeyBase = sym || String(symbol || '').trim().toUpperCase();
+  if (!cacheKeyBase && !(preferredUrls || []).some((raw) => isHttpLogoUrl(String(raw || '').trim()))) {
+    return [];
+  }
 
   const out: string[] = [];
   const seen = new Set<string>();
   const push = (url: string) => {
-    if (!url || seen.has(url) || isSymbolLogoFailed(sym, url)) return;
+    if (!url || seen.has(url) || isSymbolLogoFailed(cacheKeyBase || url, url)) return;
     seen.add(url);
     out.push(url);
   };
@@ -66,16 +59,6 @@ export function symbolLogoUrls(
     if (isHttpLogoUrl(url)) push(url);
   }
 
-  if (isKoreaStockCode(sym)) {
-    for (const ticker of [`${sym}.KS`, `${sym}.KQ`]) {
-      push(parqetLogoUrl(ticker));
-    }
-    return out;
-  }
-
-  if (/^[A-Z][A-Z0-9.\-]{0,11}$/.test(sym)) {
-    push(parqetLogoUrl(sym));
-  }
   return out;
 }
 

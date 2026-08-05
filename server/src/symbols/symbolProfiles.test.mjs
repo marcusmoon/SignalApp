@@ -46,7 +46,7 @@ describe('buildSymbolProfile', () => {
 });
 
 describe('publicSymbolMeta', () => {
-  it('exposes display fields for API symbolMeta', () => {
+  it('exposes stored logoUrl only (no read-time Parqet invent)', () => {
     const meta = publicSymbolMeta({
       market: 'global',
       symbol: 'AMD',
@@ -57,6 +57,17 @@ describe('publicSymbolMeta', () => {
     assert.equal(meta.market, 'global');
     assert.equal(meta.displaySymbol, 'AMD');
     assert.equal(meta.name, null);
-    assert.ok(meta.logoUrl);
+    assert.equal(meta.logoUrl, 'https://assets.parqet.com/logos/symbol/AMD');
+  });
+
+  it('returns null logoUrl when profile has none', () => {
+    const meta = publicSymbolMeta({
+      market: 'global',
+      symbol: 'AMD',
+      displaySymbol: 'AMD',
+      name: 'AMD Inc.',
+      logoUrl: null,
+    });
+    assert.equal(meta.logoUrl, null);
   });
 });

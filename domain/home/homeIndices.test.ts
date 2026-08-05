@@ -21,7 +21,7 @@ describe('HOME_INDEX_DEFS', () => {
     assert.deepEqual([...HOME_INDEX_SYMBOLS], ['^GSPC', '^NDX', '^DJI', '^SOX', '^KS11', '^N225']);
   });
 
-  it('maps Parqet-friendly logoSymbol proxies (caret indices have no CDN logos)', () => {
+  it('maps logoSymbol proxies for index avatar glyphs (caret tickers are awkward)', () => {
     assert.deepEqual(
       HOME_INDEX_DEFS.map((row) => row.logoSymbol),
       ['SPY', 'QQQ', 'DIA', 'SOXX', '069500', 'EWJ'],

@@ -212,8 +212,8 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 섹터/테마 내러티브 | **섹터**(짧게): 섹터명 \| % (첫 행 heat) → why | **themes**: 테마명 \| 모멘텀 → 요약(텍스트만) | 동일 row 밀도 |
   | 종목/수급 플로우 | **companies** | **flow** (`flowHighlights`) | `SymbolIdentityChip` · 본문 말줄임 없음 · 출처=`SourceIconStack`+외부 링크 |
   | 맥락 | macro · sources | sources | — |
-  - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). **이름·로고는 API `symbolMeta`(DB `symbol_profiles`) 우선**, 없으면 레거시 필드·클라이언트 Parqet 폴백. 시장 companies·ETF 수급·공시·뉴스 등 공통.
-  - **종목 로고** (`SymbolLogo`): 이미지 파일을 앱에 두지 않는다. 코인은 서버 `imageUrl`(CoinGecko), 주식은 Parqet CDN, 실패 시 글자 아바타. 상세는 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고
+  - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). **이름·로고는 API `symbolMeta`(DB `symbol_profiles`) 우선**, 로고 URL 없으면 글자 아바타. 시장 companies·ETF 수급·공시·뉴스 등 공통.
+  - **종목 로고** (`SymbolLogo`): 이미지 파일을 앱에 두지 않는다. 서버 URL(`symbolMeta.logoUrl` · 코인 `imageUrl` · FX 국기)만 쓰고, 없으면 글자 아바타. 상세는 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고
   - **장중 브리핑 섹터 리스트**: 홈 「섹터 흐름」과 구분 — 본문 섹션 제목은 **섹터**. 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
   - **ETF themes**: 로고·하단 메타 티커 없음. 요약 본문은 텍스트만(`ChangeTintedText`) — 티커 인라인 링크 없음
   - **ETF 빈 섹션 금지**: heatmap·themes·flows·sources·rotation·insights·summary는 값이 있을 때만 렌더. 이름/요약 없는 theme·title 없는 source는 제외
@@ -221,7 +221,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정 칩은 자동
-- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인 → **환율**. 레이어 라인은 `지수 ------------------- [종가]` (레이어명 맨 앞 · 앞쪽 캡 라인 없음 · 우측 as-of는 헤더 `NEW`와 동일 칩). 레이어 **종가**/**Close**는 해당 레이어 **모든** 지수·주식·FX가 마감일 때만(코인 제외). 혼재(일부만 마감)면 헤더는 상대시간·마감 종목명 아래에만 **종가**/**Close**/**終値**. 레이어 Close가 있으면 타일 Close는 생략. 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`). **환율 슬롯**: compact(폰) 달러·JPY · wide(PC) +위안. JPY는 표시만 **×100**(100엔당 원), 라벨은 `JPY`. 환율 아이콘은 국기(`flagcdn.com` US/JP/CN). 지수 로고는 Parqet용 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`). 지수·주식·환율 as-of/`quoteTime`은 Yahoo `regularMarketTime`(시세 시각) — Job 수집 시각 아님. FX는 신선 창 1시간(지수 6시간과 다름) — 그 이상·주말이면 종가 판정(Yahoo Closed와 맞춤, “N시간 전”·요일 종가 지양)
+- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인 → **환율**. 레이어 라인은 `지수 ------------------- [종가]` (레이어명 맨 앞 · 앞쪽 캡 라인 없음 · 우측 as-of는 헤더 `NEW`와 동일 칩). 레이어 **종가**/**Close**는 해당 레이어 **모든** 지수·주식·FX가 마감일 때만(코인 제외). 혼재(일부만 마감)면 헤더는 상대시간·마감 종목명 아래에만 **종가**/**Close**/**終値**. 레이어 Close가 있으면 타일 Close는 생략. 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`). **환율 슬롯**: compact(폰) 달러·JPY · wide(PC) +위안. JPY는 표시만 **×100**(100엔당 원), 라벨은 `JPY`. 환율 아이콘은 국기(`flagcdn.com` US/JP/CN). 지수 타일 아바타 글리프는 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`); 로고 이미지는 서버 `symbolMeta.logoUrl`이 있을 때만. 지수·주식·환율 as-of/`quoteTime`은 Yahoo `regularMarketTime`(시세 시각) — Job 수집 시각 아님. FX는 신선 창 1시간(지수 6시간과 다름) — 그 이상·주말이면 종가 판정(Yahoo Closed와 맞춤, “N시간 전”·요일 종가 지양)
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

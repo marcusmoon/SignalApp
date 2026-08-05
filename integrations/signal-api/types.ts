@@ -372,7 +372,7 @@ export type SignalApiMarketQuote = {
   displaySymbol?: string | null;
   krxSymbol?: string | null;
   name: string | null;
-  /** CoinGecko 등 서버가 준 로고 URL (주식은 보통 없음 → Parqet) */
+  /** 서버가 준 로고 URL (코인 CoinGecko 등). 주식은 보통 `symbolMeta.logoUrl` */
   imageUrl?: string | null;
   currentPrice: number | null;
   change: number | null;

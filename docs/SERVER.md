@@ -170,7 +170,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 - normalize/합성: `server/src/symbols/symbolProfiles.mjs`
 - upsert/조회: `server/src/db/repositories/symbolProfilesRepository.mjs` — 공개 enrich는 **등록된 프로필만** 붙인다. 없으면 `symbolMeta: null` (자동 등록 없음; Admin·ingest로 채움)
-- 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 `symbolMeta` 우선**, 없으면 클라이언트 Parqet·레거시 필드 폴백.
+- 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 서버 URL(`symbolMeta.logoUrl` · 코인 `imageUrl`)만**. 없으면 글자 아바타 (클라이언트 Parqet 합성 없음).
 
 ## 배포
 

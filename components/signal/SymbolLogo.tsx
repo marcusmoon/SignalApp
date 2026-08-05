@@ -11,7 +11,7 @@ type Props = {
   symbol: string;
   size?: number;
   style?: StyleProp<ViewStyle>;
-  /** 서버 제공 로고 URL (코인 시세 `imageUrl` 등). Parqet보다 우선. */
+  /** 서버 제공 로고 URL (`symbolMeta.logoUrl` · 코인 `imageUrl` · FX 국기 등). 없으면 글자 아바타. */
   imageUrl?: string | null;
 };
 

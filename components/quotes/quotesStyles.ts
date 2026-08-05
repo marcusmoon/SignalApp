@@ -40,8 +40,6 @@ export function makeQuotesStyles(
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
-    /** Delayed chip sits above the list — keep list top pad tight. */
-    listContentBelowAsOf: { paddingTop: 4 },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnCompact: segmentTab.segBtnCompact,
@@ -56,7 +54,7 @@ export function makeQuotesStyles(
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingTop: 8,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     asOfBandWide: {
       paddingTop: Math.max(8, SCREEN_WIDE_CONTENT_PADDING_TOP - 8),
@@ -158,10 +156,9 @@ export function makeQuotesStyles(
       marginBottom: 6,
     },
     priceCol: {
-      flexShrink: 1,
+      flexShrink: 0,
       alignItems: 'flex-end',
       minWidth: 104,
-      maxWidth: '48%',
     },
     priceRow: {
       flexDirection: 'row',
@@ -170,7 +167,7 @@ export function makeQuotesStyles(
       gap: 16,
     },
     symCol: { flex: 1, minWidth: 0, flexShrink: 1 },
-    symBlock: { alignSelf: 'flex-start', maxWidth: '100%' },
+    symBlock: { alignSelf: 'stretch', maxWidth: '100%' },
     symRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -179,10 +176,9 @@ export function makeQuotesStyles(
       minWidth: 0,
     },
     symPressable: {
-      flex: 1,
-      minWidth: 0,
       flexShrink: 1,
-      alignSelf: 'stretch',
+      minWidth: 0,
+      maxWidth: '100%',
       justifyContent: 'center',
     },
     sym: {
@@ -237,15 +233,13 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      flexShrink: 1,
-      minWidth: 0,
+      flexShrink: 0,
       marginLeft: 8,
       paddingVertical: 2,
     },
     yahooInlinePressed: { opacity: 0.75 },
     yahooInlineText: {
-      flexShrink: 1,
-      minWidth: 0,
+      flexShrink: 0,
       fontSize: ft.ff(12),
       lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,

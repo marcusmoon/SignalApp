@@ -16,7 +16,7 @@ type Props = {
   chrome?: 'card' | 'plain';
   onPress?: () => void;
   accessibilityLabel?: string;
-  /** 긴 이름(국내 회사명)일 때 폭 확장 */
+  /** 긴 이름(국내 회사명)일 때 행 안에서 남은 폭을 씀 */
   expandable?: boolean;
 };
 
@@ -45,7 +45,7 @@ export function SymbolIdentityChip({
   const body = (
     <>
       <SymbolLogo symbol={symbol} size={logoSize} imageUrl={imageUrl} />
-      <View style={styles.labelRow}>
+      <View style={[styles.labelRow, expandable ? styles.labelRowExpandable : null]}>
         {!hideIdentifier ? (
           <Text style={[styles.label, styles.labelTicker]} numberOfLines={1}>
             {displayIdentifier}
@@ -110,8 +110,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: 'transparent',
     },
     chipExpandable: {
+      flex: 1,
       flexShrink: 1,
-      minWidth: 56,
+      minWidth: 96,
       maxWidth: '100%',
     },
     chipPressed: {
@@ -119,16 +120,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     label: {
       fontSize: ft.ff(12),
+      lineHeight: sf(16),
       letterSpacing: -0.1,
-      minWidth: 0,
     },
     labelRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      flex: 1,
       flexShrink: 1,
       minWidth: 0,
+    },
+    /** 행 레이아웃에서만 남은 폭 채움 — wrap 칩에는 쓰지 않음 */
+    labelRowExpandable: {
+      flex: 1,
     },
     labelTicker: {
       fontWeight: ft.emphasisWeight,
@@ -140,11 +144,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       flexShrink: 1,
+      minWidth: 0,
     },
     labelPrimaryName: {
       fontWeight: ft.emphasisWeight,
       color: theme.text,
       flexShrink: 1,
+      minWidth: 48,
     },
   });
 }

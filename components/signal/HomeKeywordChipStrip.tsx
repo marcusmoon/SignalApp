@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { FEED_CHIP_PX } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
@@ -22,6 +22,8 @@ type Props = {
 /**
  * Home keyword chip card — wrap chips only.
  * Section header (trend icon · title · as-of) lives in HomeFocusContent.
+ * Symbol chips use logo+label directly (not nested SymbolIdentityChip) so
+ * pill height/padding stays balanced with topic chips.
  */
 export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -38,7 +40,9 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
         {items.map((chip) => {
           const isSymbol = homeKeywordIsSymbolChip(chip);
           const identity = isSymbol ? homeKeywordChipIdentity(chip, symbolNames) : null;
-          const label = identity?.displayName || identity?.displaySymbol || chip.label;
+          const label = identity
+            ? identity.displayName || identity.displaySymbol
+            : chip.label;
           const why = String(chip.why || '').trim();
           const chipA11y = why ? `${label}. ${why}` : label;
           return (
@@ -53,17 +57,16 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
                 pressed && styles.pressed,
               ]}>
               {identity ? (
-                <SymbolIdentityChip
-                  symbol={identity.symbol}
-                  identifier={identity.displaySymbol}
-                  name={identity.displayName}
-                  logoSize={14}
-                  chrome="plain"
-                />
+                <>
+                  <SymbolLogo symbol={identity.symbol} size={16} />
+                  <Text
+                    style={[styles.chipText, styles.chipTextSymbol]}
+                    numberOfLines={1}>
+                    {label}
+                  </Text>
+                </>
               ) : (
-                <Text
-                  style={[styles.chipText, isSymbol ? styles.chipTextSymbol : null]}
-                  numberOfLines={1}>
+                <Text style={styles.chipText} numberOfLines={1}>
                   {label}
                 </Text>
               )}
@@ -95,10 +98,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      gap: 4,
+      gap: 5,
       borderRadius: 999,
       paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingVertical: 6,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,

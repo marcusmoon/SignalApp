@@ -463,8 +463,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'baseline',
       justifyContent: 'flex-end',
       gap: 6,
-      flexShrink: 1,
-      minWidth: 0,
+      flexShrink: 0,
     },
     companyPrice: {
       fontSize: ft.ff(12),

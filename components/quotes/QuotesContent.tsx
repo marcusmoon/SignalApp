@@ -593,11 +593,10 @@ export function QuotesContent({
                     <SymbolIdentityChip
                       symbol={r.symbol}
                       identifier={r.symbol}
-                      name={r.symbolMeta?.name ?? r.name ?? null}
+                      name={null}
                       imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
                       logoSize={28}
                       chrome="plain"
-                      expandable={Boolean(r.symbolMeta?.name ?? r.name)}
                     />
                   </Pressable>
                   {yahooEnabled ? (
@@ -629,11 +628,15 @@ export function QuotesContent({
                       : formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
-                {segment === 'coin' && r.name ? (
-                  <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {r.name}
-                  </Text>
-                ) : null}
+                {(() => {
+                  const companyName = String(r.symbolMeta?.name ?? r.name ?? '').trim();
+                  if (!companyName || companyName === r.symbol) return null;
+                  return (
+                    <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                      {companyName}
+                    </Text>
+                  );
+                })()}
               </View>
             </View>
             <View style={styles.priceCol}>
@@ -784,7 +787,6 @@ export function QuotesContent({
   const listContentStyle = [
     styles.listContent,
     useTwoPane && styles.listContentWide,
-    quotesDelayedAsOfLabel ? styles.listContentBelowAsOf : null,
     { paddingBottom: bottomPad },
   ];
 

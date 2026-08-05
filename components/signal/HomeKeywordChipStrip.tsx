@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
 import { FEED_CHIP_PX } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
 import {
-  homeKeywordChipLabel,
+  homeKeywordChipIdentity,
   homeKeywordIsSymbolChip,
 } from '@/domain/home/homeKeywordDisplay';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -37,7 +37,8 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
       <View style={styles.row}>
         {items.map((chip) => {
           const isSymbol = homeKeywordIsSymbolChip(chip);
-          const label = homeKeywordChipLabel(chip, symbolNames);
+          const identity = isSymbol ? homeKeywordChipIdentity(chip, symbolNames) : null;
+          const label = identity?.displayName || identity?.displaySymbol || chip.label;
           const why = String(chip.why || '').trim();
           const chipA11y = why ? `${label}. ${why}` : label;
           return (
@@ -51,12 +52,21 @@ export function HomeKeywordChipStrip({ items, symbolNames, onPressItem }: Props)
                 isSymbol ? styles.chipSymbol : null,
                 pressed && styles.pressed,
               ]}>
-              {isSymbol ? <SymbolLogo symbol={chip.label} size={14} /> : null}
-              <Text
-                style={[styles.chipText, isSymbol ? styles.chipTextSymbol : null]}
-                numberOfLines={1}>
-                {label}
-              </Text>
+              {identity ? (
+                <SymbolIdentityChip
+                  symbol={identity.symbol}
+                  identifier={identity.displaySymbol}
+                  name={identity.displayName}
+                  logoSize={14}
+                  chrome="plain"
+                />
+              ) : (
+                <Text
+                  style={[styles.chipText, isSymbol ? styles.chipTextSymbol : null]}
+                  numberOfLines={1}>
+                  {label}
+                </Text>
+              )}
             </Pressable>
           );
         })}
@@ -87,7 +97,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignSelf: 'flex-start',
       gap: 4,
       borderRadius: 999,
-      overflow: 'hidden',
       paddingHorizontal: 8,
       paddingVertical: 4,
       backgroundColor: theme.bgElevated,

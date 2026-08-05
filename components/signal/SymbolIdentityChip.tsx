@@ -8,10 +8,11 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 
 type Props = {
   symbol: string;
-  label: string;
-  /** ticker: green tabular · name: body color (국내 회사명 등) */
-  labelKind?: 'ticker' | 'name';
+  identifier?: string;
+  name?: string | null;
   logoSize?: number;
+  imageUrl?: string | null;
+  chrome?: 'card' | 'plain';
   onPress?: () => void;
   accessibilityLabel?: string;
   /** 긴 이름(국내 회사명)일 때 폭 확장 */
@@ -24,9 +25,11 @@ type Props = {
  */
 export function SymbolIdentityChip({
   symbol,
-  label,
-  labelKind = 'ticker',
+  identifier,
+  name,
   logoSize = 20,
+  imageUrl,
+  chrome = 'card',
   onPress,
   accessibilityLabel,
   expandable = false,
@@ -35,17 +38,21 @@ export function SymbolIdentityChip({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const pressable = Boolean(onPress);
 
+  const displayIdentifier = String(identifier || symbol || '').trim();
+  const displayName = String(name || '').trim();
   const body = (
     <>
-      <SymbolLogo symbol={symbol} size={logoSize} />
-      <Text
-        style={[
-          styles.label,
-          labelKind === 'name' ? styles.labelName : styles.labelTicker,
-        ]}
-        numberOfLines={1}>
-        {label}
-      </Text>
+      <SymbolLogo symbol={symbol} size={logoSize} imageUrl={imageUrl} />
+      <View style={styles.labelRow}>
+        <Text style={[styles.label, styles.labelTicker]} numberOfLines={1}>
+          {displayIdentifier}
+        </Text>
+        {displayName ? (
+          <Text style={[styles.label, styles.labelName]} numberOfLines={1}>
+            {displayName}
+          </Text>
+        ) : null}
+      </View>
     </>
   );
 
@@ -55,11 +62,12 @@ export function SymbolIdentityChip({
         onPress={onPress}
         style={({ pressed }) => [
           styles.chip,
+          chrome === 'plain' ? styles.chipPlain : null,
           expandable ? styles.chipExpandable : null,
           pressed ? styles.chipPressed : null,
         ]}
         accessibilityRole="link"
-        accessibilityLabel={accessibilityLabel || label}>
+        accessibilityLabel={accessibilityLabel || [displayIdentifier, displayName].filter(Boolean).join(' ')}>
         {body}
       </Pressable>
     );
@@ -67,8 +75,8 @@ export function SymbolIdentityChip({
 
   return (
     <View
-      style={[styles.chip, expandable ? styles.chipExpandable : null]}
-      accessibilityLabel={accessibilityLabel || label}>
+      style={[styles.chip, chrome === 'plain' ? styles.chipPlain : null, expandable ? styles.chipExpandable : null]}
+      accessibilityLabel={accessibilityLabel || [displayIdentifier, displayName].filter(Boolean).join(' ')}>
       {body}
     </View>
   );
@@ -88,6 +96,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       /** 섹션 카드(`bgElevated`) 위에서 구분되는 칩 — 시장·ETF 공통 */
       backgroundColor: theme.card,
     },
+    chipPlain: {
+      minWidth: 0,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      borderRadius: 0,
+      backgroundColor: 'transparent',
+    },
     chipExpandable: {
       flexShrink: 1,
       minWidth: 56,
@@ -99,6 +114,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     label: {
       fontSize: ft.ff(12),
       letterSpacing: -0.1,
+      minWidth: 0,
+    },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       flexShrink: 1,
       minWidth: 0,
     },
@@ -109,7 +130,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     labelName: {
       fontWeight: ft.bodyWeight,
-      color: theme.text,
+      color: theme.textMuted,
+      flexShrink: 1,
     },
   });
 }

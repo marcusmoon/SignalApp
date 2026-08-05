@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   buildHomeKeywordSymbolNames,
+  homeKeywordChipIdentity,
   homeKeywordChipLabel,
   homeKeywordIsSymbolChip,
   homeKeywordSymbolKey,
@@ -40,8 +41,27 @@ describe('buildHomeKeywordSymbolNames', () => {
   });
 });
 
+describe('homeKeywordChipIdentity', () => {
+  it('resolves KR code chips as code + company name', () => {
+    const names = new Map([['005930', '삼성전자']]);
+    const identity = homeKeywordChipIdentity({ label: '005930', kind: 'symbol', weight: 1 }, names);
+    assert.equal(identity?.displaySymbol, '005930');
+    assert.equal(identity?.displayName, '삼성전자');
+  });
+
+  it('resolves US symbol chips as tickers without a company-name suffix', () => {
+    const names = new Map([['AAPL', '애플']]);
+    const identity = homeKeywordChipIdentity(
+      { label: 'AAPL', kind: 'symbol', weight: 1, name: '애플' },
+      names,
+    );
+    assert.equal(identity?.displaySymbol, 'AAPL');
+    assert.equal(identity?.displayName, null);
+  });
+});
+
 describe('homeKeywordChipLabel', () => {
-  it('uses company name for symbols', () => {
+  it('uses the Korean company name for Korean stock-code symbols', () => {
     const names = new Map([['005930', '삼성전자']]);
     assert.equal(
       homeKeywordChipLabel({ label: '005930', kind: 'symbol', weight: 1 }, names),
@@ -83,6 +103,14 @@ describe('homeKeywordChipLabel', () => {
         names,
       ),
       '삼성전자',
+    );
+  });
+
+  it('returns the ticker for US symbol chips in legacy label mode', () => {
+    const names = new Map([['AAPL', 'Apple']]);
+    assert.equal(
+      homeKeywordChipLabel({ label: 'AAPL', kind: 'symbol', weight: 1 }, names),
+      'AAPL',
     );
   });
 });

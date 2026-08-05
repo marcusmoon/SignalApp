@@ -1,3 +1,10 @@
+import {
+  isUsableCompanyDisplayName,
+  normalizeDisplaySymbol,
+  resolveSymbolIdentity,
+  type ResolvedSymbolIdentity,
+} from '../symbols/symbolIdentity.ts';
+
 type KeywordChipLike = {
   label: string;
   kind: string;
@@ -7,11 +14,7 @@ type KeywordChipLike = {
 
 /** Canonical map key for keyword symbol lookup (`005930.KS` → `005930`). */
 export function homeKeywordSymbolKey(label: string): string {
-  const trimmed = String(label || '').trim().toUpperCase();
-  if (!trimmed) return '';
-  const yahooKr = trimmed.match(/^(\d{6})\.(KS|KQ)$/);
-  if (yahooKr) return yahooKr[1];
-  return trimmed;
+  return normalizeDisplaySymbol(label);
 }
 
 /** KR codes (bare or Yahoo suffix). US letter tickers are kind-driven, not inferred. */
@@ -23,14 +26,7 @@ export function isTickerLikeLabel(label: string): boolean {
 
 /** Reject names that are just the ticker / code again. */
 export function isUsableCompanyName(name: string, symbolKey: string): boolean {
-  const label = String(name || '').trim();
-  if (!label) return false;
-  const key = homeKeywordSymbolKey(symbolKey);
-  if (!key) return false;
-  if (label.toUpperCase() === key) return false;
-  if (homeKeywordSymbolKey(label) === key) return false;
-  if (isTickerLikeLabel(label)) return false;
-  return true;
+  return isUsableCompanyDisplayName(name, symbolKey);
 }
 
 /** Build symbol → company/display name from briefing companies and quote rows. */
@@ -49,19 +45,34 @@ export function buildHomeKeywordSymbolNames(input: {
   return map;
 }
 
+export function homeKeywordChipIdentity(
+  chip: KeywordChipLike,
+  symbolNames: Map<string, string>,
+): ResolvedSymbolIdentity | null {
+  if (!homeKeywordIsSymbolChip(chip)) return null;
+  const symbol = homeKeywordSymbolKey(chip.label);
+  const embedded = String(chip.name || '').trim();
+  const fallback = symbolNames.get(symbol) || null;
+  const identity = resolveSymbolIdentity({
+    symbol,
+    name: isUsableCompanyName(embedded, symbol) ? embedded : fallback,
+  });
+  // Home trends use Korean issuer names for KRX codes; US trends remain compact tickers.
+  return identity?.market === 'global' ? { ...identity, displayName: null } : identity;
+}
+
 /** True when the chip should display as a symbol (logo + company name). */
 export function homeKeywordIsSymbolChip(chip: KeywordChipLike): boolean {
   return chip.kind === 'symbol' || isTickerLikeLabel(chip.label);
 }
 
-/** Symbol chips prefer company name; other kinds keep the agent label. */
+/** Legacy single-label helper retained for non-rich fallbacks/tests. */
 export function homeKeywordChipLabel(
   chip: KeywordChipLike,
   symbolNames: Map<string, string>,
 ): string {
   if (!homeKeywordIsSymbolChip(chip)) return chip.label;
-  const key = homeKeywordSymbolKey(chip.label);
-  const embedded = String(chip.name || '').trim();
-  if (isUsableCompanyName(embedded, key)) return embedded;
-  return symbolNames.get(key) || chip.label;
+  const identity = homeKeywordChipIdentity(chip, symbolNames);
+  if (!identity) return chip.label;
+  return identity.displayName || identity.displaySymbol;
 }

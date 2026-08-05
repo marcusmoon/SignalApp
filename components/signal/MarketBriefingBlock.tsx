@@ -96,19 +96,16 @@ function CompanyHighlightRow({
   const changePositive = hasChange ? isQuoteChangePositive({ changePercent: item.changePercent }) : null;
   const changeColor =
     changePositive === null ? theme.textMuted : changePositive ? changeColors.up : changeColors.down;
-  const isKrMarket = market === 'kr';
   const companyName = item.name?.trim() || '';
-  const identityLabel = isKrMarket && companyName ? companyName : item.symbol;
-  const showCompanyName = isKrMarket && Boolean(companyName);
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
       <View style={styles.companyTopRow}>
         <SymbolIdentityChip
           symbol={item.symbol}
-          label={identityLabel}
-          labelKind={showCompanyName ? 'name' : 'ticker'}
-          expandable={showCompanyName}
+          identifier={item.symbol}
+          name={companyName || null}
+          expandable={Boolean(companyName)}
         />
         {hasPrice || hasChange ? (
           <View style={styles.companyQuoteInline}>

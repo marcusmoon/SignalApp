@@ -118,9 +118,10 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 오래된 기사와 최신 기사 구분
 - 추정 수치는 `추정` 명시
 - 종목 하이라이트에는 가능하면 `price`, `changePercent` 포함
+- 종목 하이라이트 `companies[]`는 `symbol`과 함께 **한글 정식 종목명 `name`을 필수**로 넣는다. `name`은 수집 state의 검증된 이름을 그대로 사용하며 티커·야후 영문명·임의 번역으로 대체하지 않는다. `symbol`은 딥링크 식별자일 뿐 화면 주표시명이 아니다.
 - 섹터에는 가능하면 `changePercent`, `symbol`(대표 ETF·지수) 포함 — 앱 등락 칩 채색·외부 링크에 사용
 - 섹터 `summary`는 **왜(해석)** 만 쓴다. `SMH 556 (-2.1%).` / `반도체 ETF -9%` 같은 시세 나열은 `changePercent`·`symbol`·companies로 보내고 summary에 반복하지 않는다
-- `keywords`: 홈 스캔용 3~6개. `{ label|symbol, kind, weight, name?, why? }` (`theme`|`sector`|`symbol`|`macro`|`event`). 종목은 티커+`name`. `why`는 홈 랭크 한 줄 맥락. 일반어 금지
+- `keywords`: 홈 스캔용 3~6개. `{ label|symbol, kind, weight, name?, why? }` (`theme`|`sector`|`symbol`|`macro`|`event`). 한국 6자리 `symbol`은 검증된 한글 정식명 `name`을 반드시 넣고, 미국 `symbol`은 티커만 쓴다. `why`는 홈 랭크 한 줄 맥락. 일반어 금지
 - 결과 생성 후 ingest endpoint로 POST
 
 ## 섹터 흐름 ↔ ETF 히트맵

@@ -302,8 +302,7 @@ export function EtfInsightBlock({ insight, theme, scaleFont }: Props) {
                     {flow.etf ? (
                       <SymbolIdentityChip
                         symbol={flow.etf}
-                        label={ticker}
-                        labelKind="ticker"
+                        identifier={ticker}
                         onPress={openSymbol}
                         accessibilityLabel={
                           korea

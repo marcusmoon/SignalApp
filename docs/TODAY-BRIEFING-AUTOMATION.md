@@ -77,6 +77,6 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 ## 앱 UI
 
 - 홈 히어로: KST 23:00 이후(및 과거일 우선)에 `today_briefings`를 「정리」로 노출. **본문(headline·summary·keyPoints)이 있을 때만**. 없거나 비면 히어로에서 빼고 장중 회차로 폴백(또는 섹션 숨김). 그 전에는 회차 브리핑이 히어로. 선택 로직은 `domain/home/selectHomeHeroBriefing.ts`.
-- 홈 **트렌드**: 섹션 **최상단**(히어로 위). `keywords` 합산. 헤더(아이콘·트렌드·as-of) + 아래 칩 카드(최대 6 · 종목은 회사명). 없으면 숨김.
+- 홈 **트렌드**: 섹션 **최상단**(히어로 위). `keywords` 합산. 헤더(아이콘·트렌드·as-of) + 아래 칩 카드(최대 6). 한국 6자리 종목은 검증된 한글 회사명, 미국 종목은 티커로 표시한다. 없으면 숨김.
 - 홈·상세: `components/signal/HomeFocusContent.tsx`, `app/today-briefing.tsx` — 단건 상세(공통 드릴 헤더 + 본문 헤드라인, dateBar 없음).
 - 레이아웃·여백: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)

@@ -38,9 +38,11 @@ export function applyAdminLanguage() {
     'settings-users': 'navSettingsUsers',
     'settings-theme': 'navSettingsTheme',
     'settings-lists': 'navSettingsLists',
+    'settings-symbols': 'navSettingsSymbols',
     'settings-sources': 'navSettingsSources',
     'settings-youtube': 'navSettingsYoutube',
     'settings-danger': 'navSettingsDanger',
+    'settings-legal': 'navSettingsLegal',
   };
   document.querySelectorAll('[data-view]').forEach((btn) => {
     const view = btn.getAttribute('data-view');

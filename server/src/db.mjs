@@ -221,6 +221,11 @@ function clearPublicReadCache() {
   publicReadCache.clear();
 }
 
+/** Admin writes that affect public symbolMeta / feeds. */
+export function clearPublicApiReadCache() {
+  clearPublicReadCache();
+}
+
 async function withDbExclusive(fn) {
   const prev = dbExclusiveChain;
   let release;

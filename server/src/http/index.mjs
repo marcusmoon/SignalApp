@@ -9,6 +9,7 @@ import { handleAdminLegalTermsRoutes } from './admin/api/legalTerms.mjs';
 import { handleAdminNewsRoutes } from './admin/api/news.mjs';
 import { handleAdminNotificationsRoutes } from './admin/api/notifications.mjs';
 import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
+import { handleAdminSymbolProfilesRoutes } from './admin/api/symbolProfiles.mjs';
 import { handleAdminYoutubeRoutes } from './admin/api/youtube.mjs';
 import { handleAdminEtfInsightRoutes } from './admin/api/etfInsights.mjs';
 import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
@@ -58,6 +59,7 @@ const ADMIN_API_HANDLERS = [
   handleAdminCalendarRoutes,
   handleAdminYoutubeRoutes,
   handleAdminSettingsRoutes,
+  handleAdminSymbolProfilesRoutes,
   handleAdminDataResetRoutes,
   handleAdminEtfInsightRoutes,
 ];

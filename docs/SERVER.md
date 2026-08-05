@@ -165,11 +165,12 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 | 구분 | 소스 | 저장·API |
 |---|---|---|
-| 주식·ETF | Parqet CDN URL을 서버가 합성(`symbolLogoUrl`) · ingest/Admin upsert | `symbol_profiles` → quotes/briefings/disclosures/news/ETF → `symbolMeta` (미등록이면 `null`) |
+| 주식·ETF | Parqet CDN URL을 서버가 합성(`symbolLogoUrl`) · **Admin upsert** (ingest도 quotes/disclosures/briefings 시 보조 upsert) | `symbol_profiles` → quotes/briefings/disclosures/news/ETF → `symbolMeta` (미등록이면 `null`) |
 | 코인 | CoinGecko markets `image` | Job `market_coins_top` → `coin_markets.payload.imageUrl` · `GET /v1/coins` `imageUrl` |
 
 - normalize/합성: `server/src/symbols/symbolProfiles.mjs`
-- upsert/조회: `server/src/db/repositories/symbolProfilesRepository.mjs` — 공개 enrich는 **등록된 프로필만** 붙인다. 없으면 `symbolMeta: null` (자동 등록 없음; Admin·ingest로 채움)
+- upsert/조회: `server/src/db/repositories/symbolProfilesRepository.mjs` — 공개 enrich는 **등록된 프로필만** 붙인다. 없으면 `symbolMeta: null`
+- **Admin 관리**: `/admin` → 시스템 → **종목 프로필** (`GET/POST/PATCH/DELETE /admin/api/symbol-profiles`) — 이름·로고 URL 등록·수정·삭제
 - 앱 표시 규칙: [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고 — **UI는 서버 URL(`symbolMeta.logoUrl` · 코인 `imageUrl`)만**. 없으면 글자 아바타 (클라이언트 Parqet 합성 없음).
 
 ## 배포

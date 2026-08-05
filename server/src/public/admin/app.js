@@ -68,6 +68,12 @@ import {
   renderMarketListDialogView,
   syncMarketListDraftFromInputsView,
 } from './views/marketLists.js';
+import {
+  closeSymbolProfileDialogView,
+  loadSymbolProfilesView,
+  openSymbolProfileDialogView,
+  readSymbolProfileDialogDraft,
+} from './views/symbolProfiles.js';
 import { closeErrorDetailDialogView, openErrorDetailDialogView } from './views/dialogs.js';
 import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from './views/search.js';
 
@@ -502,6 +508,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 ? 'legal'
               : requestedView === 'settings-lists'
                 ? 'lists'
+                : requestedView === 'settings-symbols'
+                  ? 'symbols'
                 : requestedView === 'settings-sources'
                   ? 'sources'
                   : requestedView === 'settings-youtube'
@@ -568,6 +576,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   ? textFor('settingsLegalTitle')
                 : activeSettingsTab === 'lists'
                   ? textFor('settingsListsTitle')
+                  : activeSettingsTab === 'symbols'
+                    ? textFor('settingsSymbolsTitle')
                   : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesTitle')
                     : activeSettingsTab === 'youtube'
@@ -584,9 +594,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 : activeSettingsTab === 'users'
                 ? textFor('settingsUsersDesc')
                 : activeSettingsTab === 'legal'
-                  ? textFor('settingsLegalDesc')
+                ? textFor('settingsLegalDesc')
                 : activeSettingsTab === 'lists'
                   ? textFor('settingsListsDesc')
+                  : activeSettingsTab === 'symbols'
+                    ? textFor('settingsSymbolsDesc')
                   : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesDesc')
                     : activeSettingsTab === 'youtube'
@@ -597,6 +609,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (activeSettingsTab === 'legal') void loadLegalTerms();
           if (activeSettingsTab === 'youtube') void loadYoutubeChannels();
+          if (activeSettingsTab === 'symbols') void loadSymbolProfiles();
+          if (activeSettingsTab === 'lists') void loadMarketLists();
         }
         if (resolvedView === 'jobs') {
           setJobTab(state.jobTab || 'info');
@@ -655,6 +669,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           loadAdminUsers(),
           loadAppUsers(),
           loadMarketLists(),
+          loadSymbolProfiles(),
           loadNewsSourceSettings(),
           loadNewsSources(),
           loadNews(),
@@ -954,6 +969,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         const result = await loadMarketListsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
         enhanceMobileAdminSurfaces();
         return result;
+      }
+
+      async function loadSymbolProfiles() {
+        const result = await loadSymbolProfilesView({ api, $, state, esc, textFor, textForVars, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
+      function openSymbolProfileDialog(mode, row) {
+        return openSymbolProfileDialogView({ mode, row, $, state, textFor });
+      }
+
+      function closeSymbolProfileDialog() {
+        return closeSymbolProfileDialogView({ $, state, textFor });
       }
 
       function renderNewsSources() {
@@ -1271,6 +1300,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             else if (tab === 'users') await loadAdminUsers();
             else if (tab === 'legal') await loadLegalTerms();
             else if (tab === 'lists') await loadMarketLists();
+            else if (tab === 'symbols') await loadSymbolProfiles();
             else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
             else if (tab === 'youtube') await loadYoutubeChannels();
             // theme/danger are mostly local UI; still refresh dashboard counts for safety
@@ -1588,6 +1618,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if (settingsTabTarget.dataset.settingsTab === 'users') await loadAdminUsers();
             if (settingsTabTarget.dataset.settingsTab === 'legal') await loadLegalTerms();
             if (settingsTabTarget.dataset.settingsTab === 'lists') await loadMarketLists();
+            if (settingsTabTarget.dataset.settingsTab === 'symbols') await loadSymbolProfiles();
             if (settingsTabTarget.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
             if (settingsTabTarget.dataset.settingsTab === 'youtube') await loadYoutubeChannels();
           }
@@ -2350,6 +2381,84 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target.id === 'marketListDialog') {
             closeMarketListDialog();
           }
+          if (target.id === 'symbolProfileCreateBtn') {
+            openSymbolProfileDialog('create', null);
+            return;
+          }
+          if (target.dataset.symbolProfileEdit) {
+            const key = target.dataset.symbolProfileEdit;
+            const row = (state.symbolProfiles || []).find((item) => item.symbolKey === key);
+            openSymbolProfileDialog('edit', row || { symbolKey: key });
+            return;
+          }
+          if (target.dataset.symbolProfileDelete) {
+            const key = target.dataset.symbolProfileDelete;
+            openConfirm({
+              title: textFor('symbolProfileDeleteTitle'),
+              desc: textFor('symbolProfileDeleteDesc'),
+              body: key,
+              okText: textFor('btnDeleteRow'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/symbol-profiles/${encodeURIComponent(key)}`, { method: 'DELETE' });
+                showToast(textFor('symbolProfileDeleted'), key, { kind: 'success' });
+                await loadSymbolProfiles();
+              },
+            });
+            return;
+          }
+          if (target.id === 'symbolProfilesSearchBtn') {
+            state.symbolProfilesQ = $('symbolProfilesQ')?.value || '';
+            state.symbolProfilesMarket = $('symbolProfilesMarket')?.value || '';
+            state.symbolProfilesPage = 1;
+            await loadSymbolProfiles();
+            return;
+          }
+          if (target.id === 'symbolProfilesPrevBtn') {
+            state.symbolProfilesPage = Math.max(1, (Number(state.symbolProfilesPage) || 1) - 1);
+            await loadSymbolProfiles();
+            return;
+          }
+          if (target.id === 'symbolProfilesNextBtn') {
+            state.symbolProfilesPage = Math.min(
+              Number(state.symbolProfilesTotalPages) || 1,
+              (Number(state.symbolProfilesPage) || 1) + 1,
+            );
+            await loadSymbolProfiles();
+            return;
+          }
+          if (target.id === 'closeSymbolProfileDialog' || target.id === 'cancelSymbolProfileDialog') {
+            closeSymbolProfileDialog();
+            return;
+          }
+          if (target.id === 'symbolProfileDialog') {
+            closeSymbolProfileDialog();
+            return;
+          }
+          if (target.id === 'saveSymbolProfileDialog') {
+            const draft = state.symbolProfileDraft;
+            if (!draft) return;
+            const fields = readSymbolProfileDialogDraft({ $ });
+            if (draft.mode === 'edit' && draft.symbolKey) {
+              await api(`/admin/api/symbol-profiles/${encodeURIComponent(draft.symbolKey)}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  name: fields.name,
+                  exchange: fields.exchange,
+                  logoUrl: fields.logoUrl,
+                }),
+              });
+            } else {
+              await api('/admin/api/symbol-profiles', {
+                method: 'POST',
+                body: JSON.stringify(fields),
+              });
+            }
+            closeSymbolProfileDialog();
+            showToast(textFor('symbolProfileSaved'), fields.symbol || draft.symbolKey, { kind: 'success' });
+            await loadSymbolProfiles();
+            return;
+          }
           if (target.id === 'addMarketListSymbol') {
             syncMarketListDraftFromInputs();
             const symbols = String($('marketListAddSymbol').value || '')
@@ -2971,6 +3080,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
         if (event.key === 'Escape' && state.marketListDraft) {
           closeMarketListDialog();
+        }
+        if (event.key === 'Escape' && state.symbolProfileDraft) {
+          closeSymbolProfileDialog();
         }
         if (event.key === 'Escape' && state.newsSourceAliasDraft) {
           closeNewsSourceAliasDialog();

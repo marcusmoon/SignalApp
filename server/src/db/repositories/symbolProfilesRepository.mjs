@@ -15,6 +15,10 @@ function keyFor(market, symbol) {
   return `${resolvedMarket}:${display}`;
 }
 
+function dbWriteClient() {
+  return { query: (text, params) => queryKysely(text, params) };
+}
+
 export async function upsertSymbolProfilesRows(client, rows = []) {
   const seen = new Set();
   for (const input of Array.isArray(rows) ? rows : []) {
@@ -114,4 +118,115 @@ export async function fetchSymbolProfilesForInputs(inputs = []) {
 export function resolvePublicSymbolMeta(profile = null) {
   if (!profile) return null;
   return publicSymbolMeta(profile);
+}
+
+function rowToProfile(row) {
+  return {
+    symbolKey: cleanText(row.symbol_key),
+    market: cleanText(row.market),
+    symbol: cleanText(row.symbol),
+    displaySymbol: cleanText(row.display_symbol),
+    name: cleanText(row.name) || null,
+    exchange: cleanText(row.exchange) || null,
+    logoUrl: cleanText(row.logo_url) || null,
+    payload: payloadFromRow(row) || null,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+  };
+}
+
+export async function listSymbolProfiles(options = {}) {
+  const q = cleanText(options.q).toLowerCase();
+  const marketRaw = cleanText(options.market).toLowerCase();
+  const market = marketRaw === 'kr' || marketRaw === 'global' ? marketRaw : '';
+  const limit = Math.min(Math.max(Number(options.limit) || 50, 1), 200);
+  const offset = Math.max(Number(options.offset) || 0, 0);
+  const params = [];
+  const where = [];
+  if (market) {
+    params.push(market);
+    where.push(`market = $${params.length}`);
+  }
+  if (q) {
+    params.push(`%${q}%`);
+    const idx = params.length;
+    where.push(`(
+      lower(symbol_key) LIKE $${idx}
+      OR lower(symbol) LIKE $${idx}
+      OR lower(display_symbol) LIKE $${idx}
+      OR lower(COALESCE(name, '')) LIKE $${idx}
+    )`);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const countResult = await queryKysely(`SELECT count(*)::int AS n FROM symbol_profiles ${whereSql}`, params);
+  const total = Number(countResult.rows[0]?.n) || 0;
+  params.push(limit, offset);
+  const result = await queryKysely(
+    `
+      SELECT symbol_key, market, symbol, display_symbol, name, exchange, logo_url, payload, updated_at
+      FROM symbol_profiles
+      ${whereSql}
+      ORDER BY market ASC, display_symbol ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+  return {
+    rows: result.rows.map(rowToProfile),
+    total,
+    limit,
+    offset,
+    hasMore: offset + result.rows.length < total,
+  };
+}
+
+export async function getSymbolProfileByKey(symbolKey) {
+  const key = cleanText(symbolKey);
+  if (!key) return null;
+  const result = await queryKysely(
+    `
+      SELECT symbol_key, market, symbol, display_symbol, name, exchange, logo_url, payload, updated_at
+      FROM symbol_profiles
+      WHERE symbol_key = $1
+    `,
+    [key],
+  );
+  const row = result.rows[0];
+  return row ? rowToProfile(row) : null;
+}
+
+/**
+ * Admin create/update. Empty logoUrl still gets Parqet via buildSymbolProfile
+ * so curated rows ship a usable image URL.
+ */
+export async function saveSymbolProfileAdmin(input = {}) {
+  const profile = buildSymbolProfile({
+    ...input,
+    source: cleanText(input.source) || 'admin',
+  });
+  if (!profile?.symbolKey) throw new Error('SYMBOL_PROFILE_SYMBOL_REQUIRED');
+  if (profile.market !== 'kr' && profile.market !== 'global') {
+    throw new Error('SYMBOL_PROFILE_MARKET_INVALID');
+  }
+  await upsertSymbolProfilesRows(dbWriteClient(), [
+    {
+      ...input,
+      market: profile.market,
+      symbol: profile.symbol,
+      displaySymbol: profile.displaySymbol,
+      name: profile.name,
+      exchange: profile.exchange,
+      logoUrl: profile.logoUrl,
+      imageUrl: profile.logoUrl,
+      source: 'admin',
+    },
+  ]);
+  return getSymbolProfileByKey(profile.symbolKey);
+}
+
+export async function deleteSymbolProfileByKey(symbolKey) {
+  const key = cleanText(symbolKey);
+  if (!key) throw new Error('SYMBOL_PROFILE_KEY_REQUIRED');
+  const result = await queryKysely('DELETE FROM symbol_profiles WHERE symbol_key = $1 RETURNING symbol_key', [key]);
+  if (!result.rows[0]) throw new Error('SYMBOL_PROFILE_NOT_FOUND');
+  return { symbolKey: key, deleted: true };
 }

@@ -113,6 +113,7 @@
             <button class="navBtn secondary" data-view="settings-sources" data-icon="S"><i class="ti ti-rss" aria-hidden="true"></i><span>뉴스 출처</span></button>
             <button class="navBtn secondary" data-view="settings-youtube" data-icon="Y"><i class="ti ti-brand-youtube" aria-hidden="true"></i><span>유튜브 채널</span></button>
             <button class="navBtn secondary" data-view="settings-lists" data-icon="L"><i class="ti ti-list" aria-hidden="true"></i><span>마켓 리스트</span></button>
+            <button class="navBtn secondary" data-view="settings-symbols" data-icon="S"><i class="ti ti-building-bank" aria-hidden="true"></i><span>종목 프로필</span></button>
             <button class="navBtn secondary" data-view="settings-keys" data-icon="P"><i class="ti ti-key" aria-hidden="true"></i><span>Provider</span></button>
             <button class="navBtn secondary" data-view="translations" data-icon="G"><i class="ti ti-language" aria-hidden="true"></i><span>번역 설정</span></button>
             <button class="navBtn secondary" data-view="settings-theme" data-icon="T"><i class="ti ti-palette" aria-hidden="true"></i><span>테마</span></button>
@@ -357,6 +358,7 @@
                         <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
                         <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
                         <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-symbols" data-settings-tab="symbols" data-i18n="navSettingsSymbols">종목 프로필</button>
                       </div>
                     </div>
                     <div class="settingsTabsGroup">
@@ -556,6 +558,7 @@
                         <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
                         <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
                         <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-symbols" data-settings-tab="symbols" data-i18n="navSettingsSymbols">종목 프로필</button>
                       </div>
                     </div>
                     <div class="settingsTabsGroup">
@@ -607,6 +610,10 @@
 
               <div id="settingsTab-lists" class="settingsTab hidden">
                 <div id="marketLists"></div>
+              </div>
+
+              <div id="settingsTab-symbols" class="settingsTab hidden">
+                <div id="symbolProfiles"></div>
               </div>
 
               <div id="settingsTab-sources" class="settingsTab hidden">
@@ -777,6 +784,46 @@
           <div class="row">
             <button id="confirmCancel" class="secondary" data-i18n="confirmCancel">취소</button>
             <button id="confirmOk" class="danger" data-i18n="confirmOk">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="symbolProfileDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="symbolProfileDialogAria">
+      <div class="dialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="symbolProfileDialogTitle" data-i18n="symbolProfileCreateTitle">종목 프로필</h3>
+            <div id="symbolProfileDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeSymbolProfileDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div class="marketListMetaGrid">
+            <label class="fieldLabel"><span data-i18n="symbolProfileFieldMarket">시장</span>
+              <select id="symbolProfileDialogMarket">
+                <option value="global">global</option>
+                <option value="kr">kr</option>
+              </select>
+            </label>
+            <label class="fieldLabel"><span data-i18n="symbolProfileFieldSymbol">심볼</span>
+              <input id="symbolProfileDialogSymbol" data-i18n-placeholder="symbolProfileFieldSymbolPh" />
+            </label>
+            <label class="fieldLabel"><span data-i18n="symbolProfileFieldName">표시 이름</span>
+              <input id="symbolProfileDialogName" />
+            </label>
+            <label class="fieldLabel"><span data-i18n="symbolProfileFieldExchange">거래소</span>
+              <input id="symbolProfileDialogExchange" />
+            </label>
+            <label class="fieldLabel" style="grid-column:1/-1"><span data-i18n="symbolProfileFieldLogoUrl">로고 URL</span>
+              <input id="symbolProfileDialogLogoUrl" data-i18n-placeholder="symbolProfileFieldLogoUrlPh" />
+            </label>
+          </div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted" data-i18n="symbolProfileDialogFootHint">비우면 저장 시 Parqet URL을 채웁니다.</span>
+          <div class="row">
+            <button id="cancelSymbolProfileDialog" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="saveSymbolProfileDialog" class="success" data-i18n="btnSave">저장</button>
           </div>
         </div>
       </div>

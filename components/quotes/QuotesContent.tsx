@@ -589,16 +589,16 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
-          <SymbolIdentityChip
-            symbol={r.symbol}
-            identifier={r.symbol}
-            name={r.symbolMeta?.name ?? r.name ?? null}
-            imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
-            logoSize={28}
-            chrome="plain"
-            expandable={Boolean(r.symbolMeta?.name ?? r.name)}
-          />
+                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={8} style={styles.symPressable}>
+                    <SymbolIdentityChip
+                      symbol={r.symbol}
+                      identifier={r.symbol}
+                      name={r.symbolMeta?.name ?? r.name ?? null}
+                      imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
+                      logoSize={28}
+                      chrome="plain"
+                      expandable={Boolean(r.symbolMeta?.name ?? r.name)}
+                    />
                   </Pressable>
                   {yahooEnabled ? (
                     <Pressable

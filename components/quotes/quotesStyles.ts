@@ -176,8 +176,15 @@ export function makeQuotesStyles(
       alignItems: 'center',
       flexWrap: 'nowrap',
       gap: 8,
+      minWidth: 0,
     },
-    symPressable: { flexShrink: 0, minWidth: 0 },
+    symPressable: {
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
+      alignSelf: 'stretch',
+      justifyContent: 'center',
+    },
     sym: {
       fontSize: ft.ff(16),
       lineHeight: ft.ff(20),

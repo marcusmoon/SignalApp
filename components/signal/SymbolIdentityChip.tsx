@@ -52,7 +52,9 @@ export function SymbolIdentityChip({
           </Text>
         ) : null}
         {displayName ? (
-          <Text style={[styles.label, styles.labelName]} numberOfLines={1}>
+          <Text
+            style={[styles.label, hideIdentifier ? styles.labelPrimaryName : styles.labelName]}
+            numberOfLines={1}>
             {displayName}
           </Text>
         ) : null}
@@ -135,6 +137,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     labelName: {
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
+      flexShrink: 1,
+    },
+    labelPrimaryName: {
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
       flexShrink: 1,
     },
   });

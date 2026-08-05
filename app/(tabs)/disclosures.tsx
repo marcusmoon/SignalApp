@@ -466,10 +466,12 @@ export default function DisclosuresScreen() {
             </View>
             <Text style={styles.detailTitle}>{selectedDisclosure.title}</Text>
             <Text style={styles.detailCompany}>
-              {selectedDisclosure.symbol || selectedDisclosure.companyName || '—'}
-              {selectedDisclosure.companyName && selectedDisclosure.symbol
-                ? ` · ${selectedDisclosure.companyName}`
-                : ''}
+              {[
+                selectedDisclosure.symbolMeta?.displaySymbol || selectedDisclosure.symbol,
+                selectedDisclosure.symbolMeta?.name || selectedDisclosure.companyName,
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—'}
             </Text>
           </View>
           <View style={styles.detailCard}>

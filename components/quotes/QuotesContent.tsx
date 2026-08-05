@@ -27,7 +27,7 @@ import {
   FLOATING_GLASS_FAB_SIZE,
   FloatingGlassFab,
 } from '@/components/signal/FloatingGlassFab';
-import { SymbolIdentityChip } from '@/components/signal/SymbolIdentityChip';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -597,6 +597,11 @@ export function QuotesContent({
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
+                  <SymbolLogo
+                    symbol={r.symbol}
+                    size={28}
+                    imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
+                  />
                   <TouchableOpacity
                     onPress={openRowSymbol}
                     activeOpacity={0.72}
@@ -604,14 +609,9 @@ export function QuotesContent({
                     style={styles.symPressable}
                     accessibilityRole="button"
                     accessibilityLabel={r.symbol}>
-                    <SymbolIdentityChip
-                      symbol={r.symbol}
-                      identifier={r.symbol}
-                      name={null}
-                      imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
-                      logoSize={28}
-                      chrome="plain"
-                    />
+                    <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                      {r.symbol}
+                    </Text>
                   </TouchableOpacity>
                   {yahooEnabled ? (
                     <TouchableOpacity

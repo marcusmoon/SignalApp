@@ -12,6 +12,8 @@ import {
   resolvePublicSymbolMeta,
   symbolProfileLookupKeys,
 } from './symbolProfilesRepository.mjs';
+import { homeIndexLogoProxy } from '../../symbols/homeIndexLogos.mjs';
+import { publicSymbolMeta } from '../../symbols/symbolProfiles.mjs';
 
 function publicMarketQuote(item) {
   return {
@@ -180,13 +182,18 @@ export async function queryPublicMarketQuoteRows(options = {}) {
 }
 
 async function enrichMarketQuoteRows(rows = []) {
-  const inputs = rows.map((row) => ({
-    market: row.segment === 'korea' ? 'kr' : 'global',
-    symbol: row.symbol,
-    displaySymbol: row.displaySymbol,
-    krxSymbol: row.krxSymbol,
-    providerItemId: row.providerItemId,
-  }));
+  const inputs = rows.flatMap((row) => {
+    const base = {
+      market: row.segment === 'korea' ? 'kr' : 'global',
+      symbol: row.symbol,
+      displaySymbol: row.displaySymbol,
+      krxSymbol: row.krxSymbol,
+      providerItemId: row.providerItemId,
+    };
+    const indexLogo = homeIndexLogoProxy(row.symbol);
+    if (!indexLogo) return [base];
+    return [base, { market: indexLogo.market, symbol: indexLogo.symbol, displaySymbol: indexLogo.symbol }];
+  });
   if (inputs.length === 0) return rows;
   const profiles = await fetchSymbolProfilesForInputs(inputs);
   return rows.map((row) => {
@@ -198,6 +205,24 @@ async function enrichMarketQuoteRows(rows = []) {
       providerItemId: row.providerItemId,
     };
     const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
+    const indexLogo = homeIndexLogoProxy(row.symbol);
+    if (indexLogo) {
+      const logoKey = `${indexLogo.market}:${indexLogo.symbol}`;
+      const logoProfile = profiles.get(logoKey) || null;
+      const logoUrl = logoProfile?.logoUrl || null;
+      if (logoUrl || indexLogo.name) {
+        return {
+          ...row,
+          symbolMeta: publicSymbolMeta({
+            market: indexLogo.market,
+            symbol: indexLogo.symbol,
+            displaySymbol: indexLogo.symbol,
+            name: indexLogo.name,
+            logoUrl,
+          }),
+        };
+      }
+    }
     return {
       ...row,
       symbolMeta: resolvePublicSymbolMeta(profile),

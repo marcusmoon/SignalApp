@@ -21,6 +21,19 @@ export function isKoreanDisplaySymbol(symbol: string): boolean {
   return /^\d{6}$/.test(normalizeDisplaySymbol(symbol));
 }
 
+/**
+ * List/tile UI company label. KRX codes may show an issuer name; global letter
+ * tickers stay ticker-only (no English/local company name under the symbol).
+ */
+export function companyNameForSymbolUi(
+  name: string | null | undefined,
+  symbol: string,
+): string | null {
+  if (!isKoreanDisplaySymbol(symbol)) return null;
+  const label = String(name || '').trim();
+  return isUsableCompanyDisplayName(label, symbol) ? label : null;
+}
+
 export function isTickerLikeDisplayName(name: string): boolean {
   const text = String(name || '').trim().toUpperCase();
   if (!text) return false;
@@ -47,9 +60,7 @@ export function resolveSymbolIdentity(input: {
   return {
     symbol: displaySymbol,
     displaySymbol,
-    displayName: isUsableCompanyDisplayName(String(input.name || ''), displaySymbol)
-      ? String(input.name || '').trim()
-      : null,
+    displayName: companyNameForSymbolUi(input.name, displaySymbol),
     imageUrl: String(input.imageUrl || '').trim() || null,
     market: isKoreanDisplaySymbol(displaySymbol) ? 'kr' : /^[A-Z]/.test(displaySymbol) ? 'global' : 'unknown',
   };

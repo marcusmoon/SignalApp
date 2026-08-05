@@ -180,7 +180,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 섹션 순서**
   - **오늘**: **트렌드**(에이전트 keywords 합산 · 없으면 숨김) → 히어로 1장 → **뉴스**(없으면 숨김 · 빈 카드 없음) → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
   - **과거**: **트렌드**(없으면 숨김) → 히어로 1장 → **뉴스**(없으면 숨김) → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 · 시세 숨김
-  - **트렌드 UI**: 홈 **최상단**. 다른 섹션과 같이 `HomeSectionHeader` — 좌측 `trending-up-outline` + **트렌드** · 우측 as-of 칩(기여 소스 최신 `generatedAt`/`publishedAt`). 아래 **칩 카드**(`theme.greenBorder`·1px · wrap). 종목은 로고+회사명. `why`는 a11y만. 없으면 숨김
+  - **트렌드 UI**: 홈 **최상단**. 다른 섹션과 같이 `HomeSectionHeader` — 좌측 `trending-up-outline` + **트렌드** · 우측 as-of 칩(기여 소스 최신 `generatedAt`/`publishedAt`). 아래 **칩 카드**(`theme.greenBorder`·1px · wrap). 종목은 로고+라벨(국내=회사명·해외=티커). `why`는 a11y만. 없으면 숨김
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):
@@ -212,7 +212,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 섹터/테마 내러티브 | **섹터**(짧게): 섹터명 \| % (첫 행 heat) → why | **themes**: 테마명 \| 모멘텀 → 요약(텍스트만) | 동일 row 밀도 |
   | 종목/수급 플로우 | **companies** | **flow** (`flowHighlights`) | `SymbolIdentityChip` · 본문 말줄임 없음 · 출처=`SourceIconStack`+외부 링크 |
   | 맥락 | macro · sources | sources | — |
-  - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). **이름·로고는 API `symbolMeta`(DB `symbol_profiles`) 우선**, 로고 URL 없으면 글자 아바타. 시장 companies·ETF 수급·공시·뉴스 등 공통.
+  - **종목 identity 칩** (`SymbolIdentityChip`): 로고 20 + 라벨(티커=`theme.green` / 이름=`theme.text`) · pad 4×8 · radius 8 · 배경 `theme.card`(섹션 `bgElevated` 카드 위 대비). **이름·로고는 API `symbolMeta`(DB `symbol_profiles`) 우선**, 로고 URL 없으면 글자 아바타. **해외(영문 티커)는 티커만** — 회사명 미표시. 국내 6자리는 회사명 병기. 시장 companies·ETF 수급·공시·뉴스 등 공통.
   - **종목 로고** (`SymbolLogo`): 이미지 파일을 앱에 두지 않는다. 서버 URL(`symbolMeta.logoUrl` · 코인 `imageUrl` · FX 국기)만 쓰고, 없으면 글자 아바타. 상세는 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) 종목 로고
   - **장중 브리핑 섹터 리스트**: 홈 「섹터 흐름」과 구분 — 본문 섹션 제목은 **섹터**. 히트맵 **순** 리스트. **첫 행만** `heatFillColor` 배경 + 등락 텍스트색. 종목·티커·로고는 섹터 행에 두지 않음(본문 why·**companies**에 맡김)
   - **ETF themes**: 로고·하단 메타 티커 없음. 요약 본문은 텍스트만(`ChangeTintedText`) — 티커 인라인 링크 없음

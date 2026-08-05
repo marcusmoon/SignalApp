@@ -37,13 +37,19 @@ describe('buildHomeKeywordSymbolNames', () => {
       ],
     });
     assert.equal(map.get('005930'), '삼성전자');
-    assert.equal(map.get('AAPL'), 'Apple');
+    // Global tickers stay ticker-only — no company name in the map.
+    assert.equal(map.has('AAPL'), false);
     assert.equal(map.has('000660'), false);
   });
 
-  it('prefers symbolMeta name and logo over legacy row fields', () => {
+  it('prefers symbolMeta name and logo over legacy row fields for KR only', () => {
     const map = buildHomeKeywordSymbolProfiles({
       quotes: [
+        {
+          symbol: '005930',
+          name: 'Wrong',
+          symbolMeta: { name: '삼성전자', logoUrl: 'https://cdn.example/005930.png' },
+        },
         {
           symbol: 'AAPL',
           name: 'Wrong',
@@ -51,7 +57,9 @@ describe('buildHomeKeywordSymbolNames', () => {
         },
       ],
     });
-    assert.equal(map.get('AAPL')?.name, 'Apple Inc.');
+    assert.equal(map.get('005930')?.name, '삼성전자');
+    assert.equal(map.get('005930')?.logoUrl, 'https://cdn.example/005930.png');
+    assert.equal(map.get('AAPL')?.name, null);
     assert.equal(map.get('AAPL')?.logoUrl, 'https://cdn.example/aapl.png');
   });
 });

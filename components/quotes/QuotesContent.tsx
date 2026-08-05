@@ -56,6 +56,7 @@ import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext'
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
+import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -644,8 +645,18 @@ export function QuotesContent({
                   </Text>
                 ) : null}
                 {(() => {
-                  const companyName = String(r.symbolMeta?.name ?? r.name ?? '').trim();
-                  if (!companyName || companyName === r.symbol) return null;
+                  // Coins keep a readable name; KR equities may show issuer name; global = ticker only.
+                  if (segment === 'coin') {
+                    const coinName = String(r.name ?? '').trim();
+                    if (!coinName || coinName === r.symbol) return null;
+                    return (
+                      <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                        {coinName}
+                      </Text>
+                    );
+                  }
+                  const companyName = companyNameForSymbolUi(r.symbolMeta?.name ?? r.name, r.symbol);
+                  if (!companyName) return null;
                   return (
                     <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                       {companyName}

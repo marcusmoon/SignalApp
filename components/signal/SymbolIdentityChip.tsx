@@ -23,6 +23,7 @@ type Props = {
 /**
  * 브리핑·다이제스트 공통 종목 identity 칩.
  * 시장 브리핑 companies · ETF flowHighlights 등에서 동일 밀도·토큰 사용.
+ * 해외(영문 티커)는 티커만, 국내 6자리는 회사명 병기.
  */
 export function SymbolIdentityChip({
   symbol,
@@ -40,7 +41,8 @@ export function SymbolIdentityChip({
   const pressable = Boolean(onPress);
 
   const displayIdentifier = String(identifier || symbol || '').trim();
-  const displayName = String(name || '').trim();
+  const rawName = String(name || '').trim();
+  const displayName = isKoreanDisplaySymbol(displayIdentifier || symbol) ? rawName : '';
   const hideIdentifier = isKoreanDisplaySymbol(displayIdentifier || symbol) && Boolean(displayName);
   const body = (
     <>

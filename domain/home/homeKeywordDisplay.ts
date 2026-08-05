@@ -48,6 +48,8 @@ export type HomeKeywordSymbolProfile = {
 };
 
 function preferredName(row: SymbolRowLike, key: string): string | null {
+  // Global letter tickers stay ticker-only in home keyword / quote UIs.
+  if (!/^\d{6}$/.test(key)) return null;
   const metaName = String(row?.symbolMeta?.name || '').trim();
   if (isUsableCompanyName(metaName, key)) return metaName;
   const rowName = String(row?.name || '').trim();

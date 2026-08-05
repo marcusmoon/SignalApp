@@ -76,6 +76,7 @@ import {
   homeKeywordSymbolKey,
   isUsableCompanyName,
 } from '@/domain/home/homeKeywordDisplay';
+import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
 import {
   homeHeroHeadline,
   selectHomeHeroBriefing,
@@ -947,7 +948,14 @@ export function HomeFocusContent({
         ? t(indexDef.labelId)
         : fxDef
           ? t(fxDef.labelId)
-          : row.symbolMeta?.name?.trim() || row.name?.trim() || row.symbol;
+          : (() => {
+              const ticker = row.symbol;
+              const company = companyNameForSymbolUi(
+                row.symbolMeta?.name?.trim() || row.name?.trim() || null,
+                ticker,
+              );
+              return company || ticker;
+            })();
       const logoSymbol = indexDef?.logoSymbol || fxDef?.logoSymbol || row.symbol;
       const logoImageUrl = fxDef
         ? homeFxFlagImageUrl(fxDef)

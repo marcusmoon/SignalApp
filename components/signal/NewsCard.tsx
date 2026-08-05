@@ -17,6 +17,7 @@ import { newsSourceAccent } from '@/constants/newsSourceAccent';
 import type { AppTheme } from '@/constants/theme';
 import { SourceBadge } from '@/components/signal/SourceBadge';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -66,7 +67,7 @@ export function NewsCard({
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
   const symbolLabel =
-    item.symbolMeta?.name?.trim() ||
+    companyNameForSymbolUi(item.symbolMeta?.name, symbol) ||
     item.symbolMeta?.displaySymbol?.trim() ||
     item.ticker;
   const showSourceInHeader =

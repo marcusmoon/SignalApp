@@ -134,7 +134,7 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 | 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | 글자 아바타 |
 | 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 
-표시명·코드도 동일하게 **`symbolMeta.name` / `symbolMeta.displaySymbol`** 을 우선한다. 레거시 `name`·티커 문자열만 쓰는 UI는 맞출 것.
+표시명·코드도 동일하게 **`symbolMeta.name` / `symbolMeta.displaySymbol`** 을 우선한다. 레거시 `name`·티커 문자열만 쓰는 UI는 맞출 것. **해외 영문 티커는 회사명을 붙이지 않고 티커만** 보여 준다(`companyNameForSymbolUi` · `SymbolIdentityChip`). 국내 6자리 코드만 회사명 병기.
 
 | 역할 | 경로 |
 |---|---|

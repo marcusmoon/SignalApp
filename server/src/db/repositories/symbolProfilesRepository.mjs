@@ -195,7 +195,18 @@ export async function listSymbolProfiles(options = {}) {
   const rows = [];
   for (const row of result.rows) {
     try {
-      rows.push(rowToProfile(row));
+      const profile = rowToProfile(row);
+      // Admin list UI does not need payload; drop it to keep the response JSON-safe/small.
+      rows.push({
+        symbolKey: profile.symbolKey,
+        market: profile.market,
+        symbol: profile.symbol,
+        displaySymbol: profile.displaySymbol,
+        name: profile.name,
+        exchange: profile.exchange,
+        logoUrl: profile.logoUrl,
+        updatedAt: profile.updatedAt,
+      });
     } catch (error) {
       console.error('[symbol_profiles] skip bad row', row?.symbol_key, error);
     }

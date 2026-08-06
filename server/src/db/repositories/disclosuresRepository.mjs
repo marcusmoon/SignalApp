@@ -7,11 +7,7 @@ import {
   sqlDateOrTimestamp,
   sqlStringList,
 } from './publicHelpers.mjs';
-import {
-  fetchSymbolProfilesForInputs,
-  resolvePublicSymbolMeta,
-  symbolProfileLookupKeys,
-} from './symbolProfilesRepository.mjs';
+import { enrichItemsWithSymbolMeta } from '../../symbols/enrichSymbolMeta.mjs';
 
 function publicDisclosure(item) {
   return {
@@ -144,21 +140,8 @@ export async function fetchPublicDisclosuresByIds(ids = []) {
 }
 
 async function enrichDisclosures(rows = []) {
-  const inputs = rows.map((row) => ({
+  return enrichItemsWithSymbolMeta(rows, (row) => ({
     market: row.market,
     symbol: row.symbol,
   }));
-  if (inputs.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesForInputs(inputs);
-  return rows.map((row) => {
-    const identity = {
-      market: row.market,
-      symbol: row.symbol,
-    };
-    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-    return {
-      ...row,
-      symbolMeta: resolvePublicSymbolMeta(profile),
-    };
-  });
 }

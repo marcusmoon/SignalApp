@@ -12,11 +12,7 @@ import {
   sqlDateOrTimestamp,
   sqlStringList,
 } from './publicHelpers.mjs';
-import {
-  fetchSymbolProfilesForInputs,
-  resolvePublicSymbolMeta,
-  symbolProfileLookupKeys,
-} from './symbolProfilesRepository.mjs';
+import { enrichItemsWithSymbolMeta } from '../../symbols/enrichSymbolMeta.mjs';
 
 function sqlPendingTranslation(alias) {
   return `(${alias}.id IS NULL OR ${alias}.status NOT IN ('completed', 'manual'))`;
@@ -46,24 +42,10 @@ function publicNews(item, translations, locale) {
 }
 
 async function enrichNewsSymbolMeta(rows = []) {
-  const inputs = rows
-    .map((row) => {
-      const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
-      if (!symbol) return null;
-      return { symbol, displaySymbol: symbol };
-    })
-    .filter(Boolean);
-  if (inputs.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesForInputs(inputs);
-  return rows.map((row) => {
+  return enrichItemsWithSymbolMeta(rows, (row) => {
     const symbol = Array.isArray(row?.symbols) ? cleanText(row.symbols[0]) : '';
-    if (!symbol) return row;
-    const identity = { symbol, displaySymbol: symbol };
-    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-    return {
-      ...row,
-      symbolMeta: resolvePublicSymbolMeta(profile),
-    };
+    if (!symbol) return null;
+    return { symbol, displaySymbol: symbol };
   });
 }
 

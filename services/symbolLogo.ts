@@ -1,16 +1,11 @@
+import { normalizeDisplaySymbol } from '../domain/symbols/symbolIdentity.ts';
+
 /**
- * 로고·국장 판별용 베이스 티커.
- * 브리핑 ingest가 `005930.KS`처럼 Yahoo 접미사를 붙인 경우 제거한다.
- * `BRK.B` 같은 클래스 주식 접미사는 유지한다.
+ * 로고·국장 판별용 베이스 티커 — `normalizeDisplaySymbol`과 동일.
+ * (`005930.KS` → `005930`, `BRK.B` 유지)
  */
 export function logoBaseSymbol(symbol: string): string {
-  const raw = String(symbol || '').trim().toUpperCase();
-  if (!raw || raw === '—' || raw === 'GLOBAL') return '';
-  const kr = raw.match(/^(\d{6})\.(KS|KQ)$/);
-  if (kr) return kr[1];
-  const exchange = raw.match(/^([A-Z][A-Z0-9.\-]{0,11})\.(US|NYSE|NASDAQ|AMEX|NMS|NYQ)$/);
-  if (exchange) return exchange[1];
-  return raw;
+  return normalizeDisplaySymbol(symbol);
 }
 
 const failedLogoKeys = new Set<string>();

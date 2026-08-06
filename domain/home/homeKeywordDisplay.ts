@@ -4,6 +4,7 @@ import {
   resolveSymbolIdentity,
   type ResolvedSymbolIdentity,
 } from '../symbols/symbolIdentity.ts';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '../symbols/symbolMetaDisplay.ts';
 
 type KeywordChipLike = {
   label: string;
@@ -50,19 +51,12 @@ export type HomeKeywordSymbolProfile = {
 function preferredName(row: SymbolRowLike, key: string): string | null {
   // Global letter tickers stay ticker-only in home keyword / quote UIs.
   if (!/^\d{6}$/.test(key)) return null;
-  const metaName = String(row?.symbolMeta?.name || '').trim();
-  if (isUsableCompanyName(metaName, key)) return metaName;
-  const rowName = String(row?.name || '').trim();
-  if (isUsableCompanyName(rowName, key)) return rowName;
-  return null;
+  const name = pickSymbolMetaName(row);
+  return isUsableCompanyName(name || '', key) ? name : null;
 }
 
 function preferredLogo(row: SymbolRowLike): string | null {
-  const metaLogo = String(row?.symbolMeta?.logoUrl || '').trim();
-  if (/^https?:\/\//i.test(metaLogo)) return metaLogo;
-  const imageUrl = String(row?.imageUrl || '').trim();
-  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
-  return null;
+  return pickSymbolMetaLogoUrl(row);
 }
 
 /**

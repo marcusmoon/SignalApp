@@ -8,12 +8,10 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesForInputs,
-  resolvePublicSymbolMeta,
-  symbolProfileLookupKeys,
-} from './symbolProfilesRepository.mjs';
-import { homeIndexLogoProxy } from '../../symbols/homeIndexLogos.mjs';
-import { publicSymbolMeta } from '../../symbols/symbolProfiles.mjs';
+  loadSymbolProfilesForItems,
+  symbolMetaFromProfiles,
+} from '../../symbols/enrichSymbolMeta.mjs';
+import { homeIndexLogoIdentity, homeIndexSymbolMeta } from '../../symbols/homeIndexLogos.mjs';
 
 function publicMarketQuote(item) {
   return {
@@ -181,51 +179,30 @@ export async function queryPublicMarketQuoteRows(options = {}) {
   };
 }
 
+function quoteIdentity(row) {
+  return {
+    market: row.segment === 'korea' ? 'kr' : 'global',
+    symbol: row.symbol,
+    displaySymbol: row.displaySymbol,
+    krxSymbol: row.krxSymbol,
+    providerItemId: row.providerItemId,
+  };
+}
+
 async function enrichMarketQuoteRows(rows = []) {
-  const inputs = rows.flatMap((row) => {
-    const base = {
-      market: row.segment === 'korea' ? 'kr' : 'global',
-      symbol: row.symbol,
-      displaySymbol: row.displaySymbol,
-      krxSymbol: row.krxSymbol,
-      providerItemId: row.providerItemId,
-    };
-    const indexLogo = homeIndexLogoProxy(row.symbol);
-    if (!indexLogo) return [base];
-    return [base, { market: indexLogo.market, symbol: indexLogo.symbol, displaySymbol: indexLogo.symbol }];
+  const list = Array.isArray(rows) ? rows : [];
+  const inputs = list.flatMap((row) => {
+    const base = quoteIdentity(row);
+    const proxy = homeIndexLogoIdentity(row.symbol);
+    return proxy ? [base, proxy] : [base];
   });
-  if (inputs.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesForInputs(inputs);
-  return rows.map((row) => {
-    const identity = {
-      market: row.segment === 'korea' ? 'kr' : 'global',
-      symbol: row.symbol,
-      displaySymbol: row.displaySymbol,
-      krxSymbol: row.krxSymbol,
-      providerItemId: row.providerItemId,
-    };
-    const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-    const indexLogo = homeIndexLogoProxy(row.symbol);
-    if (indexLogo) {
-      const logoKey = `${indexLogo.market}:${indexLogo.symbol}`;
-      const logoProfile = profiles.get(logoKey) || null;
-      const logoUrl = logoProfile?.logoUrl || null;
-      if (logoUrl || indexLogo.name) {
-        return {
-          ...row,
-          symbolMeta: publicSymbolMeta({
-            market: indexLogo.market,
-            symbol: indexLogo.symbol,
-            displaySymbol: indexLogo.symbol,
-            name: indexLogo.name,
-            logoUrl,
-          }),
-        };
-      }
-    }
+  const { profiles } = await loadSymbolProfilesForItems(inputs, (identity) => identity);
+  return list.map((row) => {
+    const indexMeta = homeIndexSymbolMeta(row.symbol, profiles);
+    if (indexMeta) return { ...row, symbolMeta: indexMeta };
     return {
       ...row,
-      symbolMeta: resolvePublicSymbolMeta(profile),
+      symbolMeta: symbolMetaFromProfiles(quoteIdentity(row), profiles),
     };
   });
 }

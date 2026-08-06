@@ -56,6 +56,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | 시세 관심 드래그 | `QuotesContent` + `saveWatchlistSymbols` — 행 롱프레스로 저장순 변경 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
 | `services/symbolLogo` | 서버 제공 URL만 · 없으면 글자 아바타 |
+| `domain/symbols/symbolIdentity` · `symbolMetaDisplay` | 표시 심볼·회사명 정책 · API symbolMeta name/logo 선택 |
 
 ## 디렉터리 규칙
 
@@ -138,11 +139,12 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 
 | 역할 | 경로 |
 |---|---|
-| DB·upsert·enrich | `symbol_profiles` · `server/src/symbols/symbolProfiles.mjs` · `symbolProfilesRepository.mjs` |
+| DB·upsert·enrich | `symbol_profiles` · `server/src/symbols/symbolProfiles.mjs` · `symbolProfilesRepository.mjs` · `enrichSymbolMeta.mjs` · `ingestSymbolProfiles.mjs` |
 | 공개 필드 | `symbolMeta: { market, symbol, displaySymbol, name, logoUrl }` |
-| URL 후보·실패 캐시 | `services/symbolLogo.ts` (서버 URL만) |
+| URL 후보·실패 캐시 | `services/symbolLogo.ts` (서버 URL만; `logoBaseSymbol`=`normalizeDisplaySymbol`) |
+| 앱 name/logo 선택 | `domain/symbols/symbolMetaDisplay.ts` (`pickSymbolMetaName` · `pickSymbolMetaLogoUrl`) · `companyNameForSymbolUi` |
 | UI | `SymbolLogo` (`imageUrl`=서버 logoUrl) · `SymbolIdentityChip` |
-| 시세 행 매핑 | `domain/quotes/rows.ts` |
+| 시세 행 매핑 | `domain/quotes/rows.ts` (`mapSignalQuoteToRow`) |
 
 서버 저장·Job은 [SERVER.md](./SERVER.md) 「종목·코인 로고」.
 

@@ -77,6 +77,7 @@ import {
   isUsableCompanyName,
 } from '@/domain/home/homeKeywordDisplay';
 import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
 import {
   homeHeroHeadline,
   selectHomeHeroBriefing,
@@ -479,8 +480,8 @@ export function HomeFocusContent({
       quotes: [
         ...quotes.map((row) => ({
           symbol: row.symbol,
-          name: row.symbolMeta?.name ?? row.name ?? row.quote?.name ?? null,
-          imageUrl: row.symbolMeta?.logoUrl ?? row.imageUrl ?? null,
+          name: pickSymbolMetaName(row) ?? row.quote?.name ?? null,
+          imageUrl: pickSymbolMetaLogoUrl(row),
           symbolMeta: row.symbolMeta ?? null,
         })),
         ...[...keywordQuoteNames.entries()].map(([symbol, name]) => ({ symbol, name })),
@@ -950,16 +951,13 @@ export function HomeFocusContent({
           ? t(fxDef.labelId)
           : (() => {
               const ticker = row.symbol;
-              const company = companyNameForSymbolUi(
-                row.symbolMeta?.name?.trim() || row.name?.trim() || null,
-                ticker,
-              );
+              const company = companyNameForSymbolUi(pickSymbolMetaName(row), ticker);
               return company || ticker;
             })();
       const logoSymbol = indexDef?.logoSymbol || fxDef?.logoSymbol || row.symbol;
       const logoImageUrl = fxDef
         ? homeFxFlagImageUrl(fxDef)
-        : row.symbolMeta?.logoUrl || row.imageUrl;
+        : pickSymbolMetaLogoUrl(row);
       const priceLabel = indexDef
         ? formatHomeIndexLevel(row.quote?.currentPrice)
         : fxDef

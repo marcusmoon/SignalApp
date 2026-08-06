@@ -9,10 +9,9 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesForInputs,
-  resolvePublicSymbolMeta,
-  symbolProfileLookupKeys,
-} from './symbolProfilesRepository.mjs';
+  loadSymbolProfilesForItems,
+  symbolMetaFromProfiles,
+} from '../../symbols/enrichSymbolMeta.mjs';
 
 function publicBriefing(item) {
   if (!item) return null;
@@ -127,29 +126,28 @@ async function enrichBriefingCompanies(rows) {
 }
 
 async function enrichBriefingCompanyProfiles(rows) {
-  const inputs = rows.flatMap((briefing) =>
+  const list = Array.isArray(rows) ? rows : [];
+  const refs = list.flatMap((briefing) =>
     (briefing.companies || []).map((company) => ({
       market: briefing.market,
       symbol: company?.symbol,
       displaySymbol: company?.symbol,
     })),
   );
-  if (inputs.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesForInputs(inputs);
-  return rows.map((briefing) => ({
+  const { profiles } = await loadSymbolProfilesForItems(refs, (identity) => identity);
+  return list.map((briefing) => ({
     ...briefing,
-    companies: (briefing.companies || []).map((company) => {
-      const identity = {
-        market: briefing.market,
-        symbol: company?.symbol,
-        displaySymbol: company?.symbol,
-      };
-      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-      return {
-        ...company,
-        symbolMeta: resolvePublicSymbolMeta(profile),
-      };
-    }),
+    companies: (briefing.companies || []).map((company) => ({
+      ...company,
+      symbolMeta: symbolMetaFromProfiles(
+        {
+          market: briefing.market,
+          symbol: company?.symbol,
+          displaySymbol: company?.symbol,
+        },
+        profiles,
+      ),
+    })),
   }));
 }
 

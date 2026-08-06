@@ -7,10 +7,9 @@ import {
   sqlUtcRangeTo,
 } from './publicHelpers.mjs';
 import {
-  fetchSymbolProfilesForInputs,
-  resolvePublicSymbolMeta,
-  symbolProfileLookupKeys,
-} from './symbolProfilesRepository.mjs';
+  loadSymbolProfilesForItems,
+  symbolMetaFromProfiles,
+} from '../../symbols/enrichSymbolMeta.mjs';
 
 function publicEtfInsight(item) {
   if (!item) return null;
@@ -45,47 +44,34 @@ function heatmapSymbol(row) {
 }
 
 async function enrichEtfInsightRows(rows = []) {
-  const inputs = rows.flatMap((insight) => {
-    const flowInputs = (insight.flowHighlights || [])
+  const list = Array.isArray(rows) ? rows : [];
+  const refs = list.flatMap((insight) => {
+    const flowIds = (insight.flowHighlights || [])
       .map((row) => {
         const symbol = flowSymbol(row);
         return symbol ? { symbol, displaySymbol: symbol } : null;
       })
       .filter(Boolean);
-    const heatInputs = (insight.heatmap || [])
+    const heatIds = (insight.heatmap || [])
       .map((row) => {
         const symbol = heatmapSymbol(row);
         return symbol ? { symbol, displaySymbol: symbol } : null;
       })
       .filter(Boolean);
-    return [...flowInputs, ...heatInputs];
+    return [...flowIds, ...heatIds];
   });
-  if (inputs.length === 0) return rows;
-  const profiles = await fetchSymbolProfilesForInputs(inputs);
-  return rows.map((insight) => ({
+  const { profiles } = await loadSymbolProfilesForItems(refs, (identity) => identity);
+  const withMeta = (row, symbol) => {
+    if (!row || typeof row !== 'object' || !symbol) return row;
+    return {
+      ...row,
+      symbolMeta: symbolMetaFromProfiles({ symbol, displaySymbol: symbol }, profiles),
+    };
+  };
+  return list.map((insight) => ({
     ...insight,
-    flowHighlights: (insight.flowHighlights || []).map((row) => {
-      if (!row || typeof row !== 'object') return row;
-      const symbol = flowSymbol(row);
-      if (!symbol) return row;
-      const identity = { symbol, displaySymbol: symbol };
-      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-      return {
-        ...row,
-        symbolMeta: resolvePublicSymbolMeta(profile),
-      };
-    }),
-    heatmap: (insight.heatmap || []).map((row) => {
-      if (!row || typeof row !== 'object') return row;
-      const symbol = heatmapSymbol(row);
-      if (!symbol) return row;
-      const identity = { symbol, displaySymbol: symbol };
-      const profile = symbolProfileLookupKeys(identity).map((key) => profiles.get(key)).find(Boolean) || null;
-      return {
-        ...row,
-        symbolMeta: resolvePublicSymbolMeta(profile),
-      };
-    }),
+    flowHighlights: (insight.flowHighlights || []).map((row) => withMeta(row, flowSymbol(row))),
+    heatmap: (insight.heatmap || []).map((row) => withMeta(row, heatmapSymbol(row))),
   }));
 }
 

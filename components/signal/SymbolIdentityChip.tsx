@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { isKoreanDisplaySymbol } from '@/domain/symbols/symbolIdentity';
+import { companyNameForSymbolUi, isKoreanDisplaySymbol } from '@/domain/symbols/symbolIdentity';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
 type Props = {
@@ -41,8 +41,7 @@ export function SymbolIdentityChip({
   const pressable = Boolean(onPress);
 
   const displayIdentifier = String(identifier || symbol || '').trim();
-  const rawName = String(name || '').trim();
-  const displayName = isKoreanDisplaySymbol(displayIdentifier || symbol) ? rawName : '';
+  const displayName = companyNameForSymbolUi(name, displayIdentifier || symbol) || '';
   const hideIdentifier = isKoreanDisplaySymbol(displayIdentifier || symbol) && Boolean(displayName);
   const body = (
     <>

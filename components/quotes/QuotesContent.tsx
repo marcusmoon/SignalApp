@@ -57,6 +57,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useOwnedSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { homeShortcutCompoundLabel } from '@/domain/home/shortcutDisplay';
 import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -601,7 +602,7 @@ export function QuotesContent({
                   <SymbolLogo
                     symbol={r.symbol}
                     size={28}
-                    imageUrl={r.symbolMeta?.logoUrl ?? r.imageUrl}
+                    imageUrl={pickSymbolMetaLogoUrl(r)}
                   />
                   <TouchableOpacity
                     onPress={openRowSymbol}
@@ -655,7 +656,7 @@ export function QuotesContent({
                       </Text>
                     );
                   }
-                  const companyName = companyNameForSymbolUi(r.symbolMeta?.name ?? r.name, r.symbol);
+                  const companyName = companyNameForSymbolUi(pickSymbolMetaName(r), r.symbol);
                   if (!companyName) return null;
                   return (
                     <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>

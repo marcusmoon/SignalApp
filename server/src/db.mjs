@@ -66,9 +66,7 @@ import {
   queryPublicCoinMarketRows,
   queryPublicMarketQuoteRows,
 } from './db/repositories/marketRepository.mjs';
-import {
-  upsertSymbolProfilesRows,
-} from './db/repositories/symbolProfilesRepository.mjs';
+import { upsertSymbolProfilesFromIngest } from './symbols/ingestSymbolProfiles.mjs';
 import {
   queryPublicPriceSeriesCandlesRow,
 } from './db/repositories/priceSeriesRepository.mjs';
@@ -825,10 +823,7 @@ export async function upsertCollectionRows(collectionKey, rows = []) {
           await insertCollectionRow(client, spec, safeRows[index], index);
         }
         if (collectionKey === 'marketQuotes' || collectionKey === 'disclosures' || collectionKey === 'marketBriefings') {
-          const symbolRows = collectionKey === 'marketBriefings'
-            ? safeRows.flatMap((row) => Array.isArray(row?.companies) ? row.companies : [])
-            : safeRows;
-          await upsertSymbolProfilesRows(client, symbolRows);
+          await upsertSymbolProfilesFromIngest(client, collectionKey, safeRows);
         }
       } catch (error) {
         throw error;

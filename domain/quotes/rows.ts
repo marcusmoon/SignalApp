@@ -3,6 +3,8 @@ import type {
   SignalApiMarketQuote,
   SignalApiSymbolMeta,
 } from '@/integrations/signal-api';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
+import { isKoreanDisplaySymbol } from '@/domain/symbols/symbolIdentity';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 
 export type QuoteRow = {
@@ -15,8 +17,9 @@ export type QuoteRow = {
   imageUrl?: string | null;
 };
 
+/** @deprecated Prefer `isKoreanDisplaySymbol` from `domain/symbols/symbolIdentity`. */
 export function isKoreaSymbol(symbol: string): boolean {
-  return /^\d{6}$/.test(String(symbol || '').trim());
+  return isKoreanDisplaySymbol(symbol);
 }
 
 export async function withSoftTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -95,7 +98,7 @@ function finiteQuoteNumber(value: unknown): number | null {
 }
 
 export function isKoreaStockQuote(row: QuoteRow): boolean {
-  return Boolean(row.quote?.krxSymbol) || /^\d{6}$/.test(String(row.symbol || '').trim());
+  return Boolean(row.quote?.krxSymbol) || isKoreanDisplaySymbol(row.symbol);
 }
 
 export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
@@ -127,10 +130,10 @@ export function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApi
 export function mapSignalQuoteToRow(item: SignalApiMarketQuote): QuoteRow {
   return {
     symbol: item.displaySymbol || item.symbol,
-    name: item.symbolMeta?.name || item.name || undefined,
+    name: pickSymbolMetaName(item) || undefined,
     symbolMeta: item.symbolMeta ?? null,
     quote: signalMarketQuoteHasValidPrice(item) ? item : null,
-    imageUrl: item.symbolMeta?.logoUrl ?? item.imageUrl ?? null,
+    imageUrl: pickSymbolMetaLogoUrl(item),
   };
 }
 

@@ -4,7 +4,7 @@ import {
   listSymbolProfiles,
   saveSymbolProfileAdmin,
 } from '../../../db/repositories/symbolProfilesRepository.mjs';
-import { clearPublicApiReadCache } from '../../../db.mjs';
+import { clearPublicApiReadCache } from '../../../db/publicReadCache.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function profileErrorStatus(error) {
@@ -14,19 +14,29 @@ function profileErrorStatus(error) {
   return 500;
 }
 
+function profileErrorBody(error) {
+  const message = error instanceof Error ? error.message : String(error || 'UNKNOWN');
+  return { error: message };
+}
+
 export async function handleAdminSymbolProfilesRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/symbol-profiles') {
-    const q = url.searchParams.get('q') || '';
-    const market = url.searchParams.get('market') || '';
-    const page = Math.max(Number(url.searchParams.get('page')) || 1, 1);
-    const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize')) || 50, 1), 200);
-    const data = await listSymbolProfiles({
-      q,
-      market,
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-    });
-    json(res, 200, { data });
+    try {
+      const q = url.searchParams.get('q') || '';
+      const market = url.searchParams.get('market') || '';
+      const page = Math.max(Number(url.searchParams.get('page')) || 1, 1);
+      const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize')) || 50, 1), 200);
+      const data = await listSymbolProfiles({
+        q,
+        market,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      });
+      json(res, 200, { data });
+    } catch (error) {
+      console.error('[admin/symbol-profiles] list failed', error);
+      json(res, profileErrorStatus(error), profileErrorBody(error));
+    }
     return true;
   }
 
@@ -37,7 +47,7 @@ export async function handleAdminSymbolProfilesRoutes({ req, res, url, pathname 
       clearPublicApiReadCache();
       json(res, 200, { data: saved });
     } catch (error) {
-      json(res, profileErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+      json(res, profileErrorStatus(error), profileErrorBody(error));
     }
     return true;
   }
@@ -47,12 +57,17 @@ export async function handleAdminSymbolProfilesRoutes({ req, res, url, pathname 
   const symbolKey = decodeURIComponent(match[1]);
 
   if (req.method === 'GET') {
-    const row = await getSymbolProfileByKey(symbolKey);
-    if (!row) {
-      json(res, 404, { error: 'SYMBOL_PROFILE_NOT_FOUND' });
-      return true;
+    try {
+      const row = await getSymbolProfileByKey(symbolKey);
+      if (!row) {
+        json(res, 404, { error: 'SYMBOL_PROFILE_NOT_FOUND' });
+        return true;
+      }
+      json(res, 200, { data: row });
+    } catch (error) {
+      console.error('[admin/symbol-profiles] get failed', error);
+      json(res, profileErrorStatus(error), profileErrorBody(error));
     }
-    json(res, 200, { data: row });
     return true;
   }
 
@@ -76,7 +91,7 @@ export async function handleAdminSymbolProfilesRoutes({ req, res, url, pathname 
       clearPublicApiReadCache();
       json(res, 200, { data: saved });
     } catch (error) {
-      json(res, profileErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+      json(res, profileErrorStatus(error), profileErrorBody(error));
     }
     return true;
   }
@@ -87,7 +102,7 @@ export async function handleAdminSymbolProfilesRoutes({ req, res, url, pathname 
       clearPublicApiReadCache();
       json(res, 200, { data });
     } catch (error) {
-      json(res, profileErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+      json(res, profileErrorStatus(error), profileErrorBody(error));
     }
     return true;
   }

@@ -120,7 +120,24 @@ export function resolvePublicSymbolMeta(profile = null) {
   return publicSymbolMeta(profile);
 }
 
-function rowToProfile(row) {
+function safeIsoTimestamp(value) {
+  if (value == null || value === '') return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function safePayload(row) {
+  try {
+    const payload = payloadFromRow(row);
+    if (!payload) return null;
+    // Ensure admin JSON responses never trip on non-JSON-safe driver values.
+    return JSON.parse(JSON.stringify(payload));
+  } catch {
+    return null;
+  }
+}
+
+export function rowToProfile(row) {
   return {
     symbolKey: cleanText(row.symbol_key),
     market: cleanText(row.market),
@@ -129,8 +146,8 @@ function rowToProfile(row) {
     name: cleanText(row.name) || null,
     exchange: cleanText(row.exchange) || null,
     logoUrl: cleanText(row.logo_url) || null,
-    payload: payloadFromRow(row) || null,
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+    payload: safePayload(row),
+    updatedAt: safeIsoTimestamp(row.updated_at),
   };
 }
 
@@ -140,15 +157,15 @@ export async function listSymbolProfiles(options = {}) {
   const market = marketRaw === 'kr' || marketRaw === 'global' ? marketRaw : '';
   const limit = Math.min(Math.max(Number(options.limit) || 50, 1), 200);
   const offset = Math.max(Number(options.offset) || 0, 0);
-  const params = [];
+  const filterParams = [];
   const where = [];
   if (market) {
-    params.push(market);
-    where.push(`market = $${params.length}`);
+    filterParams.push(market);
+    where.push(`market = $${filterParams.length}`);
   }
   if (q) {
-    params.push(`%${q}%`);
-    const idx = params.length;
+    filterParams.push(`%${q}%`);
+    const idx = filterParams.length;
     where.push(`(
       lower(symbol_key) LIKE $${idx}
       OR lower(symbol) LIKE $${idx}
@@ -157,25 +174,38 @@ export async function listSymbolProfiles(options = {}) {
     )`);
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const countResult = await queryKysely(`SELECT count(*)::int AS n FROM symbol_profiles ${whereSql}`, params);
+  const countResult = await queryKysely(
+    `SELECT count(*)::bigint AS n FROM symbol_profiles ${whereSql}`,
+    filterParams,
+  );
   const total = Number(countResult.rows[0]?.n) || 0;
-  params.push(limit, offset);
+  const listParams = [...filterParams, limit, offset];
+  const limitIdx = listParams.length - 1;
+  const offsetIdx = listParams.length;
   const result = await queryKysely(
     `
       SELECT symbol_key, market, symbol, display_symbol, name, exchange, logo_url, payload, updated_at
       FROM symbol_profiles
       ${whereSql}
-      ORDER BY market ASC, display_symbol ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
+      ORDER BY market ASC, display_symbol ASC NULLS LAST
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `,
-    params,
+    listParams,
   );
+  const rows = [];
+  for (const row of result.rows) {
+    try {
+      rows.push(rowToProfile(row));
+    } catch (error) {
+      console.error('[symbol_profiles] skip bad row', row?.symbol_key, error);
+    }
+  }
   return {
-    rows: result.rows.map(rowToProfile),
+    rows,
     total,
     limit,
     offset,
-    hasMore: offset + result.rows.length < total,
+    hasMore: offset + rows.length < total,
   };
 }
 

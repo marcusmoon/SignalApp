@@ -609,7 +609,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (activeSettingsTab === 'legal') void loadLegalTerms();
           if (activeSettingsTab === 'youtube') void loadYoutubeChannels();
-          if (activeSettingsTab === 'symbols') void loadSymbolProfiles();
+          if (activeSettingsTab === 'symbols') {
+            void loadSymbolProfiles().catch((error) => {
+              console.error('[admin] symbol profiles load failed', error);
+              showToast(textFor('toastErrorTitle'), error?.message || 'symbol profiles', { kind: 'error' });
+            });
+          }
           if (activeSettingsTab === 'lists') void loadMarketLists();
         }
         if (resolvedView === 'jobs') {
@@ -669,7 +674,6 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           loadAdminUsers(),
           loadAppUsers(),
           loadMarketLists(),
-          loadSymbolProfiles(),
           loadNewsSourceSettings(),
           loadNewsSources(),
           loadNews(),

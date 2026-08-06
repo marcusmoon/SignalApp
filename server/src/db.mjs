@@ -116,10 +116,15 @@ import {
   verifyAppUserAccessToken,
 } from './auth/jwtAccess.mjs';
 
+import {
+  cachedPublicRead,
+  clearPublicApiReadCache,
+  clearPublicReadCache,
+} from './db/publicReadCache.mjs';
+
+export { clearPublicApiReadCache };
+
 const SESSION_DAYS = 90;
-const PUBLIC_READ_CACHE_TTL_MS = 5000;
-const PUBLIC_READ_CACHE_MAX_ENTRIES = 300;
-const publicReadCache = new Map();
 let dbExclusiveChain = Promise.resolve();
 let seedChecked = false;
 
@@ -206,24 +211,6 @@ function pageOptions(options = {}, defaultLimit = 30) {
   return { limit, offset };
 }
 
-function stableStringify(value) {
-  if (value == null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(',')}]`;
-  return `{${Object.keys(value)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
-    .join(',')}}`;
-}
-
-function clearPublicReadCache() {
-  publicReadCache.clear();
-}
-
-/** Admin writes that affect public symbolMeta / feeds. */
-export function clearPublicApiReadCache() {
-  clearPublicReadCache();
-}
-
 async function withDbExclusive(fn) {
   const prev = dbExclusiveChain;
   let release;
@@ -236,27 +223,6 @@ async function withDbExclusive(fn) {
   } finally {
     release();
   }
-}
-
-async function cachedPublicRead(namespace, options, fn, ttlMs = PUBLIC_READ_CACHE_TTL_MS) {
-  const key = `${namespace}:${stableStringify(options || {})}`;
-  const now = Date.now();
-  const cached = publicReadCache.get(key);
-  if (cached && cached.expiresAt > now) return cached.value;
-  if (cached) publicReadCache.delete(key);
-  const value = await fn();
-  if (ttlMs > 0) {
-    if (publicReadCache.size >= PUBLIC_READ_CACHE_MAX_ENTRIES) {
-      for (const [cacheKey, entry] of publicReadCache) {
-        if (entry.expiresAt <= now || publicReadCache.size >= PUBLIC_READ_CACHE_MAX_ENTRIES) {
-          publicReadCache.delete(cacheKey);
-        }
-        if (publicReadCache.size < PUBLIC_READ_CACHE_MAX_ENTRIES) break;
-      }
-    }
-    publicReadCache.set(key, { value, expiresAt: now + ttlMs });
-  }
-  return value;
 }
 
 function jsonPayload(value) {

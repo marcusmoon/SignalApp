@@ -14,6 +14,8 @@ Codex 예약 작업은 먼저 Signal Server의 `/v1/news` 최신 뉴스만 읽�
 
 요청 최상위 `notifyInbox`·`sendPush`는 독립 플래그(기본 `true`). dry-run은 둘 다 `false`, 운영 ingest는 필요에 따라 조정한다. 항목별 알림 제외는 `notifyInbox: false`만 사용한다.
 
+`articleTags`는 선택 사항이다. `[{ "newsItemId": "<sourceRef news id>", "hashtags": ["태그1", "태그2"] }]` 형식으로 이 실행에서 실제 `sourceRefs`로 쓴 기사에만 2~5개 태그를 보정한다. 수동 태그(`hashtagSource: manual`)는 절대 덮어쓰지 않으며, 선택 근거가 아닌 기사 id는 무시한다.
+
 ## 생성 단위
 
 예약 작업 1회는 하나의 `run`과 여러 `items`를 만든다. dry-run 단계에서는 `notifyInbox=false`, `sendPush=false`를 기본으로 둔다.
@@ -64,6 +66,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 - `symbols`: 관련 종목 코드
 - `topics`: 대표 주제 태그 (카드 trail·기존 UI)
 - `keywords`: 홈 스캔용 키워드. `{ label|symbol, kind?, weight?, name?, why? }` 권장 (`kind`: `theme`|`sector`|`symbol`|`macro`|`event`, 문서당 최대 6). **한국 6자리 종목은 `kind:"symbol"` + 티커 + 검증된 한글 `name`**, 미국 종목은 티커만 쓴다. **`why`/`reason`은 홈 랭크용 한 줄 맥락**. 문자열 배열도 ingest 가능(6자리 코드→symbol). 일반어(`시장`/`뉴스` 등) 금지. `topics`만 있으면 홈은 topics로 폴백
+- `articleTags`: 선택한 `sourceRefs` 원문별 앱 뉴스 태그. title·summary·기존 태그에서 확인되는 2~5개 고유명사만 사용한다. 일반어·수치·중복·추측은 금지한다. 수동 태그 기사는 서버가 보존한다.
 - 홈 UI: 최상단 **트렌드** 섹션 — 헤더(아이콘·제목·as-of) + 칩 카드(wrap · 최대 6) — 종목은 회사명. `why`는 ingest 유지(칩 a11y)
 - `sources`: (v2 ingest 생략) read 시 hydrate된 `sourceRefs`에서 파생
 - `count`: 묶인 원문 수

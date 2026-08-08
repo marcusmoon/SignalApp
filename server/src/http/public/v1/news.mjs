@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 
 import {
   findNewsItemsByIds,
+  getCollectionPayload,
+  patchCollectionPayload,
   queryPublicNews,
   queryPublicNewsDigests,
   queryPublicNewsSources,
@@ -13,7 +15,11 @@ import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs'
 import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
-import { hashtagRecordsFromLabels, normalizeNewsHashtagLabels } from '../../../newsHashtags.mjs';
+import {
+  hashtagRecordsFromLabels,
+  mergeAutoHashtagsIntoNewsItem,
+  normalizeNewsHashtagLabels,
+} from '../../../newsHashtags.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { keywordsToTopicLabels, normalizeKeywords } from '../../../keywords/normalizeKeywords.mjs';
@@ -111,6 +117,45 @@ function normalizeNewsIngestItem(raw, index, now) {
     codexIngest: true,
     position: index,
   };
+}
+
+/** Tags supplied with a digest may only update its selected news evidence. */
+function normalizeDigestArticleTags(raw) {
+  const newsItemId = cleanText(raw?.newsItemId || raw?.id);
+  const labels = normalizeNewsHashtagLabels([
+    ...cleanArray(raw?.hashtags).map((tag) => (typeof tag === 'string' ? tag : tag?.label)),
+    ...cleanArray(raw?.labels),
+  ], 5);
+  return newsItemId && labels.length > 0 ? { newsItemId, labels } : null;
+}
+
+async function applyDigestArticleTags(rawTags, sourceNewsIds) {
+  const allowedIds = new Set(sourceNewsIds);
+  const tags = cleanArray(rawTags)
+    .slice(0, 30)
+    .map(normalizeDigestArticleTags)
+    .filter((item) => item && allowedIds.has(item.newsItemId));
+  const seen = new Set();
+  const meta = { updated: 0, manualSkipped: 0, missing: 0 };
+
+  for (const tag of tags) {
+    if (seen.has(tag.newsItemId)) continue;
+    seen.add(tag.newsItemId);
+    const current = await getCollectionPayload('newsItems', tag.newsItemId);
+    if (!current) {
+      meta.missing += 1;
+      continue;
+    }
+    if (cleanText(current.hashtagSource).toLowerCase() === 'manual') {
+      meta.manualSkipped += 1;
+      continue;
+    }
+    const next = { ...current };
+    mergeAutoHashtagsIntoNewsItem(next, tag.labels);
+    await patchCollectionPayload('newsItems', tag.newsItemId, next);
+    meta.updated += 1;
+  }
+  return meta;
 }
 
 async function publishDigestNotification(item, queuePush) {
@@ -254,6 +299,13 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       return next;
     });
     await upsertCollectionRows('newsDigestItems', items);
+    const sourceNewsIds = items.flatMap((item) =>
+      cleanArray(item.sourceRefs)
+        .filter((ref) => !cleanText(ref?.type) || cleanText(ref?.type).toLowerCase() === 'news')
+        .map((ref) => cleanText(ref?.id))
+        .filter(Boolean),
+    );
+    const articleTags = await applyDigestArticleTags(body?.articleTags, sourceNewsIds);
     let inboxPublished = 0;
     let pushQueued = 0;
     for (const item of items) {
@@ -271,6 +323,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       sendPush,
       inboxPublished,
       pushQueued,
+      articleTags,
     };
     json(res, 200, meta);
     return true;

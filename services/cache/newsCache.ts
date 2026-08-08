@@ -21,6 +21,7 @@ export function storeNewsCache(key: string, raw: SignalApiNewsItem[]): void {
   cache.set(key, { raw, expiresAt: Date.now() + NEWS_CACHE_TTL_MS });
 }
 
+/** @deprecated Legacy tab cache; Signal news uses integrations/signal-api/cache. Settings clears via clearSignalApiCache. */
 export function clearNewsCache(): void {
   cache.clear();
 }

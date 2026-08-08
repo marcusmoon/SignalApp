@@ -20,6 +20,7 @@ import {
   resolveDisclosureTypeCategory,
   disclosureMeaningLabelId,
 } from '@/domain/disclosures';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -54,8 +55,8 @@ export function DisclosureCard({
     [item.url, providerName, theme],
   );
   const symbol = item.symbol?.trim().toUpperCase() ?? '';
-  const companyName = item.symbolMeta?.name?.trim() || item.companyName?.trim() || '';
-  const companyLogoUrl = item.symbolMeta?.logoUrl || null;
+  const companyName = pickSymbolMetaName(item) || '';
+  const companyLogoUrl = pickSymbolMetaLogoUrl(item);
   const canOpenSymbol = symbol.length > 0;
   const timeLabel = disclosureFiledTimeLabel(item, locale);
 

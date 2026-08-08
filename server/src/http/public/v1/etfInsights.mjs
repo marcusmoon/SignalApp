@@ -1,4 +1,5 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
+import { cachedPublicRead } from '../../../db/publicReadCache.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
 import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
@@ -156,14 +157,20 @@ export async function handlePublicEtfInsightRoutes({ req, res, url, pathname }) 
   }
 
   if (req.method === 'GET' && pathname === '/v1/etf-insights') {
-    const page = await queryPublicEtfInsights({
+    const options = {
       period: url.searchParams.get('period') || '',
       date: url.searchParams.get('date') || '',
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
-    });
+    };
+    const page = await cachedPublicRead(
+      'publicEtfInsights',
+      options,
+      () => queryPublicEtfInsights(options),
+      15000,
+    );
     json(res, 200, {
       data: page.rows,
       meta: {
@@ -180,7 +187,13 @@ export async function handlePublicEtfInsightRoutes({ req, res, url, pathname }) 
   const byId = pathname.match(/^\/v1\/etf-insights\/([^/]+)$/);
   if (req.method === 'GET' && byId) {
     const id = decodeURIComponent(byId[1]);
-    const result = await queryPublicEtfInsights({ id, limit: 1 });
+    const options = { id, limit: 1 };
+    const result = await cachedPublicRead(
+      'publicEtfInsights',
+      options,
+      () => queryPublicEtfInsights(options),
+      15000,
+    );
     const row = result.rows[0];
     if (!row) {
       json(res, 404, { error: 'NOT_FOUND' });

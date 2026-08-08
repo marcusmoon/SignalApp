@@ -44,6 +44,8 @@ server.listen(config.port, config.host, () => {
 });
 
 const stopJobLockMaintenance = startJobLockMaintenance({ intervalMs: config.jobLockMaintenanceIntervalMs });
+// Single-process deploy: keep scheduler on the API server (SIGNAL_SCHEDULER_ENABLED default true).
+// Separate worker: set SIGNAL_SCHEDULER_ENABLED=false on the API process so only the worker ticks jobs.
 const stopScheduler = config.schedulerEnabled
   ? startScheduler()
   : () => {};

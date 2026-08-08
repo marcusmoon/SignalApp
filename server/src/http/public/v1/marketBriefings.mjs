@@ -1,4 +1,5 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
+import { cachedPublicRead } from '../../../db/publicReadCache.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
 import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
@@ -183,7 +184,7 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
   }
 
   if (req.method === 'GET' && pathname === '/v1/market-briefings') {
-    const page = await queryPublicMarketBriefings({
+    const options = {
       market: url.searchParams.get('market'),
       session: url.searchParams.get('session'),
       date: url.searchParams.get('date'),
@@ -192,7 +193,13 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
       locale: url.searchParams.get('locale') || 'ko',
-    });
+    };
+    const page = await cachedPublicRead(
+      'publicMarketBriefings',
+      options,
+      () => queryPublicMarketBriefings(options),
+      15000,
+    );
     json(res, 200, {
       data: page.rows.map(publicBriefing),
       meta: {

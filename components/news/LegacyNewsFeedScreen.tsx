@@ -283,7 +283,6 @@ export function LegacyNewsFeedScreen({
   useEffect(() => {
     if (!hasSignalApi()) return;
     if (!isFocused) return;
-    const pollSegments: NewsSegmentKey[] = ['all', 'global', 'korea', 'crypto', 'it', 'video'];
 
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
       if (seg === 'video') {
@@ -298,19 +297,16 @@ export function LegacyNewsFeedScreen({
 
     const poll = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      await Promise.all(
-        pollSegments.map(async (seg) => {
-          try {
-            const latestId = await fetchLatestIdForSegment(seg);
-            if (!latestId) return;
-            const seen = latestSeenIdBySegmentRef.current[seg];
-            if (!seen) return;
-            if (latestId !== seen) markSegmentHasNewContent(seg);
-          } catch {
-            // 폴링 에러는 무시
-          }
-        }),
-      );
+      const seg = segmentRef.current;
+      try {
+        const latestId = await fetchLatestIdForSegment(seg);
+        if (!latestId) return;
+        const seen = latestSeenIdBySegmentRef.current[seg];
+        if (!seen) return;
+        if (latestId !== seen) markSegmentHasNewContent(seg);
+      } catch {
+        // 폴링 에러는 무시
+      }
     };
     const id = setInterval(() => void poll(), feedUnreadCheckMs);
     return () => clearInterval(id);
@@ -428,7 +424,7 @@ export function LegacyNewsFeedScreen({
           const results = await Promise.all(
             HOME_DIGEST_CATEGORIES.map((cat) =>
               fetchSignalNewsDigests(
-                { category: cat, limit: 30, batches: 10, locale },
+                { category: cat, limit: 12, batches: 2, locale },
                 { cacheMode },
               ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
             ),
@@ -436,7 +432,7 @@ export function LegacyNewsFeedScreen({
           return results.flatMap((page) => page.items);
         }
         const page = await fetchSignalNewsDigests(
-          { category, limit: 30, batches: 10, locale },
+          { category, limit: 12, batches: 2, locale },
           { cacheMode },
         ).catch(() => null);
         return page?.items || [];

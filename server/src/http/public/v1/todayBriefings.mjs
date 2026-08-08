@@ -1,4 +1,5 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
+import { cachedPublicRead } from '../../../db/publicReadCache.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
 import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
@@ -127,7 +128,7 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
   }
 
   if (req.method === 'GET' && (pathname === '/v1/today-briefing' || pathname === '/v1/today-briefings')) {
-    const page = await queryPublicTodayBriefings({
+    const options = {
       id: url.searchParams.get('id'),
       locale: url.searchParams.get('locale') || 'ko',
       status: url.searchParams.get('status') || 'published',
@@ -136,7 +137,13 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       to: url.searchParams.get('to'),
       limit: url.searchParams.get('limit') || (pathname === '/v1/today-briefing' ? 1 : 10),
       offset: url.searchParams.get('offset') || 0,
-    });
+    };
+    const page = await cachedPublicRead(
+      'publicTodayBriefings',
+      options,
+      () => queryPublicTodayBriefings(options),
+      15000,
+    );
     if (pathname === '/v1/today-briefing') {
       json(res, 200, { data: page.rows[0] || null, meta: { found: page.rows.length > 0 } });
       return true;

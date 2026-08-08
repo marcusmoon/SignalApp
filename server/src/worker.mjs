@@ -5,6 +5,7 @@ import { startNotificationSender } from './notifications/sender.mjs';
 
 console.log(`Signal worker started (dbRuntime=postgres configured=${Boolean(config.databaseUrl)})`);
 const stopJobLockMaintenance = startJobLockMaintenance({ intervalMs: config.jobLockMaintenanceIntervalMs });
+// When API and worker are split, enable the scheduler here and set SIGNAL_SCHEDULER_ENABLED=false on the API process.
 const stopScheduler = config.schedulerEnabled
   ? startScheduler()
   : () => {};

@@ -18,6 +18,7 @@ import type { AppTheme } from '@/constants/theme';
 import { SourceBadge } from '@/components/signal/SourceBadge';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -66,8 +67,9 @@ export function NewsCard({
   );
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
+  const symbolLogoUrl = pickSymbolMetaLogoUrl(item);
   const symbolLabel =
-    companyNameForSymbolUi(item.symbolMeta?.name, symbol) ||
+    companyNameForSymbolUi(pickSymbolMetaName(item), symbol) ||
     item.symbolMeta?.displaySymbol?.trim() ||
     item.ticker;
   const showSourceInHeader =
@@ -196,7 +198,7 @@ export function NewsCard({
           hitSlop={8}
           style={styles.compactTickerWrap}>
           <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={18} imageUrl={item.symbolMeta?.logoUrl} />
+            <SymbolLogo symbol={symbol} size={18} imageUrl={symbolLogoUrl} />
             <Text style={styles.compactTicker} numberOfLines={1}>
               {headerLabel}
             </Text>
@@ -221,7 +223,7 @@ export function NewsCard({
             hitSlop={8}
             style={styles.metaLead}>
             <View style={styles.tickerLead}>
-              <SymbolLogo symbol={symbol} size={20} imageUrl={item.symbolMeta?.logoUrl} />
+              <SymbolLogo symbol={symbol} size={20} imageUrl={symbolLogoUrl} />
               <Text style={styles.ticker} numberOfLines={1}>
                 {headerLabel}
               </Text>

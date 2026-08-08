@@ -120,9 +120,38 @@ import {
   cachedPublicRead,
   clearPublicApiReadCache,
   clearPublicReadCache,
+  clearPublicReadCacheByNamespaces,
 } from './db/publicReadCache.mjs';
 
-export { clearPublicApiReadCache };
+export { clearPublicApiReadCache, clearPublicReadCacheByNamespaces };
+
+/** Collection key → public read cache namespaces to invalidate after writes. */
+const COLLECTION_PUBLIC_READ_NAMESPACES = {
+  newsItems: ['publicNews', 'publicNewsDigests'],
+  newsTranslations: ['publicNews', 'publicNewsDigests'],
+  newsSources: ['publicNewsSources'],
+  newsDigestItems: ['publicNewsDigests'],
+  disclosures: ['publicDisclosures', 'publicDisclosureDigests', 'publicDisclosureById'],
+  disclosureDigestItems: ['publicDisclosureDigests'],
+  marketQuotes: ['publicMarketQuotes'],
+  coinMarkets: ['publicCoinMarkets'],
+  calendarEvents: ['publicCalendar', 'publicCalendarDateSummaries'],
+  youtubeVideos: ['publicYoutube', 'publicYoutubeChannels'],
+  marketBriefings: ['publicMarketBriefings'],
+  todayBriefings: ['publicTodayBriefings'],
+  etfInsights: ['publicEtfInsights'],
+  marketLists: ['publicMarketLists', 'publicMarketList'],
+  communityPosts: ['publicCommunity', 'publicCommunityById'],
+  priceSeries: ['publicPriceSeriesCandles'],
+  // notificationItems: no public feed cache
+};
+
+export function invalidatePublicReadCacheForCollection(collectionKey) {
+  const key = cleanText(collectionKey);
+  const namespaces = COLLECTION_PUBLIC_READ_NAMESPACES[key];
+  if (!namespaces?.length) return;
+  clearPublicReadCacheByNamespaces(namespaces);
+}
 
 const SESSION_DAYS = 90;
 let dbExclusiveChain = Promise.resolve();
@@ -795,7 +824,7 @@ export async function upsertCollectionRows(collectionKey, rows = []) {
         throw error;
       }
     });
-    clearPublicReadCache();
+    invalidatePublicReadCacheForCollection(collectionKey);
     return { count: safeRows.length };
   });
 }
@@ -818,7 +847,7 @@ export async function patchCollectionPayload(collectionKey, key, patch = {}) {
           else next[spec.pk] = id;
         }
         await insertCollectionRow(client, spec, next, Number(current.rows[0]?.position) || 0);
-        clearPublicReadCache();
+        invalidatePublicReadCacheForCollection(collectionKey);
         return next;
       } catch (error) {
         throw error;
@@ -855,7 +884,7 @@ export async function deleteCollectionPayloads(collectionKey, keys = []) {
   return withDbExclusive(async () => {
     await ensureSeeded();
     const result = await queryKysely(`DELETE FROM ${spec.table} WHERE ${spec.pk} = ANY($1::text[])`, [ids]);
-    clearPublicReadCache();
+    invalidatePublicReadCacheForCollection(collectionKey);
     return { deleted: Number(result.rowCount) || 0 };
   });
 }
@@ -903,7 +932,7 @@ export async function replaceCollectionPayloads(collectionKey, rows = []) {
           const key = cleanText(row.id);
           if (key && !seen.has(key)) await client.query(`DELETE FROM ${spec.table} WHERE ${spec.pk} = $1`, [key]);
         }
-        clearPublicReadCache();
+        invalidatePublicReadCacheForCollection(collectionKey);
         return safeRows;
       } catch (error) {
         throw error;
@@ -930,7 +959,8 @@ export async function patchSingletonPayload(settingKey, patch = {}) {
         const current = await client.query(`SELECT payload FROM ${spec.table} WHERE ${spec.pk} = $1 FOR UPDATE`, [spec.id]);
         const next = { ...(payloadFromRow(current.rows[0]) || {}), ...(patch && typeof patch === 'object' ? patch : {}) };
         await insertSingleton(client, spec, next);
-        clearPublicReadCache();
+        // app_settings feeds publicYoutubeChannels + appSettings reads
+        clearPublicReadCacheByNamespaces(['appSettings', 'publicYoutubeChannels']);
         return next;
       } catch (error) {
         throw error;
@@ -1003,7 +1033,7 @@ export async function pruneCommunityPostsForSource(source, providerItemIds = [])
   return withDbExclusive(async () => {
     await ensureSeeded();
     const result = await pruneCommunityPostsForSourceRows(source, providerItemIds);
-    clearPublicReadCache();
+    invalidatePublicReadCacheForCollection('communityPosts');
     return result;
   });
 }
@@ -1376,7 +1406,6 @@ export async function createAppUser(payload) {
         await acceptTerms(client, id, payload.acceptedTerms || [], payload.locale || 'ko');
         const row = await client.query('SELECT * FROM app_users WHERE id = $1', [id]);
         const session = await createSession(client, id, payload.deviceId);
-        clearPublicReadCache();
         return { user: publicUser(row.rows[0]), session };
       } catch (error) {
         throw error;
@@ -1954,7 +1983,6 @@ export async function listAppUserTermAcceptances(userId) {
 
 export async function upsertNotification(next) {
   const row = await upsertNotificationRow(next);
-  clearPublicReadCache();
   return row;
 }
 

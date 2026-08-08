@@ -533,6 +533,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         });
 
         // Lazy-load data for views that need it.
+        if (resolvedView === 'dashboard') void loadDashboard();
+        if (resolvedView === 'news') void loadNews();
+        if (resolvedView === 'youtube') void loadYoutube();
+        if (resolvedView === 'translations') void loadTranslationSettings();
         if (resolvedView === 'calendar') void loadCalendar();
         if (resolvedView === 'app-users') {
           const title = $('appUsersPageTitle');
@@ -618,6 +622,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (activeSettingsTab === 'lists') void loadMarketLists();
         }
         if (resolvedView === 'jobs') {
+          void loadJobs();
           setJobTab(state.jobTab || 'info');
         }
       }
@@ -658,28 +663,44 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         $('youtubeBulkBox')?.classList.toggle('hidden', m !== 'bulk');
       }
 
+      function loadersForAdminView(view) {
+        const v = view || 'dashboard';
+        if (v === 'dashboard') return [];
+        if (v === 'jobs') return [state.jobTab === 'runs' ? loadJobRuns() : loadJobs()];
+        if (v === 'monitoring') return [loadMonitoring()];
+        if (v === 'errors') return [loadErrors()];
+        if (v === 'news') return [loadNews()];
+        if (v === 'youtube') return [loadYoutube()];
+        if (v === 'translations') return [loadTranslationSettings()];
+        if (v === 'calendar') return [loadCalendar()];
+        if (v === 'app-users' || v === 'app-devices' || v === 'app-notifications' || v === 'app-push') {
+          return [loadAppUsers()];
+        }
+        if (v === 'settings-keys') return [loadProviderSettings()];
+        if (v === 'settings-users') return [loadAdminUsers()];
+        if (v === 'settings-legal') return [loadLegalTerms()];
+        if (v === 'settings-lists') return [loadMarketLists()];
+        if (v === 'settings-symbols') return [loadSymbolProfiles()];
+        if (v === 'settings-sources') return [loadNewsSourceSettings(), loadNewsSources()];
+        if (v === 'settings-youtube') return [loadYoutubeChannels()];
+        if (v === 'settings' || v === 'settings-theme' || v === 'settings-danger') return [];
+        return [];
+      }
+
       /**
-       * Re-fetch and re-render all main admin panels. innerHTML views use textFor() at render time,
-       * so they must run again after signalAdminLanguage changes (applyAdminLanguage alone is not enough).
+       * Re-fetch lightweight essentials + the active view only.
+       * innerHTML views use textFor() at render time, so the visible panel must run again after language change.
        */
       async function reloadAllAdminData() {
-        await Promise.all([
-          loadDashboard(),
-          loadMonitoring(),
-          loadErrors(),
-          loadJobs(),
-          loadJobRuns(),
-          loadTranslationSettings(),
-          loadProviderSettings(),
-          loadAdminUsers(),
-          loadAppUsers(),
-          loadMarketLists(),
-          loadNewsSourceSettings(),
-          loadNewsSources(),
-          loadNews(),
-          loadCalendar(),
-          loadYoutube(),
-        ]);
+        const view = state.view || 'dashboard';
+        const essentials =
+          view === 'monitoring'
+            ? [loadDashboard(), loadMonitoring()]
+            : view === 'errors'
+              ? [loadDashboard(), loadErrors()]
+              : [loadDashboard(), loadJobs()];
+        // Active-view loaders (jobs/monitoring/errors may overlap essentials; duplicate fetches are acceptable).
+        await Promise.all([...essentials, ...loadersForAdminView(view)]);
         buildSearchIndex();
         const gsq = $('globalSearchQuery');
         const gsr = $('globalSearchResults');

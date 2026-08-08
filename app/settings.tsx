@@ -59,10 +59,6 @@ import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import type { FeedContentWeightId } from '@/services/feedContentWeightPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
 import type { ThemeAppearanceMode } from '@/services/themeAppearancePreference';
-import { clearCalendarCache } from '@/services/cache/calendarCache';
-import { clearNewsCache } from '@/services/cache/newsCache';
-import { clearQuotesCache } from '@/services/cache/quotesCache';
-import { clearYoutubeCache } from '@/services/cache/youtubeCache';
 import { clearSignalApiCache } from '@/integrations/signal-api/cache';
 import {
   loadQuotesListLimits,
@@ -1467,10 +1463,6 @@ export default function SettingsScreen({
   }, [embedded, reloadAllSettingsPrefs]);
 
   const onClearAllCaches = () => {
-    clearYoutubeCache();
-clearCalendarCache();
-    clearQuotesCache();
-    clearNewsCache();
     clearSignalApiCache();
     if (Platform.OS === 'web') {
       if (memoryCacheClearTimerRef.current) {

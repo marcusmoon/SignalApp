@@ -88,6 +88,7 @@ import {
   homeAnchorCoinCount,
   pickHomeAnchorCoinsFromList,
 } from '@/domain/home/homeAnchorCoins';
+import { buildHomeQuoteBatchSymbols } from '@/domain/home/homeQuoteBatch';
 import {
   HOME_INDEX_DEFS,
   HOME_INDEX_SYMBOLS,
@@ -188,10 +189,11 @@ import {
   utcRangeForLocalYmd,
 } from '@/utils/date';
 
-const ISSUE_FETCH_LIMIT = 24;
+const ISSUE_FETCH_LIMIT = 12;
 const BRIEFING_LIMIT = 30;
 const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
+const HOME_COIN_FETCH_LIMIT = Math.max(HOME_ANCHOR_COIN_FETCH_POOL, 8);
 
 type HomeQuotesLayerAsOfView = {
   label: string | null;
@@ -281,7 +283,7 @@ async function fetchTopIssues(
           category,
           ...range,
           limit: ISSUE_FETCH_LIMIT,
-          batches: 3,
+          batches: 1,
           locale,
         },
         { cacheMode },
@@ -506,34 +508,49 @@ export function HomeFocusContent({
     let cancelled = false;
     void (async () => {
       const next = new Map<string, string>();
+      const quoteByKey = new Map<string, SignalApiMarketQuote>();
+      try {
+        const rows = await fetchSignalMarketQuotes(
+          { symbols, limit: symbols.length },
+          { cacheMode: signalCacheMode() },
+        );
+        for (const row of rows) {
+          const key = String(row.symbol || '').trim().toUpperCase();
+          if (key) quoteByKey.set(key, row);
+          const display = String(row.symbolMeta?.displaySymbol || row.displaySymbol || '')
+            .trim()
+            .toUpperCase();
+          if (display) quoteByKey.set(display, row);
+        }
+      } catch {
+        // fall through to profile hydration for missing names
+      }
+
+      const stillMissing: string[] = [];
+      for (const symbol of symbols) {
+        const row = quoteByKey.get(symbol.trim().toUpperCase());
+        const metaName = String(pickSymbolMetaName(row) || '').trim();
+        if (isUsableCompanyName(metaName, symbol)) {
+          next.set(homeKeywordSymbolKey(symbol), metaName);
+          continue;
+        }
+        stillMissing.push(symbol);
+      }
+
       await Promise.all(
-        symbols.map(async (symbol) => {
+        stillMissing.map(async (symbol) => {
           try {
-            const rows = await fetchSignalMarketQuotes(
-              { symbols: [symbol], limit: 1 },
-              { cacheMode: signalCacheMode() },
-            );
-            const row = rows[0];
-            const metaName = String(row?.symbolMeta?.name || '').trim();
-            if (isUsableCompanyName(metaName, symbol)) {
-              next.set(homeKeywordSymbolKey(symbol), metaName);
-              return;
-            }
-            const quoteName = String(row?.name || '').trim();
-            if (isUsableCompanyName(quoteName, symbol)) {
-              next.set(homeKeywordSymbolKey(symbol), quoteName);
-              return;
+            const profile = await fetchSignalStockProfile(symbol);
+            const name = String(profile?.name || '').trim();
+            if (isUsableCompanyName(name, symbol)) {
+              next.set(homeKeywordSymbolKey(symbol), name);
             }
           } catch {
             // keep ticker label
           }
-          const profile = await fetchSignalStockProfile(symbol);
-          const name = String(profile?.name || '').trim();
-          if (isUsableCompanyName(name, symbol)) {
-            next.set(homeKeywordSymbolKey(symbol), name);
-          }
         }),
       );
+
       if (cancelled || next.size === 0) return;
       setKeywordQuoteNames((prev) => {
         const merged = new Map(prev);
@@ -670,32 +687,28 @@ export function HomeFocusContent({
       }
       setCalendarEvents([]);
 
+      const allSymbols = isToday
+        ? buildHomeQuoteBatchSymbols(symbols, HOME_INDEX_SYMBOLS, HOME_FX_SYMBOLS)
+        : [];
+      const calendarRangeEnd =
+        selectedYmd === todayYmd
+          ? homeCalendarChipRangeEnd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS)
+          : selectedYmd;
+
       const [
         nextTodayBriefing,
         nextIssues,
-        quoteRows,
-        indexQuoteRows,
-        fxQuoteRows,
+        allQuoteRows,
         briefingRows,
         nextEtfInsight,
         coinRows,
+        calendarRows,
       ] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
-        symbols.length > 0
-          ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode }).catch(
-              () => [] as SignalApiMarketQuote[],
-            )
-          : Promise.resolve([] as SignalApiMarketQuote[]),
-        isToday
+        allSymbols.length > 0
           ? fetchSignalMarketQuotes(
-              { symbols: [...HOME_INDEX_SYMBOLS], limit: HOME_INDEX_SYMBOLS.length },
-              { cacheMode },
-            ).catch(() => [] as SignalApiMarketQuote[])
-          : Promise.resolve([] as SignalApiMarketQuote[]),
-        isToday
-          ? fetchSignalMarketQuotes(
-              { symbols: [...HOME_FX_SYMBOLS], limit: HOME_FX_SYMBOLS.length },
+              { symbols: allSymbols, limit: allSymbols.length },
               { cacheMode },
             ).catch(() => [] as SignalApiMarketQuote[])
           : Promise.resolve([] as SignalApiMarketQuote[]),
@@ -705,19 +718,22 @@ export function HomeFocusContent({
         ).catch(() => [] as SignalApiMarketBriefing[]),
         fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }).catch(() => null),
         isToday
-          ? fetchSignalCoins({ limit: 40 }, { cacheMode }).catch(() => [])
+          ? fetchSignalCoins({ limit: HOME_COIN_FETCH_LIMIT }, { cacheMode }).catch(() => [])
           : Promise.resolve([]),
+        fetchSignalCalendar(
+          {
+            from: shiftYmd(selectedYmd, -1),
+            to: calendarRangeEnd,
+            limit: 120,
+          },
+          { cacheMode },
+        ).catch(() => []),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
-      for (const item of quoteRows) {
+      for (const item of allQuoteRows) {
         const row = mapSignalQuoteToRow(item);
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
-      }
-      const indexBySymbol = new Map<string, QuoteRow>();
-      for (const item of indexQuoteRows) {
-        const row = mapSignalQuoteToRow(item);
-        for (const key of quoteLookupKeys(item, row)) indexBySymbol.set(key, row);
       }
       if (generation !== loadGenerationRef.current) return;
       setTodayBriefing(nextTodayBriefing);
@@ -733,7 +749,7 @@ export function HomeFocusContent({
           ? HOME_INDEX_DEFS.map((def) => {
               const key = def.symbol.toUpperCase();
               return (
-                indexBySymbol.get(key) ?? {
+                quoteBySymbol.get(key) ?? {
                   symbol: def.symbol,
                   quote: null,
                   error: 'NO_SERVER_QUOTE',
@@ -742,17 +758,12 @@ export function HomeFocusContent({
             })
           : [],
       );
-      const fxBySymbol = new Map<string, QuoteRow>();
-      for (const item of fxQuoteRows) {
-        const row = mapSignalQuoteToRow(item);
-        for (const key of quoteLookupKeys(item, row)) fxBySymbol.set(key, row);
-      }
       setFxQuotes(
         isToday
           ? HOME_FX_DEFS.map((def) => {
               const key = def.symbol.toUpperCase();
               return (
-                fxBySymbol.get(key) ?? {
+                quoteBySymbol.get(key) ?? {
                   symbol: def.symbol,
                   quote: null,
                   error: 'NO_SERVER_QUOTE',
@@ -771,32 +782,16 @@ export function HomeFocusContent({
         ),
       );
       setEtfInsight(nextEtfInsight);
-
-      void (async () => {
-        const calendarRangeEnd = selectedYmd === todayYmd
-          ? homeCalendarChipRangeEnd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS)
-          : selectedYmd;
-        const calendarRows = await fetchSignalCalendar(
-          {
-            from: shiftYmd(selectedYmd, -1),
-            to: calendarRangeEnd,
-            limit: 120,
-          },
-          { cacheMode },
-        ).catch(() => []);
-
-        if (generation !== loadGenerationRef.current) return;
-        setCalendarEvents(
-          filterHomeCalendarEvents(
-            calendarRows
-              .map((row) => signalCalendarToCalendarEvent(row))
-              .filter((row): row is CalendarEvent => row != null),
-            watchlist,
-            selectedYmd,
-            calendarRangeEnd,
-          ),
-        );
-      })();
+      setCalendarEvents(
+        filterHomeCalendarEvents(
+          calendarRows
+            .map((row) => signalCalendarToCalendarEvent(row))
+            .filter((row): row is CalendarEvent => row != null),
+          watchlist,
+          selectedYmd,
+          calendarRangeEnd,
+        ),
+      );
     } catch (e) {
       if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));

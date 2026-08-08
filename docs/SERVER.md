@@ -25,6 +25,7 @@ npm --prefix server run worker
 | `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/news/ingest`, `/v1/market-briefings/ingest` 등 ingest webhook에 적재할 때 쓰는 토큰 |
 | `SIGNAL_JOB_LOCK_TTL_MS` | Job lock 기본 TTL(ms). Job별 `lockTtlSeconds`가 없을 때 사용 |
 | `SIGNAL_JOB_LOCK_MAINTENANCE_MS` | 만료 lock·orphaned run 정리 주기(ms, 기본 60000) |
+| `SIGNAL_SCHEDULER_ENABLED` | Job 스케줄러 tick 여부 (기본 `true`). 단일 프로세스 배포는 API 서버에서 켠다. API와 worker를 분리할 때는 API에 `false`, worker에 `true` |
 | `SIGNAL_NOTIFICATION_SENDER_ENABLED` | worker 푸시 발송 루프 (기본 `false`). 알림함 목록은 sender 없이도 lazy link로 표시되나, **기기 푸시**는 `true` + worker 필요 |
 | `SIGNAL_NOTIFICATION_PUSH_PROVIDER` | `mock` \| `expo` (기본 `mock`) |
 
@@ -131,6 +132,8 @@ flyway \
 ## Job 운영
 
 Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(stage)** 로 묶여 표시되며, `sync` operation Job은 한 번의 실행에서 수집과 보정을 연속 수행한다.
+
+단일 프로세스 배포에서는 API 서버(`server.mjs`)가 스케줄러를 켠다(`SIGNAL_SCHEDULER_ENABLED` 기본 `true`). 별도 worker를 둘 때는 API 프로세스에 `SIGNAL_SCHEDULER_ENABLED=false`를 주고 worker만 tick한다.
 
 - **area**: `news`, `calendar`, `youtube`, `market`, `signal`, `legacy`
 - **stage**: `ingest`(수집), `enrich`(가공), `maintain`(유지보수)

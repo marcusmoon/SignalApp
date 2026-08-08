@@ -10,6 +10,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { companyNameForSymbolUi } from '@/domain/symbols/symbolIdentity';
+import { pickSymbolMetaLogoUrl, pickSymbolMetaName } from '@/domain/symbols/symbolMetaDisplay';
 import {
   briefingSectorHeatCells,
   type BriefingSectorHeatCell,
@@ -97,12 +98,8 @@ function CompanyHighlightRow({
   const changePositive = hasChange ? isQuoteChangePositive({ changePercent: item.changePercent }) : null;
   const changeColor =
     changePositive === null ? theme.textMuted : changePositive ? changeColors.up : changeColors.down;
-  const companyName = item.name?.trim() || '';
-  const resolvedName = companyNameForSymbolUi(
-    item.symbolMeta?.name?.trim() || companyName || null,
-    item.symbol,
-  );
-  const resolvedLogoUrl = item.symbolMeta?.logoUrl || null;
+  const resolvedName = companyNameForSymbolUi(pickSymbolMetaName(item), item.symbol);
+  const resolvedLogoUrl = pickSymbolMetaLogoUrl(item);
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>

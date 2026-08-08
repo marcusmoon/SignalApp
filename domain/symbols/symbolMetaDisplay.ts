@@ -1,4 +1,3 @@
-import type { SignalApiSymbolMeta } from '@/integrations/signal-api';
 import {
   companyNameForSymbolUi,
   normalizeDisplaySymbol,
@@ -6,13 +5,20 @@ import {
   type ResolvedSymbolIdentity,
 } from './symbolIdentity.ts';
 
+type SymbolMetaDisplayLike = {
+  name?: string | null;
+  logoUrl?: string | null;
+  displaySymbol?: string | null;
+};
+
 type SymbolMetaRowLike = {
   symbol?: string | null;
   displaySymbol?: string | null;
   name?: string | null;
   companyName?: string | null;
   imageUrl?: string | null;
-  symbolMeta?: SignalApiSymbolMeta | null;
+  /** Feed rows may carry only the display fields from API symbolMeta. */
+  symbolMeta?: SymbolMetaDisplayLike | null;
 };
 
 /** Prefer API `symbolMeta.name`, then legacy name / companyName. */

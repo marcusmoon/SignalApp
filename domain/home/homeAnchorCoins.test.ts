@@ -1,5 +1,5 @@
 /**
- * 홈 시총 상위 코인 앵커 — compact 2 / wide 3 · 워치리스트 제외.
+ * 홈 코인 앵커 — compact 2 / wide 3 · 리스트 순 · 워치리스트 제외.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -18,19 +18,19 @@ describe('homeAnchorCoinCount', () => {
 });
 
 describe('pickHomeAnchorCoinsFromList', () => {
-  it('picks by marketCap desc, not list order', () => {
+  it('keeps API/list order (not marketCap re-rank)', () => {
     const rows = pickHomeAnchorCoinsFromList(
       [
-        { symbol: 'SOL', marketCap: 80 },
-        { symbol: 'BTC', marketCap: 1000 },
-        { symbol: 'ETH', marketCap: 400 },
-        { symbol: 'XRP', marketCap: 90 },
+        { symbol: 'BTC', marketCap: null },
+        { symbol: 'ETH', marketCap: null },
+        { symbol: 'BNB', marketCap: 100 },
+        { symbol: 'ADA', marketCap: 9999 },
       ],
       3,
     );
     assert.deepEqual(
       rows.map((row) => row.symbol),
-      ['BTC', 'ETH', 'XRP'],
+      ['BTC', 'ETH', 'BNB'],
     );
   });
 
@@ -39,15 +39,15 @@ describe('pickHomeAnchorCoinsFromList', () => {
       [
         { symbol: 'BTC', marketCap: 1000 },
         { symbol: 'ETH', marketCap: 400 },
-        { symbol: 'USDT', marketCap: 120 },
         { symbol: 'BNB', marketCap: 100 },
+        { symbol: 'SOL', marketCap: 90 },
       ],
       2,
       ['btc', 'eth'],
     );
     assert.deepEqual(
       rows.map((row) => row.symbol),
-      ['USDT', 'BNB'],
+      ['BNB', 'SOL'],
     );
   });
 });

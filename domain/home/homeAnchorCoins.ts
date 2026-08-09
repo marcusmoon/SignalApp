@@ -1,6 +1,7 @@
 /**
- * 홈 시세 섹션 하단 시총 상위 코인.
- * 별도 섹션 없이 워치리스트 아래 — compact 2 · wide(PC) 3.
+ * 홈 시세 섹션 하단 코인 앵커.
+ * Admin `crypto_symbols` 순(`/v1/coins` listPosition) — compact 2 · wide(PC) 3.
+ * 별도 섹션 없이 워치리스트 아래.
  */
 
 export const HOME_ANCHOR_COIN_COUNT_COMPACT = 2;
@@ -20,12 +21,7 @@ export function normalizeQuoteSymbol(symbol: string | null | undefined): string 
 
 type AnchorCoinFields = {
   symbol?: string | null;
-  marketCap?: number | null;
 };
-
-function marketCapValue(coin: AnchorCoinFields): number {
-  return typeof coin.marketCap === 'number' && Number.isFinite(coin.marketCap) ? coin.marketCap : -1;
-}
 
 /** 워치리스트에 이미 있으면 앵커 행에서 제외 (중복 타일 방지) */
 export function filterHomeAnchorCoinsNotInWatchlist<T extends { symbol: string }>(
@@ -40,7 +36,8 @@ export function filterHomeAnchorCoinsNotInWatchlist<T extends { symbol: string }
 }
 
 /**
- * 시총 상위 코인 선택. 목록 순서가 시총순이 아니어도 marketCap으로 정렬.
+ * 큐레이션 목록 순서를 유지해 상위 코인을 고른다.
+ * Yahoo chart는 marketCap을 안 주는 경우가 많아 시총 재정렬하지 않는다.
  * `excludeSymbols`에 있는 심볼은 건너뛰고 다음 순위로 채운다.
  */
 export function pickHomeAnchorCoinsFromList<T extends AnchorCoinFields>(
@@ -52,15 +49,9 @@ export function pickHomeAnchorCoinsFromList<T extends AnchorCoinFields>(
   if (max === 0) return [];
 
   const exclude = new Set(excludeSymbols.map(normalizeQuoteSymbol).filter(Boolean));
-  const ranked = [...coins].sort((a, b) => {
-    const diff = marketCapValue(b) - marketCapValue(a);
-    if (diff !== 0) return diff;
-    return normalizeQuoteSymbol(a.symbol).localeCompare(normalizeQuoteSymbol(b.symbol));
-  });
-
   const seen = new Set<string>();
   const rows: T[] = [];
-  for (const coin of ranked) {
+  for (const coin of coins) {
     const key = normalizeQuoteSymbol(coin.symbol);
     if (!key || seen.has(key) || exclude.has(key)) continue;
     seen.add(key);

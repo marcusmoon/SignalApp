@@ -174,7 +174,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | ETF 보조 | **섹터** (EN Sectors · JA セクター) | `etf_insights` |
   | 뉴스 이슈 | **뉴스** (EN News · JA ニュース) | news digests |
   | 캘린더 | **일정** | calendar |
-  | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 시총 상위 코인 → 환율(달러·JPY · 와이드만 위안, 국기 아이콘) |
+  | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 코인(Admin `crypto_symbols` 상위) → 환율(달러·JPY · 와이드만 위안, 국기 아이콘) |
   - 홈 섹션 제목 앞: `HomeSectionLeadIcon` (트렌드 `trending-up` · 히어로 `reader` · 뉴스 `newspaper` · 일정 `calendar` · 바로가기 `apps` · 시세 `stats-chart` · 섹터 `grid`). 홈에서는 `AiBadge` 없음. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 섹터 기준일 · 뉴스 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
@@ -221,7 +221,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 수급·종목 티커 탭 → 국내 Naver / 해외 Yahoo (`openFinanceSymbol`)
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정 칩은 자동
-- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 시총 상위 코인 → **환율**. 레이어 라인은 `지수 ------------------- [종가]` (레이어명 맨 앞 · 앞쪽 캡 라인 없음 · 우측 as-of는 헤더 `NEW`와 동일 칩). 레이어 **종가**/**Close**는 해당 레이어 **모든** 지수·주식·FX가 마감일 때만(코인 제외). 혼재(일부만 마감)면 헤더는 상대시간·마감 종목명 아래에만 **종가**/**Close**/**終値**. 레이어 Close가 있으면 타일 Close는 생략. 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`). **환율 슬롯**: compact(폰) 달러·JPY · wide(PC) +위안. JPY는 표시만 **×100**(100엔당 원), 라벨은 `JPY`. 환율 아이콘은 국기(`flagcdn.com` US/JP/CN). 지수 타일 아바타 글리프는 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`); 로고 이미지는 서버 `symbolMeta.logoUrl`이 있을 때만. 지수·주식·환율 as-of/`quoteTime`은 Yahoo `regularMarketTime`(시세 시각) — Job 수집 시각 아님. FX는 신선 창 1시간(지수 6시간과 다름) — 그 이상·주말이면 종가 판정(Yahoo Closed와 맞춤, “N시간 전”·요일 종가 지양)
+- 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 코인(큐레이션 상위 · 폰 2·와이드 3) → **환율**. 레이어 라인은 `지수 ------------------- [종가]` (레이어명 맨 앞 · 앞쪽 캡 라인 없음 · 우측 as-of는 헤더 `NEW`와 동일 칩). 레이어 **종가**/**Close**는 해당 레이어 **모든** 지수·주식·FX가 마감일 때만(코인 제외). 혼재(일부만 마감)면 헤더는 상대시간·마감 종목명 아래에만 **종가**/**Close**/**終値**. 레이어 Close가 있으면 타일 Close는 생략. 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`). **환율 슬롯**: compact(폰) 달러·JPY · wide(PC) +위안. JPY는 표시만 **×100**(100엔당 원), 라벨은 `JPY`. 환율 아이콘은 국기(`flagcdn.com` US/JP/CN). 지수 타일 아바타 글리프는 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`); 로고 이미지는 서버 `symbolMeta.logoUrl`이 있을 때만. 지수·주식·환율 as-of/`quoteTime`은 Yahoo `regularMarketTime`(시세 시각) — Job 수집 시각 아님. FX는 신선 창 1시간(지수 6시간과 다름) — 그 이상·주말이면 종가 판정(Yahoo Closed와 맞춤, “N시간 전”·요일 종가 지양)
 - 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**

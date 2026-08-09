@@ -588,7 +588,7 @@ export function HomeFocusContent({
     [quotes, watchlistDisplayCount],
   );
 
-  /** compact 2 · wide(PC) 3 — 시총순 풀에서 워치리스트 중복을 건너뛰고 채움 */
+  /** compact 2 · wide(PC) 3 — crypto_symbols 순 풀에서 워치리스트 중복을 건너뛰고 채움 */
   const homeAnchorCoinRows = useMemo(
     () =>
       filterHomeAnchorCoinsNotInWatchlist(
@@ -772,7 +772,7 @@ export function HomeFocusContent({
             })
           : [],
       );
-      // 시총순 여유분만 보관 — 화면 폭·워치리스트 중복은 렌더 시 다시 고른다
+      // 리스트(listPosition) 순 여유분만 보관 — 화면 폭·워치리스트 중복은 렌더 시 다시 고른다
       setAnchorCoins(
         pickHomeAnchorCoinsFromList(coinRows, HOME_ANCHOR_COIN_FETCH_POOL).map(mapSignalCoinToRow),
       );

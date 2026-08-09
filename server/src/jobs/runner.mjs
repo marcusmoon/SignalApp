@@ -12,6 +12,7 @@ import {
   releasePollingJobLock,
   upsertCollectionRows,
   pruneCommunityPostsForSource,
+  pruneCoinMarketsKeepingSymbols,
   upsertById,
   upsertPollingJobRun,
 } from '../db.mjs';
@@ -23,6 +24,7 @@ import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.m
 import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import { fetchYahooIndexMarketQuotes } from '../providers/market/yahooIndexQuotes.mjs';
 import { fetchYahooFxMarketQuotes } from '../providers/market/yahooFxQuotes.mjs';
+import { baseCryptoSymbol, fetchYahooCoinMarkets } from '../providers/market/yahooCoinQuotes.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
@@ -170,7 +172,8 @@ async function readJobContext(job) {
       (handler === 'daily_bars' ||
         handler === 'market_quotes_kr' ||
         handler === 'market_quotes_indices' ||
-        handler === 'market_quotes_fx'))
+        handler === 'market_quotes_fx' ||
+        handler === 'coin_markets'))
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
   }
@@ -401,7 +404,22 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       ],
     };
   }
+  if (effective.provider === 'yahoo' && effective.handler === 'coin_markets') {
+    const listKey = params?.listKey || 'crypto_symbols';
+    const symbols =
+      Array.isArray(params?.symbols) && params.symbols.length > 0
+        ? params.symbols
+        : marketListSymbols(dbBefore, listKey);
+    const limit = Math.max(1, Math.min(50, Number(params?.limit) || symbols.length || 10));
+    const selected = symbols.slice(0, limit);
+    return {
+      kind: 'coinMarkets',
+      keepSymbols: selected.map((value) => baseCryptoSymbol(value)).filter(Boolean),
+      rows: await fetchYahooCoinMarkets({ symbols: selected }),
+    };
+  }
   if (effective.provider === 'coingecko' && effective.handler === 'coin_markets') {
+    // Legacy fallback — prefer yahoo + crypto_symbols (V15).
     return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(params || {}) };
   }
   if (effective.provider === 'yahoo' && effective.handler === 'daily_bars') {
@@ -448,6 +466,9 @@ async function persistHandlerResult(result, rows, { onHeartbeat } = {}) {
     const savedAt = nowIso();
     const safeRows = rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt }));
     await upsertCollectionRows(directCollection, safeRows);
+    if (result.kind === 'coinMarkets' && Array.isArray(result.keepSymbols)) {
+      await pruneCoinMarketsKeepingSymbols(result.keepSymbols);
+    }
     if (result.kind === 'community') {
       const idsBySource = new Map();
       for (const row of safeRows) {

@@ -63,6 +63,7 @@ import {
   queryPublicDisclosureDigestRows,
 } from './db/repositories/disclosureDigestRepository.mjs';
 import {
+  pruneCoinMarketsKeepingSymbols as pruneCoinMarketsKeepingSymbolsRows,
   queryPublicCoinMarketRows,
   queryPublicMarketQuoteRows,
 } from './db/repositories/marketRepository.mjs';
@@ -1034,6 +1035,15 @@ export async function pruneCommunityPostsForSource(source, providerItemIds = [])
     await ensureSeeded();
     const result = await pruneCommunityPostsForSourceRows(source, providerItemIds);
     invalidatePublicReadCacheForCollection('communityPosts');
+    return result;
+  });
+}
+
+export async function pruneCoinMarketsKeepingSymbols(symbols = []) {
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    const result = await pruneCoinMarketsKeepingSymbolsRows(symbols);
+    invalidatePublicReadCacheForCollection('coinMarkets');
     return result;
   });
 }

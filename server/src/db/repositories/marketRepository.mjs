@@ -207,6 +207,26 @@ async function enrichMarketQuoteRows(rows = []) {
   });
 }
 
+/** Keep only coin rows whose `symbol` is in the curated list (Yahoo job). */
+export async function pruneCoinMarketsKeepingSymbols(symbols = []) {
+  const keep = [
+    ...new Set(
+      (Array.isArray(symbols) ? symbols : [])
+        .map((value) => String(value || '').trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (keep.length === 0) return { deleted: 0 };
+  const result = await queryKysely(
+    `
+      DELETE FROM coin_markets
+      WHERE NOT (upper(COALESCE(symbol, '')) = ANY($1::text[]))
+    `,
+    [keep],
+  );
+  return { deleted: Number(result.rowCount) || 0 };
+}
+
 export async function queryPublicCoinMarketRows(options = {}) {
   const { limit, offset } = pageOptions(options, 30);
   const params = [];
@@ -221,12 +241,20 @@ export async function queryPublicCoinMarketRows(options = {}) {
     )`);
   }
   params.push(limit + 1, offset);
+  // Prefer Admin list order (`listPosition` from Yahoo crypto job); else market cap.
   const result = await queryKysely(
     `
       SELECT payload
       FROM coin_markets
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY ${numberSqlExpression(`payload->>'marketCap'`)} DESC
+      ORDER BY
+        CASE
+          WHEN payload ? 'listPosition'
+            AND NULLIF(payload->>'listPosition', '') ~ '^[0-9]+$'
+          THEN (payload->>'listPosition')::int
+          ELSE 999999
+        END ASC,
+        ${numberSqlExpression(`payload->>'marketCap'`)} DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

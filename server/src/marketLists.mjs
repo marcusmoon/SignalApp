@@ -13,6 +13,8 @@ export const MARKET_LIST_KEYS = [
   'home_indices',
   /** Home 환율 strip (Yahoo FX pairs). */
   'home_fx',
+  /** Quotes/home coin segment — curated Yahoo BASE-USD pairs (Admin-managed). */
+  'crypto_symbols',
 ];
 
 export function normalizeMarketSymbol(value) {

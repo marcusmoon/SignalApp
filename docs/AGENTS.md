@@ -42,7 +42,7 @@
 - **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
 - **화면 레이아웃·여백**은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)와 `constants/screenLayout.ts`를 따른다.
 - **PTR·chip·폴링·피드 캐시 상호작용**은 [FEED-INTERACTION.md](./FEED-INTERACTION.md)를 따른다.
-- **종목 로고**는 앱 에셋으로 두지 않는다. 주식·ETF=`symbolMeta.logoUrl`(서버 `symbol_profiles`), 코인=`/v1/coins` `imageUrl`(CoinGecko). URL 없으면 글자 아바타. [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) · [SERVER.md](./SERVER.md).
+- **종목 로고**는 앱 에셋으로 두지 않는다. 주식·ETF=`symbolMeta.logoUrl`(서버 `symbol_profiles`), 코인=`/v1/coins` `imageUrl`(Yahoo Job·CDN). URL 없으면 글자 아바타. [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) · [SERVER.md](./SERVER.md).
 
 ## 피드 API 캐시
 

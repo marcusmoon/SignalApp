@@ -52,6 +52,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | `domain/quotes/changeColorConvention` | 한/미 등락 색 규칙 |
 | `domain/quotes/constants` · `segmentOrder` · `listLimits` | 시세 탭 `watch`·`etf`·`coin` · 구 `popular`/`mcap`→`etf` 마이그레이션 |
 | 시세 ETF 목록 순서 | `etf_symbols` 저장 순 (`QuotesContent`가 `symbols`로 조회·재정렬; segment-only는 `fetched_at` DESC) |
+| 시세 코인 목록 | Admin `crypto_symbols`(Yahoo `BASE-USD`) → Job `market_coins_top` → `GET /v1/coins`가 `listPosition` 순 |
 | `domain/quotes/etfGroups` | ETF 연속 구간 헤더(지수·섹터·해외·매크로) |
 | 시세 관심 드래그 | `QuotesContent` + `saveWatchlistSymbols` — 행 롱프레스로 저장순 변경 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
@@ -132,7 +133,7 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 | 구분 | 우선 URL | 실패·미등록 시 |
 |---|---|---|
 | 주식·ETF | API `symbolMeta.logoUrl` (`symbol_profiles`; 서버가 Parqet URL 등을 저장) | 글자 아바타 (클라이언트 URL 합성 없음) |
-| 코인 | `GET /v1/coins`의 `imageUrl` (CoinGecko) · 가능하면 `symbolMeta.logoUrl` | 글자 아바타 |
+| 코인 | `GET /v1/coins`의 `imageUrl` (Yahoo Job·CDN) · 가능하면 `symbolMeta.logoUrl` | 글자 아바타 |
 | 홈 환율 | `flagcdn.com/w80/{us\|jp\|cn}.png` (`homeFxFlagImageUrl`) | 글자 아바타 (`USD`/`JPY`/`CNY`) |
 
 표시명·코드도 동일하게 **`symbolMeta.name` / `symbolMeta.displaySymbol`** 을 우선한다. 레거시 `name`·티커 문자열만 쓰는 UI는 맞출 것. **해외 영문 티커는 회사명을 붙이지 않고 티커만** 보여 준다(`companyNameForSymbolUi` · `SymbolIdentityChip`). 국내 6자리 코드만 회사명 병기.
@@ -286,7 +287,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
-| 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 코인 로고는 `/v1/coins` `imageUrl`([종목 로고](#종목-로고)). 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
+| 시세 | `app/(tabs)/quotes.tsx` — `/v1/market-quotes`는 DB only. 코인은 `/v1/coins`(Yahoo·`crypto_symbols`). 로고는 `imageUrl`([종목 로고](#종목-로고)). 국내는 Job `market_quotes_korea`(Yahoo·`korea_watchlist`)가 채움. 관심 추가는 심볼 포맷만 검증 |
 | 종목 로고 | `components/signal/SymbolLogo.tsx`, `services/symbolLogo.ts` — [종목 로고](#종목-로고) · [SERVER.md](./SERVER.md) |
 | 더보기 | `app/(tabs)/more.tsx`, `app/game-center.tsx`, `app/games/sum-trail.tsx`, `components/more/DeveloperFooterDock.tsx`, `constants/moreHubOrder.ts` |
 | IT 뉴스 | `app/(tabs)/it-news.tsx`, `app/more-it-news.tsx`, `components/news/ItNewsFeedPanel.tsx` — `GET /v1/news?category=it` |

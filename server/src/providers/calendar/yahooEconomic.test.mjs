@@ -28,17 +28,21 @@ test('normalizeYahooEconomicRow maps visualization row', () => {
   assert.equal(row.timezone, 'America/New_York');
 });
 
-test('normalizeYahooEconomicRow classifies FOMC', () => {
+test('normalizeYahooEconomicRow classifies FOMC vs regional Fed surveys', () => {
   const indexMap = new Map([
     ['event', 0],
     ['country code', 1],
     ['event time', 2],
   ]);
-  const row = normalizeYahooEconomicRow(
-    ['FOMC Rate Decision', 'US', '2026-09-17T18:00:00.000Z'],
-    indexMap,
+  assert.equal(
+    normalizeYahooEconomicRow(['FOMC Rate Decision', 'US', '2026-09-17T18:00:00.000Z'], indexMap).type,
+    'fomc',
   );
-  assert.equal(row.type, 'fomc');
+  assert.equal(
+    normalizeYahooEconomicRow(['Philly Fed Business Indx*', 'US', '2026-08-20T12:30:00.000Z'], indexMap)
+      .type,
+    'macro',
+  );
 });
 
 test('fetchYahooEconomicCalendar pages visualization API', async () => {

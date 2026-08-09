@@ -45,8 +45,9 @@ function stableHash(value) {
 
 function classifyMacro(event) {
   const upper = String(event || '').toUpperCase();
-  if (upper.includes('FOMC')) return 'fomc';
-  if (upper.includes('FED ') || upper.includes('FEDERAL RESERVE') || upper.includes('POWELL')) return 'fed';
+  if (/\bFOMC\b/.test(upper)) return 'fomc';
+  // Policy Fed only — do not treat “Philly Fed” / regional surveys as fed.
+  if (/\bFEDERAL\s+RESERVE\b|\bFED\s+CHAIR\b|\bPOWELL\b/.test(upper)) return 'fed';
   return 'macro';
 }
 

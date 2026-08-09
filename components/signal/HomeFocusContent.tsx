@@ -60,6 +60,10 @@ import {
   homeCalendarChipLabel,
   homeCalendarChipRangeEnd,
 } from '@/domain/home/calendarChipLabel';
+import {
+  filterHomeCalendarEvents,
+  homeCalendarChipShortName,
+} from '@/domain/home/homeCalendarEvents';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
 import { etfHomeLeadText } from '@/domain/home/etfHomeLead';
@@ -180,8 +184,6 @@ import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import {
   addDays,
-  calendarEventDisplayYmd,
-  calendarEventInLocalYmdRange,
   formatLocalYmdLabel,
   formatFeedItemTimeLabel,
   parseLocalYmd,
@@ -321,33 +323,6 @@ function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessi
   return HOME_SIGNAL_SESSIONS.find(
     (session) => session.market === row.market && session.session === row.session,
   )?.key;
-}
-
-function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
-  return [...rows].sort(
-    (a, b) =>
-      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
-      String(a.time || '').localeCompare(String(b.time || '')) ||
-      a.title.localeCompare(b.title),
-  );
-}
-
-function filterHomeCalendarEvents(
-  rows: CalendarEvent[],
-  watchlist: string[],
-  fromYmd: string,
-  toYmd: string,
-): CalendarEvent[] {
-  const watch = new Set(watchlist.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
-  return sortCalendarEvents(
-    rows.filter((row) => {
-      if (!calendarEventInLocalYmdRange(row, fromYmd, toYmd)) return false;
-      if (row.type === 'fed' || row.type === 'fomc' || row.type === 'holiday') return true;
-      if (row.type !== 'earnings') return false;
-      const symbol = String(row.symbol || '').trim().toUpperCase();
-      return !!symbol && watch.has(symbol);
-    }),
-  );
 }
 
 function calendarTypeLabelId(type: CalendarEvent['type']): MessageId {
@@ -1150,14 +1125,14 @@ export function HomeFocusContent({
             accessibilityLabel={homeCalendarChipLabel(
               event,
               selectedYmd,
-              t(calendarTypeLabelId(event.type)),
+              homeCalendarChipShortName(event, t(calendarTypeLabelId(event.type))),
             )}
             style={({ pressed }) => [styles.calendarChip, pressed && styles.pressed]}>
             <Text style={styles.calendarChipText} numberOfLines={1}>
               {homeCalendarChipLabel(
                 event,
                 selectedYmd,
-                t(calendarTypeLabelId(event.type)),
+                homeCalendarChipShortName(event, t(calendarTypeLabelId(event.type))),
               )}
             </Text>
           </Pressable>

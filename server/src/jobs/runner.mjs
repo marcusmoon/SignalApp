@@ -19,6 +19,7 @@ import {
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhubMarketHolidays } from '../providers/calendar/finnhub.mjs';
+import { fetchYahooEconomicCalendar } from '../providers/calendar/yahooEconomic.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import { fetchYahooIndexMarketQuotes } from '../providers/market/yahooIndexQuotes.mjs';
@@ -289,7 +290,15 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
     return { kind: 'disclosures', rows: await fetchDartFilings({ ...(params || {}), symbols }) };
   }
+  if (effective.provider === 'yahoo' && effective.handler === 'economic_calendar') {
+    const rows = await fetchYahooEconomicCalendar(params || {});
+    if (rows.length === 0) {
+      console.warn(`[job:${job.jobKey}] Yahoo economic calendar returned 0 rows`);
+    }
+    return { kind: 'calendar', rows };
+  }
   if (effective.provider === 'finnhub' && effective.handler === 'economic_calendar') {
+    // Legacy — free Finnhub plans usually 403 Economic Data; prefer yahoo (V17).
     const rows = await fetchFinnhubEconomicCalendar(params || {});
     if (rows.length === 0) {
       console.warn(

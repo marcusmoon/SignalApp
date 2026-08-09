@@ -150,7 +150,10 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
   - **크립토**: `market_news_crypto` (Finnhub crypto)
   - **IT**: `market_news_it_rss` — GeekNews(`https://news.hada.io/rss/news`, Atom), 저장 `category=it`. 앱은 More·사이드바 IT 뉴스(`GET /v1/news?category=it`)
   - 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)
-- 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)
+- 투자 캘린더
+  - 경제지표: `calendar_economic` (Yahoo visualization · 기본 `countries: ["US"]`). Finnhub Economic Data는 유료라 legacy handler만 유지
+  - 실적: `calendar_earnings` (Finnhub, 무료 플랜)
+  - 휴장: `calendar_holidays` (Finnhub US)
 - YouTube (`youtube_economy_latest` sync)
 - 시세·일봉·코인
   - US: `market_quotes_etf` (`etf_symbols` 큐레이션 · 앱은 리스트 **저장 순**으로 `symbols` 조회) / `market_quotes_watchlist` / `market_quotes_popular`·`market_quotes_mcap*` (Finnhub; 앱 시세 탭은 `watch`·`etf`·`coin`)

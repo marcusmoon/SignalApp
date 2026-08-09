@@ -50,7 +50,7 @@ SIGNAL은 **서버 저장·API 통신은 UTC**, **앱 표시는 사용자 로케
 `event_at` 우선순위 (ingest, `server/src/calendar/eventKey.mjs`):
 
 1. provider/API가 준 ISO instant (`eventAt`)
-2. provider raw 시각 (예: Finnhub economic `time`)
+2. provider raw 시각 (예: Yahoo/Finnhub economic `time` ISO)
 3. `event_date` + `time_label` (파싱 가능한 시:분)
 4. `event_date` + `earnings_hour` (`amc`→16:00 ET, `bmo`→09:00 ET 등)
 

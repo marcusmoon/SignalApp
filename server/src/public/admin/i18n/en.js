@@ -418,7 +418,7 @@ export const baseEn = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: 'Manage OpenAI/Claude keys, default models, and presets.',
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Manage keys and enable flags for Finnhub, YouTube, API Ninjas, CoinGecko, etc.',
+  providerDataHint: 'Manage keys and enable flags for Finnhub, YouTube, DART, etc.',
   providerLlmEmpty: 'No LLM providers.',
   providerDataEmpty: 'No data providers.',
   rssSourcesTitle: 'News RSS feeds',

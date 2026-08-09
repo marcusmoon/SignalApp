@@ -20,7 +20,6 @@ npm --prefix server run worker
 | `SIGNAL_JWT_PRIVATE_KEY_B64` | 앱 사용자 JWT private key base64 |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | LLM provider 키 |
 | `YOUTUBE_API_KEY` | YouTube 수집 키 |
-| `NINJAS_KEY` | Ninjas provider 키(레거시; 현재 미사용) |
 | `SEC_USER_AGENT` | SEC EDGAR API 식별 User-Agent |
 | `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/news/ingest`, `/v1/market-briefings/ingest` 등 ingest webhook에 적재할 때 쓰는 토큰 |
 | `SIGNAL_JOB_LOCK_TTL_MS` | Job lock 기본 TTL(ms). Job별 `lockTtlSeconds`가 없을 때 사용 |
@@ -158,7 +157,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
   - 국내: `market_quotes_korea` (Yahoo, `korea_watchlist`, `.KS`→`.KQ` resolve). runner는 `marketLists`(·기존 `marketQuotes`)를 로드한 뒤 조회한다.
   - 홈 지수: `market_quotes_indices` (Yahoo, `home_indices` caret 심볼 `^GSPC`·`^NDX`·`^DJI`·`^SOX`·`^KS11`·`^N225`)
   - 홈 시세·환율 레이어: `market_quotes_fx` (Yahoo, `home_fx` FX 심볼 `USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`; 앱은 compact 2·wide 3). 지수(`market_quotes_indices`)·국내(`yahooKrxQuotes`)·환율 모두 `quoteTime`은 Yahoo `regularMarketTime`
-  - 코인: `market_coins_top` (Yahoo, Admin 리스트 `crypto_symbols`의 BASE-USD 페어·상위권 큐레이션). CoinGecko handler는 legacy fallback. 로고는 아래 「종목·코인 로고」
+  - 코인: `market_coins_top` (Yahoo, Admin 리스트 `crypto_symbols`의 BASE-USD 페어·상위권 큐레이션). 로고는 아래 「종목·코인 로고」
   - 일봉: `market_price_series_daily` (Yahoo). `listKeys`에 `korea_watchlist` 포함. KRX는 시세 Job이 저장한 `.KS`/`.KQ`를 재사용하고, 없으면 `.KS`→`.KQ` 순으로 조회한다. `/v1/stock-candles`는 DB miss 시 국내 6자리만 Yahoo live 폴백(Finnhub 아님).
 - `/v1/market-quotes`는 **DB 조회만** 한다. `refresh=1` provider 호출은 제거했다. 관심 추가도 시세 live lookup 없이 심볼 포맷만 검증한다. 국내 가격은 Job이 `market_quotes`에 채운 뒤 앱이 읽는다.
 

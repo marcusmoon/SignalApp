@@ -372,7 +372,7 @@ export type SignalApiMarketQuote = {
   displaySymbol?: string | null;
   krxSymbol?: string | null;
   name: string | null;
-  /** 서버가 준 로고 URL (코인 CoinGecko 등). 주식은 보통 `symbolMeta.logoUrl` */
+  /** 서버가 준 로고 URL (코인 CDN 등). 주식은 보통 `symbolMeta.logoUrl` */
   imageUrl?: string | null;
   currentPrice: number | null;
   change: number | null;
@@ -408,7 +408,7 @@ export type SignalApiCoinMarket = {
   providerItemId: string;
   symbol: string;
   name: string;
-  /** CoinGecko markets `image` */
+  /** Coin logo URL from Yahoo coin job (CDN) */
   imageUrl?: string | null;
   currentPrice: number | null;
   marketCap: number | null;

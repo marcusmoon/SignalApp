@@ -58,7 +58,6 @@ Provider key는 env seed로 넣을 수 있지만, 일반 운영은 Admin 설정�
 
 - `FINNHUB_TOKEN`
 - `YOUTUBE_API_KEY`
-- `NINJAS_KEY`
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
 - `TRANSLATION_PROVIDER`

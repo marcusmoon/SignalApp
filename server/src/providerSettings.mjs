@@ -11,8 +11,6 @@ const FALLBACKS = {
   openai: { apiKey: config.openaiApiKey, defaultModel: 'gpt-4o-mini' },
   claude: { apiKey: config.anthropicApiKey, defaultModel: 'claude-3-5-haiku-latest' },
   youtube: { apiKey: config.youtubeApiKey },
-  ninjas: { apiKey: config.ninjasKey },
-  coingecko: { apiKey: '' },
   dart: { apiKey: config.dartApiKey },
   tossinvest: {
     clientId: config.tossinvestClientId,
@@ -26,7 +24,7 @@ const LLM_PROVIDERS = new Set(['openai', 'claude']);
 const TOSSINVEST_PROVIDER = 'tossinvest';
 
 /** Providers shown in Admin > Provider settings. */
-export const PUBLIC_PROVIDER_SETTING_IDS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'dart'];
+export const PUBLIC_PROVIDER_SETTING_IDS = ['finnhub', 'openai', 'claude', 'youtube', 'dart'];
 
 /** Providers allowed for PATCH /admin/api/provider-settings/:id (includes legacy ids). */
 export const PATCHABLE_PROVIDER_SETTING_IDS = [...PUBLIC_PROVIDER_SETTING_IDS, 'sec', 'rss', TOSSINVEST_PROVIDER];

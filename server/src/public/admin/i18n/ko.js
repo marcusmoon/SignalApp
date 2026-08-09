@@ -418,7 +418,7 @@ export const baseKo = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: "OpenAI/Claude의 API Key, 기본 모델, 모델 프리셋을 한 곳에서 관리합니다.",
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Finnhub, YouTube, API Ninjas, CoinGecko 등 수집 Provider의 키와 활성 상태를 관리합니다.',
+  providerDataHint: 'Finnhub, YouTube, DART 등 수집 Provider의 키와 활성 상태를 관리합니다.',
   providerLlmEmpty: 'LLM provider가 없습니다.',
   providerDataEmpty: '데이터 provider가 없습니다.',
   rssSourcesTitle: '뉴스 RSS 피드',

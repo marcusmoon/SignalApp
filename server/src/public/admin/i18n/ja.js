@@ -418,7 +418,7 @@ export const baseJa = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: 'OpenAI/Claude の API Key、既定モデル、プリセットを管理します。',
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Finnhub, YouTube, API Ninjas, CoinGecko などのキーと有効状態を管理します。',
+  providerDataHint: 'Finnhub, YouTube, DART などのキーと有効状態を管理します。',
   providerLlmEmpty: 'LLM provider がありません。',
   providerDataEmpty: 'データ provider がありません。',
   rssSourcesTitle: 'ニュース RSS フィード',

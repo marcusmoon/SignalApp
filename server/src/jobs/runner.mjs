@@ -19,7 +19,6 @@ import {
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhubMarketHolidays } from '../providers/calendar/finnhub.mjs';
-import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchYahooKrxMarketQuotes } from '../providers/market/yahooKrxQuotes.mjs';
 import { fetchYahooIndexMarketQuotes } from '../providers/market/yahooIndexQuotes.mjs';
@@ -417,10 +416,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       keepSymbols: selected.map((value) => baseCryptoSymbol(value)).filter(Boolean),
       rows: await fetchYahooCoinMarkets({ symbols: selected }),
     };
-  }
-  if (effective.provider === 'coingecko' && effective.handler === 'coin_markets') {
-    // Legacy fallback — prefer yahoo + crypto_symbols (V15).
-    return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(params || {}) };
   }
   if (effective.provider === 'yahoo' && effective.handler === 'daily_bars') {
     return {

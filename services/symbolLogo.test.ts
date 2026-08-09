@@ -8,8 +8,8 @@ import { symbolLogoUrls } from './symbolLogo.ts';
 
 describe('symbolLogoUrls', () => {
   it('uses only server imageUrl', () => {
-    const urls = symbolLogoUrls('BTC', ['https://assets.coingecko.com/coins/images/1/large/bitcoin.png']);
-    assert.deepEqual(urls, ['https://assets.coingecko.com/coins/images/1/large/bitcoin.png']);
+    const urls = symbolLogoUrls('BTC', ['https://assets.coincap.io/assets/icons/btc@2x.png']);
+    assert.deepEqual(urls, ['https://assets.coincap.io/assets/icons/btc@2x.png']);
   });
 
   it('returns empty when no server url (no client Parqet)', () => {

@@ -33,7 +33,7 @@ import {
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { HomeKeywordChipStrip } from '@/components/signal/HomeKeywordChipStrip';
+import { HomeTrendHeroCard } from '@/components/signal/HomeTrendHeroCard';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -618,8 +618,22 @@ export function HomeFocusContent({
       ? t('ipadHomeTitle')
       : t('ipadHomeSignalTitle')
     : t('ipadHomeTitle');
-  const heroSessionTag =
-    homeHero?.kind === 'market' ? <BriefingSessionTag briefing={homeHero.briefing} /> : null;
+  const heroHeadline = homeHero ? homeHeroHeadline(homeHero) : '';
+  const showTrendHeroSection =
+    homeKeywords.length > 0 || Boolean(String(heroHeadline || '').trim());
+  const trendHeroSectionTitle =
+    homeHero && heroHeadline ? heroSectionTitle : t('homeKeywordsTitle');
+  const trendHeroSectionBadge =
+    homeHero && heroHeadline ? (
+      <HomeSectionLeadIcon name="reader-outline" />
+    ) : (
+      <HomeSectionLeadIcon name="trending-up-outline" />
+    );
+  const trendHeroSectionMeta = homeKeywords.length > 0 ? homeKeywordsAsOfLabel : null;
+  const trendHeroSessionTag =
+    homeHero && heroHeadline && homeHero.kind === 'market' ? (
+      <BriefingSessionTag briefing={homeHero.briefing} />
+    ) : null;
 
   const changeSelectedYmd = useCallback(
     (ymd: string) => {
@@ -1095,24 +1109,31 @@ export function HomeFocusContent({
     } as never);
   }, [etfInsight, ipadNav, router]);
 
-  const renderHeroCard = useCallback(() => {
-    if (!homeHero) return null;
-    const headline = homeHeroHeadline(homeHero);
-    if (!headline) return null;
+  const renderTrendHeroSection = useCallback(() => {
+    if (!showTrendHeroSection) return null;
     return (
-      <Pressable
-        onPress={openHero}
-        accessibilityRole="button"
-        accessibilityLabel={heroSectionTitle}
-        style={({ pressed }) => [
-          styles.heroCard,
-          showIssueSummary && styles.heroCardSummary,
-          pressed && styles.pressed,
-        ]}>
-        <ChangeTintedText style={styles.issueGroupTitle}>{headline}</ChangeTintedText>
-      </Pressable>
+      <HomeTrendHeroCard
+        keywords={homeKeywords}
+        symbolProfiles={homeKeywordSymbolProfiles}
+        onPressKeyword={openHomeKeyword}
+        heroHeadline={heroHeadline || null}
+        heroSessionTag={trendHeroSessionTag}
+        onPressHero={openHero}
+        heroAccessibilityLabel={trendHeroSectionTitle}
+        compact={showIssueSummary}
+      />
     );
-  }, [heroSectionTitle, homeHero, openHero, showIssueSummary, styles]);
+  }, [
+    heroHeadline,
+    homeKeywordSymbolProfiles,
+    homeKeywords,
+    openHero,
+    openHomeKeyword,
+    showIssueSummary,
+    showTrendHeroSection,
+    trendHeroSectionTitle,
+    trendHeroSessionTag,
+  ]);
 
   const renderCalendarChips = useCallback(
     () => (
@@ -1304,29 +1325,14 @@ export function HomeFocusContent({
           </View>
         ) : (
           <>
-          {homeKeywords.length > 0 ? (
+          {showTrendHeroSection ? (
             <View style={styles.section}>
               <HomeSectionHeader
-                title={t('homeKeywordsTitle')}
-                badge={<HomeSectionLeadIcon name="trending-up-outline" />}
-                meta={homeKeywordsAsOfLabel}
+                title={trendHeroSectionTitle}
+                badge={trendHeroSectionBadge}
+                meta={trendHeroSectionMeta}
               />
-              <HomeKeywordChipStrip
-                items={homeKeywords}
-                symbolProfiles={homeKeywordSymbolProfiles}
-                onPressItem={openHomeKeyword}
-              />
-            </View>
-          ) : null}
-
-          {homeHero && homeHeroHeadline(homeHero) ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={heroSectionTitle}
-                badge={<HomeSectionLeadIcon name="reader-outline" />}
-                trailingBadge={heroSessionTag}
-              />
-              {renderHeroCard()}
+              {renderTrendHeroSection()}
             </View>
           ) : null}
 

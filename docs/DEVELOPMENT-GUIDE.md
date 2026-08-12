@@ -285,7 +285,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 
 | 기능 | 파일 |
 |---|---|
-| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
+| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx`, `components/signal/HomeTrendHeroCard.tsx` |
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |

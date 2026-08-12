@@ -18,13 +18,20 @@ type Props = {
   items: HomeKeywordChip[];
   symbolProfiles: Map<string, HomeKeywordSymbolProfile>;
   onPressItem: (chip: HomeKeywordChip) => void;
+  /** `embedded`: chips only — parent supplies the outer card border. */
+  variant?: 'card' | 'embedded';
 };
 
 /**
  * Home keyword chip card — wrap chips only.
  * Symbol chips prefer DB-backed `symbolMeta` name/logo via `symbolProfiles`.
  */
-export function HomeKeywordChipStrip({ items, symbolProfiles, onPressItem }: Props) {
+export function HomeKeywordChipStrip({
+  items,
+  symbolProfiles,
+  onPressItem,
+  variant = 'card',
+}: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo),
@@ -34,7 +41,7 @@ export function HomeKeywordChipStrip({ items, symbolProfiles, onPressItem }: Pro
   if (items.length === 0) return null;
 
   return (
-    <View style={styles.card}>
+    <View style={variant === 'card' ? styles.card : styles.embedded}>
       <View style={styles.row}>
         {items.map((chip) => {
           const isSymbol = homeKeywordIsSymbolChip(chip);
@@ -90,6 +97,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.card,
       paddingHorizontal: 10,
       paddingVertical: 8,
+    },
+    embedded: {
+      paddingHorizontal: 0,
+      paddingVertical: 0,
     },
     row: {
       flexDirection: 'row',

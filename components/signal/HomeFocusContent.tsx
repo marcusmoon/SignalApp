@@ -22,7 +22,6 @@ import {
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
-import { BriefingSessionTag } from '@/components/signal/BriefingSessionTag';
 import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/ChangeHeatmapGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { HomeSectionLeadIcon } from '@/components/signal/HomeSectionLeadIcon';
@@ -144,6 +143,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { etfInsightDetailIso } from '@/domain/briefings/detailTime';
+import { marketBriefingSessionLabelId } from '@/domain/briefings/sessionLabel';
 import { shouldShowEtfBriefingOnHome } from '@/domain/etfInsights/homeVisibility';
 import { fetchSignalEtfInsightForDate } from '@/integrations/signal-api/etfInsights';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
@@ -630,10 +630,15 @@ export function HomeFocusContent({
       <HomeSectionLeadIcon name="trending-up-outline" />
     );
   const trendHeroSectionMeta = homeKeywords.length > 0 ? homeKeywordsAsOfLabel : null;
-  const trendHeroSessionTag =
-    homeHero && heroHeadline && homeHero.kind === 'market' ? (
-      <BriefingSessionTag briefing={homeHero.briefing} />
-    ) : null;
+  const trendHeroSessionDividerLabel = useMemo(() => {
+    if (!homeHero || !heroHeadline) return null;
+    if (homeHero.kind === 'today') return t('ipadHomeTitle');
+    if (homeHero.kind === 'market') {
+      const labelId = marketBriefingSessionLabelId(homeHero.briefing);
+      return labelId ? t(labelId) : null;
+    }
+    return null;
+  }, [homeHero, heroHeadline, t]);
 
   const changeSelectedYmd = useCallback(
     (ymd: string) => {
@@ -1117,7 +1122,7 @@ export function HomeFocusContent({
         symbolProfiles={homeKeywordSymbolProfiles}
         onPressKeyword={openHomeKeyword}
         heroHeadline={heroHeadline || null}
-        heroSessionTag={trendHeroSessionTag}
+        sessionDividerLabel={trendHeroSessionDividerLabel}
         onPressHero={openHero}
         heroAccessibilityLabel={trendHeroSectionTitle}
         compact={showIssueSummary}
@@ -1132,7 +1137,7 @@ export function HomeFocusContent({
     showIssueSummary,
     showTrendHeroSection,
     trendHeroSectionTitle,
-    trendHeroSessionTag,
+    trendHeroSessionDividerLabel,
   ]);
 
   const renderCalendarChips = useCallback(

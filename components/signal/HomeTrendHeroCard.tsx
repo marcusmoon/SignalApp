@@ -1,10 +1,11 @@
-import { useMemo, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { HomeKeywordChipStrip } from '@/components/signal/HomeKeywordChipStrip';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
-import { FEED_DIGEST_TITLE_PX } from '@/constants/feedTypography';
+import { FEED_BADGE_PX, FEED_DIGEST_TITLE_PX } from '@/constants/feedTypography';
+import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
 import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
@@ -17,7 +18,8 @@ type Props = {
   symbolProfiles: Map<string, HomeKeywordSymbolProfile>;
   onPressKeyword: (chip: HomeKeywordChip) => void;
   heroHeadline: string | null;
-  heroSessionTag?: ReactNode;
+  /** `Intraday ——` style cap between trend chips and hero body */
+  sessionDividerLabel?: string | null;
   onPressHero: () => void;
   heroAccessibilityLabel: string;
   compact?: boolean;
@@ -32,7 +34,7 @@ export function HomeTrendHeroCard({
   symbolProfiles,
   onPressKeyword,
   heroHeadline,
-  heroSessionTag,
+  sessionDividerLabel,
   onPressHero,
   heroAccessibilityLabel,
   compact = false,
@@ -46,6 +48,7 @@ export function HomeTrendHeroCard({
   const hasKeywords = keywords.length > 0;
   const headline = String(heroHeadline || '').trim();
   const hasHero = Boolean(headline);
+  const dividerLabel = String(sessionDividerLabel || '').trim();
   if (!hasKeywords && !hasHero) return null;
 
   return (
@@ -58,14 +61,22 @@ export function HomeTrendHeroCard({
           variant="embedded"
         />
       ) : null}
-      {hasKeywords && hasHero ? <View style={styles.divider} /> : null}
+      {hasKeywords && hasHero ? (
+        dividerLabel ? (
+          <View style={styles.sessionRule} accessibilityRole="text">
+            <Text style={styles.sessionRuleLabel}>{dividerLabel}</Text>
+            <View style={styles.sessionRuleLine} />
+          </View>
+        ) : (
+          <View style={styles.divider} />
+        )
+      ) : null}
       {hasHero ? (
         <Pressable
           onPress={onPressHero}
           accessibilityRole="button"
           accessibilityLabel={heroAccessibilityLabel}
           style={({ pressed }) => [styles.heroBody, pressed && styles.pressed]}>
-          {heroSessionTag ? <View style={styles.heroTagRow}>{heroSessionTag}</View> : null}
           <ChangeTintedText style={styles.heroHeadline}>{headline}</ChangeTintedText>
         </Pressable>
       ) : null}
@@ -98,12 +109,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.border,
       marginVertical: 2,
     },
-    heroBody: {
-      gap: COMFORT_GAP_SM,
-    },
-    heroTagRow: {
+    sessionRule: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 8,
+      marginVertical: 2,
+    },
+    sessionRuleLabel: {
+      flexShrink: 0,
+      fontSize: ft.ff(FEED_BADGE_PX + 1),
+      lineHeight: sf(16),
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
+      color: theme.textMuted,
+    },
+    sessionRuleLine: {
+      flex: 1,
+      minWidth: 16,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
+    },
+    heroBody: {
+      gap: COMFORT_GAP_SM,
     },
     heroHeadline: {
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),

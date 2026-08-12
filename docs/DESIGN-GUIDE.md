@@ -178,9 +178,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 홈 섹션 제목 앞: `HomeSectionLeadIcon` (트렌드 `trending-up` · 히어로 `reader` · 뉴스 `newspaper` · 일정 `calendar` · 바로가기 `apps` · 시세 `stats-chart` · 섹터 `grid`). 홈에서는 `AiBadge` 없음. 홈/리스트 표시명에 영문 혼용 금지
   - **홈 섹션 우측 메타**: 섹터 기준일 · 뉴스 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
   - **홈 섹션 순서**
-  - **오늘**: **트렌드+히어로**(한 섹션·한 카드 — 칩 / hairline / headline 내부 분리) → **뉴스**(없으면 숨김 · 빈 카드 없음) → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
+  - **오늘**: **트렌드+히어로**(한 섹션·한 카드 — 칩 / 세션 cap rule / headline 내부 분리) → **뉴스**(없으면 숨김 · 빈 카드 없음) → 일정 칩 → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
   - **과거**: **트렌드+히어로**(동일) → **뉴스**(없으면 숨김) → 일정 칩(선택일) → **바로가기** → (조건부) 섹터 · 시세 숨김
-  - **트렌드+히어로 UI**: 섹션 헤더 1개(히어로 있으면 정리/회차·`reader`, 없으면 트렌드·`trending-up`; as-of는 키워드 있을 때). 카드 안 — 위: 키워드 칩(`embedded`) · hairline · 아래: 회차 태그+headline(탭→브리핑). 칩 탭→심볼/이슈는 기존과 동일
+  - **트렌드+히어로 UI**: 섹션 헤더 1개(히어로 있으면 정리/회차·`reader`, 없으면 트렌드·`trending-up`; as-of는 키워드 있을 때). 카드 안 — 위: 키워드 칩(`embedded`) · **`{세션} ——` cap rule**(시세 레이어 `지수 ——`와 동일) · 아래: headline(탭→브리핑). 칩 탭→심볼/이슈는 기존과 동일
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

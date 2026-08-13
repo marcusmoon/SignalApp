@@ -21,6 +21,7 @@ import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { WideSubpaneHeader } from '@/components/layout/WideSubpaneHeader';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
+import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import {
   FLOATING_GLASS_FAB_GAP,
@@ -785,15 +786,11 @@ export function QuotesContent({
       if (item.type === 'header') {
         const title = t(ETF_GROUP_LABEL[item.group]);
         return (
-          <View
-            style={[styles.etfGroupHeader, index === 0 && styles.etfGroupHeaderFirst]}
+          <SectionCapRule
+            label={title}
             accessibilityRole="header"
-            accessibilityLabel={title}>
-            <Text style={styles.etfGroupHeaderLabel} numberOfLines={1}>
-              {title}
-            </Text>
-            <View style={styles.etfGroupHeaderLine} />
-          </View>
+            style={[styles.etfGroupHeader, index === 0 && styles.etfGroupHeaderFirst]}
+          />
         );
       }
       const items = etfListItems ?? [];

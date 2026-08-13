@@ -92,30 +92,14 @@ export function makeQuotesStyles(
       paddingVertical: 48,
     },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
-    /** ETF 그룹 — 홈 시세 레이어 룰과 동일 (라벨 + 구분선) */
+    /** ETF 그룹 — 홈 시세 레이어와 동일 `SectionCapRule` */
     etfGroupHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
       paddingHorizontal: 16,
       paddingTop: 14,
       paddingBottom: 8,
     },
     etfGroupHeaderFirst: {
       paddingTop: 4,
-    },
-    etfGroupHeaderLabel: {
-      flexShrink: 0,
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
-      color: theme.textMuted,
-    },
-    etfGroupHeaderLine: {
-      flex: 1,
-      minWidth: 16,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.border,
     },
     watchRowActive: {
       opacity: 0.92,

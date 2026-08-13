@@ -33,6 +33,7 @@ import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeTrendHeroCard } from '@/components/signal/HomeTrendHeroCard';
+import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -1008,30 +1009,16 @@ export function HomeFocusContent({
     [openHomeQuote, quoteChange.colors.down, quoteChange.colors.up, styles, t],
   );
 
-  /** `지수 ------------------- 종가` — 레이어명 선두 · 앞쪽 캡 라인 없음 · 우측 as-of */
+  /** `● 지수 —— 종가` — 홈 시세 레이어 cap rule */
   const renderQuoteLayerRule = useCallback(
-    (title: string, asOf: string | null) => {
-      const when = asOf?.trim() || '';
-      return (
-        <View
-          style={styles.quoteLayerRule}
-          accessibilityRole="header"
-          accessibilityLabel={when ? `${title}, ${when}` : title}>
-          <Text style={styles.quoteLayerRuleLabel} numberOfLines={1}>
-            {title}
-          </Text>
-          <View style={styles.quoteLayerRuleLine} />
-          {when ? (
-            <View style={styles.quoteLayerRuleAsOfChip}>
-              <Text style={styles.quoteLayerRuleAsOf} numberOfLines={1}>
-                {when}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      );
-    },
-    [styles],
+    (title: string, asOf: string | null) => (
+      <SectionCapRule
+        label={title}
+        meta={asOf}
+        accessibilityRole="header"
+      />
+    ),
+    [],
   );
 
   const openCalendar = useCallback(() => {
@@ -1549,43 +1536,6 @@ function makeStyles(
     },
     quoteLayer: {
       gap: COMFORT_GAP_SM,
-    },
-    quoteLayerRule: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    /** `지수 ------------------- 종가` — 타이틀 선두, 앞쪽 캡 라인 없음 */
-    quoteLayerRuleLine: {
-      flex: 1,
-      minWidth: 16,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.border,
-    },
-    quoteLayerRuleLabel: {
-      flexShrink: 0,
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
-      color: theme.textMuted,
-    },
-    /** HomeSectionHeader meta / NEW 칩과 동일 톤 */
-    quoteLayerRuleAsOfChip: {
-      flexShrink: 0,
-      maxWidth: '46%',
-      borderRadius: 999,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    quoteLayerRuleAsOf: {
-      fontSize: ft.ff(FEED_BADGE_PX + 1),
-      lineHeight: sf(13),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      textAlign: 'right',
     },
     quoteGrid: {
       flexDirection: 'row',

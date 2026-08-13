@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { HomeKeywordChipStrip } from '@/components/signal/HomeKeywordChipStrip';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
+import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
-import { FEED_BADGE_PX, FEED_DIGEST_TITLE_PX } from '@/constants/feedTypography';
-import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
+import { FEED_DIGEST_TITLE_PX } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
@@ -18,7 +18,7 @@ type Props = {
   symbolProfiles: Map<string, HomeKeywordSymbolProfile>;
   onPressKeyword: (chip: HomeKeywordChip) => void;
   heroHeadline: string | null;
-  /** `· Intraday ——` style cap between trend chips and hero body */
+  /** `● Intraday ——` style cap between trend chips and hero body */
   sessionDividerLabel?: string | null;
   onPressHero: () => void;
   heroAccessibilityLabel: string;
@@ -63,16 +63,12 @@ export function HomeTrendHeroCard({
       ) : null}
       {hasKeywords && hasHero ? (
         dividerLabel ? (
-          <View
-            style={styles.sessionRule}
+          <SectionCapRule
+            label={dividerLabel}
             accessibilityRole="text"
-            accessibilityLabel={dividerLabel}>
-            <Text style={styles.sessionRuleLabel}>
-              <Text style={styles.sessionRuleDot}>· </Text>
-              {dividerLabel}
-            </Text>
-            <View style={styles.sessionRuleLine} />
-          </View>
+            accessibilityLabel={dividerLabel}
+            style={styles.sessionRule}
+          />
         ) : (
           <View style={styles.divider} />
         )
@@ -116,26 +112,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginVertical: 2,
     },
     sessionRule: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
       marginVertical: 2,
-    },
-    sessionRuleLabel: {
-      flexShrink: 0,
-      fontSize: ft.ff(FEED_BADGE_PX + 1),
-      lineHeight: sf(16),
-      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
-      color: theme.textMuted,
-    },
-    sessionRuleDot: {
-      opacity: 0.72,
-    },
-    sessionRuleLine: {
-      flex: 1,
-      minWidth: 16,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.border,
     },
     heroBody: {
       gap: COMFORT_GAP_SM,

@@ -18,7 +18,7 @@ type Props = {
   symbolProfiles: Map<string, HomeKeywordSymbolProfile>;
   onPressKeyword: (chip: HomeKeywordChip) => void;
   heroHeadline: string | null;
-  /** `Intraday ——` style cap between trend chips and hero body */
+  /** `· Intraday ——` style cap between trend chips and hero body */
   sessionDividerLabel?: string | null;
   onPressHero: () => void;
   heroAccessibilityLabel: string;
@@ -63,8 +63,14 @@ export function HomeTrendHeroCard({
       ) : null}
       {hasKeywords && hasHero ? (
         dividerLabel ? (
-          <View style={styles.sessionRule} accessibilityRole="text">
-            <Text style={styles.sessionRuleLabel}>{dividerLabel}</Text>
+          <View
+            style={styles.sessionRule}
+            accessibilityRole="text"
+            accessibilityLabel={dividerLabel}>
+            <Text style={styles.sessionRuleLabel}>
+              <Text style={styles.sessionRuleDot}>· </Text>
+              {dividerLabel}
+            </Text>
             <View style={styles.sessionRuleLine} />
           </View>
         ) : (
@@ -121,6 +127,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(16),
       fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.textMuted,
+    },
+    sessionRuleDot: {
+      opacity: 0.72,
     },
     sessionRuleLine: {
       flex: 1,

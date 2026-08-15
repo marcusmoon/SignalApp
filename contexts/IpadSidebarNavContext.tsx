@@ -428,7 +428,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       if (kind === 'board') {
         const source = String(p.source || '').trim();
         setBoardSource(
-          source === 'save_user_news' || source === 'naver_likeusstock_free'
+          source === 'save_user_news' ||
+          source === 'naver_likeusstock_free' ||
+          source === 'naver_yamizal_free'
             ? source
             : COMMUNITY_SOURCE_ALL,
         );
@@ -946,7 +948,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     (options?: WidePaneDrillOptions & { source?: string }) => {
       const source = String(options?.source || '').trim();
       const sourceParam =
-        source === 'save_user_news' || source === 'naver_likeusstock_free' ? source : undefined;
+        source === 'save_user_news' ||
+        source === 'naver_likeusstock_free' ||
+        source === 'naver_yamizal_free'
+          ? source
+          : undefined;
       const fromHome = options?.drillFrom === 'home';
       setBoardSource(sourceParam ?? COMMUNITY_SOURCE_ALL);
       setBoardSourceLocked(fromHome);

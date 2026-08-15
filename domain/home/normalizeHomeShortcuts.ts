@@ -14,7 +14,12 @@ export type NormalizedHomeShortcut =
   | { type: 'disclosures' }
   | { type: 'settings' };
 
-const BOARD_SOURCES = new Set(['all', 'save_user_news', 'naver_likeusstock_free']);
+const BOARD_SOURCES = new Set([
+  'all',
+  'save_user_news',
+  'naver_likeusstock_free',
+  'naver_yamizal_free',
+]);
 const QUOTE_SEGMENTS = new Set(['watch', 'etf', 'coin']);
 const NEWS_SEGMENTS = new Set(['all', 'global', 'korea', 'crypto', 'it', 'video']);
 

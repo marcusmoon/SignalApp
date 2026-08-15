@@ -68,6 +68,7 @@ function parseCommunitySourceParam(raw: string | string[] | undefined): Communit
 const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
   all: 'communitySourceAll',
   naver_likeusstock_free: 'communitySourceNaverLikeusstock',
+  naver_yamizal_free: 'communitySourceNaverYamizal',
   save_user_news: 'communitySourceSaveUserNews',
 };
 

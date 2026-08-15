@@ -12,23 +12,27 @@ const ROW_COLUMNS = `
   published_at, fetched_at, updated_at
 `;
 
-const NAVER_LIKEUSSTOCK_CLUB_ID = '28497937';
+const NAVER_CAFE_CLUB_IDS = {
+  naver_likeusstock_free: '28497937',
+  naver_yamizal_free: '30676048',
+};
 
-function naverCafeMobileUrl(articleId) {
+function naverCafeMobileUrl(source, articleId) {
+  const clubId = NAVER_CAFE_CLUB_IDS[source];
   const id = cleanText(articleId);
-  return id ? `https://m.cafe.naver.com/ca-fe/web/cafes/${NAVER_LIKEUSSTOCK_CLUB_ID}/articles/${id}` : null;
+  return clubId && id ? `https://m.cafe.naver.com/ca-fe/web/cafes/${clubId}/articles/${id}` : null;
 }
 
 function publicSourceUrl(row) {
   const raw = cleanText(row?.source_url);
-  if (row?.source === 'naver_likeusstock_free') {
-    if (!raw) return naverCafeMobileUrl(row?.provider_item_id);
+  if (row?.source && NAVER_CAFE_CLUB_IDS[row.source]) {
+    if (!raw) return naverCafeMobileUrl(row.source, row?.provider_item_id);
     try {
       const parsed = new URL(raw);
       const articleId = parsed.searchParams.get('articleid') || parsed.pathname.match(/\/articles\/([^/?#]+)/)?.[1];
-      return naverCafeMobileUrl(articleId || row?.provider_item_id) || raw;
+      return naverCafeMobileUrl(row.source, articleId || row?.provider_item_id) || raw;
     } catch {
-      return naverCafeMobileUrl(row?.provider_item_id) || raw;
+      return naverCafeMobileUrl(row.source, row?.provider_item_id) || raw;
     }
   }
   if (row?.source === 'save_user_news') {
@@ -54,7 +58,7 @@ function publicCommunityPost(row) {
   };
 }
 
-export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'save_user_news'];
+export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'naver_yamizal_free', 'save_user_news'];
 
 /** Drop rows for `source` that were not in the latest ingest window. */
 export async function pruneCommunityPostsForSource(source, providerItemIds = []) {

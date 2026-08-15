@@ -33,6 +33,7 @@ import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchNaverCafeLikeusstockFree } from '../providers/community/naverCafeLikeusstock.mjs';
+import { fetchNaverCafeYamizalFree } from '../providers/community/naverCafeYamizal.mjs';
 import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
@@ -437,6 +438,9 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
     return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };
+  }
+  if (effective.provider === 'naver_cafe' && effective.handler === 'yamizal_free') {
+    return { kind: 'community', rows: await fetchNaverCafeYamizalFree(params || {}) };
   }
   if (effective.provider === 'save' && effective.handler === 'user_news') {
     return { kind: 'community', rows: await fetchSaveUserNews(params || {}) };

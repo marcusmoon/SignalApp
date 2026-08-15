@@ -783,6 +783,7 @@ export const baseEn = {
   jobConfigCommunitySummary: 'Fetch latest {{count}}',
   jobCommunityTitle: 'Board ingest',
   jobCommunitySourceNaver: 'Pulls latest posts from the Naver Cafe LikeUSStock free board.',
+  jobCommunitySourceNaverYamizal: 'Pulls latest posts from the Naver Cafe yamizal (미국주식에 미치다) free board.',
   jobCommunitySourceSave: 'Pulls latest posts from SAVE user news.',
   jobCommunitySourceGeneric: 'Pulls latest posts from an external board.',
   jobCommunityPageSize: 'Items per run',

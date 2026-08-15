@@ -85,11 +85,16 @@ export function CommunityPostCard({
 
 export function communitySourceLabelId(source: string): MessageId {
   if (source === 'save_user_news') return 'communitySourceSaveUserNews';
+  if (source === 'naver_yamizal_free') return 'communitySourceNaverYamizal';
   return 'communitySourceNaverLikeusstock';
 }
 
 export function isCommunitySourceKey(source: string): source is CommunitySourceKey {
-  return source === 'naver_likeusstock_free' || source === 'save_user_news';
+  return (
+    source === 'naver_likeusstock_free' ||
+    source === 'naver_yamizal_free' ||
+    source === 'save_user_news'
+  );
 }
 
 function makeStyles(

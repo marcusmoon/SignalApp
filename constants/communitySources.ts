@@ -5,7 +5,11 @@ import { externalSourceIconUrlForCommunityKey } from '@/constants/sourceIconUrls
 
 export const COMMUNITY_SOURCE_ALL = 'all' as const;
 
-export const COMMUNITY_SOURCES = ['save_user_news', 'naver_likeusstock_free'] as const;
+export const COMMUNITY_SOURCES = [
+  'save_user_news',
+  'naver_likeusstock_free',
+  'naver_yamizal_free',
+] as const;
 
 export type CommunitySourceKey = (typeof COMMUNITY_SOURCES)[number];
 
@@ -19,6 +23,7 @@ export const COMMUNITY_SOURCE_ORDER: CommunitySourceFilter[] = [
 const COMMUNITY_SOURCES_WITH_ORIGINAL_LINK = new Set<CommunitySourceKey>([
   'save_user_news',
   'naver_likeusstock_free',
+  'naver_yamizal_free',
 ]);
 
 export function communityShowsOriginalLink(source: string): boolean {
@@ -27,7 +32,7 @@ export function communityShowsOriginalLink(source: string): boolean {
 
 export type CommunitySourceAccent = SourceAccent;
 
-/** 소스별 리스트·상세 accent (미주미=블루, 세이브=오렌지) */
+/** 소스별 리스트·상세 accent (미주미·미치다=블루/그린 네이버, 세이브=오렌지) */
 export function communitySourceAccent(source: string, theme: AppTheme): CommunitySourceAccent {
   const iconUrl = externalSourceIconUrlForCommunityKey(source);
   if (source === 'save_user_news') {

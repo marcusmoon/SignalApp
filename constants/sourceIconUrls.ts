@@ -36,6 +36,7 @@ export const EXTERNAL_SOURCE_ICON_BY_DOMAIN: Readonly<Record<string, string>> = 
 export const EXTERNAL_SOURCE_ICON_BY_COMMUNITY_KEY: Readonly<Record<string, string>> = {
   save_user_news: SAVE_TICKER_ICON_URL,
   naver_likeusstock_free: NAVER_CAFE_ICON_URL,
+  naver_yamizal_free: NAVER_CAFE_ICON_URL,
 };
 
 function bareHostname(host: string): string {

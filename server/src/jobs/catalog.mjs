@@ -33,6 +33,7 @@ export const JOB_CATALOG = {
   quant_price_series_kr: { area: 'legacy', stage: 'ingest', legacy: true },
   quant_signals_kr: { area: 'legacy', stage: 'enrich', legacy: true },
   community_naver_likeusstock_free: { area: 'community', stage: 'ingest' },
+  community_naver_yamizal_free: { area: 'community', stage: 'ingest' },
   community_save_user_news: { area: 'community', stage: 'ingest' },
 };
 

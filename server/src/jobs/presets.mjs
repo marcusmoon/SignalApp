@@ -42,7 +42,11 @@ export const JOB_PRESETS = {
     area: 'community',
     labelKey: 'jobPresetCommunityRefresh',
     descriptionKey: 'jobPresetCommunityRefreshDesc',
-    jobKeys: ['community_naver_likeusstock_free', 'community_save_user_news'],
+    jobKeys: [
+      'community_naver_likeusstock_free',
+      'community_naver_yamizal_free',
+      'community_save_user_news',
+    ],
   },
   market_refresh: {
     id: 'market_refresh',

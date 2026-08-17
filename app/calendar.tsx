@@ -40,15 +40,15 @@ import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
-  fetchSignalCalendar,
-  fetchSignalCalendarMerged,
-  mergeSignalCalendarEvents,
+  fetchSignalCalendarScreen,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import {
   calendarDayFetchBounds,
   calendarMonthFetchBounds,
+  calendarUnionFetchBounds,
 } from '@/domain/calendar/calendarFetchBounds';
+import { filterCalendarEarningsToWatchlist } from '@/domain/calendar/calendarWatchlistEarnings';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
@@ -58,6 +58,7 @@ import {
   saveCalendarEventTypeFilter,
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { calendarTypeAccent, calendarTypeSoftFill } from '@/domain/calendar/typeAccent';
@@ -71,8 +72,6 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   earnings: 'calendarTagEarnings',
   holiday: 'calendarTagHoliday',
 };
-
-const CALENDAR_MONTH_QUERY_LIMIT = 1000;
 
 function calendarEventTimeLabel(ev: CalendarEvent, locale: AppLocale): string {
   if (ev.time) return ev.time;
@@ -249,41 +248,42 @@ export default function CalendarScreen({
   });
   const listScrollResetKey = `${selectedYmd}:${typeParam}`;
 
-  const fetchCalendarRange = useCallback(
-    async (from: string, to: string, forceRefresh?: boolean) => {
-      const cacheOpts = { cacheMode: signalCacheMode(forceRefresh) };
-      if (typeParam) {
-        return fetchSignalCalendar(
-          { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
-          cacheOpts,
-        );
-      }
-      return fetchSignalCalendarMerged(
-        {
-          from,
-          to,
-          types: CALENDAR_EVENT_TYPE_ORDER,
-          limitPerType: CALENDAR_MONTH_QUERY_LIMIT,
-        },
-        cacheOpts,
-      );
-    },
-    [typeParam],
-  );
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+
+  useEffect(() => {
+    void loadWatchlistSymbols().then(setWatchlistSymbols);
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    void loadWatchlistSymbols().then(setWatchlistSymbols);
+  }, [isFocused]);
 
   const fetchScreenData = useCallback(
     async (year: number, month: number, ymd: string, forceRefresh?: boolean) => {
       const monthRange = calendarMonthFetchBounds(year, month);
       const dayRange = calendarDayFetchBounds(ymd);
-      const [monthRaw, dayRaw] = await Promise.all([
-        fetchCalendarRange(monthRange.from, monthRange.to, forceRefresh),
-        fetchCalendarRange(dayRange.from, dayRange.to, forceRefresh),
-      ]);
-      return mergeSignalCalendarEvents([monthRaw, dayRaw])
-        .map(rawToCalendarEvent)
-        .filter((ev): ev is CalendarEvent => ev != null);
+      const earningsRange = calendarUnionFetchBounds(monthRange, dayRange);
+      const cacheOpts = { cacheMode: signalCacheMode(forceRefresh ?? true) };
+      const raw = await fetchSignalCalendarScreen(
+        {
+          monthFrom: monthRange.from,
+          monthTo: monthRange.to,
+          dayFrom: dayRange.from,
+          dayTo: dayRange.to,
+          earningsFrom: earningsRange.from,
+          earningsTo: earningsRange.to,
+          watchlistSymbols,
+          typeFilter: typeParam,
+        },
+        cacheOpts,
+      );
+      return filterCalendarEarningsToWatchlist(
+        raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null),
+        watchlistSymbols,
+      );
     },
-    [fetchCalendarRange],
+    [typeParam, watchlistSymbols],
   );
 
   useEffect(() => {

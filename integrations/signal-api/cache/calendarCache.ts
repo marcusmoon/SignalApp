@@ -5,15 +5,23 @@ import { peekCache, storeCache } from '@/integrations/signal-api/cache/common';
 const calendarCache = new Map<string, { value: SignalApiCalendarEvent[]; expiresAt: number }>();
 const calendarDatesCache = new Map<string, { value: SignalApiCalendarDateSummary[]; expiresAt: number }>();
 
-export function buildSignalCalendarCacheKey(params?: { from?: string; to?: string; type?: string; limit?: number; offset?: number }): string {
+export function buildSignalCalendarCacheKey(params?: {
+  from?: string;
+  to?: string;
+  type?: string;
+  symbol?: string;
+  limit?: number;
+  offset?: number;
+}): string {
   const p = {
     from: String(params?.from || '').trim(),
     to: String(params?.to || '').trim(),
     type: String(params?.type || '').trim().toLowerCase(),
+    symbol: String(params?.symbol || '').trim().toUpperCase(),
     limit: String(params?.limit || '').trim(),
     offset: String(params?.offset || '').trim(),
   };
-  return `calendar|${p.from}|${p.to}|${p.type}|${p.limit}|${p.offset}`;
+  return `calendar|${p.from}|${p.to}|${p.type}|${p.symbol}|${p.limit}|${p.offset}`;
 }
 
 export function buildSignalCalendarDatesCacheKey(params?: { from?: string; to?: string; type?: string }): string {

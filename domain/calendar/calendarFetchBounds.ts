@@ -20,3 +20,13 @@ export function calendarDayFetchBounds(selectedYmd: string): { from: string; to:
     to: shiftLocalYmd(ymd, CALENDAR_EVENT_DATE_PADDING_DAYS),
   };
 }
+
+export function calendarUnionFetchBounds(
+  a: { from: string; to: string },
+  b: { from: string; to: string },
+): { from: string; to: string } {
+  return {
+    from: a.from <= b.from ? a.from : b.from,
+    to: a.to >= b.to ? a.to : b.to,
+  };
+}

@@ -5,6 +5,7 @@ import {
   CALENDAR_EVENT_DATE_PADDING_DAYS,
   calendarDayFetchBounds,
   calendarMonthFetchBounds,
+  calendarUnionFetchBounds,
 } from './calendarFetchBounds.ts';
 
 describe('calendarMonthFetchBounds', () => {
@@ -21,5 +22,16 @@ describe('calendarDayFetchBounds', () => {
     const bounds = calendarDayFetchBounds('2026-08-15');
     assert.equal(bounds.from, '2026-08-12');
     assert.equal(bounds.to, '2026-08-18');
+  });
+});
+
+describe('calendarUnionFetchBounds', () => {
+  it('spans the wider of two ranges', () => {
+    const union = calendarUnionFetchBounds(
+      { from: '2026-07-29', to: '2026-09-03' },
+      { from: '2026-08-12', to: '2026-08-18' },
+    );
+    assert.equal(union.from, '2026-07-29');
+    assert.equal(union.to, '2026-09-03');
   });
 });

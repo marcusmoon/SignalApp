@@ -41,6 +41,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
   fetchSignalCalendar,
+  fetchSignalCalendarMerged,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -253,10 +254,21 @@ export default function CalendarScreen({
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
       const { from, to } = monthBounds(year, month);
-      const raw = await fetchSignalCalendar(
-        { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
-        { cacheMode: signalCacheMode(forceRefresh) },
-      );
+      const cacheOpts = { cacheMode: signalCacheMode(forceRefresh) };
+      const raw = typeParam
+        ? await fetchSignalCalendar(
+            { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
+            cacheOpts,
+          )
+        : await fetchSignalCalendarMerged(
+            {
+              from,
+              to,
+              types: CALENDAR_EVENT_TYPE_ORDER,
+              limitPerType: CALENDAR_MONTH_QUERY_LIMIT,
+            },
+            cacheOpts,
+          );
       return raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
     },
     [typeParam],

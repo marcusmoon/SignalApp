@@ -1,5 +1,6 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCalendarDateSummary, SignalApiCalendarEvent } from '@/integrations/signal-api/types';
+import { mergeSignalCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
 import {
   buildSignalCalendarCacheKey,
   buildSignalCalendarDatesCacheKey,
@@ -10,6 +11,30 @@ import {
 } from '@/integrations/signal-api/cache/calendarCache';
 import type { CalendarEvent } from '@/types/signal';
 import { calendarEventDisplayYmd } from '@/utils/date';
+
+export { mergeSignalCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
+
+/** When several types are requested, fetch each type so earnings do not crowd out macro/holiday rows. */
+export async function fetchSignalCalendarMerged(
+  params: {
+    from?: string;
+    to?: string;
+    types: readonly string[];
+    limitPerType?: number;
+  },
+  options?: { cacheMode?: 'use' | 'bypass' },
+): Promise<SignalApiCalendarEvent[]> {
+  const types = params.types.map((type) => String(type || '').trim()).filter(Boolean);
+  if (types.length === 0) return [];
+  const limit = params.limitPerType ?? 1000;
+  if (types.length === 1) {
+    return fetchSignalCalendar({ from: params.from, to: params.to, type: types[0], limit }, options);
+  }
+  const batches = await Promise.all(
+    types.map((type) => fetchSignalCalendar({ from: params.from, to: params.to, type, limit }, options)),
+  );
+  return mergeSignalCalendarEvents(batches);
+}
 
 export async function fetchSignalCalendar(
   params?: {

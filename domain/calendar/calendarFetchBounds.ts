@@ -30,3 +30,11 @@ export function calendarUnionFetchBounds(
     to: a.to >= b.to ? a.to : b.to,
   };
 }
+
+/** True when `inner` event_date range fits entirely inside `outer`. */
+export function calendarRangeContains(
+  outer: { from: string; to: string },
+  inner: { from: string; to: string },
+): boolean {
+  return outer.from <= inner.from && inner.to <= outer.to;
+}

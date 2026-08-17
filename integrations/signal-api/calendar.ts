@@ -16,9 +16,31 @@ import { calendarEventDisplayYmd } from '@/utils/date';
 
 export { mergeSignalCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
 
-const CALENDAR_SCREEN_NON_EARNINGS_MONTH_LIMIT = 500;
-const CALENDAR_SCREEN_NON_EARNINGS_DAY_LIMIT = 150;
-const CALENDAR_SCREEN_EARNINGS_PER_SYMBOL_LIMIT = 8;
+const CALENDAR_SCREEN_NON_EARNINGS_LIMIT = 500;
+const CALENDAR_SCREEN_EARNINGS_PER_SYMBOL_LIMIT = 4;
+const CALENDAR_WATCHLIST_EARNINGS_CONCURRENCY = 6;
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await fn(items[index]!, index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
 
 export async function fetchSignalWatchlistCalendarEarnings(
   params: {
@@ -32,109 +54,65 @@ export async function fetchSignalWatchlistCalendarEarnings(
   const symbols = normalizeCalendarWatchlistSymbols(params.watchlistSymbols);
   if (symbols.length === 0) return [];
   const limit = params.limitPerSymbol ?? CALENDAR_SCREEN_EARNINGS_PER_SYMBOL_LIMIT;
-  const batches = await Promise.all(
-    symbols.map((symbol) =>
-      fetchSignalCalendar(
-        {
-          from: params.from,
-          to: params.to,
-          type: 'earnings',
-          symbol,
-          limit,
-        },
-        options,
-      ),
+  const batches = await mapWithConcurrency(symbols, CALENDAR_WATCHLIST_EARNINGS_CONCURRENCY, (symbol) =>
+    fetchSignalCalendar(
+      {
+        from: params.from,
+        to: params.to,
+        type: 'earnings',
+        symbol,
+        limit,
+      },
+      options,
     ),
   );
   return mergeSignalCalendarEvents(batches);
 }
 
 /**
- * Calendar screen: macro/FOMC/holiday in full; earnings limited to watchlist symbols.
- * Month + selected-day ranges are merged so dots and day list stay aligned.
+ * One event_date window: macro/FOMC/holiday in full; earnings limited to watchlist symbols.
  */
-export async function fetchSignalCalendarScreen(
+export async function fetchSignalCalendarScreenRange(
   params: {
-    monthFrom: string;
-    monthTo: string;
-    dayFrom: string;
-    dayTo: string;
-    earningsFrom: string;
-    earningsTo: string;
+    from: string;
+    to: string;
     watchlistSymbols: readonly string[];
     typeFilter?: string;
   },
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiCalendarEvent[]> {
   const typeFilter = String(params.typeFilter || '').trim().toLowerCase();
+  const { from, to, watchlistSymbols } = params;
 
   if (typeFilter === 'earnings') {
-    const [monthRows, dayRows] = await Promise.all([
-      fetchSignalWatchlistCalendarEarnings(
-        { from: params.monthFrom, to: params.monthTo, watchlistSymbols: params.watchlistSymbols },
-        options,
-      ),
-      fetchSignalWatchlistCalendarEarnings(
-        { from: params.dayFrom, to: params.dayTo, watchlistSymbols: params.watchlistSymbols },
-        options,
-      ),
-    ]);
-    return mergeSignalCalendarEvents([monthRows, dayRows]);
+    return fetchSignalWatchlistCalendarEarnings({ from, to, watchlistSymbols }, options);
   }
 
   if (typeFilter && typeFilter !== 'earnings') {
-    const [monthRows, dayRows] = await Promise.all([
-      fetchSignalCalendar(
-        {
-          from: params.monthFrom,
-          to: params.monthTo,
-          type: typeFilter,
-          limit: CALENDAR_SCREEN_NON_EARNINGS_MONTH_LIMIT,
-        },
-        options,
-      ),
-      fetchSignalCalendar(
-        {
-          from: params.dayFrom,
-          to: params.dayTo,
-          type: typeFilter,
-          limit: CALENDAR_SCREEN_NON_EARNINGS_DAY_LIMIT,
-        },
-        options,
-      ),
-    ]);
-    return mergeSignalCalendarEvents([monthRows, dayRows]);
+    return fetchSignalCalendar(
+      {
+        from,
+        to,
+        type: typeFilter,
+        limit: CALENDAR_SCREEN_NON_EARNINGS_LIMIT,
+      },
+      options,
+    );
   }
 
-  const [nonEarnMonth, nonEarnDay, earningsRows] = await Promise.all([
+  const [nonEarningsRows, earningsRows] = await Promise.all([
     fetchSignalCalendarMerged(
       {
-        from: params.monthFrom,
-        to: params.monthTo,
+        from,
+        to,
         types: CALENDAR_NON_EARNINGS_TYPES,
-        limitPerType: CALENDAR_SCREEN_NON_EARNINGS_MONTH_LIMIT,
+        limitPerType: CALENDAR_SCREEN_NON_EARNINGS_LIMIT,
       },
       options,
     ),
-    fetchSignalCalendarMerged(
-      {
-        from: params.dayFrom,
-        to: params.dayTo,
-        types: CALENDAR_NON_EARNINGS_TYPES,
-        limitPerType: CALENDAR_SCREEN_NON_EARNINGS_DAY_LIMIT,
-      },
-      options,
-    ),
-    fetchSignalWatchlistCalendarEarnings(
-      {
-        from: params.earningsFrom,
-        to: params.earningsTo,
-        watchlistSymbols: params.watchlistSymbols,
-      },
-      options,
-    ),
+    fetchSignalWatchlistCalendarEarnings({ from, to, watchlistSymbols }, options),
   ]);
-  return mergeSignalCalendarEvents([nonEarnMonth, nonEarnDay, earningsRows]);
+  return mergeSignalCalendarEvents([nonEarningsRows, earningsRows]);
 }
 
 /** When several types are requested, fetch each type so earnings do not crowd out macro/holiday rows. */

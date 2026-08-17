@@ -1,16 +1,25 @@
-import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
+import type { SignalApiCalendarEvent } from '../../integrations/signal-api/types.ts';
+import type { CalendarEvent } from '../../types/signal.ts';
 
-export function mergeSignalCalendarEvents(
-  batches: readonly SignalApiCalendarEvent[][],
-): SignalApiCalendarEvent[] {
-  const byId = new Map<string, SignalApiCalendarEvent>();
+function mergeRowsById<T extends { id?: string | null }>(batches: readonly T[][]): T[] {
+  const byId = new Map<string, T>();
   for (const rows of batches) {
     for (const row of rows) {
       const id = String(row?.id || '').trim();
       if (id) byId.set(id, row);
     }
   }
-  return [...byId.values()].sort(
+  return [...byId.values()];
+}
+
+export function mergeCalendarEvents(batches: readonly CalendarEvent[][]): CalendarEvent[] {
+  return mergeRowsById(batches);
+}
+
+export function mergeSignalCalendarEvents(
+  batches: readonly SignalApiCalendarEvent[][],
+): SignalApiCalendarEvent[] {
+  return mergeRowsById(batches).sort(
     (a, b) =>
       String(a.date || '').localeCompare(String(b.date || '')) ||
       String(a.eventAt || '').localeCompare(String(b.eventAt || '')) ||

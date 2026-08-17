@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { mergeSignalCalendarEvents } from './mergeCalendarEvents.ts';
+import { mergeCalendarEvents, mergeSignalCalendarEvents } from './mergeCalendarEvents.ts';
 
 describe('mergeSignalCalendarEvents', () => {
   it('dedupes by id and sorts by date', () => {
@@ -21,5 +21,17 @@ describe('mergeSignalCalendarEvents', () => {
       ['a', 'dup', 'b'],
     );
     assert.equal(merged[1]?.title, 'Dup newer');
+  });
+
+  it('mergeCalendarEvents dedupes app rows by id', () => {
+    const merged = mergeCalendarEvents([
+      [
+        { id: 'a', type: 'macro', date: '2026-08-08', time: '', title: 'A' },
+        { id: 'dup', type: 'macro', date: '2026-08-09', time: '', title: 'Old' },
+      ],
+      [{ id: 'dup', type: 'macro', date: '2026-08-09', time: '', title: 'New' }],
+    ]);
+    assert.equal(merged.length, 2);
+    assert.equal(merged.find((row) => row.id === 'dup')?.title, 'New');
   });
 });

@@ -40,14 +40,15 @@ import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
-  fetchSignalCalendarScreen,
+  fetchSignalCalendarScreenRange,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import {
   calendarDayFetchBounds,
   calendarMonthFetchBounds,
-  calendarUnionFetchBounds,
+  calendarRangeContains,
 } from '@/domain/calendar/calendarFetchBounds';
+import { mergeCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
 import { filterCalendarEarningsToWatchlist } from '@/domain/calendar/calendarWatchlistEarnings';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -221,7 +222,14 @@ export default function CalendarScreen({
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
 
-  const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+  const [gridEvents, setGridEvents] = useState<CalendarEvent[]>([]);
+  const [daySupplementEvents, setDaySupplementEvents] = useState<CalendarEvent[]>([]);
+  const gridEventsRef = useRef<CalendarEvent[]>([]);
+  gridEventsRef.current = gridEvents;
+  const monthEvents = useMemo(
+    () => mergeCalendarEvents([gridEvents, daySupplementEvents]),
+    [gridEvents, daySupplementEvents],
+  );
   const monthEventsRef = useRef<CalendarEvent[]>([]);
   monthEventsRef.current = monthEvents;
   const [enabledTypes, setEnabledTypes] = useState(
@@ -232,6 +240,17 @@ export default function CalendarScreen({
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const loadSeqRef = useRef(0);
+  const supplementSeqRef = useRef(0);
+
+  const monthRange = useMemo(
+    () => calendarMonthFetchBounds(viewMonth.year, viewMonth.month),
+    [viewMonth.year, viewMonth.month],
+  );
+  const dayRange = useMemo(() => calendarDayFetchBounds(selectedYmd), [selectedYmd]);
+  const needsDaySupplement = useMemo(
+    () => !calendarRangeContains(monthRange, dayRange),
+    [monthRange, dayRange],
+  );
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -251,39 +270,43 @@ export default function CalendarScreen({
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
 
   useEffect(() => {
-    void loadWatchlistSymbols().then(setWatchlistSymbols);
-  }, []);
-
-  useEffect(() => {
     if (!isFocused) return;
     void loadWatchlistSymbols().then(setWatchlistSymbols);
   }, [isFocused]);
 
-  const fetchScreenData = useCallback(
-    async (year: number, month: number, ymd: string, forceRefresh?: boolean) => {
-      const monthRange = calendarMonthFetchBounds(year, month);
-      const dayRange = calendarDayFetchBounds(ymd);
-      const earningsRange = calendarUnionFetchBounds(monthRange, dayRange);
-      const cacheOpts = { cacheMode: signalCacheMode(forceRefresh ?? true) };
-      const raw = await fetchSignalCalendarScreen(
+  const mapCalendarRows = useCallback(
+    (raw: Parameters<typeof signalCalendarToCalendarEvent>[0][]) =>
+      filterCalendarEarningsToWatchlist(
+        raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null),
+        watchlistSymbols,
+      ),
+    [watchlistSymbols],
+  );
+
+  const fetchRangeEvents = useCallback(
+    async (from: string, to: string, forceRefresh?: boolean) => {
+      const raw = await fetchSignalCalendarScreenRange(
         {
-          monthFrom: monthRange.from,
-          monthTo: monthRange.to,
-          dayFrom: dayRange.from,
-          dayTo: dayRange.to,
-          earningsFrom: earningsRange.from,
-          earningsTo: earningsRange.to,
+          from,
+          to,
           watchlistSymbols,
           typeFilter: typeParam,
         },
-        cacheOpts,
+        { cacheMode: signalCacheMode(forceRefresh) },
       );
-      return filterCalendarEarningsToWatchlist(
-        raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null),
-        watchlistSymbols,
-      );
+      return mapCalendarRows(raw);
     },
-    [typeParam, watchlistSymbols],
+    [mapCalendarRows, typeParam, watchlistSymbols],
+  );
+
+  const loadGridEvents = useCallback(
+    async (forceRefresh?: boolean) => fetchRangeEvents(monthRange.from, monthRange.to, forceRefresh),
+    [fetchRangeEvents, monthRange.from, monthRange.to],
+  );
+
+  const loadDaySupplementEvents = useCallback(
+    async (forceRefresh?: boolean) => fetchRangeEvents(dayRange.from, dayRange.to, forceRefresh),
+    [dayRange.from, dayRange.to, fetchRangeEvents],
   );
 
   useEffect(() => {
@@ -292,17 +315,17 @@ export default function CalendarScreen({
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     (async () => {
-      const hadEvents = monthEventsRef.current.length > 0;
+      const hadEvents = gridEventsRef.current.length > 0;
       if (!hadEvents) setLoading(true);
       setError(null);
       try {
-        const events = await fetchScreenData(viewMonth.year, viewMonth.month, selectedYmd);
+        const events = await loadGridEvents();
         if (cancelled || loadSeqRef.current !== seq) return;
-        setMonthEvents(events);
+        setGridEvents(events);
       } catch (e) {
         if (!cancelled && loadSeqRef.current === seq) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
-          setMonthEvents([]);
+          setGridEvents([]);
         }
       } finally {
         if (!cancelled && loadSeqRef.current === seq) {
@@ -310,20 +333,52 @@ export default function CalendarScreen({
         }
       }
     })();
-    return () => { cancelled = true; };
-  }, [fetchScreenData, selectedYmd, t, viewMonth.year, viewMonth.month]);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadGridEvents, t]);
+
+  useEffect(() => {
+    if (!hasSignalApi()) return;
+    if (!needsDaySupplement) {
+      setDaySupplementEvents([]);
+      return;
+    }
+    let cancelled = false;
+    const seq = supplementSeqRef.current + 1;
+    supplementSeqRef.current = seq;
+    (async () => {
+      try {
+        const events = await loadDaySupplementEvents();
+        if (cancelled || supplementSeqRef.current !== seq) return;
+        setDaySupplementEvents(events);
+      } catch {
+        if (!cancelled && supplementSeqRef.current === seq) {
+          setDaySupplementEvents([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadDaySupplementEvents, needsDaySupplement]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
+    setError(null);
     try {
-      const events = await fetchScreenData(viewMonth.year, viewMonth.month, selectedYmd, true);
-      setMonthEvents(events);
+      const [grid, supplement] = await Promise.all([
+        loadGridEvents(true),
+        needsDaySupplement ? loadDaySupplementEvents(true) : Promise.resolve([] as CalendarEvent[]),
+      ]);
+      setGridEvents(grid);
+      setDaySupplementEvents(supplement);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [fetchScreenData, selectedYmd, viewMonth.year, viewMonth.month, t]);
+  }, [loadDaySupplementEvents, loadGridEvents, needsDaySupplement, t]);
 
   const onRefresh = onRefreshBase;
 

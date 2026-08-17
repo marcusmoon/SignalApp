@@ -341,6 +341,8 @@ export const ko = {
   calendarTagFed: '연준',
   calendarTagMacro: '지표',
   calendarTagHoliday: '휴장',
+  calendarSegEarnings: '실적',
+  calendarSegHoliday: '휴장',
   calendarEarningsHourIntraday: '장중',
   calendarFilterClose: '닫기',
   calendarFilterAll: '전체',

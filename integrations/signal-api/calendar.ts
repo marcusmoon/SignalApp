@@ -88,6 +88,18 @@ export async function fetchSignalCalendarScreenRange(
     return fetchSignalWatchlistCalendarEarnings({ from, to, watchlistSymbols }, options);
   }
 
+  if (typeFilter === 'policy') {
+    return fetchSignalCalendarMerged(
+      {
+        from,
+        to,
+        types: ['fed', 'fomc'],
+        limitPerType: CALENDAR_SCREEN_NON_EARNINGS_LIMIT,
+      },
+      options,
+    );
+  }
+
   if (typeFilter && typeFilter !== 'earnings') {
     return fetchSignalCalendar(
       {

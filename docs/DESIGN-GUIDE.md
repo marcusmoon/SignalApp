@@ -197,7 +197,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - **히어로·뉴스·ETF 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` · 뉴스 행 → `/news-digest` · 섹터 흐름 → `/etf-insight` (알림과 동일 단건 상세)
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF/뉴스 바텀시트
 - **일정 칩**: 뉴스 흐름 아래. `D-2 FOMC`·`D-1 CPI` 식 3~5개(핵심 지표·FOMC/연준·휴장·관심 실적). 탭 → `/calendar`. **칩이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
-- **투자 캘린더** (`app/calendar.tsx`): 날짜 내비 + 타입 필터(색 스와치) + **일별 리스트**. 카드는 타입/종목/임팩트 태그·제목을 한 줄로, 시각은 우측. 월 그리드는 컴팩트 시트로 선택(일정 있는 날 점 표시). 타입 색: 실적 green · 지표 blue · 연준 orange · FOMC danger · 휴장 muted.
+- **투자 캘린더** (`app/calendar.tsx`): `topFixed` 안에서 **날짜 → underline 세그먼트**. 세그먼트 `주요 · 지표 · 실적 · 연준 · 휴장 · 전체` (`getSegmentTabBarStyles`). 기본 **주요**는 FOMC/연준·핵심 매크로·휴장·관심 실적만. **전체**는 같은 유형을 큐레이션 없이. 유형 탭은 해당 타입만. 본문은 시각 좌측 + 제목 행(점·짧은 제목) + 헤어라인. 혼합 필터는 `SectionCapRule`로 구역(통화정책·지표·실적·휴장). 월 그리드는 컴팩트 시트. 타입 색: 실적 green · 지표 blue · 연준 orange · FOMC danger · 휴장 muted.
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
   - **메인 진입**: 더보기·사이드바·홈 숏컷 짧은 라벨 **섹터** (`moreHubEtfShort`). 홈 섹션·상세 헤더는 **섹터 흐름** (`homeEtfInsightTitle`) → `/etf-insights`. API 키는 `etf-insights` 유지

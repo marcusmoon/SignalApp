@@ -20,6 +20,7 @@ import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
@@ -32,6 +33,13 @@ import {
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
+import {
+  BOTTOM_SHEET_BACKDROP_COLOR,
+  BOTTOM_SHEET_MAX_HEIGHT,
+} from '@/constants/bottomSheetLayout';
+import { UI_RADIUS_SHEET } from '@/constants/uiCornerRadius';
+import { COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -52,39 +60,42 @@ import { mergeCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
 import { filterCalendarEarningsToWatchlist } from '@/domain/calendar/calendarWatchlistEarnings';
 import {
   buildCalendarDayListRows,
+  calendarEventSectionKey,
   calendarEventShortTitle,
   filterMeaningfulCalendarEvents,
   sortCalendarDayEvents,
   type CalendarDayListRow,
   type CalendarDaySectionKey,
 } from '@/domain/calendar/calendarEventRelevance';
+import {
+  CALENDAR_VIEW_FILTER_ORDER,
+  calendarViewFetchType,
+  calendarViewFilterTypes,
+  calendarViewShowsDaySections,
+  calendarViewUsesMeaningfulScope,
+  type CalendarViewFilterKey,
+} from '@/domain/calendar/calendarViewFilter';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
-import {
-  CALENDAR_EVENT_TYPE_ORDER,
-  loadCalendarEventTypeFilter,
-  saveCalendarEventTypeFilter,
-  type CalendarEventTypeKey,
-} from '@/services/calendarEventTypeFilterPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import {
-  loadCalendarScopeMode,
-  saveCalendarScopeMode,
-  type CalendarScopeMode,
-} from '@/services/calendarScopePreference';
+  loadCalendarViewFilter,
+  saveCalendarViewFilter,
+} from '@/services/calendarViewFilterPreference';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
-import { calendarTypeAccent, calendarTypeSoftFill } from '@/domain/calendar/typeAccent';
+import { calendarTypeAccent } from '@/domain/calendar/typeAccent';
 import type { CalendarEvent } from '@/types/signal';
 import { localeTagForAppLocale, toYmd, calendarEventDisplayYmd } from '@/utils/date';
 
-const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
+const CALENDAR_VIEW_FILTER_LABEL: Record<CalendarViewFilterKey, MessageId> = {
+  meaningful: 'calendarScopeMeaningful',
   macro: 'calendarTagMacro',
-  fed: 'calendarTagFed',
-  fomc: 'calendarTagFomc',
-  earnings: 'calendarTagEarnings',
-  holiday: 'calendarTagHoliday',
+  earnings: 'calendarSegEarnings',
+  policy: 'calendarTagFed',
+  holiday: 'calendarSegHoliday',
+  full: 'calendarFilterAll',
 };
 
 function calendarEventTimeLabel(ev: CalendarEvent, locale: AppLocale): string {
@@ -139,19 +150,6 @@ function shiftYmd(ymd: string, days: number): string {
 function monthFromYmd(value: string): { year: number; month: number } {
   const date = dateFromYmd(value);
   return { year: date.getFullYear(), month: date.getMonth() };
-}
-
-function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
-  if (input.size === CALENDAR_EVENT_TYPE_ORDER.length) {
-    return new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
-  }
-  const first = CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
-  return first ? new Set<CalendarEventTypeKey>([first]) : new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
-}
-
-function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
-  if (input.size !== 1) return undefined;
-  return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
 }
 
 const CALENDAR_SECTION_LABEL: Record<CalendarDaySectionKey, MessageId> = {
@@ -242,16 +240,13 @@ export default function CalendarScreen({
   );
   const monthEventsRef = useRef<CalendarEvent[]>([]);
   monthEventsRef.current = monthEvents;
-  const [enabledTypes, setEnabledTypes] = useState(
-    () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
-  );
   const [viewMonth, setViewMonth] = useState(() => monthFromYmd(todayYmd));
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
   const [calendarVisible, setCalendarVisible] = useState(false);
-  const [scopeMode, setScopeMode] = useState<CalendarScopeMode>('meaningful');
+  const [viewFilter, setViewFilter] = useState<CalendarViewFilterKey>('meaningful');
 
   useEffect(() => {
-    void loadCalendarScopeMode().then(setScopeMode);
+    void loadCalendarViewFilter().then(setViewFilter);
   }, []);
 
   const loadSeqRef = useRef(0);
@@ -267,20 +262,13 @@ export default function CalendarScreen({
     [monthRange, dayRange],
   );
 
-  useEffect(() => {
-    void loadCalendarEventTypeFilter().then((saved) => {
-      const next = normalizeCalendarTypeSelection(saved);
-      setEnabledTypes(next);
-      if (next.size !== saved.size) void saveCalendarEventTypeFilter(next);
-    });
-  }, []);
-
-  const typeParam = selectedCalendarType(enabledTypes);
-  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], {
+  const typeParam = calendarViewFetchType(viewFilter);
+  const enabledTypes = useMemo(() => new Set(calendarViewFilterTypes(viewFilter)), [viewFilter]);
+  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, viewFilter], {
     skipInitial: false,
     resyncDeps: [monthEvents, selectedYmd],
   });
-  const listScrollResetKey = `${selectedYmd}:${typeParam}`;
+  const listScrollResetKey = `${selectedYmd}:${viewFilter}`;
 
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
 
@@ -397,15 +385,13 @@ export default function CalendarScreen({
 
   const onRefresh = onRefreshBase;
 
-  const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-
   const displayEvents = useMemo(() => {
-    let rows = monthEvents.filter((event) => enabledTypes.has(event.type));
-    if (allEventTypesSelected && scopeMode === 'meaningful') {
+    const rows = monthEvents.filter((event) => enabledTypes.has(event.type));
+    if (calendarViewUsesMeaningfulScope(viewFilter)) {
       return filterMeaningfulCalendarEvents(rows, watchlistSymbols);
     }
     return sortCalendarDayEvents(rows);
-  }, [allEventTypesSelected, enabledTypes, monthEvents, scopeMode, watchlistSymbols]);
+  }, [enabledTypes, monthEvents, viewFilter, watchlistSymbols]);
 
   const filteredEvents = displayEvents;
 
@@ -419,7 +405,13 @@ export default function CalendarScreen({
     [filteredEvents, selectedYmd],
   );
 
-  const dayListRows = useMemo(() => buildCalendarDayListRows(selectedDayEvents), [selectedDayEvents]);
+  const dayListRows = useMemo(
+    () =>
+      calendarViewShowsDaySections(viewFilter)
+        ? buildCalendarDayListRows(selectedDayEvents)
+        : selectedDayEvents.map((event) => ({ kind: 'event' as const, id: event.id, event })),
+    [selectedDayEvents, viewFilter],
+  );
 
   const selectedDayHeading = useMemo(
     () => formatDayHeaderLabel(selectedYmd, locale),
@@ -427,27 +419,16 @@ export default function CalendarScreen({
   );
 
   const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
-  const emptyDayMessage =
-    allEventTypesSelected && scopeMode === 'meaningful'
-      ? t('calendarScreenEmptyDayMeaningful')
-      : t('calendarScreenEmptyDay');
-  const emptyFilterMessage =
-    allEventTypesSelected && scopeMode === 'meaningful'
-      ? t('calendarFilterEmptyMeaningful')
-      : t('calendarFilterEmptyFiltered');
+  const emptyDayMessage = calendarViewUsesMeaningfulScope(viewFilter)
+    ? t('calendarScreenEmptyDayMeaningful')
+    : t('calendarScreenEmptyDay');
+  const emptyFilterMessage = calendarViewUsesMeaningfulScope(viewFilter)
+    ? t('calendarFilterEmptyMeaningful')
+    : t('calendarFilterEmptyFiltered');
 
-  const onSelectScope = useCallback((mode: CalendarScopeMode) => {
-    setScopeMode(mode);
-    void saveCalendarScopeMode(mode);
-    const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
-    setEnabledTypes(next);
-    void saveCalendarEventTypeFilter(next);
-  }, []);
-
-  const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
-    const next = new Set<CalendarEventTypeKey>([type]);
-    void saveCalendarEventTypeFilter(next);
-    setEnabledTypes(next);
+  const onSelectViewFilter = useCallback((filter: CalendarViewFilterKey) => {
+    setViewFilter(filter);
+    void saveCalendarViewFilter(filter);
   }, []);
 
   const selectYmd = useCallback((ymd: string) => {
@@ -516,33 +497,48 @@ export default function CalendarScreen({
     );
   }, [emptyFiltered, emptyDayMessage, emptyFilterMessage, error, loading, selectedDayEvents.length, styles.emptyDayBox, styles.emptyDayText, t]);
 
+  const sectionCounts = useMemo(() => {
+    const counts: Partial<Record<CalendarDaySectionKey, number>> = {};
+    for (const event of selectedDayEvents) {
+      const key = calendarEventSectionKey(event);
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [selectedDayEvents]);
+
   const renderDayRow = useCallback<ListRenderItem<CalendarDayListRow>>(
     ({ item }) => {
       if (item.kind === 'header') {
+        const count = sectionCounts[item.section];
         return (
           <View style={styles.dayGroupHeader}>
-            <Text style={styles.dayGroupTitle}>{t(CALENDAR_SECTION_LABEL[item.section])}</Text>
+            <SectionCapRule
+              label={t(CALENDAR_SECTION_LABEL[item.section])}
+              meta={count ? String(count) : null}
+              accessibilityRole="header"
+            />
           </View>
         );
       }
-      return <CalendarEventCard ev={item.event} theme={theme} cardStyles={styles} t={t} locale={locale} />;
+      return (
+        <CalendarEventRow
+          ev={item.event}
+          theme={theme}
+          cardStyles={styles}
+          t={t}
+          locale={locale}
+          showTypeTag={calendarViewShowsDaySections(viewFilter)}
+        />
+      );
     },
-    [locale, styles, t, theme],
+    [locale, sectionCounts, styles, t, theme, viewFilter],
   );
 
   const listKeyExtractor = useCallback((item: CalendarDayListRow) => item.id, []);
 
   const listHeader = useMemo(
-    () => (
-      <View style={styles.daySection}>
-        <Text style={styles.daySectionMeta}>
-          {selectedDayEvents.length > 0
-            ? `${t('calendarScreenSectionTitle')} · ${selectedDayEvents.length}`
-            : t('calendarScreenSectionTitle')}
-        </Text>
-      </View>
-    ),
-    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
+    () => <View style={styles.listTopSpacer} />,
+    [styles.listTopSpacer],
   );
 
   const showTodayNav = selectedYmd !== todayYmd;
@@ -600,52 +596,18 @@ export default function CalendarScreen({
           onToday={goToday}
           showToday={showTodayNav}
         />
-        <View style={styles.filterChips} accessibilityRole="tablist">
-          <Pressable
-            onPress={() => onSelectScope('meaningful')}
-            style={[
-              styles.filterChip,
-              allEventTypesSelected && scopeMode === 'meaningful' && styles.filterChipActive,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: allEventTypesSelected && scopeMode === 'meaningful' }}>
-            <Text
-              style={[
-                styles.filterChipText,
-                allEventTypesSelected && scopeMode === 'meaningful' && styles.filterChipTextActive,
-              ]}>
-              {t('calendarScopeMeaningful')}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => onSelectScope('full')}
-            style={[
-              styles.filterChip,
-              allEventTypesSelected && scopeMode === 'full' && styles.filterChipActive,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: allEventTypesSelected && scopeMode === 'full' }}>
-            <Text
-              style={[
-                styles.filterChipText,
-                allEventTypesSelected && scopeMode === 'full' && styles.filterChipTextActive,
-              ]}>
-              {t('calendarScopeFull')}
-            </Text>
-          </Pressable>
-          {CALENDAR_EVENT_TYPE_ORDER.map((type) => {
-            const active = !allEventTypesSelected && enabledTypes.has(type);
-            const swatch = calendarTypeAccent(theme, type);
+        <View style={styles.segment} accessibilityRole="tablist">
+          {CALENDAR_VIEW_FILTER_ORDER.map((filter) => {
+            const active = viewFilter === filter;
             return (
               <Pressable
-                key={type}
-                onPress={() => onToggleEventType(type)}
-                style={[styles.filterChip, active && styles.filterChipActive]}
+                key={filter}
+                onPress={() => onSelectViewFilter(filter)}
                 accessibilityRole="button"
-                accessibilityState={{ selected: active }}>
-                <View style={[styles.filterChipSwatch, { backgroundColor: swatch }]} />
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                  {t(CALENDAR_FILTER_LABEL[type])}
+                accessibilityState={{ selected: active }}
+                style={[styles.segBtn, active && styles.segBtnActive]}>
+                <Text style={[styles.segText, active && styles.segTextActive]} numberOfLines={1}>
+                  {t(CALENDAR_VIEW_FILTER_LABEL[filter])}
                 </Text>
               </Pressable>
             );
@@ -663,7 +625,7 @@ export default function CalendarScreen({
         ListHeaderComponent={listHeader}
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
-          <View style={{ paddingBottom: stackScreenScrollBottomPadding(insets.bottom) + 56 }}>
+          <View style={{ paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }}>
             <SignalBannerAd />
           </View>
         }
@@ -728,6 +690,7 @@ export default function CalendarScreen({
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   const fixedHeader = getScreenFixedHeaderStyles(theme);
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     pageColumn: {
@@ -762,38 +725,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     fixedTopWide: {
       ...fixedHeader.stripWide,
     },
-    daySection: {
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 8,
+    listTopSpacer: {
+      height: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     listLoadingRow: {
       alignItems: 'center',
       justifyContent: 'center',
       paddingBottom: 8,
     },
-    daySectionMeta: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      fontVariant: ['tabular-nums'],
-    },
     dayGroupHeader: {
-      paddingTop: 10,
-      paddingBottom: 4,
-    },
-    dayGroupTitle: {
-      fontSize: ft.ff(11),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textDim,
-      letterSpacing: 0.2,
+      paddingTop: 14,
+      paddingBottom: 6,
     },
     emptyDayBox: {
-      marginTop: 4,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingVertical: 20,
+      marginTop: 12,
+      paddingVertical: 28,
       paddingHorizontal: 14,
       alignItems: 'center',
       justifyContent: 'center',
@@ -811,123 +757,76 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: 16,
       flexGrow: 1,
     },
-    filterChips: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-      marginTop: 10,
+    segment: {
+      ...segmentTab.segment,
+      marginHorizontal: -SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
     },
-    filterChip: {
-      minHeight: 30,
-      paddingHorizontal: 9,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 5,
+    segBtn: {
+      ...segmentTab.segBtn,
+      paddingHorizontal: 4,
     },
-    filterChipActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    filterChipSwatch: {
-      width: 6,
-      height: 6,
-      borderRadius: 999,
-      flexShrink: 0,
-    },
-    filterChipText: {
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '600',
-      color: theme.textMuted,
-    },
-    filterChipTextActive: {
-      color: theme.green,
-    },
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     errBox: {
       padding: 10,
       borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
-      borderColor: '#FFD6DA',
+      borderColor: theme.border,
       marginBottom: 8,
     },
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
-    card: {
-      backgroundColor: theme.card,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-      marginBottom: 6,
-    },
-    cardRow: {
+    row: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
-    titleBlock: { flex: 1, minWidth: 0, gap: 4 },
-    titleLine: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 5,
+    timeCol: {
+      width: 64,
+      paddingTop: 1,
     },
-    typeTag: {
-      borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-    },
-    typeTagText: { fontSize: sf(10), fontWeight: '700', letterSpacing: 0.1 },
-    impactTag: {
-      borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-    },
-    impactHigh: {
-      borderColor: theme.accentOrange + '88',
-      backgroundColor: theme.accentOrange + '1A',
-    },
-    impactMedium: {
-      borderColor: theme.accentBlue + '77',
-      backgroundColor: theme.accentBlue + '18',
-    },
-    impactTagText: { fontSize: sf(10), fontWeight: '600', color: theme.textMuted },
-    symbolTag: {
-      borderWidth: 1,
-      borderRadius: 5,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      borderColor: theme.green + '88',
-      backgroundColor: theme.green + '18',
-    },
-    symbolTagText: { fontSize: sf(10), fontWeight: '700', color: theme.green },
     time: {
-      flexShrink: 0,
-      maxWidth: '34%',
       fontSize: ft.ff(11),
       lineHeight: ft.ff(15),
       fontWeight: ft.emphasisWeight,
       color: theme.textDim,
-      textAlign: 'right',
-      marginTop: 1,
       fontVariant: ['tabular-nums'],
     },
+    bodyCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: 3,
+    },
+    titleLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+    },
+    typeDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      flexShrink: 0,
+    },
+    typeLabel: {
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+      flexShrink: 0,
+    },
     title: {
-      flexShrink: 1,
-      fontSize: ft.ff(14),
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: ft.ff(19),
+      lineHeight: ft.ff(20),
     },
     subtitle: {
       fontSize: ft.ff(12),
@@ -938,7 +837,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     metricRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 6,
+      gap: 8,
     },
     metricText: {
       fontSize: ft.ff(11),
@@ -956,21 +855,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+      marginTop: 2,
     },
     modalBackdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.58)',
+      backgroundColor: BOTTOM_SHEET_BACKDROP_COLOR,
       justifyContent: 'flex-end',
     },
     modalSheet: {
-      backgroundColor: theme.bg,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      borderWidth: 1,
+      backgroundColor: theme.card,
+      borderTopLeftRadius: UI_RADIUS_SHEET,
+      borderTopRightRadius: UI_RADIUS_SHEET,
+      borderWidth: StyleSheet.hairlineWidth,
       borderBottomWidth: 0,
       borderColor: theme.border,
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       paddingBottom: 12,
+      maxHeight: BOTTOM_SHEET_MAX_HEIGHT,
     },
     modalGrab: {
       alignSelf: 'center',
@@ -997,13 +898,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: sf(13),
       fontWeight: '700',
     },
-    modalFoot: { paddingTop: 8 },
+    modalFoot: {
+      marginTop: 8,
+      alignItems: 'center',
+    },
     modalTodayBtn: {
-      minHeight: 38,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
+      minHeight: 40,
+      paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1030,27 +931,28 @@ function formatDayHeaderLabel(ymd: string, locale: AppLocale): string {
   }).format(d);
 }
 
-type CalendarEventCardProps = {
+type CalendarEventRowProps = {
   ev: CalendarEvent;
   theme: AppTheme;
   cardStyles: CalendarCardStyles;
   t: (id: MessageId) => string;
   locale: AppLocale;
+  showTypeTag: boolean;
 };
 
-const CalendarEventCard = memo(function CalendarEventCard({
+const CalendarEventRow = memo(function CalendarEventRow({
   ev,
   theme,
   cardStyles: styles,
   t,
   locale,
-}: CalendarEventCardProps) {
+  showTypeTag,
+}: CalendarEventRowProps) {
   const surprise = calendarSurpriseLabel(ev, t);
   const isEarnings = ev.type === 'earnings';
   const isHoliday = ev.type === 'holiday';
   const sourceEntries = calendarProviderSourceEntries(ev.provider);
   const accent = calendarTypeAccent(theme, ev.type);
-  const softFill = calendarTypeSoftFill(theme, ev.type);
 
   const typeTagLabel = isEarnings
     ? t('calendarTagEarnings')
@@ -1067,87 +969,72 @@ const CalendarEventCard = memo(function CalendarEventCard({
     displayTitle.trim().toLowerCase() !== ev.title.trim().toLowerCase() && ev.title.trim().length > 0;
 
   const timeLabel = calendarEventTimeLabel(ev, locale);
+  const impactLabel =
+    !isEarnings && ev.impact === 'high'
+      ? t('calendarImpactHigh')
+      : !isEarnings && ev.impact === 'medium'
+        ? t('calendarImpactMedium')
+        : null;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardRow}>
-        <View style={styles.titleBlock}>
-          <View style={styles.titleLine}>
-            <View style={[styles.typeTag, { borderColor: `${accent}66`, backgroundColor: softFill }]}>
-              <Text style={[styles.typeTagText, { color: accent }]}>{typeTagLabel}</Text>
-            </View>
-            {isEarnings && ev.symbol ? (
-              <View style={styles.symbolTag}>
-                <Text style={styles.symbolTagText}>{ev.symbol}</Text>
-              </View>
-            ) : null}
-            {!isEarnings && ev.impact ? (
-              <View
-                style={[
-                  styles.impactTag,
-                  ev.impact === 'high' && styles.impactHigh,
-                  ev.impact === 'medium' && styles.impactMedium,
-                ]}>
-                <Text
-                  style={[
-                    styles.impactTagText,
-                    ev.impact === 'high' && { color: theme.accentOrange },
-                    ev.impact === 'medium' && { color: theme.accentBlue },
-                  ]}>
-                  {ev.impact === 'high'
-                    ? t('calendarImpactHigh')
-                    : ev.impact === 'medium'
-                      ? t('calendarImpactMedium')
-                      : t('calendarImpactLow')}
-                </Text>
-              </View>
-            ) : null}
-            <Text style={styles.title} numberOfLines={3}>
-              {displayTitle}
-            </Text>
-          </View>
-          {showFullTitle ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
-              {ev.title}
-            </Text>
-          ) : null}
-          {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
-            <View style={styles.metricRow}>
-              {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
-                <Text style={styles.metricText}>
-                  FY{ev.fiscalYear} Q{ev.fiscalQuarter}
-                </Text>
-              ) : null}
-              {ev.earningsHour ? <Text style={styles.metricText}>{ev.earningsHour}</Text> : null}
-            </View>
-          ) : null}
-          {ev.actual != null || ev.estimate != null || ev.prev != null ? (
-            <View style={styles.metricRow}>
-              <Text style={styles.metricText}>
-                {isEarnings ? 'EPS ' : ''}
-                {t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
-              </Text>
-              <Text style={styles.metricText}>
-                {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
-              </Text>
-              {!isEarnings ? (
-                <Text style={styles.metricText}>
-                  {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-          {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
-          {sourceEntries.length > 0 ? (
-            <View style={styles.sourceFooter}>
-              <SourceIconStack sources={sourceEntries} size={16} maxVisible={2} />
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.time} numberOfLines={1}>
+    <View style={styles.row}>
+      <View style={styles.timeCol}>
+        <Text style={styles.time} numberOfLines={2}>
           {timeLabel}
         </Text>
+      </View>
+      <View style={styles.bodyCol}>
+        <View style={styles.titleLine}>
+          <View style={[styles.typeDot, { backgroundColor: accent }]} />
+          {showTypeTag ? (
+            <Text style={[styles.typeLabel, { color: accent }]} numberOfLines={1}>
+              {typeTagLabel}
+            </Text>
+          ) : null}
+          <Text style={styles.title} numberOfLines={2}>
+            {displayTitle}
+          </Text>
+        </View>
+        {showFullTitle ? (
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {ev.title}
+          </Text>
+        ) : null}
+        {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
+          <View style={styles.metricRow}>
+            {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
+              <Text style={styles.metricText}>
+                FY{ev.fiscalYear} Q{ev.fiscalQuarter}
+              </Text>
+            ) : null}
+            {ev.earningsHour ? <Text style={styles.metricText}>{ev.earningsHour}</Text> : null}
+          </View>
+        ) : null}
+        {impactLabel ? <Text style={styles.metricText}>{impactLabel}</Text> : null}
+        {ev.actual != null || ev.estimate != null || ev.prev != null ? (
+          <View style={styles.metricRow}>
+            <Text style={styles.metricText}>
+              {isEarnings ? 'EPS ' : ''}
+              {t('calendarMetricActual')} {formatCalendarMetric(ev.actual, ev.unit)}
+            </Text>
+            <Text style={styles.metricText}>
+              {t('calendarMetricEstimate')} {formatCalendarMetric(ev.estimate, ev.unit)}
+            </Text>
+            {!isEarnings ? (
+              <Text style={styles.metricText}>
+                {t('calendarMetricPrevious')} {formatCalendarMetric(ev.prev, ev.unit)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+        {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
+        {sourceEntries.length > 0 ? (
+          <View style={styles.sourceFooter}>
+            <SourceIconStack sources={sourceEntries} size={16} maxVisible={2} />
+          </View>
+        ) : null}
       </View>
     </View>
   );
 });
+

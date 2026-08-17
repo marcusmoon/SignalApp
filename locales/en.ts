@@ -342,6 +342,8 @@ export const en = {
   calendarTagFed: 'Fed',
   calendarTagMacro: 'Macro',
   calendarTagHoliday: 'Holiday',
+  calendarSegEarnings: 'Earn',
+  calendarSegHoliday: 'Hol',
   calendarEarningsHourIntraday: 'Regular session',
   calendarFilterClose: 'Close',
   calendarFilterAll: 'All',

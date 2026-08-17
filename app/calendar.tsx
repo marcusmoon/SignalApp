@@ -42,8 +42,13 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import {
   fetchSignalCalendar,
   fetchSignalCalendarMerged,
+  mergeSignalCalendarEvents,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
+import {
+  calendarDayFetchBounds,
+  calendarMonthFetchBounds,
+} from '@/domain/calendar/calendarFetchBounds';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
@@ -121,13 +126,6 @@ function shiftYmd(ymd: string, days: number): string {
 function monthFromYmd(value: string): { year: number; month: number } {
   const date = dateFromYmd(value);
   return { year: date.getFullYear(), month: date.getMonth() };
-}
-
-function monthBounds(year: number, month: number): { from: string; to: string } {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  // Pad by one day so US market-date earnings (amc) that fall on the next local day are included.
-  return { from: shiftYmd(toYmd(first), -1), to: shiftYmd(toYmd(last), 1) };
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -251,27 +249,41 @@ export default function CalendarScreen({
   });
   const listScrollResetKey = `${selectedYmd}:${typeParam}`;
 
-  const fetchMonthData = useCallback(
-    async (year: number, month: number, forceRefresh?: boolean) => {
-      const { from, to } = monthBounds(year, month);
+  const fetchCalendarRange = useCallback(
+    async (from: string, to: string, forceRefresh?: boolean) => {
       const cacheOpts = { cacheMode: signalCacheMode(forceRefresh) };
-      const raw = typeParam
-        ? await fetchSignalCalendar(
-            { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
-            cacheOpts,
-          )
-        : await fetchSignalCalendarMerged(
-            {
-              from,
-              to,
-              types: CALENDAR_EVENT_TYPE_ORDER,
-              limitPerType: CALENDAR_MONTH_QUERY_LIMIT,
-            },
-            cacheOpts,
-          );
-      return raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
+      if (typeParam) {
+        return fetchSignalCalendar(
+          { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
+          cacheOpts,
+        );
+      }
+      return fetchSignalCalendarMerged(
+        {
+          from,
+          to,
+          types: CALENDAR_EVENT_TYPE_ORDER,
+          limitPerType: CALENDAR_MONTH_QUERY_LIMIT,
+        },
+        cacheOpts,
+      );
     },
     [typeParam],
+  );
+
+  const fetchScreenData = useCallback(
+    async (year: number, month: number, ymd: string, forceRefresh?: boolean) => {
+      const monthRange = calendarMonthFetchBounds(year, month);
+      const dayRange = calendarDayFetchBounds(ymd);
+      const [monthRaw, dayRaw] = await Promise.all([
+        fetchCalendarRange(monthRange.from, monthRange.to, forceRefresh),
+        fetchCalendarRange(dayRange.from, dayRange.to, forceRefresh),
+      ]);
+      return mergeSignalCalendarEvents([monthRaw, dayRaw])
+        .map(rawToCalendarEvent)
+        .filter((ev): ev is CalendarEvent => ev != null);
+    },
+    [fetchCalendarRange],
   );
 
   useEffect(() => {
@@ -284,7 +296,7 @@ export default function CalendarScreen({
       if (!hadEvents) setLoading(true);
       setError(null);
       try {
-        const events = await fetchMonthData(viewMonth.year, viewMonth.month);
+        const events = await fetchScreenData(viewMonth.year, viewMonth.month, selectedYmd);
         if (cancelled || loadSeqRef.current !== seq) return;
         setMonthEvents(events);
       } catch (e) {
@@ -299,19 +311,19 @@ export default function CalendarScreen({
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchMonthData, t, viewMonth.year, viewMonth.month]);
+  }, [fetchScreenData, selectedYmd, t, viewMonth.year, viewMonth.month]);
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     try {
-      const events = await fetchMonthData(viewMonth.year, viewMonth.month, true);
+      const events = await fetchScreenData(viewMonth.year, viewMonth.month, selectedYmd, true);
       setMonthEvents(events);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
+  }, [fetchScreenData, selectedYmd, viewMonth.year, viewMonth.month, t]);
 
   const onRefresh = onRefreshBase;
 

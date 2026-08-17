@@ -9,6 +9,12 @@ function calendarEventSortKey(ev: SignalApiCalendarEvent): string {
   return '';
 }
 
+export {
+  CALENDAR_EVENT_DATE_PADDING_DAYS,
+  calendarDayFetchBounds,
+  calendarMonthFetchBounds,
+} from '@/domain/calendar/calendarFetchBounds';
+
 export async function fetchSignalMacroCalendarRangeMerged(
   from: Date,
   to: Date,

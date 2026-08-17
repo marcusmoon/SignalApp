@@ -50,6 +50,14 @@ import {
 } from '@/domain/calendar/calendarFetchBounds';
 import { mergeCalendarEvents } from '@/domain/calendar/mergeCalendarEvents';
 import { filterCalendarEarningsToWatchlist } from '@/domain/calendar/calendarWatchlistEarnings';
+import {
+  buildCalendarDayListRows,
+  calendarEventShortTitle,
+  filterMeaningfulCalendarEvents,
+  sortCalendarDayEvents,
+  type CalendarDayListRow,
+  type CalendarDaySectionKey,
+} from '@/domain/calendar/calendarEventRelevance';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
@@ -60,6 +68,11 @@ import {
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import {
+  loadCalendarScopeMode,
+  saveCalendarScopeMode,
+  type CalendarScopeMode,
+} from '@/services/calendarScopePreference';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { calendarTypeAccent, calendarTypeSoftFill } from '@/domain/calendar/typeAccent';
@@ -141,15 +154,12 @@ function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTy
   return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
 }
 
-function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
-  return [...events].sort(
-    (a, b) =>
-      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
-      (a.eventAt && b.eventAt ? String(a.eventAt).localeCompare(String(b.eventAt)) : 0) ||
-      String(a.time || '').localeCompare(String(b.time || '')) ||
-      a.title.localeCompare(b.title),
-  );
-}
+const CALENDAR_SECTION_LABEL: Record<CalendarDaySectionKey, MessageId> = {
+  policy: 'calendarSectionPolicy',
+  macro: 'calendarSectionMacro',
+  earnings: 'calendarSectionEarnings',
+  holiday: 'calendarSectionHoliday',
+};
 
 export type CalendarScreenProps = {
   embedded?: boolean;
@@ -238,6 +248,11 @@ export default function CalendarScreen({
   const [viewMonth, setViewMonth] = useState(() => monthFromYmd(todayYmd));
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const [scopeMode, setScopeMode] = useState<CalendarScopeMode>('meaningful');
+
+  useEffect(() => {
+    void loadCalendarScopeMode().then(setScopeMode);
+  }, []);
 
   const loadSeqRef = useRef(0);
   const supplementSeqRef = useRef(0);
@@ -382,10 +397,17 @@ export default function CalendarScreen({
 
   const onRefresh = onRefreshBase;
 
-  const filteredEvents = useMemo(
-    () => monthEvents.filter((e) => enabledTypes.has(e.type)),
-    [monthEvents, enabledTypes],
-  );
+  const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
+
+  const displayEvents = useMemo(() => {
+    let rows = monthEvents.filter((event) => enabledTypes.has(event.type));
+    if (allEventTypesSelected && scopeMode === 'meaningful') {
+      return filterMeaningfulCalendarEvents(rows, watchlistSymbols);
+    }
+    return sortCalendarDayEvents(rows);
+  }, [allEventTypesSelected, enabledTypes, monthEvents, scopeMode, watchlistSymbols]);
+
+  const filteredEvents = displayEvents;
 
   const eventDates = useMemo(
     () => new Set(filteredEvents.map((e) => calendarEventDisplayYmd(e)).filter(Boolean)),
@@ -393,12 +415,11 @@ export default function CalendarScreen({
   );
 
   const selectedDayEvents = useMemo(
-    () =>
-      sortDayEvents(
-        filteredEvents.filter((e) => calendarEventDisplayYmd(e) === selectedYmd),
-      ),
+    () => filteredEvents.filter((event) => calendarEventDisplayYmd(event) === selectedYmd),
     [filteredEvents, selectedYmd],
   );
+
+  const dayListRows = useMemo(() => buildCalendarDayListRows(selectedDayEvents), [selectedDayEvents]);
 
   const selectedDayHeading = useMemo(
     () => formatDayHeaderLabel(selectedYmd, locale),
@@ -406,18 +427,27 @@ export default function CalendarScreen({
   );
 
   const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
-  const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
+  const emptyDayMessage =
+    allEventTypesSelected && scopeMode === 'meaningful'
+      ? t('calendarScreenEmptyDayMeaningful')
+      : t('calendarScreenEmptyDay');
+  const emptyFilterMessage =
+    allEventTypesSelected && scopeMode === 'meaningful'
+      ? t('calendarFilterEmptyMeaningful')
+      : t('calendarFilterEmptyFiltered');
+
+  const onSelectScope = useCallback((mode: CalendarScopeMode) => {
+    setScopeMode(mode);
+    void saveCalendarScopeMode(mode);
+    const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+    setEnabledTypes(next);
+    void saveCalendarEventTypeFilter(next);
+  }, []);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     const next = new Set<CalendarEventTypeKey>([type]);
     void saveCalendarEventTypeFilter(next);
     setEnabledTypes(next);
-  }, []);
-
-  const onSelectAllEventTypes = useCallback(() => {
-    const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
-    setEnabledTypes(next);
-    void saveCalendarEventTypeFilter(next);
   }, []);
 
   const selectYmd = useCallback((ymd: string) => {
@@ -480,18 +510,27 @@ export default function CalendarScreen({
     return (
       <View style={styles.emptyDayBox}>
         <Text style={styles.emptyDayText}>
-          {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
+          {emptyFiltered ? emptyFilterMessage : emptyDayMessage}
         </Text>
       </View>
     );
-  }, [emptyFiltered, error, loading, selectedDayEvents.length, styles.emptyDayBox, styles.emptyDayText, t]);
+  }, [emptyFiltered, emptyDayMessage, emptyFilterMessage, error, loading, selectedDayEvents.length, styles.emptyDayBox, styles.emptyDayText, t]);
 
-  const renderEventItem = useCallback<ListRenderItem<CalendarEvent>>(
-    ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} locale={locale} />,
+  const renderDayRow = useCallback<ListRenderItem<CalendarDayListRow>>(
+    ({ item }) => {
+      if (item.kind === 'header') {
+        return (
+          <View style={styles.dayGroupHeader}>
+            <Text style={styles.dayGroupTitle}>{t(CALENDAR_SECTION_LABEL[item.section])}</Text>
+          </View>
+        );
+      }
+      return <CalendarEventCard ev={item.event} theme={theme} cardStyles={styles} t={t} locale={locale} />;
+    },
     [locale, styles, t, theme],
   );
 
-  const listKeyExtractor = useCallback((item: CalendarEvent) => item.id, []);
+  const listKeyExtractor = useCallback((item: CalendarDayListRow) => item.id, []);
 
   const listHeader = useMemo(
     () => (
@@ -563,12 +602,35 @@ export default function CalendarScreen({
         />
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
-            onPress={onSelectAllEventTypes}
-            style={[styles.filterChip, allEventTypesSelected && styles.filterChipActive]}
+            onPress={() => onSelectScope('meaningful')}
+            style={[
+              styles.filterChip,
+              allEventTypesSelected && scopeMode === 'meaningful' && styles.filterChipActive,
+            ]}
             accessibilityRole="button"
-            accessibilityState={{ selected: allEventTypesSelected }}>
-            <Text style={[styles.filterChipText, allEventTypesSelected && styles.filterChipTextActive]}>
-              {t('calendarFilterAll')}
+            accessibilityState={{ selected: allEventTypesSelected && scopeMode === 'meaningful' }}>
+            <Text
+              style={[
+                styles.filterChipText,
+                allEventTypesSelected && scopeMode === 'meaningful' && styles.filterChipTextActive,
+              ]}>
+              {t('calendarScopeMeaningful')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onSelectScope('full')}
+            style={[
+              styles.filterChip,
+              allEventTypesSelected && scopeMode === 'full' && styles.filterChipActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: allEventTypesSelected && scopeMode === 'full' }}>
+            <Text
+              style={[
+                styles.filterChipText,
+                allEventTypesSelected && scopeMode === 'full' && styles.filterChipTextActive,
+              ]}>
+              {t('calendarScopeFull')}
             </Text>
           </Pressable>
           {CALENDAR_EVENT_TYPE_ORDER.map((type) => {
@@ -595,9 +657,9 @@ export default function CalendarScreen({
         scrollResetKey={listScrollResetKey}
         ref={listRef as never}
         style={styles.listScroll}
-        data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}
+        data={loading && dayListRows.length === 0 ? [] : dayListRows}
         keyExtractor={listKeyExtractor}
-        renderItem={renderEventItem}
+        renderItem={renderDayRow}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
@@ -714,6 +776,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
       fontVariant: ['tabular-nums'],
+    },
+    dayGroupHeader: {
+      paddingTop: 10,
+      paddingBottom: 4,
+    },
+    dayGroupTitle: {
+      fontSize: ft.ff(11),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textDim,
+      letterSpacing: 0.2,
     },
     emptyDayBox: {
       marginTop: 4,
@@ -857,6 +929,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       lineHeight: ft.ff(19),
     },
+    subtitle: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.bodyWeight,
+      color: theme.textMuted,
+    },
     metricRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -984,6 +1062,10 @@ const CalendarEventCard = memo(function CalendarEventCard({
           ? t('calendarTagHoliday')
           : t('calendarTagMacro');
 
+  const displayTitle = calendarEventShortTitle(ev, typeTagLabel);
+  const showFullTitle =
+    displayTitle.trim().toLowerCase() !== ev.title.trim().toLowerCase() && ev.title.trim().length > 0;
+
   const timeLabel = calendarEventTimeLabel(ev, locale);
 
   return (
@@ -1021,9 +1103,14 @@ const CalendarEventCard = memo(function CalendarEventCard({
               </View>
             ) : null}
             <Text style={styles.title} numberOfLines={3}>
-              {ev.title}
+              {displayTitle}
             </Text>
           </View>
+          {showFullTitle ? (
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {ev.title}
+            </Text>
+          ) : null}
           {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
             <View style={styles.metricRow}>
               {ev.fiscalYear != null && ev.fiscalQuarter != null ? (

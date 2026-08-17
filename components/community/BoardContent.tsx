@@ -69,6 +69,7 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
   all: 'communitySourceAll',
   naver_likeusstock_free: 'communitySourceNaverLikeusstock',
   naver_yamizal_free: 'communitySourceNaverYamizal',
+  motley_fool_investing: 'communitySourceMotleyFool',
   save_user_news: 'communitySourceSaveUserNews',
 };
 

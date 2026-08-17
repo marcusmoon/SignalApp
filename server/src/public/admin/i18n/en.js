@@ -784,6 +784,8 @@ export const baseEn = {
   jobCommunityTitle: 'Board ingest',
   jobCommunitySourceNaver: 'Pulls latest posts from the Naver Cafe LikeUSStock free board.',
   jobCommunitySourceNaverYamizal: 'Pulls latest posts from the Naver Cafe yamizal (미국주식에 미치다) free board.',
+  jobCommunitySourceMotleyFool:
+    'Pulls latest threads from Motley Fool Community (Stocks A to Z + Investment Analysis Clubs).',
   jobCommunitySourceSave: 'Pulls latest posts from SAVE user news.',
   jobCommunitySourceGeneric: 'Pulls latest posts from an external board.',
   jobCommunityPageSize: 'Items per run',

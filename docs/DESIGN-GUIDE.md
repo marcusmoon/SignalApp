@@ -245,10 +245,11 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 게시판 (Board)
 
-- **탭·More·사이드바**: 상단 채널 세그먼트(전체/세이브/미주미/미치다)로 소스 전환. wide는 사이드바 서브탭.
+- **탭·More·사이드바**: 상단 채널 세그먼트(전체/세이브/미주미/미치다/모틀리)로 소스 전환. wide는 사이드바 서브탭.
   - `save_user_news` — 세이브 유저뉴스
   - `naver_likeusstock_free` — 미주미(`likeusstock`) 자유게시판
-  - `naver_yamizal_free` — 미치다(`yamizal` / 미국주식에 미치다) 자유게시판. 본문 비공개 시 제목·원문 링크만
+  - `naver_yamizal_free` — 미치다(`yamizal`) 자유게시판. 본문 비공개 시 제목·원문 링크만
+  - `motley_fool_investing` — Motley Fool Community **Stocks A to Z + Investment Analysis Clubs** (영문)
 - **홈 바로가기 드릴**: 채널 메뉴 없음·소스 고정(`BoardContent` `lockedSource`). 목록만 표시.
 
 ### 더보기 · My info

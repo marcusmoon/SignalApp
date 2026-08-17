@@ -784,6 +784,8 @@ export const baseJa = {
   jobCommunityTitle: '掲示板取り込み',
   jobCommunitySourceNaver: 'Naver Cafe LikeUSStock 自由掲示板から最新投稿を取得します。',
   jobCommunitySourceNaverYamizal: 'Naver Cafe yamizal（米国株式に미치다）自由掲示板から最新投稿を取得します。',
+  jobCommunitySourceMotleyFool:
+    'Motley Fool Community（Stocks A to Z · Investment Analysis Clubs）の最新スレッドを取得します。',
   jobCommunitySourceSave: 'SAVE ユーザーニュースから最新投稿を取得します。',
   jobCommunitySourceGeneric: '外部掲示板から最新投稿を取得します。',
   jobCommunityPageSize: '1回の取得件数',

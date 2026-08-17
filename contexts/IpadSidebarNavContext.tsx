@@ -430,7 +430,8 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
         setBoardSource(
           source === 'save_user_news' ||
           source === 'naver_likeusstock_free' ||
-          source === 'naver_yamizal_free'
+          source === 'naver_yamizal_free' ||
+          source === 'motley_fool_investing'
             ? source
             : COMMUNITY_SOURCE_ALL,
         );

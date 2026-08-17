@@ -785,6 +785,8 @@ export const baseKo = {
   jobCommunityTitle: '게시판 수집',
   jobCommunitySourceNaver: '네이버 카페 미주미(likeusstock) 자유게시판에서 최신 글을 가져옵니다.',
   jobCommunitySourceNaverYamizal: '네이버 카페 미국주식에 미치다(yamizal) 자유게시판에서 최신 글을 가져옵니다.',
+  jobCommunitySourceMotleyFool:
+    'Motley Fool Community — Stocks A to Z · Investment Analysis Clubs 최신 토론을 가져옵니다.',
   jobCommunitySourceSave: '세이브(SAVE) 유저뉴스에서 최신 글을 가져옵니다.',
   jobCommunitySourceGeneric: '외부 게시판에서 최신 글을 가져옵니다.',
   jobCommunityPageSize: '1회 수집 개수',

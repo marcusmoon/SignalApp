@@ -32,11 +32,15 @@ export const EXTERNAL_SOURCE_ICON_BY_DOMAIN: Readonly<Record<string, string>> = 
   'financialjuice.com': FINANCIAL_JUICE_ICON_URL,
 };
 
+/** Motley Fool — discussion.fool.com */
+export const MOTLEY_FOOL_ICON_URL = 'https://www.fool.com/favicon.ico';
+
 /** 커뮤니티 소스 키 → 고정 아이콘 URL */
 export const EXTERNAL_SOURCE_ICON_BY_COMMUNITY_KEY: Readonly<Record<string, string>> = {
   save_user_news: SAVE_TICKER_ICON_URL,
   naver_likeusstock_free: NAVER_CAFE_ICON_URL,
   naver_yamizal_free: NAVER_CAFE_ICON_URL,
+  motley_fool_investing: MOTLEY_FOOL_ICON_URL,
 };
 
 function bareHostname(host: string): string {

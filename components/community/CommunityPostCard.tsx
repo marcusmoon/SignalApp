@@ -86,6 +86,7 @@ export function CommunityPostCard({
 export function communitySourceLabelId(source: string): MessageId {
   if (source === 'save_user_news') return 'communitySourceSaveUserNews';
   if (source === 'naver_yamizal_free') return 'communitySourceNaverYamizal';
+  if (source === 'motley_fool_investing') return 'communitySourceMotleyFool';
   return 'communitySourceNaverLikeusstock';
 }
 
@@ -93,6 +94,7 @@ export function isCommunitySourceKey(source: string): source is CommunitySourceK
   return (
     source === 'naver_likeusstock_free' ||
     source === 'naver_yamizal_free' ||
+    source === 'motley_fool_investing' ||
     source === 'save_user_news'
   );
 }

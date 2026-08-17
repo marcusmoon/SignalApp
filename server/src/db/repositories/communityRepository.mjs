@@ -58,7 +58,12 @@ function publicCommunityPost(row) {
   };
 }
 
-export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'naver_yamizal_free', 'save_user_news'];
+export const COMMUNITY_SOURCES = [
+  'naver_likeusstock_free',
+  'naver_yamizal_free',
+  'motley_fool_investing',
+  'save_user_news',
+];
 
 /** Drop rows for `source` that were not in the latest ingest window. */
 export async function pruneCommunityPostsForSource(source, providerItemIds = []) {

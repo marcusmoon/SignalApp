@@ -32,6 +32,7 @@ import { fetchNewswireRssNews, reconcileRssNewsItems } from '../providers/news/r
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
+import { fetchMotleyFoolInvestingBoards } from '../providers/community/motleyFoolDiscourse.mjs';
 import { fetchNaverCafeLikeusstockFree } from '../providers/community/naverCafeLikeusstock.mjs';
 import { fetchNaverCafeYamizalFree } from '../providers/community/naverCafeYamizal.mjs';
 import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
@@ -435,6 +436,9 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         instruments: dailyBarInstruments(dbBefore, params || {}),
       }),
     };
+  }
+  if (effective.provider === 'motley_fool' && effective.handler === 'investing_boards') {
+    return { kind: 'community', rows: await fetchMotleyFoolInvestingBoards(params || {}) };
   }
   if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
     return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };

@@ -150,6 +150,7 @@ export const ko = {
   ipadHomeSignalTitle: '회차',
   ipadHomeSignalSubtitle: '하루 4회 회차별 요약',
   ipadHomeCalendarTitle: '일정',
+  homeCalendarUpcoming: '다가올',
   ipadHomeCalendarSubtitle: '경제지표 · 실적 · FOMC',
   ipadHomeCalendarMore: '외 {{count}}건',
   ipadHomeCalendarEmpty: '예정된 일정이 없습니다.',

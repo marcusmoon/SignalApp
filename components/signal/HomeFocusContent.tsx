@@ -16,7 +16,6 @@ import {
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
 import {
-  FEED_BADGE_PX,
   FEED_DIGEST_TITLE_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
@@ -33,6 +32,7 @@ import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeTrendHeroCard } from '@/components/signal/HomeTrendHeroCard';
+import { HomeCalendarAgenda } from '@/components/signal/HomeCalendarAgenda';
 import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -56,13 +56,12 @@ import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { isHomeNewsFlowNew } from '@/domain/digests/freshness';
 import {
-  filterCalendarChipsForHome,
-  homeCalendarChipLabel,
+  homeCalendarAgendaIsEmpty,
   homeCalendarChipRangeEnd,
+  splitHomeCalendarAgenda,
 } from '@/domain/home/calendarChipLabel';
 import {
   filterHomeCalendarEvents,
-  homeCalendarChipShortName,
 } from '@/domain/home/homeCalendarEvents';
 import { briefingsForYmd } from '@/domain/home/briefingDate';
 import { etfHomeHeatmapCells } from '@/domain/home/etfHomeHeatmap';
@@ -194,7 +193,6 @@ import {
 
 const ISSUE_FETCH_LIMIT = 12;
 const BRIEFING_LIMIT = 30;
-const HOME_CALENDAR_CHIP_LIMIT = 5;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 const HOME_COIN_FETCH_LIMIT = Math.max(HOME_ANCHOR_COIN_FETCH_POOL, 8);
 
@@ -326,14 +324,6 @@ function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessi
   )?.key;
 }
 
-function calendarTypeLabelId(type: CalendarEvent['type']): MessageId {
-  if (type === 'earnings') return 'calendarTagEarnings';
-  if (type === 'fed') return 'calendarTagFed';
-  if (type === 'fomc') return 'calendarTagFomc';
-  if (type === 'holiday') return 'calendarTagHoliday';
-  return 'calendarTagMacro';
-}
-
 export function HomeFocusContent({
   selectedYmd,
   todayYmd,
@@ -390,16 +380,11 @@ export function HomeFocusContent({
     [selectedYmd, todayYmd, todayBriefing, briefings],
   );
 
-  const homeCalendarChips = useMemo(
-    () =>
-      filterCalendarChipsForHome(
-        calendarEvents,
-        selectedYmd,
-        todayYmd,
-        HOME_CALENDAR_CHIP_LIMIT,
-      ),
+  const homeCalendarAgenda = useMemo(
+    () => splitHomeCalendarAgenda(calendarEvents, selectedYmd, todayYmd),
     [calendarEvents, selectedYmd, todayYmd],
   );
+  const showHomeCalendar = !homeCalendarAgendaIsEmpty(homeCalendarAgenda);
 
   const homeIssues = useMemo(
     () =>
@@ -1127,32 +1112,15 @@ export function HomeFocusContent({
     trendHeroSessionDividerLabel,
   ]);
 
-  const renderCalendarChips = useCallback(
+  const renderCalendarAgenda = useCallback(
     () => (
-      <View style={styles.calendarChipRow}>
-        {homeCalendarChips.map((event) => (
-          <Pressable
-            key={event.id}
-            onPress={openCalendar}
-            accessibilityRole="button"
-            accessibilityLabel={homeCalendarChipLabel(
-              event,
-              selectedYmd,
-              homeCalendarChipShortName(event, t(calendarTypeLabelId(event.type))),
-            )}
-            style={({ pressed }) => [styles.calendarChip, pressed && styles.pressed]}>
-            <Text style={styles.calendarChipText} numberOfLines={1}>
-              {homeCalendarChipLabel(
-                event,
-                selectedYmd,
-                homeCalendarChipShortName(event, t(calendarTypeLabelId(event.type))),
-              )}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <HomeCalendarAgenda
+        agenda={homeCalendarAgenda}
+        selectedYmd={selectedYmd}
+        onPress={openCalendar}
+      />
     ),
-    [homeCalendarChips, openCalendar, selectedYmd, styles, t],
+    [homeCalendarAgenda, openCalendar, selectedYmd],
   );
 
   const renderEtfInsightCard = useCallback(
@@ -1328,6 +1296,16 @@ export function HomeFocusContent({
             </View>
           ) : null}
 
+          {showHomeCalendar ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('ipadHomeCalendarTitle')}
+                badge={<HomeSectionLeadIcon name="calendar-outline" />}
+              />
+              {renderCalendarAgenda()}
+            </View>
+          ) : null}
+
           {homeIssues.length > 0 ? (
             <View style={styles.section}>
               <HomeSectionHeader
@@ -1336,16 +1314,6 @@ export function HomeFocusContent({
                 meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
               />
               {renderIssueCard(homeIssues)}
-            </View>
-          ) : null}
-
-          {homeCalendarChips.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('ipadHomeCalendarTitle')}
-                badge={<HomeSectionLeadIcon name="calendar-outline" />}
-              />
-              {renderCalendarChips()}
             </View>
           ) : null}
 
@@ -1620,27 +1588,6 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
-    calendarChipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: COMFORT_GAP_SM,
-    },
-    calendarChip: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-      maxWidth: '100%',
-    },
-    calendarChipText: {
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

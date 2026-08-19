@@ -1,5 +1,5 @@
-import type { CalendarEvent } from '@/types/signal';
-import { addDays, calendarEventDisplayYmd, parseLocalYmd, toYmd } from '@/utils/date';
+import type { CalendarEvent } from '../../types/signal.ts';
+import { addDays, calendarEventDisplayYmd, parseLocalYmd, toYmd } from '../../utils/date.ts';
 
 /** Days from baseYmd to event display YMD (positive = event is in the future). */
 export function daysUntilEventYmd(baseYmd: string, eventYmd: string): number {
@@ -41,6 +41,44 @@ export function filterCalendarChipsForHome(
     ? events
     : events.filter((event) => calendarEventDisplayYmd(event) === selectedYmd);
   return scoped.slice(0, limit);
+}
+
+export const HOME_CALENDAR_TODAY_LIMIT = 4;
+export const HOME_CALENDAR_UPCOMING_LIMIT = 4;
+
+export type HomeCalendarAgenda = {
+  today: CalendarEvent[];
+  upcoming: CalendarEvent[];
+};
+
+/** Selected-day rows + (today only) upcoming countdown chips. */
+export function splitHomeCalendarAgenda(
+  events: CalendarEvent[],
+  selectedYmd: string,
+  todayYmd: string,
+  todayLimit = HOME_CALENDAR_TODAY_LIMIT,
+  upcomingLimit = HOME_CALENDAR_UPCOMING_LIMIT,
+): HomeCalendarAgenda {
+  const today: CalendarEvent[] = [];
+  const upcoming: CalendarEvent[] = [];
+  const allowUpcoming = selectedYmd === todayYmd;
+
+  for (const event of events) {
+    const ymd = calendarEventDisplayYmd(event);
+    if (ymd === selectedYmd) {
+      if (today.length < todayLimit) today.push(event);
+      continue;
+    }
+    if (allowUpcoming && ymd > selectedYmd && upcoming.length < upcomingLimit) {
+      upcoming.push(event);
+    }
+  }
+
+  return { today, upcoming };
+}
+
+export function homeCalendarAgendaIsEmpty(agenda: HomeCalendarAgenda): boolean {
+  return agenda.today.length === 0 && agenda.upcoming.length === 0;
 }
 
 /** Lookahead end for today home chips (inclusive). */

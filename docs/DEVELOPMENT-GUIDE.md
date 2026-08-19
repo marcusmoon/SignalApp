@@ -54,7 +54,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 | 시세 ETF 목록 순서 | `etf_symbols` 저장 순 (`QuotesContent`가 `symbols`로 조회·재정렬; segment-only는 `fetched_at` DESC) |
 | 시세 코인 목록 | Admin `crypto_symbols`(Yahoo `BASE-USD`) → Job `market_coins_top` → `GET /v1/coins`가 `listPosition` 순 |
 | 홈 코인 앵커 | `/v1/coins` 리스트 순 유지(`pickHomeAnchorCoinsFromList`) · compact 2 / wide 3 · 워치리스트 중복 제외. Yahoo chart는 marketCap 미제공이라 시총 재정렬하지 않음 |
-| 홈 일정 칩 | `filterHomeCalendarEvents` — 핵심 macro(CPI/NFP 등)·FOMC/연준·휴장·관심 실적만. 칩 라벨은 `homeCalendarChipShortName` (`D-2 CPI`) |
+| 홈 일정 | `filterHomeCalendarEvents` + `splitHomeCalendarAgenda` — 선택일 행(시각·짧은 제목) + 오늘이면 다가올 `D-n` 칩. 핵심 macro·FOMC/연준·휴장·관심 실적만 |
 | `domain/quotes/etfGroups` | ETF 연속 구간 헤더(지수·섹터·해외·매크로) |
 | 시세 관심 드래그 | `QuotesContent` + `saveWatchlistSymbols` — 행 롱프레스로 저장순 변경 |
 | `utils/wideOverlayRoute` | `/etf-insights` vs `/etf-insight` 경로 매칭 |
@@ -285,7 +285,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 
 | 기능 | 파일 |
 |---|---|
-| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx`, `components/signal/HomeTrendHeroCard.tsx`, `components/signal/SectionCapRule.tsx` |
+| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx`, `components/signal/HomeTrendHeroCard.tsx`, `components/signal/HomeCalendarAgenda.tsx`, `components/signal/SectionCapRule.tsx` |
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |

@@ -151,6 +151,7 @@ export const ja = {
   ipadHomeSignalTitle: 'セッション',
   ipadHomeSignalSubtitle: '1日4回の回別要約',
   ipadHomeCalendarTitle: '予定',
+  homeCalendarUpcoming: '今後',
   ipadHomeCalendarSubtitle: '指標 · 決算 · FOMC',
   ipadHomeCalendarMore: '他 {{count}}件',
   ipadHomeCalendarEmpty: '予定はありません。',

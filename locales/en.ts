@@ -151,6 +151,7 @@ export const en = {
   ipadHomeSignalTitle: 'Sessions',
   ipadHomeSignalSubtitle: 'Four daily session updates',
   ipadHomeCalendarTitle: 'Calendar',
+  homeCalendarUpcoming: 'Next',
   ipadHomeCalendarSubtitle: 'Macro · earnings · FOMC',
   ipadHomeCalendarMore: '{{count}} more',
   ipadHomeCalendarEmpty: 'No upcoming events.',

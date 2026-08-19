@@ -109,7 +109,7 @@ npm run verify   # tsc + domain unit tests (CI)
 
 | 기능 | 파일 |
 |---|---|
-| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
+| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx`, `components/signal/HomeCalendarAgenda.tsx` |
 | 홈 바로가기 | `components/signal/HomeShortcutsStrip.tsx`, `constants/homeShortcuts.ts`, `domain/home/shortcutDisplay.ts` |
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx`, `components/signal/NewsCard.tsx` |

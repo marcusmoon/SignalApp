@@ -677,7 +677,7 @@ export const ja = {
   settingsThemeLanguageSection: '言語',
   settingsFontSizeSection: '文字サイズ',
   settingsFontSizeHint:
-    'ニュース・相場・YouTube・その他・ブリーフィング・銘柄・カレンダー・コール要約・通知・設定・上部バーなどの本文に反映されます。',
+    'ホーム・ニュース・相場・YouTube・その他・ブリーフィング・銘柄・カレンダー・コール要約・通知・設定・上部バーなどの本文に反映されます。ホーム見出しを別に大きくする設定ではなく、標準サイズに倍率がかかります。',
   settingsFontSizeCompact: '最小',
   settingsFontSizeSmall: '小',
   settingsFontSizeStandard: '標準',

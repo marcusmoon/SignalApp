@@ -677,7 +677,7 @@ export const ko = {
   settingsThemeLanguageSection: '언어',
   settingsFontSizeSection: '글꼴 크기',
   settingsFontSizeHint:
-    '뉴스·시세·유튜브·더보기·브리핑·종목·캘린더·콜 요약·알림·설정·상단 바 등 본문 텍스트에 적용됩니다.',
+    '홈·뉴스·시세·유튜브·더보기·브리핑·종목·캘린더·콜 요약·알림·설정·상단 바 등 본문 텍스트에 적용됩니다. 홈 제목을 따로 키우는 옵션이 아니라, 기본 크기 위에 배율을 곱합니다.',
   settingsFontSizeCompact: '매우 작게',
   settingsFontSizeSmall: '작게',
   settingsFontSizeStandard: '기본',

@@ -5,8 +5,9 @@ import {
 } from '@/constants/feedTypography';
 
 /**
- * Home-only type scale — larger than shared digest lists so the first
- * viewport can be scanned (headline → agenda → news → quotes).
+ * Home-only **base** type scale at settings 「기본」(multiplier 1).
+ * Always apply through `ft.ff` / `scaleFont` so 글꼴 크기 (크게 1.06 ·
+ * 매우 크게 1.12) and 피드 항목 굵기 (볼드 +1px) still compose.
  * Do not reuse these on news/disclosure/YouTube lists.
  */
 

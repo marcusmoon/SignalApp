@@ -44,7 +44,11 @@
 | 홈 트렌드 | `HomeSectionHeader` + 칩 (`HOME_KEYWORD_CHIP_PX`) | 홈 최상단. 피처드 없음 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
-`constants/feedTypography.ts` · `constants/homeScan.ts` + `scaleFont`로 접근성·플랫폼별 스케일을 맞춘다.
+`constants/feedTypography.ts` · `constants/homeScan.ts`는 **기본 크기**(설정 「기본」= 배율 1). 화면에는 항상 `scaleFont` / `ft.ff`로 올린다.
+
+- **글꼴 크기** (`fontSizePreference`): compact 0.9 · small 0.95 · 기본 1 · 크게 1.06 · 매우 크게 1.12. 홈 스캔과 **별 설정이 아니라 곱셈**. 히어로 17이 매우 크게면 ≈19.
+- **피드 항목 굵기** (`feedContentWeight`): 볼드일 때 `ft.ff`가 +1px. 글꼴 크기 다음에 적용.
+- 홈에 고정 `fontSize: 17`을 두지 않는다. 설정 「크게」를 켠 사용자가 홈만 더 키우는 두 번째 토글이 아님.
 
 ## 모서리·간격
 

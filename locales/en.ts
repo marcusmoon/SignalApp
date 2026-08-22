@@ -678,7 +678,7 @@ export const en = {
   settingsThemeLanguageSection: 'Language',
   settingsFontSizeSection: 'Font size',
   settingsFontSizeHint:
-    'Scales body text across news, quotes, YouTube, more hub, briefing, symbol detail, calendar, call summary, alerts, settings, and the top header.',
+    'Scales body text across home, news, quotes, YouTube, more hub, briefing, symbol detail, calendar, call summary, alerts, settings, and the top header. Home headlines are not a second size control — this multiplier applies on top of the default type scale.',
   settingsFontSizeCompact: 'XS',
   settingsFontSizeSmall: 'Small',
   settingsFontSizeStandard: 'Default',

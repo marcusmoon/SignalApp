@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HomeKeywordChipStrip } from '@/components/signal/HomeKeywordChipStrip';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
 import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
-import { FEED_DIGEST_TITLE_PX } from '@/constants/feedTypography';
+import {
+  HOME_CARD_PAD_H,
+  HOME_HERO_HEADLINE_LINE_PX,
+  HOME_HERO_HEADLINE_PX,
+} from '@/constants/homeScan';
 import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
@@ -93,7 +97,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 12,
+      paddingHorizontal: HOME_CARD_PAD_H,
       paddingVertical: COMFORT_PADDING_ROW_V,
       gap: COMFORT_GAP_SM,
       overflow: 'hidden',
@@ -118,8 +122,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: COMFORT_GAP_SM,
     },
     heroHeadline: {
-      fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: sf(20),
+      fontSize: ft.ff(HOME_HERO_HEADLINE_PX),
+      lineHeight: sf(HOME_HERO_HEADLINE_LINE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },

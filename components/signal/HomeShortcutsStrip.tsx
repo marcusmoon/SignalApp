@@ -7,6 +7,7 @@ import {
   homeShortcutStableId,
   type HomeShortcut,
 } from '@/constants/homeShortcuts';
+import { HOME_SHORTCUT_ICON, HOME_SHORTCUT_LABEL_PX } from '@/constants/homeScan';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import { useIpadSidebarNavActions } from '@/contexts/IpadSidebarNavContext';
@@ -16,7 +17,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 const GRID_GAP = 8;
-const TILE_MIN_HEIGHT = 58;
+const TILE_MIN_HEIGHT = 62;
 
 type Props = {
   shortcuts: HomeShortcut[];
@@ -139,7 +140,7 @@ export function HomeShortcutsStrip({ shortcuts, selectedYmd }: Props) {
             tileWidth != null ? { width: tileWidth } : styles.tileFallback,
             pressed && styles.tilePressed,
           ]}>
-          <FontAwesome name={item.icon} size={scaleFont(17)} color={theme.green} />
+          <FontAwesome name={item.icon} size={scaleFont(HOME_SHORTCUT_ICON)} color={theme.green} />
           <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
             {item.label}
           </Text>
@@ -176,8 +177,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     label: {
-      fontSize: sf(11),
-      lineHeight: sf(14),
+      fontSize: sf(HOME_SHORTCUT_LABEL_PX),
+      lineHeight: sf(16),
       fontWeight: '600',
       color: theme.text,
       textAlign: 'center',

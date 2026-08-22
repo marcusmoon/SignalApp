@@ -3,7 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SectionCapRule } from '@/components/signal/SectionCapRule';
 import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
-import { FEED_BADGE_PX } from '@/constants/feedTypography';
+import {
+  HOME_AGENDA_CHIP_PX,
+  HOME_AGENDA_TIME_LINE_PX,
+  HOME_AGENDA_TIME_PX,
+  HOME_AGENDA_TITLE_LINE_PX,
+  HOME_AGENDA_TITLE_PX,
+  HOME_CARD_PAD_H,
+} from '@/constants/homeScan';
 import { UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import { calendarTypeAccent } from '@/domain/calendar/typeAccent';
@@ -100,7 +107,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 12,
+      paddingHorizontal: HOME_CARD_PAD_H,
       paddingVertical: COMFORT_PADDING_ROW_V,
       gap: 2,
       overflow: 'hidden',
@@ -109,31 +116,31 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      paddingVertical: 7,
+      paddingVertical: 9,
     },
     rowRule: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
     time: {
-      width: 52,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
+      width: 56,
+      fontSize: ft.ff(HOME_AGENDA_TIME_PX),
+      lineHeight: ft.ff(HOME_AGENDA_TIME_LINE_PX),
       fontWeight: ft.emphasisWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
       fontVariant: ['tabular-nums'],
     },
     dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
       flexShrink: 0,
     },
     title: {
       flex: 1,
       minWidth: 0,
-      fontSize: ft.ff(14),
-      lineHeight: ft.ff(19),
+      fontSize: ft.ff(HOME_AGENDA_TITLE_PX),
+      lineHeight: ft.ff(HOME_AGENDA_TITLE_LINE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
@@ -150,15 +157,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     chip: {
       alignSelf: 'flex-start',
       borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 11,
+      paddingVertical: 7,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
       maxWidth: '100%',
     },
     chipText: {
-      fontSize: ft.ff(FEED_BADGE_PX),
+      fontSize: ft.ff(HOME_AGENDA_CHIP_PX),
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
       color: theme.text,

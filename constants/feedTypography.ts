@@ -1,6 +1,6 @@
-/** 다이제스트 행(홈·이슈·DigestPager 2열) 제목 */
+/** 다이제스트 행(이슈·DigestPager 2열·유튜브) 제목. 홈 스캔 제목은 `homeScan.ts` */
 export const FEED_DIGEST_TITLE_PX = 14;
-/** `FEED_DIGEST_TITLE_PX` line-height — 홈·유튜브 썸네일 행 등 */
+/** `FEED_DIGEST_TITLE_PX` line-height — 이슈·유튜브 썸네일 행 등 */
 export const FEED_DIGEST_TITLE_LINE_PX = 20;
 /** 기사·포스트·DigestPager 1열 제목 */
 export const FEED_ARTICLE_TITLE_PX = 15;

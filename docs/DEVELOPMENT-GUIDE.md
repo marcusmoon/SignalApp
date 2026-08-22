@@ -67,7 +67,7 @@ npm run verify         # typecheck + unit tests (CI와 동일)
 |---|---|
 | `app/` | Expo Router 화면 |
 | `components/` | UI 컴포넌트 |
-| `constants/` | 테마·레이아웃·탭 등 전역 상수 |
+| `constants/` | 테마·레이아웃·탭·홈 스캔 타이포(`homeScan.ts`) 등 전역 상수 |
 | `contexts/` | Theme, Locale, OTA 등 |
 | `domain/` | 정렬·분류·순수 제품 규칙 |
 | `integrations/signal-api/` | **앱의 유일한 피처 HTTP 진입점** |

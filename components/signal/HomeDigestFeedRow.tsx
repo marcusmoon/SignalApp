@@ -12,6 +12,12 @@ import {
   FEED_SIGNAL_PREVIEW_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
+import {
+  HOME_NEWS_META_PX,
+  HOME_NEWS_ROW_PAD_V,
+  HOME_NEWS_TITLE_LINE_PX,
+  HOME_NEWS_TITLE_PX,
+} from '@/constants/homeScan';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -26,6 +32,8 @@ type Props = {
   titleLines?: number | null;
   /** digest: 뉴스 흐름 행 / signal: 홈 마켓 브리핑 미리보기 */
   variant?: 'digest' | 'signal';
+  /** Home news only — larger title than shared digest lists */
+  density?: 'default' | 'home';
   timeLabel?: string | null;
   trailText?: string | null;
   summary?: string | null;
@@ -50,6 +58,7 @@ export function HomeDigestFeedRow({
   title,
   titleLines,
   variant = 'digest',
+  density = 'default',
   timeLabel,
   trailText,
   summary,
@@ -64,8 +73,8 @@ export function HomeDigestFeedRow({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, variant),
-    [theme, scaleFont, feedTypo, variant],
+    () => makeStyles(theme, scaleFont, feedTypo, variant, density),
+    [theme, scaleFont, feedTypo, variant, density],
   );
   const resolvedTitleLines =
     titleLines === null ? undefined : titleLines != null ? titleLines : variant === 'signal' ? undefined : 2;
@@ -138,13 +147,17 @@ function makeStyles(
   sf: (n: number) => number,
   ft: FeedContentTypography,
   variant: 'digest' | 'signal',
+  density: 'default' | 'home',
 ) {
   const isSignal = variant === 'signal';
-  const metaSize = ft.ff(FEED_META_TIME_PX);
+  const homeScan = density === 'home' && !isSignal;
+  const metaSize = ft.ff(homeScan ? HOME_NEWS_META_PX : FEED_META_TIME_PX);
+  const titleSize = homeScan ? HOME_NEWS_TITLE_PX : FEED_DIGEST_TITLE_PX;
+  const titleLine = homeScan ? HOME_NEWS_TITLE_LINE_PX : FEED_DIGEST_TITLE_LINE_PX;
   return StyleSheet.create({
     row: {
-      gap: 4,
-      paddingVertical: 7,
+      gap: homeScan ? 5 : 4,
+      paddingVertical: homeScan ? HOME_NEWS_ROW_PAD_V : 7,
     },
     rowBordered: cardListRowSeparatorStyle(theme),
     rowPressed: {
@@ -158,8 +171,8 @@ function makeStyles(
       minWidth: 0,
     },
     title: {
-      fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: isSignal ? sf(22) : ft.ff(FEED_DIGEST_TITLE_LINE_PX),
+      fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(titleSize),
+      lineHeight: isSignal ? sf(22) : ft.ff(titleLine),
       fontWeight: isSignal ? ft.signalTitleWeight : ft.titleWeight,
       color: theme.text,
     },

@@ -2,7 +2,12 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { FEED_CHIP_PX } from '@/constants/feedTypography';
+import {
+  HOME_KEYWORD_CHIP_LINE_PX,
+  HOME_KEYWORD_CHIP_LOGO,
+  HOME_KEYWORD_CHIP_MAX_WIDTH,
+  HOME_KEYWORD_CHIP_PX,
+} from '@/constants/homeScan';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { HomeKeywordChip } from '@/domain/home/aggregateHomeKeywords';
@@ -66,7 +71,7 @@ export function HomeKeywordChipStrip({
                 <>
                   <SymbolLogo
                     symbol={identity.symbol}
-                    size={16}
+                    size={HOME_KEYWORD_CHIP_LOGO}
                     imageUrl={identity.imageUrl}
                   />
                   <Text
@@ -114,8 +119,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignSelf: 'flex-start',
       gap: 5,
       borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
@@ -126,11 +131,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.greenBorder,
     },
     chipText: {
-      fontSize: ft.ff(FEED_CHIP_PX),
-      lineHeight: sf(15),
+      fontSize: ft.ff(HOME_KEYWORD_CHIP_PX),
+      lineHeight: sf(HOME_KEYWORD_CHIP_LINE_PX),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-      maxWidth: 120,
+      maxWidth: HOME_KEYWORD_CHIP_MAX_WIDTH,
     },
     chipTextSymbol: {
       color: theme.green,

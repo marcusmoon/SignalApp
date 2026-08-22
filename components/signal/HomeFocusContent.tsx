@@ -16,8 +16,15 @@ import {
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
 import {
-  FEED_DIGEST_TITLE_PX,
-} from '@/constants/feedTypography';
+  HOME_CARD_PAD_H,
+  HOME_ETF_TITLE_LINE_PX,
+  HOME_ETF_TITLE_PX,
+  HOME_QUOTE_CHANGE_PX,
+  HOME_QUOTE_LOGO,
+  HOME_QUOTE_NAME_PX,
+  HOME_QUOTE_PRICE_PX,
+  HOME_QUOTE_TILE_MIN_HEIGHT,
+} from '@/constants/homeScan';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
@@ -955,7 +962,7 @@ export function HomeFocusContent({
           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
           <View style={styles.quoteTileContent}>
             <View style={styles.quoteTileLead}>
-              <SymbolLogo symbol={logoSymbol} imageUrl={logoImageUrl} size={22} />
+              <SymbolLogo symbol={logoSymbol} imageUrl={logoImageUrl} size={HOME_QUOTE_LOGO} />
               <View style={styles.quoteTileTitleCol}>
                 <Text style={styles.quoteSymbol} numberOfLines={1}>
                   {label}
@@ -1202,7 +1209,7 @@ export function HomeFocusContent({
 
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
-      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
@@ -1211,6 +1218,7 @@ export function HomeFocusContent({
             return (
               <HomeDigestFeedRow
                 key={row.item.id}
+                density="home"
                 title={row.item.title}
                 titleLines={2}
                 timeLabel={formatFeedItemTimeLabel(createdIso, locale)}
@@ -1464,7 +1472,7 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 12,
+      paddingHorizontal: HOME_CARD_PAD_H,
       paddingVertical: COMFORT_PADDING_ROW_V,
       gap: COMFORT_GAP_SM,
       overflow: 'hidden',
@@ -1473,11 +1481,6 @@ function makeStyles(
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
-    },
-    heroCardCompact: {
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      gap: 4,
     },
     heroCardSummary: {
       minHeight: 0,
@@ -1491,8 +1494,8 @@ function makeStyles(
       borderRadius: UI_RADIUS_CARD,
     },
     issueGroupTitle: {
-      fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: sf(20),
+      fontSize: ft.ff(HOME_ETF_TITLE_PX),
+      lineHeight: sf(HOME_ETF_TITLE_LINE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
@@ -1515,7 +1518,7 @@ function makeStyles(
     quoteTile: {
       /** 폰 2열 · 와이드 3열 — 합이 거의 100%라 우측이 레이어 as-of 칩과 정렬됨 */
       width: useTwoPane ? '32.6%' : '49%',
-      minHeight: 54,
+      minHeight: HOME_QUOTE_TILE_MIN_HEIGHT,
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
@@ -1537,8 +1540,8 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 8,
-      paddingVertical: 7,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
       gap: COMFORT_GAP_SM,
     },
     quoteTileLead: {
@@ -1554,12 +1557,12 @@ function makeStyles(
       gap: 1,
     },
     quoteTileFooter: {
-      minWidth: 62,
+      minWidth: 70,
       gap: 2,
       alignItems: 'flex-end',
     },
     quoteSymbol: {
-      fontSize: ft.ff(14),
+      fontSize: ft.ff(HOME_QUOTE_NAME_PX),
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
@@ -1571,23 +1574,24 @@ function makeStyles(
       color: theme.textMuted,
     },
     priceText: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
+      fontSize: ft.ff(HOME_QUOTE_PRICE_PX),
+      lineHeight: sf(19),
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
+      fontVariant: ['tabular-nums'],
     },
     changeText: {
-      marginTop: 2,
-      fontSize: ft.ff(16),
+      marginTop: 1,
+      fontSize: ft.ff(HOME_QUOTE_CHANGE_PX),
       lineHeight: sf(20),
       fontWeight: ft.emphasisWeight,
+      fontVariant: ['tabular-nums'],
     },
     quotePendingText: {
       fontSize: ft.ff(12),
       lineHeight: sf(16),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
-    },
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

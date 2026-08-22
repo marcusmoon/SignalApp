@@ -17,7 +17,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 const GRID_GAP = 8;
-const TILE_MIN_HEIGHT = 62;
+const TILE_MIN_HEIGHT = 58;
 
 type Props = {
   shortcuts: HomeShortcut[];

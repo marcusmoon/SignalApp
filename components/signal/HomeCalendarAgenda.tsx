@@ -116,14 +116,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      paddingVertical: 9,
+      paddingVertical: 8,
     },
     rowRule: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
     time: {
-      width: 56,
+      width: 52,
       fontSize: ft.ff(HOME_AGENDA_TIME_PX),
       lineHeight: ft.ff(HOME_AGENDA_TIME_LINE_PX),
       fontWeight: ft.emphasisWeight,
@@ -131,9 +131,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontVariant: ['tabular-nums'],
     },
     dot: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
+      width: 6,
+      height: 6,
+      borderRadius: 3,
       flexShrink: 0,
     },
     title: {
@@ -157,8 +157,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     chip: {
       alignSelf: 'flex-start',
       borderRadius: 999,
-      paddingHorizontal: 11,
-      paddingVertical: 7,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,

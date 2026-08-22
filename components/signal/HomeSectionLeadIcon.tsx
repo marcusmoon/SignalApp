@@ -13,6 +13,6 @@ type Props = {
 export function HomeSectionLeadIcon({ name }: Props) {
   const { theme } = useSignalTheme();
   return (
-      <Ionicons name={name} size={18} color={theme.green} accessibilityElementsHidden />
+      <Ionicons name={name} size={16} color={theme.green} accessibilityElementsHidden />
   );
 }

@@ -36,17 +36,17 @@
 |---|---|---|
 | 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) · line `FEED_ARTICLE_TITLE_LINE_PX` (22) | 뉴스·공시·게시판 리스트 · **홈 뉴스** (`density="home"`) |
 | 다이제스트·유튜브 제목 | `FEED_DIGEST_TITLE_PX` (14) · line `FEED_DIGEST_TITLE_LINE_PX` (20) | 이슈 목록·DigestPager 2열·**유튜브**(썸네일 행). 홈은 아래 스캔 스케일 |
-| 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드 · **홈 히어로 헤드라인** (`HOME_HERO_HEADLINE_PX`) |
+| 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드. 홈 히어로는 `HOME_HERO_HEADLINE_PX` (16) |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
-| 칩 라벨 | `FEED_CHIP_PX` (10) | 뉴스/다이제스트 topic 칩. **홈 키워드는 `HOME_KEYWORD_CHIP_PX` (12)** |
-| 홈 스캔 | `constants/homeScan.ts` | 홈 전용. 히어로 17 → 일정 16 → 뉴스 15 → 시세 가격 15 / 등락 16. 피드 리스트에 재사용 금지 |
+| 칩 라벨 | `FEED_CHIP_PX` (10) | 뉴스/다이제스트 topic 칩. **홈 키워드는 `HOME_KEYWORD_CHIP_PX` (11)** |
+| 홈 스캔 | `constants/homeScan.ts` | 홈 전용. 히어로 16 → 일정 15 → 뉴스 15 → 시세 가격 14 / 등락 16. 피드 리스트에 재사용 금지 |
 | 홈 트렌드 | `HomeSectionHeader` + 칩 (`HOME_KEYWORD_CHIP_PX`) | 홈 최상단. 피처드 없음 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` · `constants/homeScan.ts`는 **기본 크기**(설정 「기본」= 배율 1). 화면에는 항상 `scaleFont` / `ft.ff`로 올린다.
 
-- **글꼴 크기** (`fontSizePreference`): compact 0.9 · small 0.95 · 기본 1 · 크게 1.06 · 매우 크게 1.12. 홈 스캔과 **별 설정이 아니라 곱셈**. 히어로 17이 매우 크게면 ≈19.
+- **글꼴 크기** (`fontSizePreference`): compact 0.9 · small 0.95 · 기본 1 · 크게 1.06 · 매우 크게 1.12. 홈 스캔과 **별 설정이 아니라 곱셈**. 히어로 16이 매우 크게면 ≈18.
 - **피드 항목 굵기** (`feedContentWeight`): 볼드일 때 `ft.ff`가 +1px. 글꼴 크기 다음에 적용.
 - 홈에 고정 `fontSize: 17`을 두지 않는다. 설정 「크게」를 켠 사용자가 홈만 더 키우는 두 번째 토글이 아님.
 
@@ -186,7 +186,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **오늘**: **트렌드+히어로**(한 섹션·한 카드 — 칩 / 세션 cap rule / headline 내부 분리) → **일정**(선택일 행 + 오늘이면 다가올 D-n 칩) → **뉴스**(없으면 숨김 · 빈 카드 없음) → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
   - **과거**: **트렌드+히어로**(동일) → **일정**(선택일 행) → **뉴스**(없으면 숨김) → **바로가기** → (조건부) 섹터 · 시세 숨김
   - **트렌드+히어로 UI**: 섹션 헤더 1개(히어로 있으면 정리/회차·`reader`, 없으면 트렌드·`trending-up`; as-of는 키워드 있을 때). 카드 안 — 위: 키워드 칩(`embedded`, `HOME_KEYWORD_CHIP_PX`) · **`SectionCapRule`**(`● {세션} ——`) · 아래: headline(`HOME_HERO_HEADLINE_PX`, 탭→브리핑). 칩 탭→심볼/이슈는 기존과 동일
-  - **홈 스캔 계층** (`constants/homeScan.ts`): 히어로 헤드라인(17)이 가장 크고, 일정 제목(16) · 뉴스 제목(15, `HomeDigestFeedRow` `density="home"`) · 시세는 **가격+등락**을 본문으로. 뉴스/공시 목록·유튜브는 기존 digest 14를 유지. 홈 카드 좌우 `HOME_CARD_PAD_H`
+  - **홈 스캔 계층** (`constants/homeScan.ts`): 히어로 헤드라인(16)이 가장 크고, 일정·뉴스 제목(15) · 시세는 **가격+등락**을 본문으로. 뉴스/공시 목록·유튜브는 기존 digest 14를 유지. 홈 카드 좌우 `HOME_CARD_PAD_H`
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):

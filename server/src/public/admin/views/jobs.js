@@ -176,9 +176,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
         ? textFor('jobCommunitySourceNaverYamizal')
         : job.handler === 'investing_boards'
           ? textFor('jobCommunitySourceMotleyFool')
-          : job.handler === 'user_news'
-            ? textFor('jobCommunitySourceSave')
-            : textFor('jobCommunitySourceGeneric');
+          : textFor('jobCommunitySourceGeneric');
   const communityEditor = isCommunityIngestJob(job)
     ? `
         <div class="jobSpecialEditor jobCommunityEditor">

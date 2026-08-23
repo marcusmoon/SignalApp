@@ -35,15 +35,6 @@ export function htmlToPlainText(html) {
     .trim();
 }
 
-export function saveDetailBody(post) {
-  const blocks = Array.isArray(post?.content) ? post.content : [];
-  return blocks
-    .map((block) => (block?.type === 'text' ? String(block.content || '').trim() : ''))
-    .filter(Boolean)
-    .join('\n\n')
-    .trim();
-}
-
 export async function mapWithConcurrency(items, limit, mapper) {
   const list = Array.isArray(items) ? items : [];
   if (list.length === 0) return [];

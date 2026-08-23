@@ -60,6 +60,9 @@ describe('normalizeHomeShortcutsRaw', () => {
   });
 
   it('falls back invalid segments/sources', () => {
+    assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'board', source: 'save_user_news' }]), [
+      { type: 'board', source: 'all' },
+    ]);
     assert.deepEqual(normalizeHomeShortcutsRaw([{ type: 'board', source: 'nope' }]), [
       { type: 'board', source: 'all' },
     ]);

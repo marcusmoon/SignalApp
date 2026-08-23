@@ -7,7 +7,7 @@ import {
   FEED_META_TIME_PX,
   FEED_PREVIEW_BODY_PX,
 } from '@/constants/feedTypography';
-import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
+import { communitySourceAccent, isCommunitySourceKey } from '@/constants/communitySources';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
@@ -83,20 +83,12 @@ export function CommunityPostCard({
   );
 }
 
+export { isCommunitySourceKey };
+
 export function communitySourceLabelId(source: string): MessageId {
-  if (source === 'save_user_news') return 'communitySourceSaveUserNews';
   if (source === 'naver_yamizal_free') return 'communitySourceNaverYamizal';
   if (source === 'motley_fool_investing') return 'communitySourceMotleyFool';
   return 'communitySourceNaverLikeusstock';
-}
-
-export function isCommunitySourceKey(source: string): source is CommunitySourceKey {
-  return (
-    source === 'naver_likeusstock_free' ||
-    source === 'naver_yamizal_free' ||
-    source === 'motley_fool_investing' ||
-    source === 'save_user_news'
-  );
 }
 
 function makeStyles(

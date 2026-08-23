@@ -7,6 +7,7 @@ import { communitySourceLabelId } from '@/components/community/CommunityPostCard
 import { signalDrillStackOptions } from '@/components/layout/signalDrillStackOptions';
 import {
   COMMUNITY_SOURCE_ALL,
+  isCommunitySourceKey,
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
 import { PhoneMoreStackChromeProvider } from '@/contexts/PhoneMoreStackChromeContext';
@@ -15,13 +16,7 @@ import { firstRouteParam } from '@/utils/routeSearchParams';
 
 function parseSource(raw: string | undefined): CommunitySourceFilter {
   const value = String(raw || '').trim();
-  if (
-    value === 'save_user_news' ||
-    value === 'naver_likeusstock_free' ||
-    value === 'naver_yamizal_free' ||
-    value === 'motley_fool_investing'
-  )
-    return value;
+  if (isCommunitySourceKey(value)) return value;
   return COMMUNITY_SOURCE_ALL;
 }
 

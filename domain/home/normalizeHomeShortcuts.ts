@@ -16,7 +16,6 @@ export type NormalizedHomeShortcut =
 
 const BOARD_SOURCES = new Set([
   'all',
-  'save_user_news',
   'naver_likeusstock_free',
   'naver_yamizal_free',
   'motley_fool_investing',

@@ -35,7 +35,6 @@ import { translateNews } from '../providers/translation/index.mjs';
 import { fetchMotleyFoolInvestingBoards } from '../providers/community/motleyFoolDiscourse.mjs';
 import { fetchNaverCafeLikeusstockFree } from '../providers/community/naverCafeLikeusstock.mjs';
 import { fetchNaverCafeYamizalFree } from '../providers/community/naverCafeYamizal.mjs';
-import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { phasesForJob, paramsForPhase, runModeForJob } from './jobPhases.mjs';
@@ -445,9 +444,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'naver_cafe' && effective.handler === 'yamizal_free') {
     return { kind: 'community', rows: await fetchNaverCafeYamizalFree(params || {}) };
-  }
-  if (effective.provider === 'save' && effective.handler === 'user_news') {
-    return { kind: 'community', rows: await fetchSaveUserNews(params || {}) };
   }
   if (effective.provider === 'signal' && effective.handler === 'screener_pool_snapshot') {
     const market = String(params?.market || 'kr').trim().toLowerCase() || 'kr';

@@ -59,20 +59,18 @@ const NEWS_SEGMENT_HOME: Record<NewsSegmentKey, MessageId> = {
 };
 
 const BOARD_CHILD_HOME: Record<
-  'save_user_news' | 'naver_likeusstock_free' | 'naver_yamizal_free' | 'motley_fool_investing',
+  'naver_likeusstock_free' | 'naver_yamizal_free' | 'motley_fool_investing',
   MessageId
 > = {
-  save_user_news: 'homeTileBoardSave',
   naver_likeusstock_free: 'homeTileBoardNaver',
   naver_yamizal_free: 'homeTileBoardYamizal',
   motley_fool_investing: 'homeTileBoardMotleyFool',
 };
 
 const BOARD_CHILD_FORMAL: Record<
-  'save_user_news' | 'naver_likeusstock_free' | 'naver_yamizal_free' | 'motley_fool_investing',
+  'naver_likeusstock_free' | 'naver_yamizal_free' | 'motley_fool_investing',
   MessageId
 > = {
-  save_user_news: 'communitySourceSaveUserNews',
   naver_likeusstock_free: 'communitySourceNaverLikeusstock',
   naver_yamizal_free: 'communitySourceNaverYamizal',
   motley_fool_investing: 'communitySourceMotleyFool',

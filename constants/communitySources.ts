@@ -6,7 +6,6 @@ import { externalSourceIconUrlForCommunityKey } from '@/constants/sourceIconUrls
 export const COMMUNITY_SOURCE_ALL = 'all' as const;
 
 export const COMMUNITY_SOURCES = [
-  'save_user_news',
   'naver_likeusstock_free',
   'naver_yamizal_free',
   'motley_fool_investing',
@@ -21,12 +20,7 @@ export const COMMUNITY_SOURCE_ORDER: CommunitySourceFilter[] = [
   ...COMMUNITY_SOURCES,
 ];
 
-const COMMUNITY_SOURCES_WITH_ORIGINAL_LINK = new Set<CommunitySourceKey>([
-  'save_user_news',
-  'naver_likeusstock_free',
-  'naver_yamizal_free',
-  'motley_fool_investing',
-]);
+const COMMUNITY_SOURCES_WITH_ORIGINAL_LINK = new Set<CommunitySourceKey>(COMMUNITY_SOURCES);
 
 export function communityShowsOriginalLink(source: string): boolean {
   return COMMUNITY_SOURCES_WITH_ORIGINAL_LINK.has(source as CommunitySourceKey);
@@ -34,18 +28,13 @@ export function communityShowsOriginalLink(source: string): boolean {
 
 export type CommunitySourceAccent = SourceAccent;
 
-/** 소스별 리스트·상세 accent (미주미·미치다=네이버, 모틀리=블루, 세이브=오렌지) */
+export function isCommunitySourceKey(source: string): source is CommunitySourceKey {
+  return (COMMUNITY_SOURCES as readonly string[]).includes(source);
+}
+
+/** 소스별 리스트·상세 accent (미주미·미치다=네이버, 모틀리=블루) */
 export function communitySourceAccent(source: string, theme: AppTheme): CommunitySourceAccent {
   const iconUrl = externalSourceIconUrlForCommunityKey(source);
-  if (source === 'save_user_news') {
-    return {
-      accent: theme.accentOrange,
-      dim: theme.warningDim,
-      border: accentAlpha(theme.accentOrange, theme.colorScheme === 'dark' ? 0.55 : 0.35),
-      glyph: 'S',
-      iconUrl,
-    };
-  }
   if (source === 'motley_fool_investing') {
     return {
       accent: theme.accentBlue,

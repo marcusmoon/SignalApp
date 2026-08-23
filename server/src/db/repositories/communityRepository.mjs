@@ -35,11 +35,6 @@ function publicSourceUrl(row) {
       return naverCafeMobileUrl(row.source, row?.provider_item_id) || raw;
     }
   }
-  if (row?.source === 'save_user_news') {
-    if (raw) return raw.replace('/community/detail/', '/community/');
-    const postId = cleanText(row?.provider_item_id);
-    return postId ? `https://www.saveticker.com/community/${postId}` : null;
-  }
   return raw || null;
 }
 
@@ -62,7 +57,6 @@ export const COMMUNITY_SOURCES = [
   'naver_likeusstock_free',
   'naver_yamizal_free',
   'motley_fool_investing',
-  'save_user_news',
 ];
 
 /** Drop rows for `source` that were not in the latest ingest window. */

@@ -46,7 +46,6 @@ export const JOB_PRESETS = {
       'community_naver_likeusstock_free',
       'community_naver_yamizal_free',
       'community_motley_fool_investing',
-      'community_save_user_news',
     ],
   },
   market_refresh: {

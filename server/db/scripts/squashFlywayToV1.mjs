@@ -470,22 +470,6 @@ CREATE INDEX etf_insights_date_idx ON etf_insights (insight_date DESC, published
       params: { pageSize: 30 },
       updatedAt: "2026-07-04T00:00:00.000Z",
     });
-    upsertBy(jobs, "jobKey", "community_save_user_news", {
-      jobKey: "community_save_user_news",
-      displayName: "세이브 유저뉴스",
-      description: "세이브(SAVE) 커뮤니티 유저뉴스 글을 수집합니다.",
-      area: "community",
-      stage: "ingest",
-      domain: "community",
-      operation: "sync",
-      provider: "save",
-      handler: "user_news",
-      enabled: true,
-      intervalSeconds: 1800,
-      params: { pageSize: 30 },
-      updatedAt: "2026-07-04T00:00:00.000Z",
-    });
-
     // V16 + V17 korea quotes (enabled)
     upsertBy(jobs, "jobKey", "market_quotes_korea", {
       jobKey: "market_quotes_korea",

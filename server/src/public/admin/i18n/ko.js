@@ -546,7 +546,7 @@ export const baseKo = {
   jobPresetYoutubeRefresh: 'YouTube 새로고침',
   jobPresetYoutubeRefreshDesc: '경제 유튜브 최신·보정',
   jobPresetCommunityRefresh: '게시판 새로고침',
-  jobPresetCommunityRefreshDesc: '미주미 자유게시판·세이브 유저뉴스',
+  jobPresetCommunityRefreshDesc: '미주미·미치다·모틀리 게시판',
   jobPresetMarketRefresh: '시세 새로고침',
   jobPresetMarketRefreshDesc: '시세·코인·일봉·시총 유니버스',
   jobListAreaAll: '전체 영역',
@@ -787,7 +787,6 @@ export const baseKo = {
   jobCommunitySourceNaverYamizal: '네이버 카페 미국주식에 미치다(yamizal) 자유게시판에서 최신 글을 가져옵니다.',
   jobCommunitySourceMotleyFool:
     'Motley Fool Community — Stocks A to Z · Investment Analysis Clubs 최신 토론을 가져옵니다.',
-  jobCommunitySourceSave: '세이브(SAVE) 유저뉴스에서 최신 글을 가져옵니다.',
   jobCommunitySourceGeneric: '외부 게시판에서 최신 글을 가져옵니다.',
   jobCommunityPageSize: '1회 수집 개수',
   jobCommunityPageSizeOption: '{{count}}개',

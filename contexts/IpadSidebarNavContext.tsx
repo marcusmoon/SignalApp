@@ -6,6 +6,7 @@ import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import type { DisclosureFlowMarket, NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import {
   COMMUNITY_SOURCE_ALL,
+  isCommunitySourceKey,
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
 import { DEFAULT_NEWS_SEGMENT, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
@@ -427,14 +428,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
 
       if (kind === 'board') {
         const source = String(p.source || '').trim();
-        setBoardSource(
-          source === 'save_user_news' ||
-          source === 'naver_likeusstock_free' ||
-          source === 'naver_yamizal_free' ||
-          source === 'motley_fool_investing'
-            ? source
-            : COMMUNITY_SOURCE_ALL,
-        );
+        setBoardSource(isCommunitySourceKey(source) ? source : COMMUNITY_SOURCE_ALL);
         // 홈 숏컷은 lock=1. URL/사이드바 복원·일반 보드는 채널 메뉴 유지.
         setBoardSourceLocked(p.lock === '1');
         return;
@@ -948,12 +942,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showBoard = useCallback(
     (options?: WidePaneDrillOptions & { source?: string }) => {
       const source = String(options?.source || '').trim();
-      const sourceParam =
-        source === 'save_user_news' ||
-        source === 'naver_likeusstock_free' ||
-        source === 'naver_yamizal_free'
-          ? source
-          : undefined;
+      const sourceParam = isCommunitySourceKey(source) ? source : undefined;
       const fromHome = options?.drillFrom === 'home';
       setBoardSource(sourceParam ?? COMMUNITY_SOURCE_ALL);
       setBoardSourceLocked(fromHome);

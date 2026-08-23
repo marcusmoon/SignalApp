@@ -546,7 +546,7 @@ export const baseEn = {
   jobPresetYoutubeRefresh: 'Refresh YouTube',
   jobPresetYoutubeRefreshDesc: 'Economy YouTube latest, reconcile',
   jobPresetCommunityRefresh: 'Community board refresh',
-  jobPresetCommunityRefreshDesc: 'LikeUSStock free board and SAVE user news',
+  jobPresetCommunityRefreshDesc: 'LikeUSStock, yamizal, and Motley Fool boards',
   jobPresetMarketRefresh: 'Refresh market',
   jobPresetMarketRefreshDesc: 'Quotes, coins, daily bars, mcap universe',
   jobListAreaAll: 'All areas',
@@ -786,7 +786,6 @@ export const baseEn = {
   jobCommunitySourceNaverYamizal: 'Pulls latest posts from the Naver Cafe yamizal (미국주식에 미치다) free board.',
   jobCommunitySourceMotleyFool:
     'Pulls latest threads from Motley Fool Community (Stocks A to Z + Investment Analysis Clubs).',
-  jobCommunitySourceSave: 'Pulls latest posts from SAVE user news.',
   jobCommunitySourceGeneric: 'Pulls latest posts from an external board.',
   jobCommunityPageSize: 'Items per run',
   jobCommunityPageSizeOption: '{{count}}',

@@ -35,7 +35,6 @@ export const JOB_CATALOG = {
   community_motley_fool_investing: { area: 'community', stage: 'ingest' },
   community_naver_likeusstock_free: { area: 'community', stage: 'ingest' },
   community_naver_yamizal_free: { area: 'community', stage: 'ingest' },
-  community_save_user_news: { area: 'community', stage: 'ingest' },
 };
 
 const AREA_FROM_DOMAIN = {

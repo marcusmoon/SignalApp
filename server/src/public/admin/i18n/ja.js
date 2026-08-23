@@ -546,7 +546,7 @@ export const baseJa = {
   jobPresetYoutubeRefresh: 'YouTube更新',
   jobPresetYoutubeRefreshDesc: '経済YouTube 最新·補正',
   jobPresetCommunityRefresh: '掲示板更新',
-  jobPresetCommunityRefreshDesc: 'LikeUSStock 自由掲示板・SAVE ユーザーニュース',
+  jobPresetCommunityRefreshDesc: 'LikeUSStock・미치다・Motley Fool 掲示板',
   jobPresetMarketRefresh: 'マーケット更新',
   jobPresetMarketRefreshDesc: '株価·コイン·日足·時価総額',
   jobListAreaAll: 'すべてのエリア',
@@ -786,7 +786,6 @@ export const baseJa = {
   jobCommunitySourceNaverYamizal: 'Naver Cafe yamizal（米国株式に미치다）自由掲示板から最新投稿を取得します。',
   jobCommunitySourceMotleyFool:
     'Motley Fool Community（Stocks A to Z · Investment Analysis Clubs）の最新スレッドを取得します。',
-  jobCommunitySourceSave: 'SAVE ユーザーニュースから最新投稿を取得します。',
   jobCommunitySourceGeneric: '外部掲示板から最新投稿を取得します。',
   jobCommunityPageSize: '1回の取得件数',
   jobCommunityPageSizeOption: '{{count}}件',

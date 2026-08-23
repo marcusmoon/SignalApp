@@ -67,7 +67,7 @@ describe('reduceSidebarSubTabs', () => {
       owner: 'board',
       tabs: [
         { key: 'all', label: '전체' },
-        { key: 'save_user_news', label: '세이브' },
+        { key: 'naver_likeusstock_free', label: '미주미' },
       ],
       activeKey: 'all',
     });
@@ -75,10 +75,10 @@ describe('reduceSidebarSubTabs', () => {
     state = reduceSidebarSubTabs(state, {
       type: 'setActive',
       owner: 'board',
-      key: 'save_user_news',
+      key: 'naver_likeusstock_free',
     });
     assert.equal(state.owner, 'board');
-    assert.equal(state.activeKey, 'save_user_news');
+    assert.equal(state.activeKey, 'naver_likeusstock_free');
   });
 
   it('clear from previous tab does not wipe the next tab submenu', () => {
@@ -138,14 +138,14 @@ describe('reduceSidebarSubTabs', () => {
       owner: 'board',
       tabs: [
         { key: 'all', label: '전체' },
-        { key: 'save_user_news', label: '세이브' },
+        { key: 'naver_likeusstock_free', label: '미주미' },
       ],
-      activeKey: 'save_user_news',
+      activeKey: 'naver_likeusstock_free',
     });
     // Unrelated owner clear must not remove board submenu (wide post drill keeps board mounted).
     state = reduceSidebarSubTabs(state, { type: 'clear', owner: 'news' });
     assert.equal(state.owner, 'board');
-    assert.equal(state.activeKey, 'save_user_news');
+    assert.equal(state.activeKey, 'naver_likeusstock_free');
     assert.equal(state.tabs.length, 2);
   });
 });

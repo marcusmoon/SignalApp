@@ -105,6 +105,7 @@ const DigestCard = memo(function DigestCard({
     <View style={styles.card}>
       <View style={styles.badgeRow}>
         {digest.aiGenerated ? <AiBadge /> : null}
+        {digest.changeType && digest.changeType !== 'new' ? <Text style={[styles.topicChip, { color: theme.green }]}>{t(digest.changeType === 'correction' ? 'newsRevisionCorrection' : 'newsRevisionUpdate')}</Text> : null}
         {topicChips.map((topic) => (
           <Text key={topic} style={styles.topicChip} numberOfLines={1}>
             {topic}

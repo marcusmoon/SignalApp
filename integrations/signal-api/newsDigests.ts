@@ -49,6 +49,8 @@ export async function fetchSignalNewsDigestById(
 export async function fetchSignalNewsDigests(
   params: {
     id?: string;
+    storyId?: string;
+    symbols?: string;
     category?: string;
     limit?: number;
     offset?: number;
@@ -75,6 +77,6 @@ export async function fetchSignalNewsDigests(
     items: rows,
     meta: normalizeMeta({ ...json, data: rows }, params),
   };
-  if (cacheMode !== 'bypass') storeSignalNewsDigestsCache(cacheKey, value);
+  storeSignalNewsDigestsCache(cacheKey, value);
   return value;
 }

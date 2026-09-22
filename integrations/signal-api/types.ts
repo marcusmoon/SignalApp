@@ -72,6 +72,11 @@ export type SignalApiSymbolMeta = {
 
 export type SignalApiNewsDigestItem = {
   id: string;
+  storyId?: string | null;
+  revisionId?: string | null;
+  previousDigestId?: string | null;
+  changeType?: 'new' | 'update' | 'correction' | null;
+  changes?: Array<{ text: string; sourceIds: string[] }>;
   category: string;
   title: string;
   summary: string;

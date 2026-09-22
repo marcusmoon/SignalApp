@@ -5,13 +5,10 @@
  * - ticker prop 변경 시 자동으로 데이터 재조회
  */
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as WebBrowser from 'expo-web-browser';
-import { type Href, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
@@ -44,8 +41,9 @@ import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
-import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
+import { addDays } from '@/utils/date';
 import { SymbolExternalLinksGrid } from '@/components/symbol/SymbolExternalLinksGrid';
+import { CompanyDevelopments } from '@/components/symbol/CompanyDevelopments';
 import { buildSymbolExternalLinks } from '@/utils/symbolExternalLinks';
 
 // ─────────────────────────────────────────────
@@ -120,18 +118,6 @@ function normalizeCompanyName(name: string | undefined, ticker: string): string 
   if (!trimmed) return null;
   if (trimmed.toUpperCase() === ticker.trim().toUpperCase()) return null;
   return trimmed;
-}
-
-function disclosureProviderLabel(item: SignalApiDisclosure): string {
-  if (item.provider === 'sec') return 'SEC';
-  if (item.provider === 'dart') return 'DART';
-  return String(item.provider || '—').toUpperCase();
-}
-
-function disclosureTrailLabel(item: SignalApiDisclosure): string {
-  const provider = disclosureProviderLabel(item);
-  const form = item.formType?.trim();
-  return [provider, form].filter(Boolean).join(' · ');
 }
 
 function buildSparkPoints(closes: number[], width: number, height: number): SparkPoint[] {
@@ -376,7 +362,6 @@ type Props = {
 export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const router = useRouter();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
@@ -413,7 +398,9 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
     changePercent: displayChangePercent ?? 0,
   };
 
+  const loadGeneration = useRef(0);
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     if (!ticker) {
       setError(t('symbolDetailErrorLoad'));
       setLoading(false);
@@ -445,6 +432,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
             .catch(() => []),
         ]);
 
+      if (generation !== loadGeneration.current) return;
       const row0 = mqRows[0];
       const nextQuote = row0 && signalMarketQuoteHasValidPrice(row0) ? row0 : null;
       setWatching(watchlist.includes(ticker));
@@ -454,9 +442,9 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
       setNewsItems(companyNews.map((a) => signalNewsToNewsItem(a, locale)));
       setDisclosures(disclosureRows);
     } catch (e) {
-      setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
+      if (generation === loadGeneration.current) setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, [locale, ticker, t]);
 
@@ -469,6 +457,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
     setNewsItems([]);
     setDisclosures([]);
     void load();
+    return () => { loadGeneration.current += 1; };
   }, [load]);
 
   const onRefresh = useCallback(async () => {
@@ -517,11 +506,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
     if (loading || !onDisplayNameResolved) return;
     onDisplayNameResolved(displayCompanyName);
   }, [displayCompanyName, loading, onDisplayNameResolved]);
-
-  const disclosureRows = disclosures.slice(0, 5);
-  const openAllDisclosures = useCallback(() => {
-    router.push(`/disclosures?symbol=${encodeURIComponent(ticker)}` as Href);
-  }, [router, ticker]);
 
   return (
     <View style={styles.root}>
@@ -629,68 +613,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
             </View>
           ) : null}
 
-          <View style={styles.section}>
-            <HomeSectionHeader title={t('tabNews')} showChevron={false} />
-            {newsItems.length > 0 ? (
-              <View style={[styles.feedCard, styles.feedCardCompact]}>
-                <View style={styles.issueGroupList}>
-                  {newsItems.map((item, index) => (
-                    <HomeDigestFeedRow
-                      key={item.id}
-                      title={item.titleKo}
-                      titleLines={2}
-                      timeLabel={item.timeLabel}
-                      trailText={item.source?.trim() || null}
-                      bordered={index < newsItems.length - 1}
-                      onPress={
-                        item.url?.trim()
-                          ? () => void WebBrowser.openBrowserAsync(item.url.trim())
-                          : undefined
-                      }
-                    />
-                  ))}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('symbolDetailNoNews')}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('screenDisclosures')}
-              onPress={disclosureRows.length > 0 ? openAllDisclosures : undefined}
-              accessibilityLabel={t('symbolDetailDisclosuresAll')}
-              showChevron={disclosureRows.length > 0}
-            />
-            {disclosureRows.length > 0 ? (
-              <View style={[styles.feedCard, styles.feedCardCompact]}>
-                <View style={styles.issueGroupList}>
-                  {disclosureRows.map((item, index) => (
-                    <HomeDigestFeedRow
-                      key={item.id}
-                      title={item.title}
-                      titleLines={2}
-                      summary={item.summary}
-                      summaryLines={2}
-                      timeLabel={formatFeedItemTimeLabel(item.filedAt, locale)}
-                      trailText={disclosureTrailLabel(item)}
-                      bordered={index < disclosureRows.length - 1}
-                      onPress={() =>
-                        router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)
-                      }
-                    />
-                  ))}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>{t('symbolDetailNoDisclosures')}</Text>
-              </View>
-            )}
-          </View>
+          <CompanyDevelopments ticker={ticker} news={newsItems} filings={disclosures} refreshing={refreshing} />
         </WebWheelScrollView>
       )}
     </View>

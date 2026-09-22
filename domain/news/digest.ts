@@ -2,6 +2,7 @@ import type { SignalApiNewsDigestSourceRef, SignalApiNewsItem } from '@/integrat
 
 export type NewsDigestItem = {
   id: string;
+  changeType?: 'new' | 'update' | 'correction' | null;
   title: string;
   summary: string;
   topics: string[];

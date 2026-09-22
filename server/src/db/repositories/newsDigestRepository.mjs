@@ -24,6 +24,11 @@ function publicDigest(item) {
     primaryNewsId: item.primaryNewsId || null,
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     aiGenerated: item.aiGenerated === true,
+    storyId: item.storyId || null,
+    revisionId: item.revisionId || null,
+    previousDigestId: item.previousDigestId || null,
+    changeType: item.changeType || null,
+    changes: Array.isArray(item.changes) ? item.changes : [],
   };
 }
 
@@ -49,6 +54,20 @@ export async function queryPublicNewsDigestRows(options = {}) {
     };
   }
   const category = cleanText(options.category);
+  const storyId = cleanText(options.storyId);
+  if (storyId) {
+    params.push(storyId);
+    where.push(`payload->>'storyId' = $${params.length}`);
+  }
+  const symbols = cleanText(options.symbols).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean).slice(0, 50);
+  if (symbols.length) {
+    const aliases = [...new Set(symbols.flatMap((s) => {
+      const key = s.replace(/^KRX:/, '').replace(/\.(KS|KQ)$/, '');
+      return /^\d{6}$/.test(key) ? [key, `${key}.KS`, `${key}.KQ`, `KRX:${key}`] : [key];
+    }))];
+    params.push(aliases);
+    where.push(`(payload->'symbols') ?| $${params.length}::text[]`);
+  }
   if (category) {
     params.push(category);
     where.push(`category = $${params.length}`);
@@ -67,6 +86,10 @@ export async function queryPublicNewsDigestRows(options = {}) {
   }
   params.push(maxBatches, limit + 1, offset);
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  // A story or watchlist lookup spans runs. v3 default feeds keep the latest
+  // revision per story, so a partial run does not erase other recent stories.
+  const allRuns = Boolean(storyId || symbols.length);
+  const recentV3 = from || to ? 'TRUE' : "f.generated_at >= now() - interval '24 hours'";
   const result = await queryKysely(
     `
       WITH filtered AS (
@@ -88,14 +111,22 @@ export async function queryPublicNewsDigestRows(options = {}) {
           ) AS run_rank
         FROM runs
       )
-      SELECT f.payload
+      , candidates AS (
+      SELECT f.*, ROW_NUMBER() OVER (
+        PARTITION BY COALESCE(f.payload->>'storyId', f.id)
+        ORDER BY f.generated_at DESC, (f.payload->>'revisionNumber')::int DESC NULLS LAST, f.id DESC
+      ) AS story_rank
       FROM filtered f
       JOIN ranked_runs r
         ON f.category IS NOT DISTINCT FROM r.category
         AND f.digest_date IS NOT DISTINCT FROM r.digest_date
         AND f.generated_at IS NOT DISTINCT FROM r.generated_at
-      WHERE r.run_rank <= $${params.length - 2}
-      ORDER BY f.generated_at DESC NULLS LAST, f.digest_date DESC NULLS LAST, f.score DESC NULLS LAST, f.position ASC
+      WHERE ${allRuns ? 'TRUE' : `(r.run_rank <= $${params.length - 2} OR (f.payload->>'storyId' IS NOT NULL AND ${recentV3}))`}
+      )
+      SELECT payload FROM candidates
+      WHERE ${storyId ? 'TRUE' : 'story_rank = 1'}
+        AND $${params.length - 2}::int >= 1
+      ORDER BY generated_at DESC NULLS LAST, digest_date DESC NULLS LAST, score DESC NULLS LAST, position ASC, id ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

@@ -6,6 +6,12 @@ import { DEFAULT_QUOTE_WATCHLIST } from '@/domain/quotes/usSymbols';
 const STORAGE_KEY = '@signal/quote_watchlist_v1';
 const KOREA_SEED_STORAGE_KEY = '@signal/quote_watchlist_korea_seed_v1';
 const KOREA_SEED_SYMBOLS = ['005930', '000660'] as const;
+const listeners = new Set<() => void>();
+
+export function subscribeWatchlistSymbolsChanged(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
 
 export { isValidUsTicker } from '@/domain/quotes';
 export { isValidQuoteSymbol } from '@/domain/quotes';
@@ -42,6 +48,7 @@ export async function saveWatchlistSymbols(symbols: string[]): Promise<void> {
     [STORAGE_KEY, JSON.stringify(cleaned)],
     [KOREA_SEED_STORAGE_KEY, '1'],
   ]);
+  listeners.forEach((listener) => listener());
 }
 
 export async function resetWatchlistToDefaults(): Promise<string[]> {
@@ -50,5 +57,6 @@ export async function resetWatchlistToDefaults(): Promise<string[]> {
     [STORAGE_KEY, JSON.stringify(next)],
     [KOREA_SEED_STORAGE_KEY, '1'],
   ]);
+  listeners.forEach((listener) => listener());
   return next;
 }

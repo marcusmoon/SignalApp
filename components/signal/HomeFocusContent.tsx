@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -32,12 +33,8 @@ import { ChangeHeatmapGrid, type ChangeHeatmapCell } from '@/components/signal/C
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { HomeSectionLeadIcon } from '@/components/signal/HomeSectionLeadIcon';
 import { HomeShortcutsStrip } from '@/components/signal/HomeShortcutsStrip';
-import {
-  digestSourceIconEntries,
-} from '@/components/signal/SourceIconStack';
-import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { ChangeTintedText } from '@/components/signal/ChangeTintedText';
-import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { HomeNewsFeed } from '@/components/signal/HomeNewsFeed';
 import { HomeTrendHeroCard } from '@/components/signal/HomeTrendHeroCard';
 import { HomeCalendarAgenda } from '@/components/signal/HomeCalendarAgenda';
 import { SectionCapRule } from '@/components/signal/SectionCapRule';
@@ -55,13 +52,12 @@ import {
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
-import { newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
-import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
-import { isHomeNewsFlowNew } from '@/domain/digests/freshness';
+import { selectHomeNews } from '@/domain/home/newsReading';
+import { settleHomeSection } from '@/domain/home/sectionLoading';
 import {
   homeCalendarAgendaIsEmpty,
   homeCalendarChipRangeEnd,
@@ -187,7 +183,7 @@ import {
   subscribeHomeShortcutsChanged,
 } from '@/services/homeShortcutsPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { loadWatchlistSymbols, subscribeWatchlistSymbolsChanged } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import {
   addDays,
@@ -248,10 +244,6 @@ function shiftYmd(ymd: string, days: number): string {
   return toYmd(addDays(parseLocalYmd(ymd), days));
 }
 
-function issueSortTime(row: IssueRow): string {
-  return String(row.item.generatedAt || row.item.sourceRefs[0]?.publishedAt || row.item.generatedDate || '');
-}
-
 function sortBriefingTime(row: SignalApiMarketBriefing): string {
   return String(row.publishedAt || row.updatedAt || row.createdAt || row.briefingDate || '');
 }
@@ -278,44 +270,14 @@ function uniqueVisibleBriefings(rows: SignalApiMarketBriefing[]): SignalApiMarke
   return unique;
 }
 
-async function fetchTopIssues(
-  date: string,
-  locale: string,
-  cacheMode: ReturnType<typeof signalCacheMode>,
-): Promise<IssueRow[]> {
-  const range = utcRangeForLocalYmd(date);
-  const results = await Promise.all(
-    HOME_DIGEST_CATEGORIES.map(async (category) => {
-      const page = await fetchSignalNewsDigests(
-        {
-          category,
-          ...range,
-          limit: ISSUE_FETCH_LIMIT,
-          batches: 1,
-          locale,
-        },
-        { cacheMode },
-      ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
-      return [...page.items]
-        .sort(
-          (a, b) =>
-            String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
-            b.count - a.count,
-        )
-        .map((item) => ({ category, item }));
-    }),
-  );
-  return results.flat().sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count);
-}
-
 async function fetchTodayBriefingWithFallback(
   date: string,
   locale: string,
   cacheMode: ReturnType<typeof signalCacheMode>,
 ): Promise<SignalApiTodayBriefing | null> {
-  const primary = await fetchSignalTodayBriefing({ date, locale }, { cacheMode }).catch(() => null);
+  const primary = await fetchSignalTodayBriefing({ date, locale }, { cacheMode });
   if (primary || locale === 'ko') return primary;
-  return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode }).catch(() => null);
+  return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode });
 }
 
 function formatPrice(row: QuoteRow): string {
@@ -354,7 +316,9 @@ export function HomeFocusContent({
   const selectedIsToday = selectedYmd >= todayYmd;
   const selectedIsExactToday = selectedYmd === todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
+  const loadedScopeRef = useRef<string | null>(null);
   const loadGenerationRef = useRef(0);
+  const refreshInFlightRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   /** Any in-flight refresh (FAB disable / a11y). */
@@ -364,6 +328,11 @@ export function HomeFocusContent({
   useResetRefreshingOnTabBlur(setRefreshing);
   useResetRefreshingOnTabBlur(setPtrRefreshing);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSections, setPendingSections] = useState<string[]>([]);
+  const [failedSections, setFailedSections] = useState<string[]>([]);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [watchlistRevision, setWatchlistRevision] = useState(0);
+  const [contentWidth, setContentWidth] = useState(0);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [sectorFlowDisplayCount, setSectorFlowDisplayCount] = useState(HOME_SECTOR_FLOW_DISPLAY_DEFAULT);
@@ -394,18 +363,9 @@ export function HomeFocusContent({
   const showHomeCalendar = !homeCalendarAgendaIsEmpty(homeCalendarAgenda);
 
   const homeIssues = useMemo(
-    () =>
-      [...issues]
-        .sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count)
-        .slice(0, newsFlowDisplayCount),
+    () => selectHomeNews(issues, [], 'all', newsFlowDisplayCount),
     [issues, newsFlowDisplayCount],
   );
-
-  const homeNewsFlowNew = useMemo(() => {
-    const newest = homeIssues[0];
-    if (!newest) return false;
-    return isHomeNewsFlowNew(newsDigestCreatedIso(newest.item));
-  }, [homeIssues]);
 
   const homeKeywords = useMemo(
     () =>
@@ -612,6 +572,7 @@ export function HomeFocusContent({
       : t('ipadHomeSignalTitle')
     : t('ipadHomeTitle');
   const heroHeadline = homeHero ? homeHeroHeadline(homeHero) : '';
+  const heroSummary = homeHero?.briefing.summary?.trim() || '';
   const showTrendHeroSection =
     homeKeywords.length > 0 || Boolean(String(heroHeadline || '').trim());
   const trendHeroSectionTitle =
@@ -622,7 +583,8 @@ export function HomeFocusContent({
     ) : (
       <HomeSectionLeadIcon name="trending-up-outline" />
     );
-  const trendHeroSectionMeta = homeKeywords.length > 0 ? homeKeywordsAsOfLabel : null;
+  const heroTime = homeHero?.briefing.publishedAt || homeHero?.briefing.createdAt;
+  const trendHeroSectionMeta = heroTime ? formatFeedItemTimeLabel(heroTime, locale) : homeKeywordsAsOfLabel;
   const trendHeroSessionDividerLabel = useMemo(() => {
     if (!homeHero || !heroHeadline) return null;
     if (homeHero.kind === 'today') return t('ipadHomeTitle');
@@ -648,6 +610,23 @@ export function HomeFocusContent({
 
   const load = useCallback(async (forceRefresh?: boolean) => {
     const generation = ++loadGenerationRef.current;
+    const isCurrent = () => generation === loadGenerationRef.current;
+    const scope = `${selectedYmd}|${locale}`;
+    if (loadedScopeRef.current !== scope) {
+      loadedScopeRef.current = scope;
+      setIssues([]);
+      setQuotes([]);
+      setIndexQuotes([]);
+      setFxQuotes([]);
+      setAnchorCoins([]);
+      setBriefings([]);
+      setTodayBriefing(null);
+      setEtfInsight(null);
+      setCalendarEvents([]);
+      setKeywordQuoteNames(new Map());
+      keywordNameAttemptedRef.current = new Set();
+    }
+    setFailedSections([]);
     if (!hasSignalApi()) {
       setIssues([]);
       setQuotes([]);
@@ -658,22 +637,18 @@ export function HomeFocusContent({
       setTodayBriefing(null);
       setCalendarEvents([]);
       setError(t('errorSignalApiShort'));
+      setPendingSections([]);
+      setLoading(false);
       return;
     }
     const cacheMode = signalCacheMode(forceRefresh);
     setError(null);
     try {
       const watchlist = await loadWatchlistSymbols();
+      if (!isCurrent()) return;
+      setWatchlist(watchlist);
       const isToday = selectedYmd === todayYmd;
       const symbols = isToday ? watchlist.slice(0, watchlistDisplayCount) : [];
-      const isDateChange = loadedYmdRef.current !== selectedYmd;
-      if (isDateChange) {
-        setBriefings([]);
-        setKeywordQuoteNames(new Map());
-        keywordNameAttemptedRef.current = new Set();
-      }
-      setCalendarEvents([]);
-
       const allSymbols = isToday
         ? buildHomeQuoteBatchSymbols(symbols, HOME_INDEX_SYMBOLS, HOME_FX_SYMBOLS)
         : [];
@@ -682,119 +657,62 @@ export function HomeFocusContent({
           ? homeCalendarChipRangeEnd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS)
           : selectedYmd;
 
-      const [
-        nextTodayBriefing,
-        nextIssues,
-        allQuoteRows,
-        briefingRows,
-        nextEtfInsight,
-        coinRows,
-        calendarRows,
-      ] = await Promise.all([
-        fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
-        fetchTopIssues(selectedYmd, locale, cacheMode),
-        allSymbols.length > 0
-          ? fetchSignalMarketQuotes(
-              { symbols: allSymbols, limit: allSymbols.length },
-              { cacheMode },
-            ).catch(() => [] as SignalApiMarketQuote[])
-          : Promise.resolve([] as SignalApiMarketQuote[]),
-        fetchSignalMarketBriefings(
-          { date: selectedYmd, limit: BRIEFING_LIMIT, locale },
-          { cacheMode },
-        ).catch(() => [] as SignalApiMarketBriefing[]),
-        fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }).catch(() => null),
-        isToday
-          ? fetchSignalCoins({ limit: HOME_COIN_FETCH_LIMIT }, { cacheMode }).catch(() => [])
-          : Promise.resolve([]),
-        fetchSignalCalendar(
-          {
-            from: shiftYmd(selectedYmd, -1),
-            to: calendarRangeEnd,
-            limit: 120,
-          },
-          { cacheMode },
-        ).catch(() => []),
-      ]);
-
-      const quoteBySymbol = new Map<string, QuoteRow>();
-      for (const item of allQuoteRows) {
-        const row = mapSignalQuoteToRow(item);
-        for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
-      }
-      if (generation !== loadGenerationRef.current) return;
-      setTodayBriefing(nextTodayBriefing);
-      setIssues(nextIssues);
-      setQuotes(
-        symbols.map((symbol) => {
-          const key = symbol.trim().toUpperCase();
-          return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
+      const keys = ['today', 'market', 'quotes', 'coins', 'calendar', 'etf', ...HOME_DIGEST_CATEGORIES];
+      setPendingSections(keys);
+      setLoading(false);
+      // Commit each result independently. A failed refresh never erases a successful section.
+      const receive = <T,>(key: string, request: Promise<T>, commit: (data: T) => void) => settleHomeSection(request, {
+        isCurrent,
+        commit,
+        fail: () => setFailedSections((previous) => [...previous, key]),
+        finish: () => setPendingSections((previous) => previous.filter((item) => item !== key)),
+      });
+      await Promise.all([
+        receive('today', fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode), setTodayBriefing),
+        ...HOME_DIGEST_CATEGORIES.map((category) => receive(category,
+          fetchSignalNewsDigests({ category, ...utcRangeForLocalYmd(selectedYmd), limit: ISSUE_FETCH_LIMIT, batches: 1, locale }, { cacheMode }),
+          (page) => setIssues((previous) => [...previous.filter((row) => row.category !== category), ...page.items.map((item) => ({ category, item }))]),
+        )),
+        receive('market', fetchSignalMarketBriefings({ date: selectedYmd, limit: BRIEFING_LIMIT, locale }, { cacheMode }),
+          (rows) => setBriefings(uniqueVisibleBriefings([...rows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))))),
+        receive('quotes', allSymbols.length > 0
+          ? fetchSignalMarketQuotes({ symbols: allSymbols, limit: allSymbols.length }, { cacheMode })
+          : Promise.resolve([] as SignalApiMarketQuote[]), (rows) => {
+          const bySymbol = new Map<string, QuoteRow>();
+          for (const item of rows) {
+            const row = mapSignalQuoteToRow(item);
+            for (const key of quoteLookupKeys(item, row)) bySymbol.set(key, row);
+          }
+          const resolve = (symbol: string): QuoteRow => bySymbol.get(symbol.trim().toUpperCase()) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
+          setQuotes(symbols.map(resolve));
+          setIndexQuotes(isToday ? HOME_INDEX_DEFS.map((def) => resolve(def.symbol)) : []);
+          setFxQuotes(isToday ? HOME_FX_DEFS.map((def) => resolve(def.symbol)) : []);
         }),
-      );
-      setIndexQuotes(
-        isToday
-          ? HOME_INDEX_DEFS.map((def) => {
-              const key = def.symbol.toUpperCase();
-              return (
-                quoteBySymbol.get(key) ?? {
-                  symbol: def.symbol,
-                  quote: null,
-                  error: 'NO_SERVER_QUOTE',
-                }
-              );
-            })
-          : [],
-      );
-      setFxQuotes(
-        isToday
-          ? HOME_FX_DEFS.map((def) => {
-              const key = def.symbol.toUpperCase();
-              return (
-                quoteBySymbol.get(key) ?? {
-                  symbol: def.symbol,
-                  quote: null,
-                  error: 'NO_SERVER_QUOTE',
-                }
-              );
-            })
-          : [],
-      );
-      // 리스트(listPosition) 순 여유분만 보관 — 화면 폭·워치리스트 중복은 렌더 시 다시 고른다
-      setAnchorCoins(
-        pickHomeAnchorCoinsFromList(coinRows, HOME_ANCHOR_COIN_FETCH_POOL).map(mapSignalCoinToRow),
-      );
-      setBriefings(
-        uniqueVisibleBriefings(
-          [...briefingRows].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))),
-        ),
-      );
-      setEtfInsight(nextEtfInsight);
-      setCalendarEvents(
-        filterHomeCalendarEvents(
-          calendarRows
-            .map((row) => signalCalendarToCalendarEvent(row))
-            .filter((row): row is CalendarEvent => row != null),
-          watchlist,
-          selectedYmd,
-          calendarRangeEnd,
-        ),
-      );
+        receive('etf', fetchSignalEtfInsightForDate(selectedYmd, { cacheMode }), setEtfInsight),
+        receive('coins', isToday ? fetchSignalCoins({ limit: HOME_COIN_FETCH_LIMIT }, { cacheMode }) : Promise.resolve([]),
+          (rows) => setAnchorCoins(pickHomeAnchorCoinsFromList(rows, HOME_ANCHOR_COIN_FETCH_POOL).map(mapSignalCoinToRow))),
+        receive('calendar', fetchSignalCalendar({ from: shiftYmd(selectedYmd, -1), to: calendarRangeEnd, limit: 120 }, { cacheMode }),
+          (rows) => setCalendarEvents(filterHomeCalendarEvents(rows.map(signalCalendarToCalendarEvent).filter((row): row is CalendarEvent => row != null), watchlist, selectedYmd, calendarRangeEnd))),
+      ]);
     } catch (e) {
       if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, watchlistRevision]);
 
   /**
    * `ptr`: show native RefreshControl (pull gesture).
    * `silent`: FAB/header — keep scroll; do not toggle PTR inset (avoids mid-list jump).
    */
   const refresh = useCallback(async (mode: 'ptr' | 'silent' = 'silent') => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
     setRefreshing(true);
     if (mode === 'ptr') setPtrRefreshing(true);
     try {
       await load(true);
     } finally {
+      refreshInFlightRef.current = false;
       setRefreshing(false);
       setPtrRefreshing(false);
     }
@@ -825,8 +743,11 @@ export function HomeFocusContent({
     })();
     return () => {
       cancelled = true;
+      loadGenerationRef.current += 1;
     };
   }, [load, selectedYmd, homeDisplayPrefsReady]);
+
+  useEffect(() => subscribeWatchlistSymbolsChanged(() => setWatchlistRevision((value) => value + 1)), []);
 
   useEffect(() => {
     if (selectedYmd > todayYmd) changeSelectedYmd(todayYmd);
@@ -1101,6 +1022,7 @@ export function HomeFocusContent({
         symbolProfiles={homeKeywordSymbolProfiles}
         onPressKeyword={openHomeKeyword}
         heroHeadline={heroHeadline || null}
+        heroSummary={heroSummary}
         sessionDividerLabel={trendHeroSessionDividerLabel}
         onPressHero={openHero}
         heroAccessibilityLabel={trendHeroSectionTitle}
@@ -1109,6 +1031,7 @@ export function HomeFocusContent({
     );
   }, [
     heroHeadline,
+    heroSummary,
     homeKeywordSymbolProfiles,
     homeKeywords,
     openHero,
@@ -1207,50 +1130,21 @@ export function HomeFocusContent({
     theme,
   ]);
 
-  const renderIssueCard = useCallback(
-    (rows: IssueRow[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.issueGroupList}>
-          {rows.map((row, index) => {
-            const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
-            const trailText = [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ');
-            const createdIso = newsDigestCreatedIso(row.item);
-            return (
-              <HomeDigestFeedRow
-                key={row.item.id}
-                density="home"
-                title={row.item.title}
-                titleLines={2}
-                timeLabel={formatFeedItemTimeLabel(createdIso, locale)}
-                trailText={trailText || null}
-                summary={null}
-                sourceEntries={sourceEntries}
-                bordered={index < rows.length - 1}
-                onPress={() => openIssueDetail(row)}
-                footerLead={
-                  <View
-                    accessible
-                    accessibilityRole="image"
-                    accessibilityLabel={t(NEWS_SEGMENT_LABEL[row.category])}>
-                    <CommunitySourceMark
-                      accent={newsSegmentAccent(row.category, theme)}
-                      size={18}
-                      style={styles.boardSourceMark}
-                    />
-                  </View>
-                }
-              />
-            );
-          })}
-        </View>
-      </View>
-    ),
-    [openIssueDetail, showIssueSummary, styles, locale, t, theme],
-  );
+  const hasReadingAside = showHomeCalendar || homeShortcuts.length > 0;
+  const showColumns = useTwoPane && contentWidth >= 960 && hasReadingAside;
+  const failedLabels = [...new Set(failedSections.map((key) =>
+    HOME_DIGEST_CATEGORIES.includes(key as HomeDigestCategory) ? t(NEWS_SEGMENT_LABEL[key as HomeDigestCategory])
+      : key === 'calendar' ? t('ipadHomeCalendarTitle')
+      : key === 'quotes' || key === 'coins' ? t('homeFocusWatchTitle')
+      : key === 'etf' ? t('homeEtfInsightTitle') : t('ipadHomeSignalTitle'),
+  ))].join(' · ');
+  const placeholder = <View style={styles.sectionPlaceholder} accessibilityLabel={t('commonLoading')} accessibilityState={{ busy: true }}>
+    <View style={styles.placeholderLine} /><View style={[styles.placeholderLine, { width: '68%' }]} />
+  </View>;
 
   return (
     <>
-      <View style={styles.root}>
+      <View style={styles.root} onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}>
         <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {headerAccessory}
           <SignalDateNavigator
@@ -1286,6 +1180,14 @@ export function HomeFocusContent({
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
+        {failedSections.length > 0 ? <View style={styles.loadNotice} accessibilityRole="alert">
+          <Ionicons name="cloud-offline-outline" size={20} color={theme.textMuted} />
+          <Text style={styles.loadNoticeText}>{t('homePartialLoadError', { sections: failedLabels })}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('commonRetry')} disabled={refreshing}
+            onPress={() => void refresh()} style={styles.retryButton}>
+            <Ionicons name="refresh-outline" size={20} color={theme.green} />
+          </Pressable>
+        </View> : null}
 
         {loading ? (
           <View style={styles.loadingBox}>
@@ -1302,8 +1204,16 @@ export function HomeFocusContent({
               />
               {renderTrendHeroSection()}
             </View>
-          ) : null}
+          ) : pendingSections.includes('today') || pendingSections.includes('market') ? placeholder : null}
 
+          <View style={[styles.readingLayout, showColumns && styles.readingColumns]}>
+          <View style={[styles.readingMain, showColumns && styles.readingMainWide]}>
+            <HomeNewsFeed rows={issues} limit={newsFlowDisplayCount} selectedYmd={selectedYmd} refreshing={refreshing}
+              pending={pendingSections.some((key) => HOME_DIGEST_CATEGORIES.includes(key as HomeDigestCategory))}
+              failed={failedSections.some((key) => HOME_DIGEST_CATEGORIES.includes(key as HomeDigestCategory))}
+              onOpen={openIssueDetail} />
+          </View>
+          {hasReadingAside ? <View style={[styles.readingAside, showColumns && styles.readingAsideWide]}>
           {showHomeCalendar ? (
             <View style={styles.section}>
               <HomeSectionHeader
@@ -1311,17 +1221,6 @@ export function HomeFocusContent({
                 badge={<HomeSectionLeadIcon name="calendar-outline" />}
               />
               {renderCalendarAgenda()}
-            </View>
-          ) : null}
-
-          {homeIssues.length > 0 ? (
-            <View style={styles.section}>
-              <HomeSectionHeader
-                title={t('newsIssuesTitle')}
-                badge={<HomeSectionLeadIcon name="newspaper-outline" />}
-                meta={homeNewsFlowNew ? t('homeNewsFlowNewMeta') : null}
-              />
-              {renderIssueCard(homeIssues)}
             </View>
           ) : null}
 
@@ -1334,6 +1233,8 @@ export function HomeFocusContent({
               <HomeShortcutsStrip shortcuts={homeShortcuts} selectedYmd={selectedYmd} />
             </View>
           ) : null}
+          </View> : null}
+          </View>
 
           {selectedIsExactToday ? (
             <View style={styles.section}>
@@ -1346,7 +1247,7 @@ export function HomeFocusContent({
                 homeWatchRows.length === 0 &&
                 homeAnchorCoinRows.length === 0 &&
                 homeFxRows.length === 0 ? (
-                  <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
+                  pendingSections.includes('quotes') ? placeholder : <Text style={styles.emptyText}>{t(failedSections.includes('quotes') ? 'homeNewsUnavailable' : 'quotesEmptyWatch')}</Text>
                 ) : (
                   <>
                     {indexQuotes.length > 0 ? (
@@ -1448,6 +1349,17 @@ function makeStyles(
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       gap: COMFORT_GAP_PAGE,
     },
+    readingLayout: { gap: 28, minWidth: 0 },
+    readingColumns: { flexDirection: 'row', alignItems: 'flex-start', gap: 28 },
+    readingMain: { minWidth: 0 },
+    readingMainWide: { flex: 1 },
+    readingAside: { gap: 24, minWidth: 0 },
+    readingAsideWide: { width: '32%', maxWidth: 390 },
+    loadNotice: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border },
+    loadNoticeText: { flex: 1, color: theme.textMuted, fontSize: ft.ff(13), lineHeight: ft.ff(19) },
+    retryButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    sectionPlaceholder: { minHeight: 84, paddingVertical: 16, gap: 14 },
+    placeholderLine: { height: 14, width: '90%', borderRadius: 4, backgroundColor: theme.bgElevated },
     errorBox: {
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,

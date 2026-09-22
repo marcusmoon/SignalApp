@@ -34,6 +34,7 @@ type Props = {
   variant?: 'digest' | 'signal';
   /** Home news only — larger title than shared digest lists */
   density?: 'default' | 'home';
+  featured?: boolean;
   timeLabel?: string | null;
   trailText?: string | null;
   summary?: string | null;
@@ -59,6 +60,7 @@ export function HomeDigestFeedRow({
   titleLines,
   variant = 'digest',
   density = 'default',
+  featured = false,
   timeLabel,
   trailText,
   summary,
@@ -127,7 +129,7 @@ export function HomeDigestFeedRow({
         onPress && pressed && styles.rowPressed,
       ]}>
       {badges ? <View style={styles.badgeRow}>{badges}</View> : null}
-      <ChangeTintedText style={styles.title} numberOfLines={resolvedTitleLines}>
+      <ChangeTintedText style={[styles.title, featured && { fontSize: feedTypo.ff(19), lineHeight: feedTypo.ff(28) }]} numberOfLines={resolvedTitleLines}>
         {title}
       </ChangeTintedText>
       {trimmedSummary && (resolvedSummaryLines == null || resolvedSummaryLines > 0) ? (
@@ -213,8 +215,8 @@ function makeStyles(
       fontWeight: ft.emphasisWeight,
     },
     summary: {
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(16),
+      fontSize: ft.ff(homeScan ? 14 : FEED_SUMMARY_PX),
+      lineHeight: homeScan ? ft.ff(21) : sf(16),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },

@@ -5,14 +5,13 @@ import {
 
 /**
  * Home-only **base** type scale at settings 「기본」(multiplier 1).
- * Halfway between digest 14 and the first (too large) 17 pass.
  * Always apply through `ft.ff` / `scaleFont` so 글꼴 크기 (크게 1.06 ·
  * 매우 크게 1.12) and 피드 항목 굵기 (볼드 +1px) still compose.
  * Do not reuse these on news/disclosure/YouTube lists.
  */
 
-export const HOME_HERO_HEADLINE_PX = 16;
-export const HOME_HERO_HEADLINE_LINE_PX = 22;
+export const HOME_HERO_HEADLINE_PX = 23;
+export const HOME_HERO_HEADLINE_LINE_PX = 33;
 
 export const HOME_AGENDA_TITLE_PX = 15;
 export const HOME_AGENDA_TITLE_LINE_PX = 21;

@@ -146,6 +146,7 @@ function digestPrimaryNews(item: SignalApiNewsDigestItem, rows: SignalApiNewsIte
 function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem[]): NewsDigestItem {
   return {
     id: item.id,
+    changeType: item.changeType,
     title: item.title,
     summary: item.summary,
     topics: item.topics,

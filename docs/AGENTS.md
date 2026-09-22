@@ -12,6 +12,7 @@
 | [DATE-TIME.md](./DATE-TIME.md) | UTC·API·표시 시간 규칙 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 앱·서버 디렉터리 구조 |
 | [SIGNAL-PRD.md](./SIGNAL-PRD.md) | 제품 방향·화면 역할 |
+| [SIGNAL-PRODUCT-UPGRADE.md](./SIGNAL-PRODUCT-UPGRADE.md) | 외부 서비스 비교·홈 읽기 경험·개선 우선순위 |
 | [SERVER.md](./SERVER.md) | Signal Server·DB·Job 운영 |
 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) | 알림센터 서버·앱 계약 |
 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) | 뉴스 이슈 ingest JSON |

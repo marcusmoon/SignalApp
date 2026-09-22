@@ -138,7 +138,16 @@ export async function hydrateDisclosureDigestItem(item, options = {}) {
 
 export async function hydrateNewsDigestItems(items, options = {}) {
   const rows = Array.isArray(items) ? items : [];
-  return Promise.all(rows.map((item) => hydrateNewsDigestItem(item, options)));
+  const refs = rows.flatMap((item) => Array.isArray(item.sourceRefs) ? item.sourceRefs : []);
+  const hydrated = await hydrateSourceRefs(refs, options);
+  let offset = 0;
+  return rows.map((item) => {
+    const count = Array.isArray(item.sourceRefs) ? item.sourceRefs.length : 0;
+    const sourceRefs = hydrated.slice(offset, offset + count);
+    offset += count;
+    const sources = deriveNewsDigestSources(sourceRefs);
+    return { ...item, sourceRefs, sources: sources.length ? sources : item.sources || [] };
+  });
 }
 
 export async function hydrateDisclosureDigestItems(items, options = {}) {

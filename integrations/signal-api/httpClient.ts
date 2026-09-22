@@ -1,6 +1,7 @@
 import { hasSignalApi } from '@/services/env';
 import { getEffectiveSignalApiBaseUrl } from '@/services/signalServerEndpoint';
 import type { MessageId } from '@/locales/messages';
+import { trackInflightRequest } from '@/utils/inflightRequest';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 const MAX_ATTEMPTS = 2;
@@ -221,9 +222,10 @@ export async function signalApiRequest<T>(
   const timeoutMs = Math.max(1000, Math.floor(Number(options.timeoutMs)) || DEFAULT_TIMEOUT_MS);
   const maxAttempts = Math.max(1, Math.floor(Number(options.attempts)) || MAX_ATTEMPTS);
 
-  /** Same GET URL in flight → share one network call (wide-web boot / double home mount). */
+  /** Only public requests with the same retry/timeout contract can share a response. */
   const inflightKey =
-    method === 'GET' && options.body == null ? `${method}:${base}${suffix}` : null;
+    method === 'GET' && options.body == null && !bearer
+      ? `${method}:${base}${suffix}:${timeoutMs}:${maxAttempts}` : null;
   if (inflightKey) {
     const existing = getInflight.get(inflightKey);
     if (existing) return existing as Promise<T>;
@@ -296,10 +298,7 @@ export async function signalApiRequest<T>(
   })();
 
   if (inflightKey) {
-    getInflight.set(inflightKey, run);
-    void run.finally(() => {
-      if (getInflight.get(inflightKey) === run) getInflight.delete(inflightKey);
-    });
+    trackInflightRequest(getInflight, inflightKey, run);
   }
   return run;
 }

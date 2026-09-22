@@ -2,14 +2,36 @@
 
 Codex 예약 작업은 먼저 Signal Server의 `/v1/news` 최신 뉴스만 읽어 **이슈 묶음 JSON을 dry-run으로 생성**해 사람이 확인한다. 확인이 끝난 JSON만 Signal Server의 `/v1/news-digests/ingest`에 적재한다. 앱은 이후 `/v1/news-digests`를 통해 이 결과를 읽는다.
 
-예약 기능에 그대로 넣을 프롬프트는 [`docs/prompts/news-issue-digest.codex-scheduled-prompt.md`](./prompts/news-issue-digest.codex-scheduled-prompt.md)에 둔다.
+운영 예약용 현재 프롬프트는 [뉴스 이슈 개정](./prompts/news-revisions.codex-scheduled-prompt.md)에 둔다. 신규 운영 작업은 v3를 사용한다. 아래 v2 규격은 기존 클라이언트/생성기 호환용이다.
+
+## v3 개정 계약
+
+- 스키마: [news-issue-digest.v3.schema.json](./schemas/news-issue-digest.v3.schema.json).
+- `storyId`: 주체·사건·대상 기간으로 식별. 제목이나 실행 날짜를 키로 사용하지 않는다.
+- `changeType`: `new`, `update`, `correction`. 후속/정정은 최신 `previousDigestId` 필수.
+- `changes`: 추가/정정된 사실 1~3개와 각 사실의 `sourceIds`. 선택한 뉴스 근거만 참조한다.
+- 서버가 내용 기반 `revisionId`와 `id`를 생성한다. 같은 요청 재전송은 재삽입하지 않으며 시각만 바꿔도 새 개정이 되지 않는다.
+- 사건별 트랜잭션 잠금과 최신 predecessor 검증으로 오래된 작업의 덮어쓰기를 막는다. 충돌은 409이며 context를 다시 읽는다.
+- `GET /v1/news-digests/context`는 ingest 인증 헤더가 필요하다. 최근 7일의 사건 최신 개정 최대 150건을 돌려준다.
+- 공개 조회에 `storyId`(개정 이력), `symbols`(관심종목) 필터를 지원한다. 일반 목록은 사건별 최신 개정만 노출하며 날짜 범위 조회는 그 범위의 최신 개정을 사용한다.
+- 서버 검증은 형식·근거 ID·순서·멱등성을 보장한다. 사실의 의미적 신규성이나 진실성을 자동 보증하지 않으므로 생성 지침과 표본 검수가 필요하다.
+
+### 운영 전환
+
+1. Flyway V21 인덱스를 적용한 뒤 서버를 배포한다. 기존 마이그레이션 수정/데이터 삭제는 없다.
+2. `server/.env` 또는 예약 실행 환경에 `SIGNAL_AUTOMATION_INGEST_TOKEN`을 설정한다. 프롬프트/결과에 토큰을 넣지 않는다.
+3. 저장소 루트에서 `node scripts/newsDigestAutomation.mjs collect`를 실행한다. v3 지원이 확인되지 않으면 중단된다.
+4. 프롬프트에 따라 draft를 만들고 `validate`로 검증한다. 검토 후 `publish`로 게시한다. validate 자체는 게시하지 않는다.
+5. 기존 Codex 예약 `news-digest-brief`는 이 프롬프트를 참조한다. 실행 시각·모델·PAUSED 상태는 유지했으며 재개는 별도 운영 결정이다.
+
+뉴스 수집은 최근 14시간, 카테고리별 최대 300건이다. 제한에 걸리면 context의 `truncated`와 경고를 확인한다. 개정이 없는 실행은 게시하지 않는다. v2 사건과 v3 사건은 자동으로 제목 매칭하지 않아 초기 전환 기간에는 의미상 겹치는 카드가 남을 수 있다.
 
 ## Endpoint
 
 - Method: `POST`
 - URL: `/v1/news-digests/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
-- Schema: [`docs/schemas/news-issue-digest.v2.schema.json`](./schemas/news-issue-digest.v2.schema.json) (권장). v1 스냅샷도 ingest 시 정규화되어 저장된다.
+- Schema: [v3](./schemas/news-issue-digest.v3.schema.json) (신규 운영), [v2](./schemas/news-issue-digest.v2.schema.json) (기존 호환). v1 스냅샷도 ingest 시 정규화되어 저장된다.
 - Example: [`docs/examples/news-issue-digest.v2.ingest.example.json`](./examples/news-issue-digest.v2.ingest.example.json)
 
 요청 최상위 `notifyInbox`·`sendPush`는 독립 플래그(기본 `true`). dry-run은 둘 다 `false`, 운영 ingest는 필요에 따라 조정한다. 항목별 알림 제외는 `notifyInbox: false`만 사용한다.

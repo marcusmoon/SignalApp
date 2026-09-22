@@ -7,6 +7,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "test:news-revisions": "node --experimental-test-module-mocks --test src/news/digestRevision.test.mjs src/db/repositories/newsRevisions.integration.test.mjs",
     "dev": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs",
@@ -18,5 +19,8 @@
     "jose": "^5.10.0",
     "kysely": "^0.29.2",
     "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }

@@ -27,6 +27,8 @@
 wide 탭·홈·뉴스 플로우·공시 플로우·게시판 등은 `wideContentFill`로 **우측 pane 전체**. 일부 임베디드 상세(오늘의 브리핑 등)만 `APP_WIDE_CONTENT_MAX_WIDTH` (1120).  
 가로 inset: `APP_CONTENT_SIDE_PADDING` (16).
 
+홈은 실제 콘텐츠 pane 폭 960px 이상에서 뉴스와 일정·바로가기를 두 열로 나눈다. 보조 열은 32%, 최대 390px이며 좁은 iPad 분할 화면에서는 세로 흐름을 유지한다. 별도의 중첩 세로 스크롤을 만들지 않는다.
+
 ## Safe Area `edges`
 
 | 화면 유형 | iPhone | iPad / wide |

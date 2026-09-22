@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BriefingDetailShell } from '@/components/signal/BriefingDetailShell';
 import { DigestCopyTextButton } from '@/components/signal/DigestCopyTextButton';
+import { NewsStoryContext } from '@/components/news/NewsStoryContext';
+import { SaveNewsButton } from '@/components/news/SaveNewsButton';
 import type { DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { newsDigestSourceSheetRows } from '@/components/news/DigestPager';
 import { disclosureDigestSourceSheetRows } from '@/components/disclosures/DisclosureDigestSection';
@@ -27,6 +29,8 @@ import {
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { AppLocale } from '@/locales/messages';
+import { markNewsRead } from '@/services/newsReadingHistory';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 
 export type DigestDetailKind = 'news' | 'disclosure';
 
@@ -51,6 +55,7 @@ export function DigestDetailContent({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generationRef = useRef(0);
   const emptyKey = kind === 'news' ? 'newsDigestEmpty' : 'disclosureDigestEmpty';
   const loadErrorKey = kind === 'news' ? 'newsIssuesLoadError' : 'disclosureFlowLoadError';
   const item = kind === 'news' ? newsItem : disclosureItem;
@@ -58,6 +63,7 @@ export function DigestDetailContent({
 
   const load = useCallback(
     async (forceRefresh?: boolean) => {
+      const generation = ++generationRef.current;
       const cleanId = String(id || '').trim();
       if (!hasSignalApi()) {
         setNewsItem(null);
@@ -78,17 +84,21 @@ export function DigestDetailContent({
         const cacheMode = signalCacheMode(forceRefresh);
         if (kind === 'news') {
           const next = await fetchSignalNewsDigestById(cleanId, { cacheMode, locale });
+          if (generation !== generationRef.current) return;
           setNewsItem(next);
           setDisclosureItem(null);
+          if (next) void markNewsRead(next, locale);
         } else {
           const next = await fetchSignalDisclosureDigestById(cleanId, { cacheMode, locale });
+          if (generation !== generationRef.current) return;
           setDisclosureItem(next);
           setNewsItem(null);
         }
       } catch (e) {
+        if (generation !== generationRef.current) return;
         setError(formatSignalApiError(e, t, loadErrorKey));
       } finally {
-        setLoading(false);
+        if (generation === generationRef.current) setLoading(false);
       }
     },
     [id, kind, loadErrorKey, locale, t],
@@ -96,7 +106,10 @@ export function DigestDetailContent({
 
   useEffect(() => {
     setLoading(true);
+    setNewsItem(null);
+    setDisclosureItem(null);
     void load();
+    return () => { generationRef.current += 1; };
   }, [load]);
 
   const onRefresh = useCallback(async () => {
@@ -141,12 +154,16 @@ export function DigestDetailContent({
       headline={item ? headline : null}
       headlineMeta={headlineMeta}
       headlineAccessory={
-        item ? <DigestCopyTextButton title={headline} summary={summary} /> : null
+        item ? <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {kind === 'news' && newsItem ? <SaveNewsButton item={newsItem} /> : null}
+          <DigestCopyTextButton title={headline} summary={summary} />
+        </View> : null
       }
       scrollResetKey={scrollResetKey}
       contentRevision={item}>
       {item ? (
         <View style={styles.root}>
+          {kind === 'news' && newsItem ? <NewsStoryContext item={newsItem} /> : null}
           {summaryBody ? (
             <View style={styles.leadPanel}>
               <ChangeTintedText style={styles.summary} selectable>
@@ -175,7 +192,7 @@ export function DigestDetailContent({
                       onPress={
                         refUrl
                           ? () => {
-                              void Linking.openURL(refUrl).catch(() => null);
+                              void openConfiguredExternalLink({ webUrl: refUrl }).catch(() => null);
                             }
                           : undefined
                       }
@@ -226,7 +243,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       fontSize: ft.signalTitleFont(16),
       fontWeight: ft.titleWeight,
-      letterSpacing: -0.15,
+      letterSpacing: 0,
       color: theme.text,
     },
     sectionFeedCard: {

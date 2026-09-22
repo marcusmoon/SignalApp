@@ -6,6 +6,8 @@ const digestsCache = new Map<string, { value: NewsDigestCacheValue; expiresAt: n
 
 export function buildSignalNewsDigestsCacheKey(params?: {
   id?: string;
+  storyId?: string;
+  symbols?: string;
   category?: string;
   limit?: number;
   offset?: number;
@@ -16,6 +18,8 @@ export function buildSignalNewsDigestsCacheKey(params?: {
 }): string {
   const p = {
     id: String(params?.id || '').trim(),
+    storyId: String(params?.storyId || '').trim(),
+    symbols: String(params?.symbols || '').trim(),
     category: String(params?.category || '').trim(),
     limit: Number(params?.limit) || 0,
     offset: Number(params?.offset) || 0,
@@ -24,7 +28,7 @@ export function buildSignalNewsDigestsCacheKey(params?: {
     batches: Number(params?.batches) || 0,
     locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `news-digests|${p.id}|${p.category}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
+  return JSON.stringify(p);
 }
 
 export function peekSignalNewsDigestsCache(key: string): NewsDigestCacheValue | null {

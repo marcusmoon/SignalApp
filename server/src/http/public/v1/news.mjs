@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 import {
   findNewsItemsByIds,
+  invalidatePublicReadCacheForCollection,
   getCollectionPayload,
   patchCollectionPayload,
   queryPublicNews,
@@ -24,6 +25,8 @@ import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { keywordsToTopicLabels, normalizeKeywords } from '../../../keywords/normalizeKeywords.mjs';
 import { json, readBody } from '../../shared.mjs';
+import { ingestNewsRevisions, queryNewsRevisionContext } from '../../../db/repositories/newsRevisionRepository.mjs';
+import { DigestContractError } from '../../../news/digestRevision.mjs';
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -199,6 +202,14 @@ async function publishDigestNotification(item, queuePush) {
 }
 
 export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
+  if (req.method === 'GET' && pathname === '/v1/news-digests/context') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    json(res, 200, { schemaVersion: 3, data: await queryNewsRevisionContext() });
+    return true;
+  }
   if (req.method === 'POST' && pathname === '/v1/news/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
@@ -274,6 +285,37 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     }
     const body = await readBody(req);
     const rawItems = Array.isArray(body?.items) ? body.items : [];
+    if (body?.schemaVersion === 3) {
+      try {
+        if (!Array.isArray(body.items)) throw new DigestContractError('ITEMS_REQUIRED');
+        const now = new Date().toISOString();
+        const normalized = rawItems.map((item) => ({ ...item,
+          keywords: normalizeKeywords(item?.keywords),
+          topics: cleanArray(item?.topics).map(cleanText).filter(Boolean).slice(0, 8),
+          sources: [],
+        }));
+        const result = await ingestNewsRevisions(normalized, now);
+        if (result.inserted) invalidatePublicReadCacheForCollection('newsDigestItems');
+        let inboxPublished = 0;
+        const sendPush = resolveIngestSendPush(body);
+        for (const item of result.items) {
+          if (!resolveDigestItemNotifyInbox(body, item)) continue;
+          // A retry may finish publishing after a previous request stored the revision.
+          if (await getCollectionPayload('notificationItems', `notification:push:news_digest:${item.id}`)) continue;
+          if (await publishDigestNotification(item, sendPush)) inboxPublished += 1;
+        }
+        const articleTags = await applyDigestArticleTags(body.articleTags,
+          result.items.flatMap((item) => item.sourceRefs.map((ref) => ref.id)));
+        json(res, 200, { ok: true, schemaVersion: 3, count: result.items.length,
+          inserted: result.inserted, replayed: result.items.length - result.inserted,
+          ids: result.items.map((item) => item.id), inboxPublished,
+          pushQueued: sendPush ? inboxPublished : 0, articleTags });
+      } catch (error) {
+        if (!(error instanceof DigestContractError)) throw error;
+        json(res, error.status, { error: error.message });
+      }
+      return true;
+    }
     if (rawItems.length === 0) {
       json(res, 400, { error: 'ITEMS_REQUIRED' });
       return true;
@@ -332,6 +374,8 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/news-digests') {
     const page = await queryPublicNewsDigests({
       id: url.searchParams.get('id') || '',
+      storyId: url.searchParams.get('storyId') || '',
+      symbols: url.searchParams.get('symbols') || '',
       category: url.searchParams.get('category') || '',
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',

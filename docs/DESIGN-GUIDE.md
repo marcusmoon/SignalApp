@@ -36,17 +36,17 @@
 |---|---|---|
 | 피드 제목 | `FEED_ARTICLE_TITLE_PX` (15) · line `FEED_ARTICLE_TITLE_LINE_PX` (22) | 뉴스·공시·게시판 리스트 · **홈 뉴스** (`density="home"`) |
 | 다이제스트·유튜브 제목 | `FEED_DIGEST_TITLE_PX` (14) · line `FEED_DIGEST_TITLE_LINE_PX` (20) | 이슈 목록·DigestPager 2열·**유튜브**(썸네일 행). 홈은 아래 스캔 스케일 |
-| 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드. 홈 히어로는 `HOME_HERO_HEADLINE_PX` (16) |
+| 상세 제목 | `FEED_DETAIL_TITLE_PX` (17) | 확장 카드. 홈 히어로는 `HOME_HERO_HEADLINE_PX` (23) |
 | 본문·요약 | `FEED_BODY_PX` / `FEED_PREVIEW_BODY_PX` | 미리보기 |
 | 메타·배지 | `FEED_META_*` / `FEED_BADGE_PX` | 시간·출처 |
 | 칩 라벨 | `FEED_CHIP_PX` (10) | 뉴스/다이제스트 topic 칩. **홈 키워드는 `HOME_KEYWORD_CHIP_PX` (11)** |
-| 홈 스캔 | `constants/homeScan.ts` | 홈 전용. 히어로 16 → 일정 15 → 뉴스 15 → 시세 가격 14 / 등락 16. 피드 리스트에 재사용 금지 |
-| 홈 트렌드 | `HomeSectionHeader` + 칩 (`HOME_KEYWORD_CHIP_PX`) | 홈 최상단. 피처드 없음 |
+| 홈 스캔 | `constants/homeScan.ts` | 홈 전용. 히어로 23/33 → 요약 15/24 → 뉴스 15/22·요약 14/21 → 시세 가격 14 / 등락 16. 피드 리스트에 재사용 금지 |
+| 홈 트렌드 | 키워드 칩 (`HOME_KEYWORD_CHIP_PX`) | 브리핑 본문 아래 관련 탐색. 기존 최대 6개 유지 |
 | UI 라벨 | `scaleFont(n)` via `useSignalTheme()` | 버튼·설정·탭 |
 
 `constants/feedTypography.ts` · `constants/homeScan.ts`는 **기본 크기**(설정 「기본」= 배율 1). 화면에는 항상 `scaleFont` / `ft.ff`로 올린다.
 
-- **글꼴 크기** (`fontSizePreference`): compact 0.9 · small 0.95 · 기본 1 · 크게 1.06 · 매우 크게 1.12. 홈 스캔과 **별 설정이 아니라 곱셈**. 히어로 16이 매우 크게면 ≈18.
+- **글꼴 크기** (`fontSizePreference`): compact 0.9 · small 0.95 · 기본 1 · 크게 1.06 · 매우 크게 1.12. 홈 스캔과 **별 설정이 아니라 곱셈**. 히어로 23이 매우 크게면 ≈26.
 - **피드 항목 굵기** (`feedContentWeight`): 볼드일 때 `ft.ff`가 +1px. 글꼴 크기 다음에 적용.
 - 홈에 고정 `fontSize: 17`을 두지 않는다. 설정 「크게」를 켠 사용자가 홈만 더 키우는 두 번째 토글이 아님.
 
@@ -181,12 +181,12 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   | 캘린더 | **일정** | calendar |
   | 워치리스트 | **시세** | 주요 지수 → 관심 종목 → 코인(Admin `crypto_symbols` 상위) → 환율(달러·JPY · 와이드만 위안, 국기 아이콘) |
   - 홈 섹션 제목 앞: `HomeSectionLeadIcon` (트렌드 `trending-up` · 히어로 `reader` · 뉴스 `newspaper` · 일정 `calendar` · 바로가기 `apps` · 시세 `stats-chart` · 섹터 `grid`). 홈에서는 `AiBadge` 없음. 홈/리스트 표시명에 영문 혼용 금지
-  - **홈 섹션 우측 메타**: 섹터 기준일 · 뉴스 `NEW` · 트렌드 as-of → `HomeSectionHeader` `meta` — **세션 태그(`BriefingSessionTag`)와 동일 칩**(bgElevated · hairline border · textMuted). 시세 as-of도 같은 칩을 레이어 라인 우측에. 뉴스 `NEW`는 최신 `generatedAt` **1시간 이내**일 때만 (`isHomeNewsFlowNew`)
+  - **홈 섹션 우측 메타**: 섹터 기준일·브리핑 발행 시각(없으면 키워드 as-of) → `HomeSectionHeader` `meta`. 시세 as-of도 레이어 라인 우측에. 뉴스 신선도는 섹션 전체가 아닌 개별 행에 표시: `generatedAt` 1시간 이내이고 해당 언어·개정판을 읽지 않았을 때만 최신 표시.
   - **홈 섹션 순서**
-  - **오늘**: **트렌드+히어로**(한 섹션·한 카드 — 칩 / 세션 cap rule / headline 내부 분리) → **일정**(선택일 행 + 오늘이면 다가올 D-n 칩) → **뉴스**(없으면 숨김 · 빈 카드 없음) → **바로가기** → 시세(지수·종목·코인·환율) → (조건부) 섹터
-  - **과거**: **트렌드+히어로**(동일) → **일정**(선택일 행) → **뉴스**(없으면 숨김) → **바로가기** → (조건부) 섹터 · 시세 숨김
-  - **트렌드+히어로 UI**: 섹션 헤더 1개(히어로 있으면 정리/회차·`reader`, 없으면 트렌드·`trending-up`; as-of는 키워드 있을 때). 카드 안 — 위: 키워드 칩(`embedded`, `HOME_KEYWORD_CHIP_PX`) · **`SectionCapRule`**(`● {세션} ——`) · 아래: headline(`HOME_HERO_HEADLINE_PX`, 탭→브리핑). 칩 탭→심볼/이슈는 기존과 동일
-  - **홈 스캔 계층** (`constants/homeScan.ts`): 히어로 헤드라인(16)이 가장 크고, 일정·뉴스 제목(15) · 시세는 **가격+등락**을 본문으로. 뉴스/공시 목록·유튜브는 기존 digest 14를 유지. 홈 카드 좌우 `HOME_CARD_PAD_H`
+  - **오늘**: 브리핑 → 뉴스 → 일정·바로가기 → 시세 → 조건부 섹터. **과거**도 같은 흐름이며 시세는 숨김.
+  - **넓은 화면**: 콘텐츠 pane 960px 이상이면 뉴스(주 영역)와 일정·바로가기(32%, 최대 390px)를 나란히. 그 이하는 세로 흐름. 기기 이름만으로 두 열을 강제하지 않음.
+  - **브리핑 UI**: 섹션 헤더 → 세션(헤더와 다를 때만) → 헤드라인 → 요약 최대 3줄 → 전문 이동 → 관련 키워드. 바깥 카드 없이 상단 액센트 선·하단 구분선. 키워드는 기존 최대 6개를 유지한다. 칩 탭→심볼/이슈는 유지.
+  - **홈 스캔 계층** (`constants/homeScan.ts`): 브리핑 23/33, 요약 15/24. 뉴스 제목 15/22·요약 14/21. 설정의 크기와 굵기를 적용한다. 뉴스 본문은 개별 라운드 카드가 아닌 하나의 목록 안 구분선 행.
   - **홈 바로가기** (`HomeShortcutsStrip`): 보드·시세·뉴스 세그먼트·일정·섹터 흐름·공시·설정을 **여러 개** 둘 수 있고 순서 변경 가능. 기본 보드(전체)·시세(관심)·뉴스(전체)·일정, 최대 6. My info → 표시 → **홈 바로가기**(개수 카드와 분리). 빈 선택이면 섹션 숨김.
     - **내비**: 탭 루트로 전환하지 않음. 폰은 root Stack(`/more-board`·`/watchlist`·`/home-news` 등) 백 헤더, wide는 `drillFrom: 'home'` + `WideSubpaneHeader`.
     - **타일 라벨** (`homeShortcutDisplay`, **한 줄**):
@@ -199,10 +199,10 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - **홈 섹션 `>` 없음**: 목록·탭 탐색은 시장·시세·더보기·사이드바 등 **다른 메뉴**로
 - **히어로 선택** (`domain/home/selectHomeHeroBriefing.ts`, KST): 기본 창 ~09:00 `us/overnight` · 09:00~12:10 `kr/morning` · 12:10~15:30 `kr/lunch` · 15:30~23:00 `kr/close` · 23:00~ `today_briefing`. **이미 올라온 더 늦은 회차가 있으면 그걸 우선** (예: 장중 `lunch`가 있으면 장전 `morning` 창이어도 장중). 없으면 **같은 날(`briefingDate`)** 더 이른 회차로만 폴백 — 다른 날짜 브리핑은 노출하지 않음. 과거일은 오늘 정리 → close → lunch → morning → overnight
 - **오늘 정리**: headline·summary·keyPoints 중 읽을 내용이 있을 때만 히어로. 없거나 빈 페이로드면 후보에서 제외(장중 회차로 폴백). 히어로 자체가 없으면 섹션 숨김(빈 카드 없음)
-- **홈 뉴스**: 선택일 다이제스트가 있을 때만 섹션 표시. 없으면 숨김(빈 카드·「준비 중」 없음 — 히어로·일정과 동일)
+- **홈 뉴스** (`HomeNewsFeed`): 전체/관심종목 탭, 분류·관련 종목 → 제목 최대 3줄 → 요약 최대 2줄 → 출처명·아이콘·생성시각. 필터는 선택일 최신 배치의 `symbols` 정확 일치, 필터 후 설정 개수 적용. 빈 결과와 로딩 실패를 구분. 읽음은 상세 성공 시 기기 로컬 최대 300건, 언어·개정판별 표시. [동작 기준](./SIGNAL-PRODUCT-UPGRADE.md)
 - **히어로·뉴스·ETF 탭**: 장중 → `/market-briefing` · 오늘 정리 → `/today-briefing` · 뉴스 행 → `/news-digest` · 섹터 흐름 → `/etf-insight` (알림과 동일 단건 상세)
 - **홈에서 제거**: 장중 브리핑 회차 목록 · 게시판 (더보기) · 섹션 `>` 목록 드릴 · 히어로/ETF/뉴스 바텀시트
-- **일정**: 히어로 아래. 선택일 핵심 일정은 시각·짧은 제목 행(`HOME_AGENDA_TITLE_PX`), 오늘이면 그 아래 `다가올` cap + `D-1 CPI` 칩. 탭 → `/calendar`. **항목이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
+- **일정**: 모바일은 뉴스 아래, 넓은 pane은 뉴스 옆 보조 영역. 선택일 핵심 일정은 시각·짧은 제목 행(`HOME_AGENDA_TITLE_PX`), 오늘이면 그 아래 `다가올` cap + `D-1 CPI` 칩. 탭 → `/calendar`. **항목이 없으면 일정 섹션 자체 숨김**(빈 카드 없음)
 - **투자 캘린더** (`app/calendar.tsx`): `topFixed` 안에서 **날짜 → underline 세그먼트**. 세그먼트 `주요 · 지표 · 실적 · 연준 · 휴장 · 전체` (`getSegmentTabBarStyles`). 기본 **주요**는 FOMC/연준·핵심 매크로·휴장·관심 실적만. **전체**는 같은 유형을 큐레이션 없이. 유형 탭은 해당 타입만. 본문은 시각 좌측 + 제목 행(점·짧은 제목) + 헤어라인. 혼합 필터는 `SectionCapRule`로 구역(통화정책·지표·실적·휴장). 월 그리드는 컴팩트 시트. 타입 색: 실적 green · 지표 blue · 연준 orange · FOMC danger · 휴장 muted.
 - **공시 흐름**은 홈에 두지 않음 — 더보기 허브·와이드 사이드바 공시 탭에서 진입 (`/disclosure-flow`)
 - **섹터 흐름 (주간) 노출**:
@@ -228,7 +228,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
   - 섹터 `changePercent` 권장(정렬·채색). `symbol`은 ingest 보조(앱 섹터 UI에는 미표시). 없으면 summary에서 파싱
 - 홈 설정(표시 탭, 카드 분리): **홈 바로가기**(하위 다중 선택·순서, 최대 6) · **홈 개수**(관심 종목·섹터 흐름·뉴스 흐름 — 홈 시세 섹션의 워치리스트 칸 수). 히어로·일정은 자동
 - 홈 시세 그리드: **지수 6**(S&P · 나스닥 · 다우 · 필라 · 코스피 · 니케이) → 관심 종목 → 코인(큐레이션 상위 · 폰 2·와이드 3) → **환율**. 레이어 라인은 **`SectionCapRule`** (`● 지수 —— [종가]`, 우측 as-of는 헤더 `NEW`와 동일 칩). 레이어 **종가**/**Close**는 해당 레이어 **모든** 지수·주식·FX가 마감일 때만(코인 제외). 혼재(일부만 마감)면 헤더는 상대시간·마감 종목명 아래에만 **종가**/**Close**/**終値**. 레이어 Close가 있으면 타일 Close는 생략. 폰 **2열** · 와이드(웹/iPad) **3열**. 지수·코인·환율 탭 → Yahoo Finance, 주식 탭 → 종목 상세. 지수 Job `market_quotes_indices`, 환율 Job `market_quotes_fx`(`USDKRW=X`·`JPYKRW=X`·`CNYKRW=X`). **환율 슬롯**: compact(폰) 달러·JPY · wide(PC) +위안. JPY는 표시만 **×100**(100엔당 원), 라벨은 `JPY`. 환율 아이콘은 국기(`flagcdn.com` US/JP/CN). 지수 타일 아바타 글리프는 추종 ETF 심볼(`SPY`·`QQQ`·`DIA`·`SOXX`·`069500`·`EWJ`); 로고 이미지는 서버 `symbolMeta.logoUrl`이 있을 때만. 지수·주식·환율 as-of/`quoteTime`은 Yahoo `regularMarketTime`(시세 시각) — Job 수집 시각 아님. FX는 신선 창 1시간(지수 6시간과 다름) — 그 이상·주말이면 종가 판정(Yahoo Closed와 맞춤, “N시간 전”·요일 종가 지양)
-- 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`·홈 히어로): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 섹터 = 히트맵순 리스트 + 첫 행 heat
+- 상세(`BriefingDetailShell` + `MarketBriefingBlock`·`TodayBriefingBlock`·`EtfInsightBlock`·`DigestDetailContent`): 헤드라인·요약·섹터 why·종목·매크로·출처·키포인트 본문은 말줄임 없이 전체 표시. 홈은 미리보기이며 헤드라인 전체·요약 최대 3줄. 섹터 = 히트맵순 리스트 + 첫 행 heat
 - 홈 히어로(장중·오늘 정리) 헤드라인도 줄 수 제한 없음 (카드에서 전체 노출)
 - 콘텐츠 카드는 구분선·간격으로 구조를 잡는다 — **좌측 accent 세로 바 없음**
 
